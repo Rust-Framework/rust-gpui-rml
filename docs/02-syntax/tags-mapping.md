@@ -1,0 +1,260 @@
+# 2.2 标签与控件映射
+
+> **本节目标**：建立 HTML 标签到 GPUI 元素的完整映射表，理解每个标签的语义和底层实现。
+
+## 2.2.1 完整映射表
+
+| HTML 标签         | RML 语义   | 对应 GPUI 实现                                    |
+| --------------- | -------- | --------------------------------------------- |
+| `<div>`         | 通用容器/布局块 | `gpui::div()`                                 |
+| `<span>`        | 内联文本容器   | `gpui::div().inline()`                        |
+| `<p>`           | 段落文本     | `gpui::div().child(Label::new())`             |
+| `<h1>` ~ `<h6>` | 标题       | `gpui::div().child(Label::new()).text_size()` |
+| `<button>`      | 按钮       | `gpui_component::Button`                      |
+| `<input>`       | 输入框      | `gpui_component::Input`                       |
+| `<textarea>`    | 多行文本输入   | `gpui_component::TextArea`                    |
+| `<ul>` / `<ol>` | 列表容器     | `gpui::div().flex().flex_col()`               |
+| `<li>`          | 列表项      | `gpui::div()`                                 |
+| `<img>`         | 图片       | `gpui_component::Image`                       |
+| `<a>`           | 链接       | `gpui_component::Link`                        |
+| `<label>`       | 标签       | `gpui::div().child(Label::new())`             |
+
+## 2.2.2 容器类标签
+
+### `<div>`：通用容器
+
+最常用的标签，对应 GPUI 的 `div()`。用于布局分组、样式作用域、嵌套结构。
+
+```html
+<div class="card">
+    <div class="card-header">
+        <h2>标题</h2>
+    </div>
+    <div class="card-body">
+        <p>内容</p>
+    </div>
+</div>
+```
+
+### `<span>`：内联容器
+
+对应 `div().inline()`。用于行内文本片段的样式包装。
+
+```html
+<p>
+    欢迎回来，<span class="username">{user_name}</span>！
+    你有 <span class="badge">{unread_count}</span> 条未读消息。
+</p>
+```
+
+## 2.2.3 文本类标签
+
+### `<p>`：段落
+
+对应 `div().child(Label::new(...))`。用于段落文本。
+
+```html
+<p class="intro">这是一段介绍文字。</p>
+```
+
+### `<h1>` ~ `<h6>`：标题
+
+对应 `div().child(Label::new(...)).text_size(...)`。语义化标题层级。
+
+```html
+<h1>主标题</h1>
+<h2>副标题</h2>
+<h3>章节标题</h3>
+```
+
+### `<label>`：表单标签
+
+对应 `div().child(Label::new(...))`。通常与 `<input>` 配合使用。
+
+```html
+<label for="username">用户名</label>
+<input id="username" type="text" />
+```
+
+## 2.2.4 交互类标签
+
+### `<button>`：按钮
+
+对应 `gpui_component::Button`。RML 自动处理按钮的样式、状态、点击事件。
+
+```html
+<button class="btn primary" onclick={submit}>提交</button>
+<button class="btn danger" onclick={delete_item} disabled={is_deleting}>
+    删除
+</button>
+```
+
+**支持的属性**：
+
+| 属性          | 类型     | 说明           |
+| ----------- | ------ | ------------ |
+| `disabled`  | bool   | 是否禁用         |
+| `onclick`   | 命令     | 点击事件         |
+| `class`     | string | 样式类名         |
+| `ref`       | string | 元素引用名        |
+
+### `<input>`：输入框
+
+对应 `gpui_component::Input`。支持多种 type。
+
+```html
+<!-- 文本输入 -->
+<input type="text" model={user_name} placeholder="请输入用户名" />
+
+<!-- 密码输入 -->
+<input type="password" model={password} placeholder="密码" />
+
+<!-- 复选框 -->
+<input type="checkbox" checked={remember_me} onchange={toggle_remember} />
+
+<!-- 数字输入 -->
+<input type="number" model={age} min="0" max="150" />
+```
+
+**支持的 type**：
+
+| type 值       | 用途       | 对应组件                       |
+| ------------ | -------- | -------------------------- |
+| `text`       | 单行文本（默认） | `Input`                    |
+| `password`   | 密码       | `Input` with masked        |
+| `number`     | 数字       | `Input` with number filter |
+| `checkbox`   | 复选框      | `Checkbox`                 |
+| `radio`      | 单选框      | `Radio`                    |
+| `email`      | 邮箱       | `Input` with email filter  |
+
+### `<textarea>`：多行文本
+
+对应 `gpui_component::TextArea`。
+
+```html
+<textarea model={content} placeholder="请输入内容..." rows="5"></textarea>
+```
+
+## 2.2.5 列表类标签
+
+### `<ul>` / `<ol>`：列表容器
+
+对应 `div().flex().flex_col()`。`<ul>` 无序，`<ol>` 有序（自动添加序号）。
+
+```html
+<ul class="todo-list">
+    <li each={todo in todos} key={todo.id}>
+        {todo.text}
+    </li>
+</ul>
+
+<ol class="ranking">
+    <li each={user in top_users} key={user.id}>
+        {user.name} - {user.score}
+    </li>
+</ol>
+```
+
+### `<li>`：列表项
+
+对应 `div()`。必须配合 `<ul>` 或 `<ol>` 使用。
+
+## 2.2.6 媒体类标签
+
+### `<img>`：图片
+
+对应 `gpui_component::Image`。
+
+```html
+<img src="/assets/avatar.png" alt="用户头像" class="avatar" />
+```
+
+**支持的属性**：
+
+| 属性     | 类型     | 说明              |
+| ------ | ------ | --------------- |
+| `src`  | string | 图片路径（本地或 URL）   |
+| `alt`  | string | 替代文本            |
+| `class` | string | 样式类名            |
+
+### `<a>`：链接
+
+对应 `gpui_component::Link`。
+
+```html
+<a href="https://example.com" onclick={open_link}>访问网站</a>
+```
+
+## 2.2.7 自闭合标签
+
+HTML 中自闭合的标签在 RML 中也支持自闭合写法：
+
+```html
+<input type="text" />
+<img src="avatar.png" />
+<br />
+```
+
+⚠️ **注意**：`<br />` 换行标签在 RML 中映射为 `div().h(px(0.0))`，仅用于文本换行场景。
+
+## 2.2.8 标签的 GPUI 代码生成
+
+每个 HTML 标签在编译期会生成对应的 GPUI 代码。例如：
+
+```html
+<!-- 输入 -->
+<div class="card">
+    <h1>标题</h1>
+    <button onclick={submit}>提交</button>
+</div>
+```
+
+```rust
+// 生成的 GPUI 代码（简化示意）
+gpui::div()
+    .class("card")
+    .child(
+        gpui::div()
+            .text_size(28.0)
+            .child(gpui::Label::new("标题"))
+    )
+    .child(
+        gpui_component::Button::new("提交")
+            .on_click(cx.listener(|this, ev, cx| this.submit(ev, cx)))
+    )
+```
+
+💡 **设计要点**：生成的代码与手写代码完全等价，没有任何运行时开销。你可以用 `cargo rml-expand` 命令查看生成的完整代码，详见 [第 10 章 · 调试技巧](../10-advanced/debugging.md)。
+
+## 2.2.9 自定义组件标签
+
+除了 HTML 标准标签，RML 还支持自定义组件标签。组件名采用 PascalCase，与 HTML 标签的小写名区分：
+
+```html
+<!-- HTML 标准标签：小写 -->
+<div>、<button>、<input>
+
+<!-- 自定义组件：PascalCase -->
+<PrimaryButton label="保存" onclick={save} />
+<Card>
+    <div slot="header">头部</div>
+    <p>内容</p>
+</Card>
+```
+
+自定义组件的详细用法见 [第 6 章 · 组件系统](../06-components/INDEX.md)。
+
+## 2.2.10 小结
+
+RML 的标签系统是 HTML 标签到 GPUI 元素的**一一映射**：
+
+- 容器类：`div`、`span`
+- 文本类：`p`、`h1~h6`、`label`
+- 交互类：`button`、`input`、`textarea`
+- 列表类：`ul`、`ol`、`li`
+- 媒体类：`img`、`a`
+- 自定义组件：PascalCase 命名
+
+掌握这张映射表，你就能在 `.rml` 中表达任何 UI 结构。
+
+下一节 → [2.3 属性系统](./attributes.md)

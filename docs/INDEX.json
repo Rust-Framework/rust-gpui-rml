@@ -1,0 +1,468 @@
+{
+  "title": "RML 框架使用文档",
+  "subtitle": "为 GPUI 设计的 HTML 友好型声明式 UI 框架",
+  "version": "1.0",
+  "language": "zh-CN",
+  "foreword": "FOREWORD.md",
+  "chapters": [
+    {
+      "id": "01-overview",
+      "number": "01",
+      "title": "概览与起步",
+      "subtitle": "设计理念、架构总览与第一个 RML 应用",
+      "index": "01-overview/INDEX.md",
+      "sections": [
+        {
+          "id": "design-philosophy",
+          "title": "设计理念与哲学",
+          "file": "01-overview/design-philosophy.md",
+          "summary": "RML 的三条根本原则与设计目标"
+        },
+        {
+          "id": "architecture",
+          "title": "架构总览",
+          "file": "01-overview/architecture.md",
+          "summary": "三层架构、Workspace 结构与 MVVM 数据流"
+        },
+        {
+          "id": "quick-start",
+          "title": "快速开始",
+          "file": "01-overview/quick-start.md",
+          "summary": "从零搭建第一个 RML 计数器应用"
+        },
+        {
+          "id": "comparison",
+          "title": "与原生 GPUI 的对比",
+          "file": "01-overview/comparison.md",
+          "summary": "三种方案的代码量、可维护性与团队协作对比"
+        }
+      ]
+    },
+    {
+      "id": "02-syntax",
+      "number": "02",
+      "title": "RML 标记语言",
+      "subtitle": "HTML 友好型标记语法完整规范",
+      "index": "02-syntax/INDEX.md",
+      "sections": [
+        {
+          "id": "syntax-philosophy",
+          "title": "语法哲学",
+          "file": "02-syntax/syntax-philosophy.md",
+          "summary": "HTML 优先、增强属性、零框架前缀"
+        },
+        {
+          "id": "tags-mapping",
+          "title": "标签与控件映射",
+          "file": "02-syntax/tags-mapping.md",
+          "summary": "HTML 标签到 GPUI 元素的完整映射表"
+        },
+        {
+          "id": "attributes",
+          "title": "属性系统",
+          "file": "02-syntax/attributes.md",
+          "summary": "标准属性、绑定属性、事件属性、指令属性"
+        },
+        {
+          "id": "directives",
+          "title": "指令系统",
+          "file": "02-syntax/directives.md",
+          "summary": "if/each/model/show/once/html/ref/slot 指令详解"
+        },
+        {
+          "id": "interpolation",
+          "title": "插值表达式",
+          "file": "02-syntax/interpolation.md",
+          "summary": "{ } 插值的语法、上下文与表达式边界"
+        },
+        {
+          "id": "complete-example",
+          "title": "完整示例：Todo 应用",
+          "file": "02-syntax/complete-example.md",
+          "summary": "用一节串起本章所有语法点"
+        }
+      ]
+    },
+    {
+      "id": "03-binding",
+      "number": "03",
+      "title": "数据绑定系统",
+      "subtitle": "WPF 级数据绑定在 RML 中的实现",
+      "index": "03-binding/INDEX.md",
+      "sections": [
+        {
+          "id": "binding-overview",
+          "title": "绑定系统总览",
+          "file": "03-binding/binding-overview.md",
+          "summary": "绑定方向、绑定源、绑定路径与绑定引擎"
+        },
+        {
+          "id": "one-way-binding",
+          "title": "单向绑定",
+          "file": "03-binding/one-way-binding.md",
+          "summary": "{value} 与属性绑定的全部用法"
+        },
+        {
+          "id": "two-way-binding",
+          "title": "双向绑定",
+          "file": "03-binding/two-way-binding.md",
+          "summary": "model 指令的双向数据流"
+        },
+        {
+          "id": "computed",
+          "title": "计算属性",
+          "file": "03-binding/computed.md",
+          "summary": "#[computed] 宏的依赖追踪与自动更新"
+        },
+        {
+          "id": "converter",
+          "title": "值转换器",
+          "file": "03-binding/converter.md",
+          "summary": "Converter trait 与双向值转换"
+        },
+        {
+          "id": "binding-engine",
+          "title": "绑定引擎原理",
+          "file": "03-binding/binding-engine.md",
+          "summary": "编译期绑定路径解析与运行时订阅机制"
+        }
+      ]
+    },
+    {
+      "id": "04-code-behind",
+      "number": "04",
+      "title": "Code-Behind 业务逻辑",
+      "subtitle": ".rml.rs 的宏系统与 ViewModel 设计",
+      "index": "04-code-behind/INDEX.md",
+      "sections": [
+        {
+          "id": "viewmodel-structure",
+          "title": "ViewModel 结构",
+          "file": "04-code-behind/viewmodel-structure.md",
+          "summary": "Model 派生、字段约定与构造函数"
+        },
+        {
+          "id": "macros",
+          "title": "宏属性详解",
+          "file": "04-code-behind/macros.md",
+          "summary": "#[view] #[component] #[command] #[computed] #[element] 全表"
+        },
+        {
+          "id": "element-ref",
+          "title": "元素引用",
+          "file": "04-code-behind/element-ref.md",
+          "summary": "ref 属性与 ElementRef 的命令式访问"
+        },
+        {
+          "id": "command-system",
+          "title": "命令系统",
+          "file": "04-code-behind/command-system.md",
+          "summary": "ICommand trait、#[command] 与命令参数"
+        },
+        {
+          "id": "state-management",
+          "title": "状态管理",
+          "file": "04-code-behind/state-management.md",
+          "summary": "cx.notify()、Entity 模型与跨视图状态共享"
+        }
+      ]
+    },
+    {
+      "id": "05-events",
+      "number": "05",
+      "title": "事件系统",
+      "subtitle": "从 DOM 事件到 RML 命令的完整事件流",
+      "index": "05-events/INDEX.md",
+      "sections": [
+        {
+          "id": "event-binding",
+          "title": "事件绑定",
+          "file": "05-events/event-binding.md",
+          "summary": "on* 事件属性的全部写法与参数传递"
+        },
+        {
+          "id": "event-objects",
+          "title": "事件对象",
+          "file": "05-events/event-objects.md",
+          "summary": "ClickEvent / ChangeEvent / KeyDownEvent 等事件载荷"
+        },
+        {
+          "id": "event-flow",
+          "title": "事件流",
+          "file": "05-events/event-flow.md",
+          "summary": "冒泡、捕获与阻止默认行为"
+        },
+        {
+          "id": "custom-events",
+          "title": "自定义事件",
+          "file": "05-events/custom-events.md",
+          "summary": "组件自定义事件的声明与监听"
+        },
+        {
+          "id": "debounce-throttle",
+          "title": "防抖与节流",
+          "file": "05-events/debounce-throttle.md",
+          "summary": "高频事件的性能优化策略"
+        }
+      ]
+    },
+    {
+      "id": "06-components",
+      "number": "06",
+      "title": "组件系统",
+      "subtitle": "自定义组件封装、插槽与组件库设计",
+      "index": "06-components/INDEX.md",
+      "sections": [
+        {
+          "id": "component-overview",
+          "title": "组件系统总览",
+          "file": "06-components/component-overview.md",
+          "summary": "组件与视图的区别、组件的心智模型"
+        },
+        {
+          "id": "define-component",
+          "title": "定义自定义组件",
+          "file": "06-components/define-component.md",
+          "summary": "#[component] 宏与 template 属性"
+        },
+        {
+          "id": "slots",
+          "title": "插槽机制",
+          "file": "06-components/slots.md",
+          "summary": "具名插槽、默认插槽与作用域插槽"
+        },
+        {
+          "id": "component-communication",
+          "title": "组件通信",
+          "file": "06-components/component-communication.md",
+          "summary": "属性下行、事件上行、双向绑定与上下文"
+        },
+        {
+          "id": "component-library",
+          "title": "组件库设计",
+          "file": "06-components/component-library.md",
+          "summary": "如何设计可复用的组件库与设计系统"
+        },
+        {
+          "id": "component-testing",
+          "title": "组件测试",
+          "file": "06-components/component-testing.md",
+          "summary": "组件的单元测试与快照测试"
+        }
+      ]
+    },
+    {
+      "id": "07-styling",
+      "number": "07",
+      "title": "样式与主题",
+      "subtitle": "WPF 风格样式系统与设计系统沉淀",
+      "index": "07-styling/INDEX.md",
+      "sections": [
+        {
+          "id": "style-overview",
+          "title": "样式系统总览",
+          "file": "07-styling/style-overview.md",
+          "summary": "行内样式、具名样式、隐式样式与样式继承"
+        },
+        {
+          "id": "resource-dictionary",
+          "title": "资源字典",
+          "file": "07-styling/resource-dictionary.md",
+          "summary": "ResourceDictionary 与 StaticResource"
+        },
+        {
+          "id": "theme-design",
+          "title": "主题设计",
+          "file": "07-styling/theme-design.md",
+          "summary": "明暗主题、主题切换与主题变量"
+        },
+        {
+          "id": "style-inheritance",
+          "title": "样式继承",
+          "file": "07-styling/style-inheritance.md",
+          "summary": "based_on 与样式级联"
+        },
+        {
+          "id": "tailwind-interop",
+          "title": "Tailwind 互操作",
+          "file": "07-styling/tailwind-interop.md",
+          "summary": "Tailwind 风格 class 与 GPUI 样式 API 的映射"
+        },
+        {
+          "id": "design-system",
+          "title": "设计系统沉淀",
+          "file": "07-styling/design-system.md",
+          "summary": "从样式到设计令牌的演进路径"
+        }
+      ]
+    },
+    {
+      "id": "08-lifecycle",
+      "number": "08",
+      "title": "生命周期管理",
+      "subtitle": "视图生命周期、状态管理与资源安全",
+      "index": "08-lifecycle/INDEX.md",
+      "sections": [
+        {
+          "id": "view-lifecycle",
+          "title": "视图生命周期",
+          "file": "08-lifecycle/view-lifecycle.md",
+          "summary": "on_loaded / on_unloaded 与生命周期时序"
+        },
+        {
+          "id": "state-lifecycle",
+          "title": "状态生命周期",
+          "file": "08-lifecycle/state-lifecycle.md",
+          "summary": "状态的创建、更新、销毁与持久化"
+        },
+        {
+          "id": "subscriptions",
+          "title": "订阅与取消",
+          "file": "08-lifecycle/subscriptions.md",
+          "summary": "cx.subscribe / cx.observe 与自动清理"
+        },
+        {
+          "id": "resource-management",
+          "title": "资源管理",
+          "file": "08-lifecycle/resource-management.md",
+          "summary": "定时器、文件句柄、网络连接的生命周期绑定"
+        },
+        {
+          "id": "memory-safety",
+          "title": "内存安全",
+          "file": "08-lifecycle/memory-safety.md",
+          "summary": "WeakEntity、循环引用与泄漏排查"
+        }
+      ]
+    },
+    {
+      "id": "09-architecture",
+      "number": "09",
+      "title": "架构与最佳实践",
+      "subtitle": "职责划分、MVVM 实践与软件架构原则",
+      "index": "09-architecture/INDEX.md",
+      "sections": [
+        {
+          "id": "responsibility",
+          "title": "职责归属与划分",
+          "file": "09-architecture/responsibility.md",
+          "summary": ".rml / .rml.rs / Model / ViewModel / View 各自的边界"
+        },
+        {
+          "id": "mvvm-practice",
+          "title": "MVVM 模式实践",
+          "file": "09-architecture/mvvm-practice.md",
+          "summary": "Model / ViewModel / View 三层的协作契约"
+        },
+        {
+          "id": "solid-principles",
+          "title": "SOLID 原则在 RML 中的落地",
+          "file": "09-architecture/solid-principles.md",
+          "summary": "单一职责、开闭原则、里氏替换、接口隔离、依赖倒置"
+        },
+        {
+          "id": "project-structure",
+          "title": "项目结构规范",
+          "file": "09-architecture/project-structure.md",
+          "summary": "views / components / styles / models 目录约定"
+        },
+        {
+          "id": "testability",
+          "title": "可测试性设计",
+          "file": "09-architecture/testability.md",
+          "summary": "ViewModel 单测、组件快照、集成测试"
+        },
+        {
+          "id": "anti-patterns",
+          "title": "反模式与代码异味",
+          "file": "09-architecture/anti-patterns.md",
+          "summary": "胖 ViewModel、上帝组件、绑定爆炸等常见问题"
+        }
+      ]
+    },
+    {
+      "id": "10-advanced",
+      "number": "10",
+      "title": "高级技巧与工具链",
+      "subtitle": "性能、调试、热重载与构建系统",
+      "index": "10-advanced/INDEX.md",
+      "sections": [
+        {
+          "id": "performance",
+          "title": "性能优化",
+          "file": "10-advanced/performance.md",
+          "summary": "增量渲染、key 策略、避免过度 notify"
+        },
+        {
+          "id": "debugging",
+          "title": "调试技巧",
+          "file": "10-advanced/debugging.md",
+          "summary": "cargo rml-expand、日志、断点与渲染树检查"
+        },
+        {
+          "id": "hot-reload",
+          "title": "热重载",
+          "file": "10-advanced/hot-reload.md",
+          "summary": "文件监听、增量编译与运行时热重绘"
+        },
+        {
+          "id": "build-pipeline",
+          "title": "构建流程",
+          "file": "10-advanced/build-pipeline.md",
+          "summary": "build.rs 集成、OUT_DIR 与代码生成"
+        },
+        {
+          "id": "ide-support",
+          "title": "IDE 支持",
+          "file": "10-advanced/ide-support.md",
+          "summary": "VS Code 插件、语法高亮与自动补全"
+        },
+        {
+          "id": "code-generation",
+          "title": "代码生成原理",
+          "file": "10-advanced/code-generation.md",
+          "summary": "AST → 语义验证 → GPUI 代码生成的完整链路"
+        }
+      ]
+    },
+    {
+      "id": "11-cookbook",
+      "number": "11",
+      "title": "实战指南",
+      "subtitle": "常见模式、案例研究、迁移指南与 FAQ",
+      "index": "11-cookbook/INDEX.md",
+      "sections": [
+        {
+          "id": "ui-patterns",
+          "title": "常见 UI 模式",
+          "file": "11-cookbook/ui-patterns.md",
+          "summary": "表单、列表、对话框、抽屉、Tab、向导等模式"
+        },
+        {
+          "id": "case-study",
+          "title": "案例研究：从零到一的 Todo 应用",
+          "file": "11-cookbook/case-study.md",
+          "summary": "完整走通一个中等复杂度应用的全流程"
+        },
+        {
+          "id": "migration-guide",
+          "title": "迁移指南",
+          "file": "11-cookbook/migration-guide.md",
+          "summary": "从原生 GPUI / gpui-rsx / WPF / Vue 迁移到 RML"
+        },
+        {
+          "id": "faq",
+          "title": "常见问题 FAQ",
+          "file": "11-cookbook/faq.md",
+          "summary": "高频问题的标准答案"
+        },
+        {
+          "id": "pitfall-checklist",
+          "title": "避坑清单",
+          "file": "11-cookbook/pitfall-checklist.md",
+          "summary": "上线前必查的 30 项检查清单"
+        }
+      ]
+    }
+  ]
+}
