@@ -3,6 +3,8 @@
   "subtitle": "为 GPUI 设计的 HTML 友好型声明式 UI 框架",
   "version": "1.0",
   "language": "zh-CN",
+  "author": "RML 框架团队",
+  "logo": "logo.png",
   "foreword": "FOREWORD.md",
   "chapters": [
     {
