@@ -1,0 +1,15 @@
+[package]
+name = "rml-macros"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "RML 框架过程宏（#[derive(IModel)]、#[view]、#[command] 等）"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { workspace = true }
+quote = { workspace = true }
+proc-macro2 = { workspace = true }
+rml-core = { workspace = true }

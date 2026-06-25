@@ -1,0 +1,25 @@
+[package]
+name = "rml"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "RML 解析引擎与编译器（.rml → Rust/GPUI 代码生成）"
+
+[dependencies]
+rml-core = { workspace = true }
+rml-macros = { workspace = true }
+gpui = { workspace = true }
+gpui-component = { workspace = true, optional = true }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+walkdir = "2"
+sha2 = "0.10"
+
+[features]
+default = ["gpui-component"]
+hot-reload = ["dep:notify"]
+gpui-component = ["dep:gpui-component"]
+
+[dependencies.notify]
+version = "6"
+optional = true
