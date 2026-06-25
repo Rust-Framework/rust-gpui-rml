@@ -24,10 +24,12 @@ RML 的核心价值是**关注点分离**。如果开发者把业务逻辑塞进
 │  ① .rml          视图结构：标签、属性、指令、插值、事件绑定              │
 │  ② .rml.rs       业务逻辑：ViewModel 定义、命令、生命周期、元素引用      │
 │  ③ Model         纯数据：不可变结构体，无 GPUI 依赖                    │
-│  ④ ViewModel     视图状态：持有 Model，暴露绑定字段与命令                │
-│  ⑤ View          渲染产物：编译期生成的 GPUI Entity，运行时不可手改        │
+│  ④ ViewModel     视图状态：持有 Model，暴露绑定字段与命令，自身即 Entity  │
+│  ⑤ View          渲染产物：编译期为 ViewModel 生成的 Render 实现        │
 └──────────────────────────────────────────────────────────────┘
 ```
+
+> **关键澄清**：在 RML 中，ViewModel 与 View **不是两个独立的类型**。ViewModel 结构体（标注 `#[derive(Model)]` + `#[view]`）本身就是 GPUI 的 Entity；View 是编译器在 `OUT_DIR` 中为该 ViewModel 生成的 `impl Render` 代码块。开发者只写 ViewModel，不写 View。
 
 ## 9.1.3 各层职责详解
 
@@ -37,7 +39,7 @@ RML 的核心价值是**关注点分离**。如果开发者把业务逻辑塞进
 
 - 描述 UI 的层级结构（`div`、`ul`、`button`…）
 - 通过属性配置控件（`class`、`type`、`placeholder`…）
-- 通过指令控制流（`r:if`、`r:each`、`r:model`、`r:show`…）
+- 通过指令控制流（`if`、`each`、`model`、`show`…）
 - 通过插值显示数据（`{title}`、`{user.name}`…）
 - 通过 `on*` 绑定事件到命令
 
@@ -53,14 +55,14 @@ RML 的核心价值是**关注点分离**。如果开发者把业务逻辑塞进
 <div class="user-card">
   <img class="avatar" src="{user.avatar_url}" />
   <h3>{user.display_name}</h3>
-  <p r:if="user.is_online" class="status online">在线</p>
-  <button onclick="toggle_follow">关注</button>
+  <p if={user.is_online} class="status online">在线</p>
+  <button onclick={toggle_follow}>关注</button>
 </div>
 
 <!-- ❌ 错误：模板里塞业务逻辑 -->
 <div class="user-card">
   <h3>{user.first_name + " " + user.last_name + " (" + user.role + ")"}</h3>
-  <p r:if="user.posts.len() > 0 && user.is_active && !user.is_banned">可见</p>
+  <p if={user.posts.len() > 0 && user.is_active && !user.is_banned}>可见</p>
 </div>
 ```
 
@@ -68,7 +70,7 @@ RML 的核心价值是**关注点分离**。如果开发者把业务逻辑塞进
 
 **应该做的**：
 
-- 定义 ViewModel 结构体与 `#[derive(Model)]`
+- 定义 ViewModel 结构体，标注 `#[derive(Model)]` + `#[view]`
 - 实现 `#[command]` 命令方法
 - 实现 `#[computed]` 计算属性
 - 实现 `#[on_loaded]` / `#[on_unloaded]` 生命周期
@@ -83,15 +85,24 @@ RML 的核心价值是**关注点分离**。如果开发者把业务逻辑塞进
 
 ```rust
 // ✅ 正确：命令只改状态，I/O 委托给 service
-#[command]
-pub fn toggle_follow(&mut self, _ev: &ClickEvent, cx: &mut ViewContext<Self>) {
-    let user_id = self.user.id;
-    self.is_following = !self.is_following;
-    cx.notify();
-    cx.spawn(|this, mut cx| async move {
-        let _ = cx.update(|cx| follow_service::toggle(user_id, cx)).await;
-        // 失败时回滚状态由 service 通过事件通知
-    }).detach();
+#[derive(Model)]
+#[view]
+pub struct UserViewModel {
+    pub user: User,
+    pub is_following: bool,
+}
+
+impl UserViewModel {
+    #[command]
+    pub fn toggle_follow(&mut self, _ev: &ClickEvent, cx: &mut ViewContext<Self>) {
+        let user_id = self.user.id;
+        self.is_following = !self.is_following;
+        cx.notify();
+        cx.spawn(|this, mut cx| async move {
+            let _ = cx.update(|cx| follow_service::toggle(user_id, cx)).await;
+            // 失败时回滚状态由 service 通过事件通知
+        }).detach();
+    }
 }
 
 // ❌ 错误：命令里直接拼 GPUI 树
@@ -106,9 +117,10 @@ pub fn render_detail(&mut self, _ev: &ClickEvent, cx: &mut ViewContext<Self>) {
 
 **特征**：
 
-- `#[derive(Model, Clone, Debug)]` 派生的普通结构体
+- `#[derive(Model)]` 派生的普通结构体（可按需附加 `Clone`、`Debug`、`Serialize` 等）
 - 字段是纯数据：`String`、`i32`、`Vec<T>`、`Option<T>`、嵌套 Model
 - **不依赖** `gpui::*`、不持有 `ViewContext`、不实现 `Render`
+- **不标注** `#[view]`（那是 ViewModel 的标记）
 - 通常是 API 响应、配置、领域模型的反序列化目标
 
 **职责**：
@@ -118,7 +130,7 @@ pub fn render_detail(&mut self, _ev: &ClickEvent, cx: &mut ViewContext<Self>) {
 - 可被序列化 / 反序列化
 
 ```rust
-// ✅ Model：纯数据，无 GPUI 依赖
+// ✅ Model：纯数据，无 GPUI 依赖，不标注 #[view]
 #[derive(Model, Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct User {
     pub id: u64,
@@ -143,7 +155,8 @@ impl User {
 
 **特征**：
 
-- `#[derive(Model)]` 派生，但**持有视图专属状态**
+- `#[derive(Model)]` 派生，并标注 `#[view]`（标记为 RML 视图的 Code-Behind）
+- **持有视图专属状态**
 - 通过 `#[command]` 暴露可被 UI 触发的方法
 - 通过 `#[computed]` 暴露派生数据
 - 通过 `#[element]` 持有对模板中元素的引用
@@ -151,15 +164,15 @@ impl User {
 
 **职责**：
 
-- 把 Model 翻译成“视图可消费”的形态
+- 把 Model 翻译成"视图可消费"的形态
 - 管理视图本地状态（loading、error、selected_index…）
 - 协调 Service 调用并把结果回写到状态
-- 通过 `cx.notify()` 通知 View 重渲染
+- 通过 `cx.notify()` 通知重渲染（触发编译期生成的 `Render` 实现）
 
 **ViewModel 不应该**：
 
 - ❌ 持有其他 ViewModel 的强引用（用 `WeakEntity` 或 Context 事件）
-- ❌ 直接渲染 UI（不实现 `Render`，由编译期生成的 View 接管）
+- ❌ 手写 `impl Render`（由编译器根据 `.rml` 自动生成，开发者只需标注 `#[view]`）
 - ❌ 跨越多个视图共享（每个视图一个 ViewModel；跨视图共享用 Context / 全局 Model）
 
 ### ⑤ View —— 渲染产物层
@@ -167,8 +180,8 @@ impl User {
 **特征**：
 
 - 由 RML 编译器在 `OUT_DIR` 中生成，**开发者不手写**
-- 实现 `gpui::Render`
-- 持有 ViewModel 的 `Entity<Self>`
+- 为 ViewModel 生成 `impl RmlView`（声明 `.rml` 模板路径）和 `impl Render`（构建 GPUI 元素树）
+- **不是独立的类型**——ViewModel 结构体自身即是 GPUI Entity，View 只是附加在它身上的 `Render` 实现
 - 在 `render` 中调用绑定引擎、构建 GPUI 树
 
 **职责**：
@@ -179,8 +192,8 @@ impl User {
 
 **开发者与 View 的关系**：
 
-- 永远不直接构造 View
-- 通过 `cx.open_view::<MyView>()` 等高层 API 打开
+- 永远不直接构造 View，也不手写 `impl Render`
+- 通过 `RmlApplication::new().run::<MyViewModel>()` 启动根视图
 - 通过 `ElementRef` 在 ViewModel 中拿到元素句柄，但**不修改结构**
 
 ## 9.1.4 职责速查表
@@ -190,7 +203,7 @@ impl User {
 | 改一段文字的颜色                 | `.rml` 的 `class` 或样式表         | 在命令里 `el.set_style(...)`        |
 | 显示用户全名                   | ViewModel 的 `#[computed]`     | 模板里 `{first + " " + last}`       |
 | 点击按钮后请求 API              | `#[command]` + Service        | 模板里 `{fetch_user()}`            |
-| 列表为空时显示占位                | `.rml` 的 `r:if` + 计算属性        | 命令里手动 `show` / `hide` 元素         |
+| 列表为空时显示占位                | `.rml` 的 `if` + 计算属性         | 命令里手动 `show` / `hide` 元素         |
 | 输入框自动聚焦                  | `#[on_loaded]` + `ElementRef` | 模板里写 `autofocus` 然后在命令里二次操作     |
 | 主题切换                     | Context 事件 + CSS 变量           | 在每个 ViewModel 里监听并改字段           |
 | 跨视图共享登录态                 | 全局 Model + `cx.observe`       | 把 `UserViewModel` 到处传           |
@@ -203,13 +216,13 @@ impl User {
 **`login.rml`** —— 只描述结构和绑定：
 
 ```html
-<form class="login-form" on:submit="login">
-  <input type="email" r:model="email" placeholder="邮箱" />
-  <input type="password" r:model="password" placeholder="密码" />
-  <p r:if="error" class="error">{error}</p>
-  <button type="submit" r:attr:disabled="is_loading">
+<form class="login-form" onsubmit={login}>
+  <input type="email" model={email} placeholder="邮箱" />
+  <input type="password" model={password} placeholder="密码" />
+  <p if={error} class="error">{error}</p>
+  <button type="submit" disabled={is_loading}>
     {is_loading ? "登录中…" : "登录"}
-  </p>
+  </button>
 </form>
 ```
 
@@ -217,6 +230,7 @@ impl User {
 
 ```rust
 #[derive(Model)]
+#[view]
 pub struct LoginViewModel {
     pub email: SharedString,
     pub password: SharedString,
