@@ -85,19 +85,36 @@ RML 的核心价值是**关注点分离**。如果开发者把业务逻辑塞进
 
 ```rust
 // ✅ 正确：命令只改状态，I/O 委托给 service
+//
+// 【对比传统 MVVM】在 WPF/UWP 中，ViewModel 通常要实现 INotifyPropertyChanged，
+// 每个属性 setter 都要手动触发 OnPropertyChanged("IsFollowing")，字符串拼写错误
+// 不会编译报错，只能在运行时发现绑定失效。RML 的优势：
+//   1. #[derive(Model)] 让所有 pub 字段自动成为响应式状态，无需手写通知样板代码；
+//   2. cx.notify() 一次调用即可触发对所有绑定的重新求值，由编译期生成的 Render
+//      实现负责差异渲染，开发者不必关心"哪个字段变了要通知谁"；
+//   3. #[command] 把方法显式标记为 UI 可调用，编译器据此生成事件分发代码，
+//      避免了 WPF 中 ICommand.Execute/CanExecute 的样板实现；
+//   4. cx.spawn 把异步 I/O 委托给 service，命令方法本身保持同步且可单测——
+//      传统 MVVM 常常把网络请求直接写进 ViewModel，导致单测必须 mock HTTP。
 #[derive(Model)]
 #[view]
 pub struct UserViewModel {
     pub user: User,
-    pub is_following: bool,
+    pub is_following: bool,  // pub 字段自动响应式，.rml 中 {is_following} 即可绑定
 }
 
 impl UserViewModel {
+    // #[command] 让此方法可被 .rml 的 onclick={toggle_follow} 直接调用
+    // 编译器会生成事件分发胶水代码，无需手写 ICommand 实现
     #[command]
     pub fn toggle_follow(&mut self, _ev: &ClickEvent, cx: &mut ViewContext<Self>) {
         let user_id = self.user.id;
+        // 乐观更新：先改本地状态，UI 立即响应
         self.is_following = !self.is_following;
+        // 一次 notify 触发所有依赖 is_following 的绑定重算
+        // 传统 MVVM 需要对每个变更属性单独触发通知
         cx.notify();
+        // 异步 I/O 委托给 service，命令方法本身保持可单测
         cx.spawn(|this, mut cx| async move {
             let _ = cx.update(|cx| follow_service::toggle(user_id, cx)).await;
             // 失败时回滚状态由 service 通过事件通知
@@ -106,6 +123,8 @@ impl UserViewModel {
 }
 
 // ❌ 错误：命令里直接拼 GPUI 树
+// 这正是传统 MVVM 在 ViewModel 中用 Code Behind 拼控件树的坏习惯，
+// RML 通过编译期生成 Render 彻底杜绝了这种写法
 #[command]
 pub fn render_detail(&mut self, _ev: &ClickEvent, cx: &mut ViewContext<Self>) {
     let detail = div().child(Label::new("...")); // 不应出现在 .rml.rs
@@ -131,6 +150,16 @@ pub fn render_detail(&mut self, _ev: &ClickEvent, cx: &mut ViewContext<Self>) {
 
 ```rust
 // ✅ Model：纯数据，无 GPUI 依赖，不标注 #[view]
+//
+// 【对比传统 MVVM】在传统 WPF MVVM 中，Model 与 ViewModel 的边界经常模糊——
+// 开发者为了让数据能绑定，常常让 Model 也实现 INotifyPropertyChanged，
+// 导致数据层被 UI 框架污染，无法在控制台、服务端、测试用例中复用。
+// RML 的设计更纯粹：
+//   1. Model 只 #[derive(Model)]，不标注 #[view]，编译器不会为它生成 Render；
+//   2. Model 的方法（如 full_name/is_visible）是纯函数，无副作用，可自由单测；
+//   3. Model 不依赖 gpui::*，可以放进 core crate，被 CLI/服务端/桌面端共享；
+//   4. 当 Model 需要被 UI 消费时，由 ViewModel 持有它并把字段暴露为绑定源，
+//      数据的"纯洁性"和"可绑定性"解耦，各司其职。
 #[derive(Model, Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct User {
     pub id: u64,
@@ -141,10 +170,14 @@ pub struct User {
 }
 
 impl User {
+    // 纯函数式派生计算：无 &mut self、无 cx、无 I/O
+    // 可在任何无 UI 环境下调用，单测只需构造 User 实例
     pub fn full_name(&self) -> String {
         format!("{} {}", self.first_name, self.last_name)
     }
 
+    // 业务规则也放在 Model，而不是塞进 .rml 模板表达式
+    // 这样规则可被复用、可被测试，而不是散落在视图里
     pub fn is_visible(&self) -> bool {
         !self.posts.is_empty() && self.is_active() && !self.is_banned
     }
@@ -216,10 +249,19 @@ impl User {
 **`login.rml`** —— 只描述结构和绑定：
 
 ```html
+<!--
+  ✅ 模板只描述"界面长什么样"，完全不关心数据从哪来、怎么校验、怎么提交。
+  对比传统 MVVM：WPF 的 XAML 常常混入 Converter 链、Trigger、Style 重写，
+  最终变成"XAML 里写逻辑"。RML 的 .rml 强制保持声明式，业务判断全部上推到
+  ViewModel 的 #[computed]，模板可读性接近纯 HTML，设计师可直接编辑。
+-->
 <form class="login-form" onsubmit={login}>
+  <!-- model={email} 是双向绑定：输入回写 ViewModel，ViewModel 变更同步到 value -->
   <input type="email" model={email} placeholder="邮箱" />
   <input type="password" model={password} placeholder="密码" />
+  <!-- if={error} 条件渲染：error 为 None 时此节点不存在，而非 display:none -->
   <p if={error} class="error">{error}</p>
+  <!-- disabled={is_loading} 是单向绑定：ViewModel 状态驱动 UI 禁用态 -->
   <button type="submit" disabled={is_loading}>
     {is_loading ? "登录中…" : "登录"}
   </button>
@@ -229,16 +271,28 @@ impl User {
 **`login.rml.rs`** —— 只处理状态和命令：
 
 ```rust
+// 【对比传统 MVVM】这个登录示例集中体现了 RML 相对 WPF MVVM 的优雅：
+//   1. 无样板：不需要 INotifyPropertyChanged、ICommand、RelayCommand、DependencyProperty
+//      这一整套基础设施，#[derive(Model)] + #[command] + #[computed] 三个宏全搞定；
+//   2. 可单测：can_submit 是纯函数，login 命令把 I/O 委托给 auth_service，
+//      单测时注入 mock service 即可，无需启动 GPUI 窗口；
+//   3. 异步安全：cx.spawn 闭包持有 weak entity 引用，视图卸载时自动取消，
+//      不会出现"ViewModel 已销毁但网络回调还在写状态"的悬空访问——
+//      这是传统 MVVM 异步编程的高发 bug 区；
+//   4. 状态机清晰：is_loading/error/email/password 四个字段就是完整状态空间，
+//      UI 的所有外观都由这四个字段推导，不存在隐式的"控件可见性"等命令式状态。
 #[derive(Model)]
 #[view]
 pub struct LoginViewModel {
-    pub email: SharedString,
-    pub password: SharedString,
-    pub error: Option<SharedString>,
-    pub is_loading: bool,
+    pub email: SharedString,       // 双向绑定：input ↔ ViewModel
+    pub password: SharedString,    // 双向绑定：input ↔ ViewModel
+    pub error: Option<SharedString>, // 单向绑定：ViewModel → <p if={error}>
+    pub is_loading: bool,          // 单向绑定：ViewModel → button disabled + 文案
 }
 
 impl LoginViewModel {
+    // #[computed] 自动追踪依赖：email/password/is_loading 任一变化都触发重算
+    // 传统 MVVM 需要手动在 setter 里调用 CanExecuteChanged 事件
     #[computed]
     pub fn can_submit(&self) -> bool {
         !self.email.is_empty() && !self.password.is_empty() && !self.is_loading
@@ -246,15 +300,19 @@ impl LoginViewModel {
 
     #[command]
     pub fn login(&mut self, _ev: &SubmitEvent, cx: &mut ViewContext<Self>) {
+        // 进入 loading 态：UI 立即禁用按钮、文案变为"登录中…"
         self.is_loading = true;
         self.error = None;
         cx.notify();
+        // 克隆数据进闭包，避免 &self 跨 await 生命周期问题（Rust 所有权保障）
         let email = self.email.clone();
         let password = self.password.clone();
+        // cx.spawn 持有 weak entity，视图卸载时自动中止，无悬空回调
         cx.spawn(|this, mut cx| async move {
             match auth_service::login(&email, &password, &cx).await {
                 Ok(_) => cx.update(|cx| cx.dispatch(LoginSuccess)).ok(),
                 Err(e) => this.update(&mut cx, |this, cx| {
+                    // 失败回滚：error 字段驱动 <p if={error}> 显示错误文案
                     this.error = Some(e.to_string().into());
                     this.is_loading = false;
                     cx.notify();
