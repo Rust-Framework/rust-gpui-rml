@@ -8,3 +8,4 @@ description = "RML 应用启动器与窗口管理"
 [dependencies]
 rml-core = { workspace = true }
 gpui = { workspace = true }
+gpui_platform = { workspace = true }

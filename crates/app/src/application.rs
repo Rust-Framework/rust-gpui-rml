@@ -4,8 +4,8 @@
 //! 详见文档 §1.3.6 入口编写。
 
 use gpui::{
-    App, Application, Bounds, Entity, IntoElement, Pixels, Render, Size, TitlebarOptions,
-    WindowBounds, WindowOptions,
+    App, AppContext, Application, Bounds, Entity, IntoElement, Pixels, Render, Size, TitlebarOptions,
+    WindowBounds, WindowOptions, px,
 };
 use rml_core::view::IRmlView;
 
@@ -63,7 +63,7 @@ impl RmlApplication {
             height: self.height,
         };
 
-        Application::new().run(move |cx: &mut App| {
+        gpui_platform::application().run(move |cx: &mut App| {
             let options = WindowOptions {
                 window_bounds: Some(WindowBounds::Windowed(Bounds {
                     origin: Default::default(),
@@ -89,8 +89,4 @@ impl Default for RmlApplication {
     fn default() -> Self {
         Self::new()
     }
-}
-
-fn px(f: f32) -> Pixels {
-    Pixels(f)
 }

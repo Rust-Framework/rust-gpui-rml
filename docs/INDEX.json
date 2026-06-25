@@ -2,9 +2,10 @@
   "meta": {
     "title": "RML 框架使用文档",
     "subtitle": "为 GPUI 设计的 HTML 友好型声明式 UI 框架",
+    "description": "RML 框架的详细使用文档，包括设计理念、架构总览、快速开始、与原生 GPUI 的对比等。",
     "version": "1.0",
     "language": "zh-CN",
-    "author": "RML 框架团队",
+    "author": "Start",
     "logo": "logo.png",
     "foreword": "FOREWORD.md",
     "pathRules": {

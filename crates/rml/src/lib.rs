@@ -15,3 +15,17 @@ pub mod prelude;
 
 pub use rml_core;
 pub use rml_macros::*;
+
+/// 构建入口：在用户 `build.rs` 中调用，扫描 `.rml`、调用编译器、输出到 `OUT_DIR`。
+///
+/// ```rust
+/// // build.rs
+/// fn main() {
+///     rml::build()
+///         .scan_dir("src")
+///         .output_dir(std::env::var("OUT_DIR").unwrap())
+///         .build()
+///         .expect("RML build failed");
+/// }
+/// ```
+pub use build::build;
