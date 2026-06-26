@@ -8,29 +8,14 @@
 //! - `include!(concat!(env!("OUT_DIR"), "/rml_generated/<name>.rs"))`
 //!
 //! 合并自旧 `#[view]` + `#[component]`。
+//!
+//! **不接受任何属性参数**。模板路径固定为 `<snake_case>.rml`，
+//! RML 根节点必须为 `<component>`（或 `<window>`/`<modern_window>` 用于窗口）。
 
 use crate::derive_model::to_snake_case;
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Fields, Ident, ItemStruct, Meta, Visibility};
-
-/// 解析 `#[component]` 或 `#[component(template = "path")]` 的参数
-pub fn parse_template_arg(args: TokenStream) -> Option<String> {
-    if args.is_empty() {
-        return None;
-    }
-    // 尝试解析为 `template = "path"`
-    if let Ok(meta) = syn::parse2::<Meta>(args.clone()) {
-        if let Meta::NameValue(nv) = meta {
-            if nv.path.is_ident("template") {
-                if let syn::Expr::Lit(syn::ExprLit { lit: syn::Lit::Str(s), .. }) = nv.value {
-                    return Some(s.value());
-                }
-            }
-        }
-    }
-    None
-}
+use syn::{Fields, Ident, ItemStruct, Visibility};
 
 /// 生成 `impl IModel`（同 derive_model 的核心逻辑）
 fn gen_impl_i_model(struct_name: &Ident, fields: &Fields) -> TokenStream {
@@ -117,7 +102,18 @@ pub fn expand_component_impls(
 }
 
 /// `#[component]` 入口
+///
+/// 不接受任何属性参数。模板路径固定为 `<snake_case>.rml`。
 pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
+    // 拒绝任何属性参数
+    if !args.is_empty() {
+        return syn::Error::new(
+            proc_macro2::Span::call_site(),
+            "#[component] takes no arguments; template path is fixed as <snake_case>.rml",
+        )
+        .to_compile_error();
+    }
+
     let item: ItemStruct = match syn::parse2(input.clone()) {
         Ok(i) => i,
         Err(e) => return e.to_compile_error(),
@@ -126,8 +122,8 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
     let struct_name_str = struct_name.to_string();
     let snake = to_snake_case(&struct_name);
 
-    // 默认模板路径：<snake_case>.rml
-    let template_path = parse_template_arg(args).unwrap_or_else(|| format!("{}.rml", snake));
+    // 模板路径固定为 <snake_case>.rml
+    let template_path = format!("{}.rml", snake);
 
     // 生成文件名（不含扩展名）：<snake_case>
     let generated_file = format!("{}.rs", snake);

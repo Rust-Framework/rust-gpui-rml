@@ -107,6 +107,7 @@ impl IWindow for Window {
     }
 
     fn open(&mut self, cx: &mut App) {
+        crate::init(cx);
         let options = self.window_options();
         let handle = cx
             .open_window(options, |window, cx| {
@@ -205,6 +206,7 @@ impl IWindow for ModernWindow {
     }
 
     fn open(&mut self, cx: &mut App) {
+        crate::init(cx);
         let options = self.window_options();
         let handle = cx
             .open_window(options, |window, cx| {

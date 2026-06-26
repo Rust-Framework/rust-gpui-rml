@@ -40,7 +40,7 @@ pub struct Builder {
 
 /// 入口：创建一个新的 Builder。
 ///
-/// ```rust
+/// ```rust,ignore
 /// // build.rs
 /// fn main() {
 ///     rml::build()
@@ -105,7 +105,7 @@ impl Builder {
 
     /// 注册一个 CSS 样式表文件（可多次调用，按声明顺序合并，后者优先级更高）。
     ///
-    /// ```rust
+    /// ```rust,ignore
     /// // build.rs
     /// rml::build()
     ///     .scan_dir("src")

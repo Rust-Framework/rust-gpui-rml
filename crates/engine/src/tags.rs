@@ -129,6 +129,40 @@ pub fn is_component(tag: &str) -> bool {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
+//  根节点标记：`<window>` / `<modern_window>` / `<component>`
+//
+//  RML 根节点必须是这三种之一。编译器从根节点属性提取窗口配置，
+//  生成 `impl IWindow`（仅 `<window>`/`<modern_window>`）+ `impl Render`。
+//  这些不是普通 HTML 标签，不参与 `BuiltinTag` 查找。
+// ──────────────────────────────────────────────────────────────────────────
+
+/// RML 根节点类型
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RootTag {
+    /// `<window>`：基础窗口（透明标题栏，`WindowChrome::Transparent`）
+    Window,
+    /// `<modern_window>`：现代窗口（原生标题栏，`WindowChrome::Native`）
+    ModernWindow,
+    /// `<component>`：可复用组件（无窗口操作）
+    Component,
+}
+
+/// 判断标签是否为 RML 根节点标记
+pub fn is_root_tag(tag: &str) -> bool {
+    matches!(tag, "window" | "modern_window" | "component")
+}
+
+/// 查找根节点类型
+pub fn root_tag_lookup(tag: &str) -> Option<RootTag> {
+    match tag {
+        "window" => Some(RootTag::Window),
+        "modern_window" => Some(RootTag::ModernWindow),
+        "component" => Some(RootTag::Component),
+        _ => None,
+    }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
 //  扩展组件：gpui-component 路由表（双轨制组件策略的「扩展轨」）
 //
 //  当 .rml 中出现 PascalCase 标签（如 <Button>），codegen 会查询本表，

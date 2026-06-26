@@ -21,7 +21,7 @@ pub mod prelude;
 
 /// 构建入口：在用户 `build.rs` 中调用，扫描 `.rml`、调用编译器、输出到 `OUT_DIR`。
 ///
-/// ```rust
+/// ```rust,ignore
 /// // build.rs
 /// fn main() {
 ///     rml::build()

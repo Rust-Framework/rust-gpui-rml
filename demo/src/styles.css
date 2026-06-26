@@ -1,55 +1,24 @@
-/* RML demo stylesheet — 展示 CSS 子集与 GPUI 样式映射 */
+/* RML demo stylesheet — MainWindow 样式（WPF 风格） */
 
 :root {
     --primary-color: #007bff;
     --text-color: #333333;
     --bg-color: #f8f9fa;
-    --border-color: #dee2e6;
     --spacing: 8px;
 }
 
-.counter {
+.container {
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     padding: 24px;
     background: #ffffff;
+    height: 100%;
 }
 
 .count {
-    font-size: 48px;
-    font-weight: bold;
-    color: var(--primary-color);
-    padding: 16px;
-}
-
-.next {
-    font-size: 16px;
+    font-size: 18px;
     color: var(--text-color);
-    padding: 8px;
-}
-
-.double {
-    font-size: 16px;
-    color: var(--text-color);
-    padding: 8px;
-}
-
-.positive {
-    font-size: 14px;
-    color: #28a745;
-    padding: 8px;
-}
-
-.hover {
-    font-size: 14px;
-    color: #6c757d;
-    padding: 8px;
-}
-
-.buttons {
-    display: flex;
-    flex-direction: row;
-    gap: 16px;
-    padding: 16px;
+    padding: 12px;
 }

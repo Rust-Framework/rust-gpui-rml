@@ -31,10 +31,27 @@ pub fn derive_i_model(input: TokenStream) -> TokenStream {
 
 /// 标记结构体为 RML 组件（Code-Behind ViewModel）。
 ///
-/// 编译器会为该结构体生成 `Render` trait 实现。
+/// 编译器会为该结构体生成 `Render` trait 实现（使用根节点的子节点作为渲染树）。
 ///
-/// # 参数
-/// - `template = "path"`：显式指定 `.rml` 模板路径（默认按命名约定）
+/// **不接受任何属性参数**。模板路径固定为 `<snake_case>.rml`，
+/// 对应的 `.rml` 根节点必须为 `<component>`。
+///
+/// # 示例
+///
+/// ```rust,ignore
+/// #[component]
+/// #[derive(Default)]
+/// pub struct MyWidget {
+///     pub label: SharedString,
+/// }
+/// ```
+///
+/// 对应 `my_widget.rml`：
+/// ```text
+/// <component>
+///     <!-- 子元素 -->
+/// </component>
+/// ```
 ///
 /// 合并自旧 `#[view]` + `#[component]`。
 #[proc_macro_attribute]
@@ -44,23 +61,31 @@ pub fn component(args: TokenStream, input: TokenStream) -> TokenStream {
 
 /// 标记结构体为窗口（顶层 OS 窗口）。
 ///
-/// 在 `#[component]` 基础上额外生成 `IWindow` trait 实现，
-/// 包含窗口配置（title/width/height）和窗口操作（open/close/show/hide/activate/state）。
+/// 在 `#[component]` 基础上额外生成窗口句柄字段（`__rml_window_handle`）。
+/// `IWindow` trait 实现由 RML 编译器从 `<window>` 根节点属性提取并生成。
 ///
-/// # 参数
-/// - `title = "..."`：窗口标题
-/// - `width = N`：窗口宽度（像素）
-/// - `height = N`：窗口高度（像素）
-/// - `template = "path"`：显式指定 `.rml` 模板路径
+/// **不接受任何属性参数**。窗口配置（`title`/`width`/`height`）在 `.rml` 根节点上声明式配置：
+/// ```text
+/// <window title="..." width="N" height="N">...</window>
+/// ```
+///
+/// 也可使用 `<modern_window>` 根节点获得原生标题栏样式（`WindowChrome::Native`）。
 ///
 /// # 示例
 ///
 /// ```rust,ignore
-/// #[window(title = "My App", width = 800, height = 600)]
+/// #[window]
 /// #[derive(Default)]
 /// pub struct MainWindow {
 ///     pub count: i32,
 /// }
+/// ```
+///
+/// 对应 `main_window.rml`：
+/// ```text
+/// <window title="MainWindow" width="800" height="450">
+///     <!-- 子元素 -->
+/// </window>
 /// ```
 #[proc_macro_attribute]
 pub fn window(args: TokenStream, input: TokenStream) -> TokenStream {

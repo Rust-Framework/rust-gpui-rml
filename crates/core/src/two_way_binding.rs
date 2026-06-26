@@ -7,7 +7,7 @@ use gpui::Context;
 
 /// 组件双向绑定 trait。
 ///
-/// ```rust
+/// ```rust,ignore
 /// impl ITwoWayBinding for Counter {
 ///     type Value = i32;
 ///     fn get_value(&self) -> Self::Value { self.count }

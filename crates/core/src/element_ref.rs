@@ -20,9 +20,9 @@ use gpui::{Entity, WeakEntity};
 
 /// 元素引用，包装 GPUI `Entity<T>` 句柄。
 ///
-/// ```rust
+/// ```rust,ignore
 /// #[derive(IModel)]
-/// #[view]
+/// #[component]
 /// pub struct MyView {
 ///     pub user_name: SharedString,
 ///     #[element]

@@ -6,11 +6,11 @@ extern crate rust_rml_ui as rml_ui;
 
 use rml_app::RmlApplication;
 
-#[path = "counter.rml.rs"]
-mod counter;
+#[path = "main_window.rml.rs"]
+mod main_window;
 
 fn main() {
     RmlApplication::new()
-        .main_window::<counter::Counter>()
+        .main_window::<main_window::MainWindow>()
         .run();
 }
