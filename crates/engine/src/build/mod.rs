@@ -117,10 +117,18 @@ impl Builder {
             println!("cargo:rerun-if-changed={}", f.display());
         }
 
-        // 2. 加载缓存
+        // 2. 加载缓存，并校验 engine 源码哈希
+        //    engine 任何 src/**/*.rs 变化会让 engine_source_hash() 返回不同值，
+        //    此时缓存中的旧 entries 全部失效，强制重新生成所有 .rml。
         let cache_path = output_dir.join("rml_cache.json");
         println!("cargo:rerun-if-changed={}", cache_path.display());
         let mut cache = cache::Cache::load(&cache_path);
+        let current_engine_hash = crate::engine_source_hash().to_string();
+        if !cache.is_valid_for_engine(&current_engine_hash) {
+            // engine 源码已变化或旧版缓存：失效所有条目，重新生成
+            cache.invalidate_all();
+            cache.stamp_engine(current_engine_hash.clone());
+        }
 
         // 3. 逐个编译
         for rml_path in &rml_files {
@@ -176,7 +184,7 @@ impl Builder {
             }
         }
 
-        // 4. 写回缓存
+        // 4. 写回缓存（包含最新 engine_hash）
         if let Err(e) = cache.save(&cache_path) {
             println!("cargo:warning=RML: failed to write cache {}: {}", cache_path.display(), e);
         }

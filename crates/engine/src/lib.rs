@@ -31,3 +31,12 @@ pub mod prelude;
 /// }
 /// ```
 pub use build::build;
+
+/// 当前 engine crate 源码的 sha256 哈希（编译期嵌入）。
+///
+/// 当 engine 任何 `src/**/*.rs` 文件变化时，engine 的 build.rs 会重算哈希并写入 OUT_DIR，
+/// 导致本常量更新。下游 build.rs 通过比较此哈希与缓存中的 `engine_hash` 字段判断是否需要
+/// 失效所有 `.rml` 缓存条目（避免使用过期 codegen 输出）。
+pub fn engine_source_hash() -> &'static str {
+    include_str!(concat!(env!("OUT_DIR"), "/rml_engine_hash.txt"))
+}

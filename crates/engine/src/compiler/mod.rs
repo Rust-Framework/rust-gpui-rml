@@ -3,6 +3,7 @@
 //! 串起 parse → validate → codegen，输出 Rust 源码字符串。
 
 pub mod codegen;
+pub mod expr;
 pub mod validator;
 
 use crate::parser;

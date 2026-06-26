@@ -7,7 +7,10 @@
 //! - 全部使用完全限定路径（`gpui::*`、`rml::runtime::*`），避免与用户 import 冲突
 //! - 事件回调统一通过 `rml::runtime::event_flow::convert::from_gpui_*` 转换 GPUI 事件 → RML 事件
 //! - GPUI 事件监听器（on_click 等）要求元素为 `Stateful<Div>`，需先调用 `.id(...)` 赋予 ID
+//!
+//! [cache-invalidation]: crate::build::cache::Cache
 
+use crate::compiler::expr;
 use crate::compiler::CodegenCtx;
 use crate::parser::ast::{Attribute, Directive, Element, EventHandler, Node, TextSegment};
 use crate::tags;
@@ -67,8 +70,9 @@ fn gen_node(
         Node::Text(text) => Ok(format!("{:?}", text)),
         Node::Interpolation(expr) => {
             // 单个插值：{field} → format!("{}", self.field)
+            // {count + 1} → format!("{}", (self.count + 1))（通过 expr 解析器）
             // String 实现 IntoElement，可作为 child 直接传入
-            Ok(format!("format!(\"{{}}\", self.{})", expr))
+            Ok(format!("format!(\"{{}}\", {})", gen_expr_code(expr)))
         }
         Node::MixedText(segments) => Ok(gen_mixed_text(segments)),
     }
@@ -291,7 +295,7 @@ fn gen_mixed_text(segments: &[TextSegment]) -> String {
             }
             TextSegment::Interpolation(expr) => {
                 fmt_str.push_str("{}");
-                args.push(format!("self.{}", expr));
+                args.push(gen_expr_code(expr));
             }
         }
     }
@@ -484,3 +488,17 @@ fn parse_bool(value: &str) -> &'static str {
         "false"
     }
 }
+
+/// 把插值表达式字符串编译为 Rust 表达式字符串。
+///
+/// 调用 `expr::parse` 将 `{count + 1}` 这类表达式解析为 AST，
+/// 再用 `expr::to_rust_code` 生成 `(self.count + 1)` 等 Rust 代码。
+/// 解析失败时回退到旧的「单字段」行为（`self.<expr>`），保证向后兼容。
+fn gen_expr_code(expr_str: &str) -> String {
+    match expr::parse(expr_str) {
+        Ok(parsed) => expr::to_rust_code(&parsed),
+        // 回退：保留旧行为，让简单字段引用 `{count}` 仍可用
+        Err(_) => format!("self.{}", expr_str.trim()),
+    }
+}
+

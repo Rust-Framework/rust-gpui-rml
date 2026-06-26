@@ -23,3 +23,7 @@ gpui-component = ["dep:gpui-component"]
 [dependencies.notify]
 version = "6"
 optional = true
+
+[build-dependencies]
+# 计算 engine 源码哈希，用于失效下游 RML 增量缓存
+sha2 = "0.10"

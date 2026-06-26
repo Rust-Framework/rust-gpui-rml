@@ -1,0 +1,762 @@
+//! 表达式解析器（Phase B-2）
+//!
+//! 将 `.rml` 中的插值表达式 `{expr}` 解析为 AST，供 codegen 生成 Rust 表达式。
+//! 详见开发规划 §3.2.2。
+//!
+//! ## 支持的语法子集
+//!
+//! | 语法 | 示例 | AST |
+//! |------|------|-----|
+//! | 字段访问 | `count` | `Field("count")` |
+//! | 嵌套字段 | `user.name` | `Member(Field("user"), "name")` |
+//! | 索引访问 | `items[0]` | `Index(Field("items"), "0")` |
+//! | 方法调用 | `items.len()` | `MethodCall(Field("items"), "len", [])` |
+//! | 算术 | `count + 1` | `BinaryOp(Add, Field("count"), Lit("1"))` |
+//! | 比较 | `count > 0` | `BinaryOp(Gt, Field("count"), Lit("0"))` |
+//! | 逻辑 | `a && b` | `BinaryOp(And, Field("a"), Field("b"))` |
+//! | 一元否定 | `!flag` | `Unary(Not, Field("flag"))` |
+//! | 字面量 | `42` / `"hi"` / `true` | `Lit(...)` |
+//! | 转换器 | `count, HexConverter` | `Convert(Field("count"), "HexConverter")` |
+//! | 括号 | `(a + b) * c` | 嵌套 `BinaryOp(Mul, BinaryOp(Add, ...), Field("c"))` |
+//!
+//! ## 不支持
+//!
+//! - 三元运算符 `?:`（Phase B-3 视需求添加）
+//! - 闭包、函数指针
+//! - 结构体字面量
+//! - 完整 Rust 表达式（有意限制复杂度）
+
+use std::fmt;
+
+/// 表达式 AST
+#[derive(Debug, Clone, PartialEq)]
+pub enum Expr {
+    /// 标识符（字段名）：`count`
+    Field(String),
+    /// 成员访问：`expr.ident`（如 `user.name`）
+    Member(Box<Expr>, String),
+    /// 索引：`expr[expr]`（如 `items[0]`、`items[i + 1]`）
+    /// 内层用 Expr 而非 String，支持表达式索引
+    Index(Box<Expr>, Box<Expr>),
+    /// 方法调用：`expr.ident(args)`（如 `items.len()`、`name.to_uppercase()`）
+    MethodCall(Box<Expr>, String, Vec<Expr>),
+    /// 二元运算：`lhs op rhs`
+    BinaryOp(Op, Box<Expr>, Box<Expr>),
+    /// 一元运算：`op expr`（如 `!flag`、`-count`）
+    Unary(UnaryOp, Box<Expr>),
+    /// 字面量：`42` / `"hello"` / `true` / `false` / `3.14`
+    /// 保留原始字符串，由 to_rust_code 原样输出
+    Lit(String),
+    /// 转换器：`expr, ConverterName`
+    /// codegen 时生成 `ConverterName.convert_to(&expr)`
+    Convert(Box<Expr>, String),
+}
+
+/// 二元运算符
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Op {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
+    Eq,
+    Ne,
+    Gt,
+    Lt,
+    Ge,
+    Le,
+    And,
+    Or,
+}
+
+impl Op {
+    /// 转为 Rust 源码表示
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Op::Add => "+",
+            Op::Sub => "-",
+            Op::Mul => "*",
+            Op::Div => "/",
+            Op::Mod => "%",
+            Op::Eq => "==",
+            Op::Ne => "!=",
+            Op::Gt => ">",
+            Op::Lt => "<",
+            Op::Ge => ">=",
+            Op::Le => "<=",
+            Op::And => "&&",
+            Op::Or => "||",
+        }
+    }
+}
+
+/// 一元运算符
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UnaryOp {
+    /// 逻辑非 `!`
+    Not,
+    /// 算术负 `-`
+    Neg,
+}
+
+impl UnaryOp {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            UnaryOp::Not => "!",
+            UnaryOp::Neg => "-",
+        }
+    }
+}
+
+/// 解析错误
+#[derive(Debug, Clone)]
+pub struct ParseError {
+    pub message: String,
+    pub pos: usize,
+}
+
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "expression parse error at position {}: {}", self.pos, self.message)
+    }
+}
+
+impl std::error::Error for ParseError {}
+
+/// 解析表达式字符串为 AST
+pub fn parse(input: &str) -> Result<Expr, ParseError> {
+    let mut parser = Parser::new(input);
+    let expr = parser.parse_convert()?;
+    parser.skip_ws();
+    if !parser.is_eof() {
+        return Err(parser.err(&format!(
+            "unexpected trailing characters: {:?}",
+            parser.remaining()
+        )));
+    }
+    Ok(expr)
+}
+
+/// 将 AST 转为 Rust 源码表达式
+///
+/// 字段访问会自动加 `self.` 前缀：`Field("count")` → `self.count`
+/// 嵌套字段会保持前缀：`Member(Field("user"), "name")` → `self.user.name`
+pub fn to_rust_code(expr: &Expr) -> String {
+    match expr {
+        Expr::Field(name) => format!("self.{}", name),
+        Expr::Member(target, name) => format!("{}.{}", to_rust_code(target), name),
+        Expr::Index(target, index) => {
+            format!("{}[{}]", to_rust_code(target), to_rust_code(index))
+        }
+        Expr::MethodCall(target, name, args) => {
+            let args_str: Vec<String> = args.iter().map(to_rust_code).collect();
+            format!("{}.{}({})", to_rust_code(target), name, args_str.join(", "))
+        }
+        Expr::BinaryOp(op, lhs, rhs) => {
+            format!("({} {} {})", to_rust_code(lhs), op.as_str(), to_rust_code(rhs))
+        }
+        Expr::Unary(op, expr) => format!("({}{})", op.as_str(), to_rust_code(expr)),
+        Expr::Lit(s) => s.clone(),
+        Expr::Convert(target, converter) => {
+            format!("{}::convert_to(&{})", converter, to_rust_code(target))
+        }
+    }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+//  递归下降解析器实现
+//
+//  文法（从低到高优先级）：
+//    convert    := logic (',' ident)?
+//    logic      := comparison (('&&' | '||') comparison)*
+//    comparison := add       (('==' | '!=' | '>=' | '<=' | '>' | '<') add)*
+//    add        := mul       (('+' | '-') mul)*
+//    mul        := unary     (('*' | '/' | '%') unary)*
+//    unary      := ('!' | '-') unary | postfix
+//    postfix    := primary (('.' ident) | ('[' expr ']') | ('(' args ')'))*
+//    primary    := ident | literal | '(' expr ')'
+// ──────────────────────────────────────────────────────────────────────────
+
+struct Parser<'a> {
+    chars: Vec<char>,
+    pos: usize,
+    _input: &'a str,
+}
+
+impl<'a> Parser<'a> {
+    fn new(input: &'a str) -> Self {
+        Self {
+            chars: input.chars().collect(),
+            pos: 0,
+            _input: input,
+        }
+    }
+
+    fn err(&self, msg: &str) -> ParseError {
+        ParseError {
+            message: msg.to_string(),
+            pos: self.pos,
+        }
+    }
+
+    fn is_eof(&self) -> bool {
+        self.pos >= self.chars.len()
+    }
+
+    fn peek(&self) -> Option<char> {
+        self.chars.get(self.pos).copied()
+    }
+
+    fn peek_at(&self, offset: usize) -> Option<char> {
+        self.chars.get(self.pos + offset).copied()
+    }
+
+    fn advance(&mut self) -> Option<char> {
+        let c = self.peek();
+        if c.is_some() {
+            self.pos += 1;
+        }
+        c
+    }
+
+    fn skip_ws(&mut self) {
+        while let Some(c) = self.peek() {
+            if c.is_whitespace() {
+                self.advance();
+            } else {
+                break;
+            }
+        }
+    }
+
+    /// 匹配并消费指定字符串，匹配成功返回 true
+    fn eat_str(&mut self, s: &str) -> bool {
+        let target: Vec<char> = s.chars().collect();
+        if self.pos + target.len() > self.chars.len() {
+            return false;
+        }
+        for (i, &c) in target.iter().enumerate() {
+            if self.chars[self.pos + i] != c {
+                return false;
+            }
+        }
+        self.pos += target.len();
+        true
+    }
+
+    /// 查看下一个是否是指定字符串（不消费）
+    fn peek_str(&self, s: &str) -> bool {
+        let target: Vec<char> = s.chars().collect();
+        if self.pos + target.len() > self.chars.len() {
+            return false;
+        }
+        for (i, &c) in target.iter().enumerate() {
+            if self.chars[self.pos + i] != c {
+                return false;
+            }
+        }
+        true
+    }
+
+    fn remaining(&self) -> String {
+        self.chars[self.pos..].iter().collect()
+    }
+
+    /// 顶层：解析 convert 表达式
+    fn parse_convert(&mut self) -> Result<Expr, ParseError> {
+        let lhs = self.parse_logic()?;
+        self.skip_ws();
+        // 转换器语法：expr , Ident
+        // 注意：与函数参数中的逗号有歧义，但本子集不支持函数定义，
+        // 顶层表达式只可能是 `expr, Converter` 形式
+        if self.peek() == Some(',') {
+            self.advance();
+            self.skip_ws();
+            let converter = self.parse_ident()?;
+            return Ok(Expr::Convert(Box::new(lhs), converter));
+        }
+        Ok(lhs)
+    }
+
+    fn parse_logic(&mut self) -> Result<Expr, ParseError> {
+        let mut lhs = self.parse_comparison()?;
+        loop {
+            self.skip_ws();
+            let op = if self.eat_str("&&") {
+                Op::And
+            } else if self.eat_str("||") {
+                Op::Or
+            } else {
+                break;
+            };
+            self.skip_ws();
+            let rhs = self.parse_comparison()?;
+            lhs = Expr::BinaryOp(op, Box::new(lhs), Box::new(rhs));
+        }
+        Ok(lhs)
+    }
+
+    fn parse_comparison(&mut self) -> Result<Expr, ParseError> {
+        let mut lhs = self.parse_add()?;
+        loop {
+            self.skip_ws();
+            let op = if self.eat_str("==") {
+                Op::Eq
+            } else if self.eat_str("!=") {
+                Op::Ne
+            } else if self.eat_str(">=") {
+                Op::Ge
+            } else if self.eat_str("<=") {
+                Op::Le
+            } else if self.peek_str(">") && !self.peek_str(">=") {
+                self.advance();
+                Op::Gt
+            } else if self.peek_str("<") && !self.peek_str("<=") {
+                self.advance();
+                Op::Lt
+            } else {
+                break;
+            };
+            self.skip_ws();
+            let rhs = self.parse_add()?;
+            lhs = Expr::BinaryOp(op, Box::new(lhs), Box::new(rhs));
+        }
+        Ok(lhs)
+    }
+
+    fn parse_add(&mut self) -> Result<Expr, ParseError> {
+        let mut lhs = self.parse_mul()?;
+        loop {
+            self.skip_ws();
+            let op = if self.peek() == Some('+') {
+                self.advance();
+                Op::Add
+            } else if self.peek() == Some('-') {
+                self.advance();
+                Op::Sub
+            } else {
+                break;
+            };
+            self.skip_ws();
+            let rhs = self.parse_mul()?;
+            lhs = Expr::BinaryOp(op, Box::new(lhs), Box::new(rhs));
+        }
+        Ok(lhs)
+    }
+
+    fn parse_mul(&mut self) -> Result<Expr, ParseError> {
+        let mut lhs = self.parse_unary()?;
+        loop {
+            self.skip_ws();
+            let op = if self.peek() == Some('*') {
+                self.advance();
+                Op::Mul
+            } else if self.peek() == Some('/') {
+                self.advance();
+                Op::Div
+            } else if self.peek() == Some('%') {
+                self.advance();
+                Op::Mod
+            } else {
+                break;
+            };
+            self.skip_ws();
+            let rhs = self.parse_unary()?;
+            lhs = Expr::BinaryOp(op, Box::new(lhs), Box::new(rhs));
+        }
+        Ok(lhs)
+    }
+
+    fn parse_unary(&mut self) -> Result<Expr, ParseError> {
+        self.skip_ws();
+        if self.peek() == Some('!') {
+            self.advance();
+            let expr = self.parse_unary()?;
+            return Ok(Expr::Unary(UnaryOp::Not, Box::new(expr)));
+        }
+        if self.peek() == Some('-') {
+            self.advance();
+            let expr = self.parse_unary()?;
+            return Ok(Expr::Unary(UnaryOp::Neg, Box::new(expr)));
+        }
+        self.parse_postfix()
+    }
+
+    fn parse_postfix(&mut self) -> Result<Expr, ParseError> {
+        let mut expr = self.parse_primary()?;
+        loop {
+            self.skip_ws();
+            match self.peek() {
+                Some('.') => {
+                    self.advance();
+                    let name = self.parse_ident()?;
+                    // 检查是否是方法调用
+                    self.skip_ws();
+                    if self.peek() == Some('(') {
+                        self.advance();
+                        let args = self.parse_args()?;
+                        expr = Expr::MethodCall(Box::new(expr), name, args);
+                    } else {
+                        expr = Expr::Member(Box::new(expr), name);
+                    }
+                }
+                Some('[') => {
+                    self.advance();
+                    self.skip_ws();
+                    let index = self.parse_convert()?;
+                    self.skip_ws();
+                    if self.peek() != Some(']') {
+                        return Err(self.err("expected ']' after index expression"));
+                    }
+                    self.advance();
+                    expr = Expr::Index(Box::new(expr), Box::new(index));
+                }
+                _ => break,
+            }
+        }
+        Ok(expr)
+    }
+
+    fn parse_args(&mut self) -> Result<Vec<Expr>, ParseError> {
+        let mut args = Vec::new();
+        self.skip_ws();
+        if self.peek() == Some(')') {
+            self.advance();
+            return Ok(args);
+        }
+        loop {
+            let arg = self.parse_convert()?;
+            args.push(arg);
+            self.skip_ws();
+            match self.peek() {
+                Some(',') => {
+                    self.advance();
+                    self.skip_ws();
+                }
+                Some(')') => {
+                    self.advance();
+                    break;
+                }
+                _ => return Err(self.err("expected ',' or ')' in argument list")),
+            }
+        }
+        Ok(args)
+    }
+
+    fn parse_primary(&mut self) -> Result<Expr, ParseError> {
+        self.skip_ws();
+        match self.peek() {
+            Some('(') => {
+                self.advance();
+                let inner = self.parse_convert()?;
+                self.skip_ws();
+                if self.peek() != Some(')') {
+                    return Err(self.err("expected ')' after expression"));
+                }
+                self.advance();
+                Ok(inner)
+            }
+            Some('"') => self.parse_string_literal(),
+            Some(c) if c.is_ascii_digit() => self.parse_number_literal(),
+            Some(c) if is_ident_start(c) => {
+                let name = self.parse_ident()?;
+                // 字面量 true/false
+                if name == "true" || name == "false" {
+                    Ok(Expr::Lit(name))
+                } else {
+                    Ok(Expr::Field(name))
+                }
+            }
+            _ => Err(self.err(&format!(
+                "unexpected character {:?}, expected identifier, literal, or '('",
+                self.peek()
+            ))),
+        }
+    }
+
+    fn parse_ident(&mut self) -> Result<String, ParseError> {
+        self.skip_ws();
+        let start = self.pos;
+        while let Some(c) = self.peek() {
+            if is_ident_char(c) {
+                self.advance();
+            } else {
+                break;
+            }
+        }
+        if self.pos == start {
+            return Err(self.err("expected identifier"));
+        }
+        Ok(self.chars[start..self.pos].iter().collect())
+    }
+
+    fn parse_string_literal(&mut self) -> Result<Expr, ParseError> {
+        // 假设 peek 是 '"'
+        let start = self.pos;
+        self.advance(); // 消费开引号
+        let mut s = String::from("\"");
+        while let Some(c) = self.peek() {
+            if c == '\\' {
+                s.push('\\');
+                self.advance();
+                if let Some(esc) = self.advance() {
+                    s.push(esc);
+                }
+                continue;
+            }
+            if c == '"' {
+                s.push('"');
+                self.advance();
+                return Ok(Expr::Lit(self.chars[start..self.pos].iter().collect()));
+            }
+            s.push(c);
+            self.advance();
+        }
+        Err(self.err("unterminated string literal"))
+    }
+
+    fn parse_number_literal(&mut self) -> Result<Expr, ParseError> {
+        let start = self.pos;
+        // 整数部分
+        while let Some(c) = self.peek() {
+            if c.is_ascii_digit() {
+                self.advance();
+            } else {
+                break;
+            }
+        }
+        // 小数部分
+        if self.peek() == Some('.') && self.peek_at(1).map(|c| c.is_ascii_digit()).unwrap_or(false) {
+            self.advance();
+            while let Some(c) = self.peek() {
+                if c.is_ascii_digit() {
+                    self.advance();
+                } else {
+                    break;
+                }
+            }
+        }
+        // 后缀：f32 / f64 / u32 / i32 等
+        while let Some(c) = self.peek() {
+            if matches!(c, 'f' | 'u' | 'i' | 'F' | 'U' | 'I') {
+                self.advance();
+            } else if self.peek().map(|c| c.is_ascii_digit()).unwrap_or(false) {
+                self.advance();
+            } else {
+                break;
+            }
+        }
+        Ok(Expr::Lit(self.chars[start..self.pos].iter().collect()))
+    }
+}
+
+fn is_ident_start(c: char) -> bool {
+    c.is_ascii_alphabetic() || c == '_'
+}
+
+fn is_ident_char(c: char) -> bool {
+    c.is_ascii_alphanumeric() || c == '_'
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+//  单元测试
+// ──────────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn parse_ok(s: &str) -> Expr {
+        parse(s).unwrap_or_else(|e| panic!("parse {:?} failed: {}", s, e))
+    }
+
+    #[test]
+    fn parses_simple_field() {
+        assert_eq!(parse_ok("count"), Expr::Field("count".into()));
+    }
+
+    #[test]
+    fn parses_member_access() {
+        assert_eq!(
+            parse_ok("user.name"),
+            Expr::Member(Box::new(Expr::Field("user".into())), "name".into())
+        );
+    }
+
+    #[test]
+    fn parses_index() {
+        assert_eq!(
+            parse_ok("items[0]"),
+            Expr::Index(
+                Box::new(Expr::Field("items".into())),
+                Box::new(Expr::Lit("0".into()))
+            )
+        );
+    }
+
+    #[test]
+    fn parses_method_call_no_args() {
+        assert_eq!(
+            parse_ok("items.len()"),
+            Expr::MethodCall(Box::new(Expr::Field("items".into())), "len".into(), vec![])
+        );
+    }
+
+    #[test]
+    fn parses_method_call_with_args() {
+        assert_eq!(
+            parse_ok("name.to_uppercase()"),
+            Expr::MethodCall(Box::new(Expr::Field("name".into())), "to_uppercase".into(), vec![])
+        );
+    }
+
+    #[test]
+    fn parses_arithmetic() {
+        assert_eq!(
+            parse_ok("count + 1"),
+            Expr::BinaryOp(
+                Op::Add,
+                Box::new(Expr::Field("count".into())),
+                Box::new(Expr::Lit("1".into()))
+            )
+        );
+    }
+
+    #[test]
+    fn parses_precedence() {
+        // a + b * c → a + (b * c)
+        let parsed = parse_ok("a + b * c");
+        match parsed {
+            Expr::BinaryOp(Op::Add, _, rhs) => {
+                assert_eq!(*rhs, Expr::BinaryOp(Op::Mul, Box::new(Expr::Field("b".into())), Box::new(Expr::Field("c".into()))));
+            }
+            other => panic!("expected BinaryOp(Add), got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parses_parens() {
+        // (a + b) * c → (a + b) * c
+        let parsed = parse_ok("(a + b) * c");
+        match parsed {
+            Expr::BinaryOp(Op::Mul, lhs, rhs) => {
+                assert_eq!(*lhs, Expr::BinaryOp(Op::Add, Box::new(Expr::Field("a".into())), Box::new(Expr::Field("b".into()))));
+                assert_eq!(*rhs, Expr::Field("c".into()));
+            }
+            other => panic!("expected BinaryOp(Mul), got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parses_comparison() {
+        assert_eq!(
+            parse_ok("count > 0"),
+            Expr::BinaryOp(
+                Op::Gt,
+                Box::new(Expr::Field("count".into())),
+                Box::new(Expr::Lit("0".into()))
+            )
+        );
+    }
+
+    #[test]
+    fn parses_unary_not() {
+        assert_eq!(
+            parse_ok("!flag"),
+            Expr::Unary(UnaryOp::Not, Box::new(Expr::Field("flag".into())))
+        );
+    }
+
+    #[test]
+    fn parses_converter() {
+        assert_eq!(
+            parse_ok("count, HexConverter"),
+            Expr::Convert(Box::new(Expr::Field("count".into())), "HexConverter".into())
+        );
+    }
+
+    #[test]
+    fn parses_string_literal() {
+        assert_eq!(parse_ok("\"hello\""), Expr::Lit("\"hello\"".into()));
+    }
+
+    #[test]
+    fn parses_number_literal() {
+        assert_eq!(parse_ok("42"), Expr::Lit("42".into()));
+        assert_eq!(parse_ok("3.14"), Expr::Lit("3.14".into()));
+    }
+
+    #[test]
+    fn parses_bool_literal() {
+        assert_eq!(parse_ok("true"), Expr::Lit("true".into()));
+        assert_eq!(parse_ok("false"), Expr::Lit("false".into()));
+    }
+
+    #[test]
+    fn to_rust_simple_field() {
+        assert_eq!(to_rust_code(&Expr::Field("count".into())), "self.count");
+    }
+
+    #[test]
+    fn to_rust_member() {
+        let expr = Expr::Member(Box::new(Expr::Field("user".into())), "name".into());
+        assert_eq!(to_rust_code(&expr), "self.user.name");
+    }
+
+    #[test]
+    fn to_rust_binary() {
+        let expr = Expr::BinaryOp(
+            Op::Add,
+            Box::new(Expr::Field("count".into())),
+            Box::new(Expr::Lit("1".into())),
+        );
+        assert_eq!(to_rust_code(&expr), "(self.count + 1)");
+    }
+
+    #[test]
+    fn to_rust_method_call() {
+        let expr = Expr::MethodCall(Box::new(Expr::Field("items".into())), "len".into(), vec![]);
+        assert_eq!(to_rust_code(&expr), "self.items.len()");
+    }
+
+    #[test]
+    fn to_rust_converter() {
+        let expr = Expr::Convert(Box::new(Expr::Field("count".into())), "HexConverter".into());
+        assert_eq!(to_rust_code(&expr), "HexConverter::convert_to(&self.count)");
+    }
+
+    #[test]
+    fn to_rust_index() {
+        let expr = Expr::Index(
+            Box::new(Expr::Field("items".into())),
+            Box::new(Expr::Lit("0".into())),
+        );
+        assert_eq!(to_rust_code(&expr), "self.items[0]");
+    }
+
+    #[test]
+    fn rejects_empty_input() {
+        assert!(parse("").is_err());
+    }
+
+    #[test]
+    fn rejects_trailing_garbage() {
+        assert!(parse("count @").is_err());
+    }
+
+    #[test]
+    fn parses_complex_expr() {
+        // user.profile.age + 1
+        let parsed = parse_ok("user.profile.age + 1");
+        let expected = Expr::BinaryOp(
+            Op::Add,
+            Box::new(Expr::Member(
+                Box::new(Expr::Member(Box::new(Expr::Field("user".into())), "profile".into())),
+                "age".into(),
+            )),
+            Box::new(Expr::Lit("1".into())),
+        );
+        assert_eq!(parsed, expected);
+    }
+}

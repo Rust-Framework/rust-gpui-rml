@@ -1,6 +1,9 @@
 <div class="counter">
     <h1>计数器</h1>
     <p class="count">{count}</p>
+    <p class="next">下一个：{count + 1}</p>
+    <p class="double">两倍：{count * 2}</p>
+    <p class="positive">是否为正：{count > 0}</p>
     <div class="buttons">
         <Button label="-" onclick={decrement} />
         <Button label="+" primary="" onclick={increment} />
