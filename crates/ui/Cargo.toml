@@ -1,0 +1,17 @@
+[package]
+name = "rust-rml-ui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "RML 扩展组件库：封装 gpui-component，提供 Dialog/Input/List 等高级组件"
+
+[dependencies]
+rust-rml-core = { workspace = true }
+gpui = { workspace = true }
+gpui-component = { workspace = true }
+
+[features]
+default = ["ui-components"]
+# 启用 gpui-component 扩展组件（Dialog/List/Form 等）
+# 关闭此 feature 时，本 crate 仍可编译但所有 API 退化为空实现
+ui-components = []

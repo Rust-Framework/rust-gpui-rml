@@ -38,8 +38,12 @@ pub fn codegen(root: &Node, ctx: &CodegenCtx) -> Result<String, CodegenError> {
     out.push_str(
         "    fn render(&mut self, _window: &mut gpui::Window, cx: &mut gpui::Context<Self>) -> impl gpui::IntoElement {\n",
     );
-    // 函数内 use：GPUI trait 方法（.child/.on_click/.id 等）必须在作用域内
-    out.push_str("        use gpui::{ParentElement, InteractiveElement, StatefulInteractiveElement, IntoElement};\n");
+    // 函数内 use：GPUI trait 方法（.child/.on_click/.id/.text_size/.flex 等）必须在作用域内
+    // Styled 提供 text_size/flex/flex_col/items_center 等方法，被 tags.rs 的 codegen_ctor 使用
+    out.push_str("        use gpui::{ParentElement, InteractiveElement, StatefulInteractiveElement, IntoElement, Styled};\n");
+    // 函数内 use：gpui-component 扩展组件 trait（.primary/.disabled/.label 等）
+    // 仅在使用了扩展组件时需要，但无条件导入以简化 codegen（编译器会消除未用项）
+    out.push_str("        use rml_ui::{ButtonVariants, Disableable, Sizable, Selectable, StyledExt};\n");
     out.push_str("        use rml::runtime::event_flow::convert as rml_convert;\n");
 
     let mut id_counter: usize = 0;
@@ -78,11 +82,9 @@ fn gen_element(
 ) -> Result<String, CodegenError> {
     let tag = &elem.tag;
 
-    // 自定义组件在 Phase B-1 不支持
+    // 扩展组件（PascalCase）：路由到 gpui-component 构造器
     if tags::is_component(tag) {
-        return Err(CodegenError {
-            message: format!("custom component <{}> not supported in Phase B-1", tag),
-        });
+        return gen_component(elem, ctx, depth, id_counter);
     }
 
     let builtin = tags::lookup(tag).ok_or_else(|| CodegenError {
@@ -297,5 +299,188 @@ fn gen_mixed_text(segments: &[TextSegment]) -> String {
         format!("{:?}", fmt_str)
     } else {
         format!("format!({:?}, {})", fmt_str, args.join(", "))
+    }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+//  扩展组件 codegen（gpui-component 路由）
+//
+//  生成 `rml_ui::<Type>::new(...).<method>(...).on_click(cx.listener(...))` 形式调用。
+// 详见开发规划 §2.5 Layer 5 + §三 Phase B-3。
+// ──────────────────────────────────────────────────────────────────────────
+
+/// 生成扩展组件构造代码
+///
+/// 支持的语法：
+/// - 静态属性：`label="Click me"` → `.label("Click me")`
+/// - 布尔属性：`primary=""` / `primary="true"` → `.primary()`
+/// - 绑定属性：`value={count}` → `.value(self.count.clone())`（仅对支持此方法的组件）
+/// - 事件绑定：`onclick={increment}` → `.on_click(cx.listener(move |this, _ev, _window, cx| { ... }))`
+/// - 文本子节点：`<Button>Click me</Button>` → `.label("Click me")`
+fn gen_component(
+    elem: &Element,
+    _ctx: &CodegenCtx,
+    _depth: usize,
+    id_counter: &mut usize,
+) -> Result<String, CodegenError> {
+    let tag = &elem.tag;
+    let component = tags::component_lookup(tag).ok_or_else(|| CodegenError {
+        message: format!(
+            "unknown extension component: <{}> (not in gpui-component routing table)",
+            tag
+        ),
+    })?;
+
+    // 1. 构造器
+    let id_val = *id_counter;
+    *id_counter += 1;
+    let mut code = match component.kind {
+        tags::ComponentKind::Stateless => format!(
+            "{}::new((\"rml_el\", {}usize))",
+            component.ctor_path, id_val
+        ),
+        tags::ComponentKind::Stateful { state_field } => format!(
+            "{}::new(&self.{})",
+            component.ctor_path, state_field
+        ),
+    };
+
+    // 2. 静态属性 → builder 方法
+    let mut label_set_by_attr = false;
+    for attr in &elem.attributes {
+        match attr {
+            Attribute::Static { name, value } => {
+                if let Some(setter) = component_static_setter(name, value, tag) {
+                    code.push_str(&setter);
+                    if name == "label" {
+                        label_set_by_attr = true;
+                    }
+                }
+            }
+            Attribute::Bind { name, expr } => {
+                if let Some(setter) = component_bind_setter(name, expr) {
+                    code.push_str(&setter);
+                }
+            }
+            Attribute::Event { name, handler } => {
+                if let Some(setter) = component_event_setter(name, handler, tag) {
+                    code.push_str(&setter);
+                }
+            }
+        }
+    }
+
+    // 3. 子节点：仅支持单个文本子节点作为 label（避免与显式 label= 冲突）
+    if !label_set_by_attr {
+        for child in &elem.children {
+            if let Node::Text(text) = child {
+                code.push_str(&format!(".label({:?})", text));
+                break;
+            }
+        }
+    }
+
+    Ok(code)
+}
+
+/// 静态属性 → builder 方法映射
+///
+/// - `label="..."` → `.label("...")`
+/// - `placeholder="..."` → `.placeholder("...")`（Input 支持）
+/// - `primary`/`secondary`/`danger`/`success`/`warning`/`info`/`ghost` → `.primary()` 等
+/// - `disabled="true"` → `.disabled(true)`
+/// - `selected`/`compact`/`loading` → 对应方法
+fn component_static_setter(name: &str, value: &str, tag: &str) -> Option<String> {
+    match name {
+        "label" => Some(format!(".label({:?})", value)),
+        "placeholder" => Some(format!(".placeholder({:?})", value)),
+        "tooltip" => Some(format!(".tooltip({:?})", value)),
+        // Button variant 属性（值为空或 "true" 时启用变体）
+        "primary" | "secondary" | "danger" | "success" | "warning" | "info" | "ghost" | "link"
+        | "text" => {
+            if value.is_empty() || value.eq_ignore_ascii_case("true") {
+                Some(format!(".{}()", name))
+            } else {
+                None
+            }
+        }
+        "small" | "compact" | "loading" => {
+            if value.is_empty() || value.eq_ignore_ascii_case("true") {
+                Some(format!(".{}()", name))
+            } else {
+                None
+            }
+        }
+        "disabled" => Some(format!(".disabled({})", parse_bool(value))),
+        "selected" => Some(format!(".selected({})", parse_bool(value))),
+        // 通用样式属性（仅 div 等支持，组件侧通过 Styled trait 也支持部分）
+        "class" | "id" | "style" | "src" | "href" | "type" | "value" => None,
+        _ => {
+            // 未知属性：保留为字符串属性供调试（不报错以兼容演进）
+            let _ = tag;
+            None
+        }
+    }
+}
+
+/// 绑定属性 → builder 方法映射
+///
+/// `value={count}` → `.value(self.count.clone())`
+fn component_bind_setter(name: &str, expr: &str) -> Option<String> {
+    match name {
+        "value" => Some(format!(".value(self.{}.clone())", expr)),
+        "disabled" => Some(format!(".disabled(self.{})", expr)),
+        "selected" => Some(format!(".selected(self.{})", expr)),
+        "checked" => Some(format!(".selected(self.{})", expr)),
+        "label" => Some(format!(".label(self.{}.clone())", expr)),
+        _ => None,
+    }
+}
+
+/// 事件属性 → 组件事件方法映射
+///
+/// 与原生 div 的事件不同，gpui-component 组件的 on_* 方法接受 3 参闭包
+/// `Fn(&ClickEvent, &mut Window, &mut App)`。通过 `cx.listener` 包装后可访问 `this`。
+fn component_event_setter(name: &str, handler: &EventHandler, _tag: &str) -> Option<String> {
+    // 目前仅支持 onclick；其他事件（onchange/oninput）需要专门的 InputState 监听器
+    if name != "onclick" {
+        return None;
+    }
+
+    match handler {
+        EventHandler::Ident(method) | EventHandler::MethodName(method) => Some(format!(
+            ".on_click(cx.listener(move |this, _ev: &gpui::ClickEvent, _window, cx| {{\n                    \
+             let rml_ev = rml_convert::from_gpui_click(_ev);\n                    \
+             this.{}(&rml_ev, cx);\n                }}))",
+            method
+        )),
+        EventHandler::WithArgs(method, args) => {
+            if args.is_empty() {
+                Some(format!(
+                    ".on_click(cx.listener(move |this, _ev: &gpui::ClickEvent, _window, cx| {{\n                    \
+                     let rml_ev = rml_convert::from_gpui_click(_ev);\n                    \
+                     this.{}(&rml_ev, cx);\n                }}))",
+                    method
+                ))
+            } else {
+                let arg = &args[0];
+                Some(format!(
+                    ".on_click(cx.listener(move |this, _ev: &gpui::ClickEvent, _window, cx| {{\n                    \
+                     let p0 = {}.clone();\n                    \
+                     let rml_ev = rml_convert::from_gpui_click(_ev);\n                    \
+                     this.{}(p0, &rml_ev, cx);\n                }}))",
+                    arg, method
+                ))
+            }
+        }
+    }
+}
+
+/// 解析 RML 属性值中的布尔字面量
+fn parse_bool(value: &str) -> &'static str {
+    if value.eq_ignore_ascii_case("true") || value == "1" {
+        "true"
+    } else {
+        "false"
     }
 }

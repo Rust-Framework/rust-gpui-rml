@@ -31,27 +31,37 @@ pub enum BuiltinTag {
 
 impl BuiltinTag {
     /// 返回该标签在 GPUI 中的构造调用代码（作为字符串）
+    ///
+    /// 注意：调用链可能用到 `Styled` trait 的方法（如 `text_size`/`flex`/`flex_col`），
+    /// codegen 需在生成代码顶部 `use gpui::Styled;` 才能编译。
     pub fn codegen_ctor(self) -> &'static str {
         match self {
+            // 容器类
             BuiltinTag::Div => "gpui::div()",
             BuiltinTag::Span => "gpui::div()",
             BuiltinTag::P => "gpui::div()",
-            BuiltinTag::H1 => "gpui::div()",
-            BuiltinTag::H2 => "gpui::div()",
-            BuiltinTag::H3 => "gpui::div()",
-            BuiltinTag::H4 => "gpui::div()",
-            BuiltinTag::H5 => "gpui::div()",
-            BuiltinTag::H6 => "gpui::div()",
+            // 标题：直接 text_size 设置 px 大小（参考 tailwind 默认值）
+            // h1=32px / h2=28px / h3=24px / h4=20px / h5=18px / h6=16px
+            BuiltinTag::H1 => "gpui::div().text_size(gpui::px(32.))",
+            BuiltinTag::H2 => "gpui::div().text_size(gpui::px(28.))",
+            BuiltinTag::H3 => "gpui::div().text_size(gpui::px(24.))",
+            BuiltinTag::H4 => "gpui::div().text_size(gpui::px(20.))",
+            BuiltinTag::H5 => "gpui::div().text_size(gpui::px(18.))",
+            BuiltinTag::H6 => "gpui::div().text_size(gpui::px(16.))",
+            // 表单类：原生轨简化为 div + class（扩展轨用 <Button>/<Input>）
             BuiltinTag::Button => "gpui::div()",
             BuiltinTag::Input => "gpui::div()",
             BuiltinTag::TextArea => "gpui::div()",
-            BuiltinTag::Ul => "gpui::div()",
-            BuiltinTag::Ol => "gpui::div()",
+            // 列表：默认垂直排列
+            BuiltinTag::Ul => "gpui::div().flex().flex_col()",
+            BuiltinTag::Ol => "gpui::div().flex().flex_col()",
             BuiltinTag::Li => "gpui::div()",
+            // 其他
             BuiltinTag::Img => "gpui::div()",
             BuiltinTag::A => "gpui::div()",
             BuiltinTag::Label => "gpui::div()",
-            BuiltinTag::Br => "gpui::div()",
+            // <br>：用 hidden() 产生零尺寸占位
+            BuiltinTag::Br => "gpui::div().hidden()",
         }
     }
 
@@ -116,4 +126,97 @@ pub fn is_component(tag: &str) -> bool {
         .next()
         .map(|c| c.is_ascii_uppercase())
         .unwrap_or(false)
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+//  扩展组件：gpui-component 路由表（双轨制组件策略的「扩展轨」）
+//
+//  当 .rml 中出现 PascalCase 标签（如 <Button>），codegen 会查询本表，
+//  若命中则生成 `rml_ui::<Type>::new(...)` 调用，否则报「未知组件」错误。
+// 详见开发规划 §2.5 Layer 5。
+// ──────────────────────────────────────────────────────────────────────────
+
+/// 扩展组件的构造模式
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ComponentKind {
+    /// 无状态组件：构造调用形如 `Button::new(id)`
+    /// `id: impl Into<ElementId>` — 由 codegen 自动分配 `("rml_el", N)` 元组
+    Stateless,
+    /// 有状态组件：构造调用形如 `Input::new(&self.<field>)`
+    /// 需要视图中持有对应 state entity 字段（如 `Entity<InputState>`）
+    Stateful { state_field: &'static str },
+}
+
+/// 扩展组件的元信息
+#[derive(Debug, Clone, Copy)]
+pub struct ComponentTag {
+    /// 类型路径，如 `rml_ui::Button`
+    pub ctor_path: &'static str,
+    pub kind: ComponentKind,
+}
+
+/// 查询扩展组件元信息（仅查内置 gpui-component 路由表）
+///
+/// 注意：用户自定义组件（`@component` 标注的 struct）由 codegen 在另一条路径处理，
+/// 不在本表查询范围内。
+pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
+    match tag {
+        "Button" => Some(ComponentTag {
+            ctor_path: "rml_ui::Button",
+            kind: ComponentKind::Stateless,
+        }),
+        "ButtonGroup" => Some(ComponentTag {
+            ctor_path: "rml_ui::ButtonGroup",
+            kind: ComponentKind::Stateless,
+        }),
+        "Badge" => Some(ComponentTag {
+            ctor_path: "rml_ui::Badge",
+            kind: ComponentKind::Stateless,
+        }),
+        "Checkbox" => Some(ComponentTag {
+            ctor_path: "rml_ui::Checkbox",
+            kind: ComponentKind::Stateless,
+        }),
+        "Label" => Some(ComponentTag {
+            ctor_path: "rml_ui::Label",
+            kind: ComponentKind::Stateless,
+        }),
+        "Separator" => Some(ComponentTag {
+            ctor_path: "rml_ui::Separator",
+            kind: ComponentKind::Stateless,
+        }),
+        "Tag" => Some(ComponentTag {
+            ctor_path: "rml_ui::Tag",
+            kind: ComponentKind::Stateless,
+        }),
+        "Progress" => Some(ComponentTag {
+            ctor_path: "rml_ui::Progress",
+            kind: ComponentKind::Stateless,
+        }),
+        "ProgressCircle" => Some(ComponentTag {
+            ctor_path: "rml_ui::ProgressCircle",
+            kind: ComponentKind::Stateless,
+        }),
+        "Slider" => Some(ComponentTag {
+            ctor_path: "rml_ui::Slider",
+            kind: ComponentKind::Stateless,
+        }),
+        "Switch" => Some(ComponentTag {
+            ctor_path: "rml_ui::Switch",
+            kind: ComponentKind::Stateless,
+        }),
+        "Input" => Some(ComponentTag {
+            ctor_path: "rml_ui::Input",
+            kind: ComponentKind::Stateful {
+                state_field: "input_state",
+            },
+        }),
+        "TextInput" => Some(ComponentTag {
+            ctor_path: "rml_ui::Input",
+            kind: ComponentKind::Stateful {
+                state_field: "input_state",
+            },
+        }),
+        _ => None,
+    }
 }

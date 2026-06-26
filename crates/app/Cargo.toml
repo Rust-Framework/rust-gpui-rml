@@ -9,3 +9,10 @@ description = "RML 应用启动器与窗口管理"
 rust-rml-core = { workspace = true }
 gpui = { workspace = true }
 gpui_platform = { workspace = true }
+# 可选：启用 gpui-component 扩展组件（Root/Dialog/Notification 等）
+rust-rml-ui = { workspace = true, optional = true }
+
+[features]
+default = ["ui-components"]
+# 启用 gpui-component 扩展组件：窗口顶层用 Root 包裹业务 view
+ui-components = ["dep:rust-rml-ui"]
