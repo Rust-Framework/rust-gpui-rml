@@ -1,12 +1,13 @@
 <div class="counter">
-    <h1>计数器</h1>
+    <h1 ref="title">计数器</h1>
     <p class="count">{count}</p>
     <p class="next">下一个：{count + 1}</p>
-    <p class="double">两倍：{count * 2}</p>
+    <p class="double">两倍（计算属性）：{double_count}</p>
     <p class="positive">是否为正：{count > 0}</p>
-    <p class="hover">悬停状态：{hovered}</p>
+    <p class="hover">悬停状态：{hovered | BoolToYesNo}</p>
+    <p once>版本: v0.1.0 (固定不变)</p>
     <div class="buttons" onhover={on_hover_change}>
-        <Button label="-" onclick={decrement} />
-        <Button label="+" primary="" onclick={increment} />
+        <Button ref="dec_btn" label="-" onclick={decrement} />
+        <Button ref="inc_btn" label="+" primary="" onclick={increment} />
     </div>
 </div>

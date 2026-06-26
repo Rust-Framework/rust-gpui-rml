@@ -14,7 +14,7 @@
 
 use crate::compiler::expr;
 use crate::compiler::{CodegenCtx, CodegenError};
-use crate::parser::ast::{Attribute, Element, EventHandler, Node};
+use crate::parser::ast::{Attribute, Directive, Element, EventHandler, Node};
 use crate::tags;
 
 /// 生成扩展组件构造代码
@@ -27,9 +27,10 @@ use crate::tags;
 /// - 文本子节点：`<Button>Click me</Button>` → `.label("Click me")`
 pub fn gen_component(
     elem: &Element,
-    _ctx: &CodegenCtx,
+    ctx: &CodegenCtx,
     _depth: usize,
     id_counter: &mut usize,
+    loop_vars: &[String],
 ) -> Result<String, CodegenError> {
     let tag = &elem.tag;
     let component = tags::component_lookup(tag).ok_or_else(|| CodegenError {
@@ -40,18 +41,32 @@ pub fn gen_component(
     })?;
 
     // 1. 构造器
+    //    若元素有 ref="name" 指令，使用稳定 ID `("rml_ref", "name")`，
+    //    否则使用自增计数器生成 ID。
+    let ref_name: Option<&str> = elem.directives.iter().find_map(|d| match d {
+        Directive::Ref(name) => Some(name.as_str()),
+        _ => None,
+    });
+
     let id_val = *id_counter;
     *id_counter += 1;
     let mut code = match component.kind {
-        tags::ComponentKind::Stateless => format!(
-            "{}::new((\"rml_el\", {}usize))",
-            component.ctor_path, id_val
-        ),
+        tags::ComponentKind::Stateless => {
+            if let Some(name) = ref_name {
+                // ref 指令：用 "rml_ref:<name>" 稳定字符串作为 ElementId
+                format!("{}::new({:?})", component.ctor_path, format!("rml_ref:{}", name))
+            } else {
+                format!("{}::new((\"rml_el\", {}usize))", component.ctor_path, id_val)
+            }
+        }
         tags::ComponentKind::Stateful { state_field } => format!(
             "{}::new(&self.{})",
             component.ctor_path, state_field
         ),
     };
+
+    // 将 loop_vars 转换为 &[&str] 供绑定表达式使用
+    let lv: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
 
     // 2. 静态属性 → builder 方法
     let mut label_set_by_attr = false;
@@ -66,7 +81,8 @@ pub fn gen_component(
                 }
             }
             Attribute::Bind { name, expr } => {
-                if let Some(setter) = component_bind_setter(name, expr) {
+                let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
+                if let Some(setter) = component_bind_setter(name, expr, &lv, &computed) {
                     code.push_str(&setter);
                 }
             }
@@ -151,6 +167,8 @@ pub fn component_static_setter(name: &str, value: &str, tag: &str) -> Option<Str
         "selected" => Some(format!(".selected({})", parse_bool(value))),
         // 通用样式属性（仅 div 等支持，组件侧通过 Styled trait 也支持部分）
         "class" | "id" | "style" | "src" | "href" | "type" | "value" => None,
+        // ref 属性已在构造器中处理（生成稳定 ID），此处跳过
+        "ref" => None,
         _ => {
             // 未知属性：保留为字符串属性供调试（不报错以兼容演进）
             let _ = tag;
@@ -167,11 +185,27 @@ pub fn component_static_setter(name: &str, value: &str, tag: &str) -> Option<Str
 /// - `label={user.name}` → `.label(self.user.name.clone())`
 ///
 /// 对于无法解析的表达式，回退到简单的 `self.<expr>` 引用。
-pub fn component_bind_setter(name: &str, expr_str: &str) -> Option<String> {
+pub fn component_bind_setter(name: &str, expr_str: &str, loop_vars: &[&str], computed: &[&str]) -> Option<String> {
     // 通过表达式解析器生成 Rust 代码
     let rust_expr = match expr::parse(expr_str) {
-        Ok(parsed) => expr::to_rust_code(&parsed),
-        Err(_) => format!("self.{}", expr_str.trim()),
+        Ok(expr::Expr::Field(name)) if computed.iter().any(|c| *c == name.as_str()) => {
+            if loop_vars.iter().any(|v| *v == name) {
+                format!("{}()", name)
+            } else {
+                format!("self.{}()", name)
+            }
+        }
+        Ok(parsed) => expr::to_rust_code_with_ctx(&parsed, loop_vars),
+        Err(_) => {
+            let trimmed = expr_str.trim();
+            if loop_vars.iter().any(|v| *v == trimmed) {
+                trimmed.to_string()
+            } else if computed.iter().any(|c| *c == trimmed) {
+                format!("self.{}()", trimmed)
+            } else {
+                format!("self.{}", trimmed)
+            }
+        }
     };
     match name {
         "value" => Some(format!(".value({}.clone())", rust_expr)),
@@ -259,12 +293,14 @@ pub fn parse_bool(value: &str) -> &'static str {
 mod tests {
     use super::*;
     use crate::compiler::CodegenCtx;
-    use crate::parser::ast::{Attribute, Element, EventHandler, Node};
+    use crate::parser::ast::{Attribute, Directive, Element, EventHandler, Node};
 
     fn ctx() -> CodegenCtx {
         CodegenCtx {
             view_struct_name: "TestView".into(),
             view_module_path: "test::view".into(),
+            stylesheet: None,
+            computed_methods: Vec::new(),
         }
     }
 
@@ -273,6 +309,20 @@ mod tests {
             tag: tag.into(),
             attributes: attrs,
             directives: vec![],
+            children,
+        }
+    }
+
+    fn make_element_with_directives(
+        tag: &str,
+        attrs: Vec<Attribute>,
+        directives: Vec<Directive>,
+        children: Vec<Node>,
+    ) -> Element {
+        Element {
+            tag: tag.into(),
+            attributes: attrs,
+            directives,
             children,
         }
     }
@@ -455,67 +505,74 @@ mod tests {
 
     #[test]
     fn bind_setter_value() {
-        let code = component_bind_setter("value", "count").unwrap();
+        let code = component_bind_setter("value", "count", &[], &[]).unwrap();
         assert_eq!(code, ".value(self.count.clone())");
     }
 
     #[test]
     fn bind_setter_value_with_expr() {
         // value={count + 1} → .value((self.count + 1).clone())
-        let code = component_bind_setter("value", "count + 1").unwrap();
+        let code = component_bind_setter("value", "count + 1", &[], &[]).unwrap();
         assert_eq!(code, ".value((self.count + 1).clone())");
     }
 
     #[test]
     fn bind_setter_value_with_member_access() {
         // value={user.name} → .value(self.user.name.clone())
-        let code = component_bind_setter("value", "user.name").unwrap();
+        let code = component_bind_setter("value", "user.name", &[], &[]).unwrap();
         assert_eq!(code, ".value(self.user.name.clone())");
     }
 
     #[test]
     fn bind_setter_disabled_with_expr() {
         // disabled={count > 0} → .disabled((self.count > 0))
-        let code = component_bind_setter("disabled", "count > 0").unwrap();
+        let code = component_bind_setter("disabled", "count > 0", &[], &[]).unwrap();
         assert_eq!(code, ".disabled((self.count > 0))");
     }
 
     #[test]
     fn bind_setter_label_with_expr() {
         // label={user.name} → .label(self.user.name.clone())
-        let code = component_bind_setter("label", "user.name").unwrap();
+        let code = component_bind_setter("label", "user.name", &[], &[]).unwrap();
         assert_eq!(code, ".label(self.user.name.clone())");
     }
 
     #[test]
     fn bind_setter_disabled() {
-        let code = component_bind_setter("disabled", "is_locked").unwrap();
+        let code = component_bind_setter("disabled", "is_locked", &[], &[]).unwrap();
         assert_eq!(code, ".disabled(self.is_locked)");
     }
 
     #[test]
     fn bind_setter_selected() {
-        let code = component_bind_setter("selected", "is_active").unwrap();
+        let code = component_bind_setter("selected", "is_active", &[], &[]).unwrap();
         assert_eq!(code, ".selected(self.is_active)");
     }
 
     #[test]
     fn bind_setter_checked_maps_to_selected() {
         // checked 绑定映射到 .selected()（GPUI Checkbox 使用 selected 状态）
-        let code = component_bind_setter("checked", "flag").unwrap();
+        let code = component_bind_setter("checked", "flag", &[], &[]).unwrap();
         assert_eq!(code, ".selected(self.flag)");
     }
 
     #[test]
     fn bind_setter_label() {
-        let code = component_bind_setter("label", "title").unwrap();
+        let code = component_bind_setter("label", "title", &[], &[]).unwrap();
         assert_eq!(code, ".label(self.title.clone())");
     }
 
     #[test]
     fn bind_setter_unknown_returns_none() {
-        assert!(component_bind_setter("color", "theme").is_none());
-        assert!(component_bind_setter("", "x").is_none());
+        assert!(component_bind_setter("color", "theme", &[], &[]).is_none());
+        assert!(component_bind_setter("", "x", &[], &[]).is_none());
+    }
+
+    #[test]
+    fn bind_setter_loop_var() {
+        // each={todo in todos} 内 value={todo.text} → .value(todo.text.clone())
+        let code = component_bind_setter("value", "todo.text", &["todo"], &[]).unwrap();
+        assert_eq!(code, ".value(todo.text.clone())");
     }
 
     // ─── component_event_setter ───
@@ -601,7 +658,7 @@ mod tests {
     fn gen_component_button_minimal() {
         let elem = make_element("Button", vec![], vec![]);
         let mut id = 0;
-        let code = gen_component(&elem, &ctx(), 0, &mut id).unwrap();
+        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
         assert!(code.contains("rml_ui::Button::new"));
         assert!(code.contains("\"rml_el\""));
         assert_eq!(id, 1);
@@ -618,7 +675,7 @@ mod tests {
             vec![],
         );
         let mut id = 0;
-        let code = gen_component(&elem, &ctx(), 0, &mut id).unwrap();
+        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
         assert!(code.contains(".label(\"Submit\")"));
     }
 
@@ -627,7 +684,7 @@ mod tests {
         // <Button>Click me</Button> → .label("Click me")
         let elem = make_element("Button", vec![], vec![Node::Text("Click me".into())]);
         let mut id = 0;
-        let code = gen_component(&elem, &ctx(), 0, &mut id).unwrap();
+        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
         assert!(code.contains(".label(\"Click me\")"));
     }
 
@@ -643,7 +700,7 @@ mod tests {
             vec![Node::Text("Ignored".into())],
         );
         let mut id = 0;
-        let code = gen_component(&elem, &ctx(), 0, &mut id).unwrap();
+        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
         assert!(code.contains(".label(\"Explicit\")"));
         assert!(!code.contains("Ignored"));
     }
@@ -665,7 +722,7 @@ mod tests {
             vec![],
         );
         let mut id = 0;
-        let code = gen_component(&elem, &ctx(), 0, &mut id).unwrap();
+        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
         assert!(code.contains(".label(\"Delete\")"));
         assert!(code.contains(".danger()"));
     }
@@ -687,7 +744,7 @@ mod tests {
             vec![],
         );
         let mut id = 0;
-        let code = gen_component(&elem, &ctx(), 0, &mut id).unwrap();
+        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
         assert!(code.contains(".label(\"+\")"));
         assert!(code.contains(".on_click("));
         assert!(code.contains("this.increment"));
@@ -704,7 +761,7 @@ mod tests {
             vec![],
         );
         let mut id = 0;
-        let code = gen_component(&elem, &ctx(), 0, &mut id).unwrap();
+        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
         assert!(code.contains(".value(self.count.clone())"));
     }
 
@@ -712,7 +769,7 @@ mod tests {
     fn gen_component_unknown_tag_errors() {
         let elem = make_element("NonExistent", vec![], vec![]);
         let mut id = 0;
-        let result = gen_component(&elem, &ctx(), 0, &mut id);
+        let result = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new());
         assert!(result.is_err());
         assert!(result
             .unwrap_err()
@@ -724,7 +781,7 @@ mod tests {
     fn gen_component_increments_id_counter() {
         let elem = make_element("Button", vec![], vec![]);
         let mut id = 5;
-        let code = gen_component(&elem, &ctx(), 0, &mut id).unwrap();
+        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
         assert!(code.contains("5usize"));
         assert_eq!(id, 6);
     }
@@ -747,7 +804,7 @@ mod tests {
             vec![],
         );
         let mut id = 0;
-        let code = gen_component(&elem, &ctx(), 0, &mut id).unwrap();
+        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
         // Stateful 组件构造为 Input::new(&self.input_state)
         assert!(code.contains("rml_ui::Input::new(&self.input_state)"));
         assert!(code.contains(".placeholder(\"Enter name\")"));
@@ -768,7 +825,7 @@ mod tests {
             vec![],
         );
         let mut id = 0;
-        let code = gen_component(&elem, &ctx(), 0, &mut id).unwrap();
+        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
         // 表达式解析器应生成 (self.count + 1).clone()
         assert!(code.contains(".value((self.count + 1).clone())"));
     }
@@ -795,9 +852,68 @@ mod tests {
             vec![],
         );
         let mut id = 0;
-        let code = gen_component(&elem, &ctx(), 0, &mut id).unwrap();
+        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
         assert!(code.contains(".label(\"OK\")"));
         assert!(code.contains(".large()"));
         assert!(code.contains(".font_bold()"));
+    }
+
+    // ─── ref 指令 ───
+
+    #[test]
+    fn gen_component_button_with_ref_uses_stable_id() {
+        // <Button ref="submit_btn" /> → Button::new("rml_ref:submit_btn")
+        let elem = make_element_with_directives(
+            "Button",
+            vec![],
+            vec![Directive::Ref("submit_btn".into())],
+            vec![],
+        );
+        let mut id = 0;
+        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
+        assert!(code.contains("rml_ui::Button::new(\"rml_ref:submit_btn\")"));
+        // 不应使用计数器 ID
+        assert!(!code.contains("rml_el"));
+    }
+
+    #[test]
+    fn gen_component_button_without_ref_uses_counter_id() {
+        // 无 ref 时，使用计数器 ID
+        let elem = make_element("Button", vec![], vec![]);
+        let mut id = 0;
+        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
+        assert!(code.contains("rml_ui::Button::new((\"rml_el\", 0usize))"));
+        assert_eq!(id, 1);
+    }
+
+    #[test]
+    fn gen_component_ref_with_other_attrs() {
+        // <Button ref="btn" label="OK" primary="" />
+        let elem = make_element_with_directives(
+            "Button",
+            vec![
+                Attribute::Static {
+                    name: "label".into(),
+                    value: "OK".into(),
+                },
+                Attribute::Static {
+                    name: "primary".into(),
+                    value: "".into(),
+                },
+            ],
+            vec![Directive::Ref("btn".into())],
+            vec![],
+        );
+        let mut id = 0;
+        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
+        assert!(code.contains("rml_ui::Button::new(\"rml_ref:btn\")"));
+        assert!(code.contains(".label(\"OK\")"));
+        assert!(code.contains(".primary()"));
+    }
+
+    #[test]
+    fn static_setter_ref_returns_none() {
+        // ref 是指令，不会作为静态属性出现，但防御性返回 None
+        assert!(component_static_setter("ref", "name", "Button").is_none());
     }
 }

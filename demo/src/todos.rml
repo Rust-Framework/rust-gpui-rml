@@ -1,0 +1,13 @@
+<div>
+    <h1>待办事项</h1>
+    <p>共 {todos.len()} 项</p>
+    <ul>
+        <li each={todo in todos}>
+            <span>{todo.text}</span>
+        </li>
+    </ul>
+    <div>
+        <Button label="添加" primary="" onclick={add_todo} />
+        <Button label="清空" danger="" onclick={clear_todos} />
+    </div>
+</div>

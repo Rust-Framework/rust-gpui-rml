@@ -7,6 +7,7 @@ pub mod cache;
 pub mod scanner;
 
 use crate::compiler::{compile, CodegenCtx};
+use crate::css;
 use sha2::{Digest, Sha256};
 use std::fmt;
 use std::fs;
@@ -34,6 +35,7 @@ pub struct Builder {
     strict: bool,
     hot_reload: bool,
     public: bool,
+    style_paths: Vec<PathBuf>,
 }
 
 /// 入口：创建一个新的 Builder。
@@ -61,6 +63,7 @@ impl Builder {
             strict: true,
             hot_reload: false,
             public: false,
+            style_paths: Vec::new(),
         }
     }
 
@@ -100,8 +103,33 @@ impl Builder {
         self
     }
 
+    /// 注册一个 CSS 样式表文件（可多次调用，按声明顺序合并，后者优先级更高）。
+    ///
+    /// ```rust
+    /// // build.rs
+    /// rml::build()
+    ///     .scan_dir("src")
+    ///     .with_style("styles/main.css")
+    ///     .output_dir(std::env::var("OUT_DIR").unwrap())
+    ///     .build()
+    ///     .expect("RML build failed");
+    /// ```
+    pub fn with_style(mut self, path: impl Into<PathBuf>) -> Self {
+        self.style_paths.push(path.into());
+        self
+    }
+
     /// 执行编译主流程。
     pub fn build(self) -> Result<(), BuildError> {
+        // 所有 &self 借用必须在 self.output_dir 移动前完成
+        let stylesheet = self.load_stylesheets()?;
+        let rml_files = scanner::scan(&self.scan_dirs);
+        for f in &rml_files {
+            println!("cargo:rerun-if-changed={}", f.display());
+        }
+        let computed_methods = self.scan_computed_methods(&rml_files);
+
+        // 现在可以移动 output_dir
         let output_dir = self.output_dir.ok_or_else(|| BuildError {
             message: "output_dir not set (use .output_dir(std::env::var(\"OUT_DIR\").unwrap()))".into(),
         })?;
@@ -110,12 +138,6 @@ impl Builder {
         fs::create_dir_all(&generated_dir).map_err(|e| BuildError {
             message: format!("failed to create {}: {}", generated_dir.display(), e),
         })?;
-
-        // 1. 扫描 .rml 文件
-        let rml_files = scanner::scan(&self.scan_dirs);
-        for f in &rml_files {
-            println!("cargo:rerun-if-changed={}", f.display());
-        }
 
         // 2. 加载缓存，并校验 engine 源码哈希
         //    engine 任何 src/**/*.rs 变化会让 engine_source_hash() 返回不同值，
@@ -160,6 +182,8 @@ impl Builder {
             let ctx = CodegenCtx {
                 view_struct_name: view_struct_name.clone(),
                 view_module_path: self.namespace.clone().unwrap_or_default(),
+                stylesheet: stylesheet.clone(),
+                computed_methods: computed_methods.clone(),
             };
 
             match compile(&source, &ctx) {
@@ -190,6 +214,91 @@ impl Builder {
         }
 
         Ok(())
+    }
+
+    /// 加载所有注册的 CSS 文件，合并为一个全局 StyleSheet。
+    ///
+    /// 按声明顺序合并：后注册的文件规则追加在末尾（优先级更高）。
+    /// `:root` 变量跨文件共享。
+    fn load_stylesheets(&self) -> Result<Option<css::StyleSheet>, BuildError> {
+        if self.style_paths.is_empty() {
+            return Ok(None);
+        }
+        let mut merged = css::StyleSheet::default();
+        for path in &self.style_paths {
+            println!("cargo:rerun-if-changed={}", path.display());
+            let source = fs::read_to_string(path).map_err(|e| BuildError {
+                message: format!("read css {}: {}", path.display(), e),
+            })?;
+            match css::parse(&source) {
+                Ok(sheet) => {
+                    // 合并规则（后者追加）
+                    merged.rules.extend(sheet.rules);
+                    // 合并变量（后者覆盖）
+                    merged.variables.extend(sheet.variables);
+                }
+                Err(e) => {
+                    let msg = format!("parse css {}: {}", path.display(), e);
+                    println!("cargo:warning=RML: {}", msg);
+                    return Err(BuildError { message: msg });
+                }
+            }
+        }
+        Ok(Some(merged))
+    }
+
+    /// 扫描 `.rml.rs` code-behind 文件，收集 `#[computed]` 标注的方法名。
+    ///
+    /// 使用正则匹配 `#[computed]` 后的 `fn <name>` 模式。
+    /// 这些方法名传给 codegen，使 `{name}` 生成 `self.name()` 而非 `self.name`。
+    fn scan_computed_methods(&self, rml_files: &[PathBuf]) -> Vec<String> {
+        let mut methods = Vec::new();
+        for rml_path in rml_files {
+            // .rml → .rml.rs（在路径后追加 .rs）
+            let rml_rs: PathBuf = format!("{}.rs", rml_path.display()).into();
+            if !rml_rs.exists() {
+                continue;
+            }
+            println!("cargo:rerun-if-changed={}", rml_rs.display());
+            let source = match fs::read_to_string(&rml_rs) {
+                Ok(s) => s,
+                Err(_) => continue,
+            };
+            // 简化扫描：查找 #[computed] 后面紧跟的 fn name
+            let lines: Vec<&str> = source.lines().collect();
+            for (i, line) in lines.iter().enumerate() {
+                if line.trim().contains("#[computed]") {
+                    // 下一行或同行后面应该有 fn <name>
+                    let search_in = if i + 1 < lines.len() {
+                        format!("{} {}", line, lines[i + 1])
+                    } else {
+                        line.to_string()
+                    };
+                    if let Some(name) = extract_fn_name(&search_in) {
+                        if !methods.contains(&name) {
+                            methods.push(name);
+                        }
+                    }
+                }
+            }
+        }
+        methods
+    }
+}
+
+/// 从源码行中提取 `fn <name>` 的方法名
+fn extract_fn_name(source: &str) -> Option<String> {
+    let after_computed = source.split("#[computed]").nth(1)?;
+    let after_fn = after_computed.split("fn").nth(1)?;
+    let name_part = after_fn.trim_start();
+    let name: String = name_part
+        .chars()
+        .take_while(|c| c.is_alphanumeric() || *c == '_')
+        .collect();
+    if name.is_empty() {
+        None
+    } else {
+        Some(name)
     }
 }
 

@@ -175,6 +175,8 @@ mod tests {
         CodegenCtx {
             view_struct_name: "TestView".into(),
             view_module_path: "test::view".into(),
+            stylesheet: None,
+            computed_methods: Vec::new(),
         }
     }
 

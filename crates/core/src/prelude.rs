@@ -6,7 +6,7 @@
 pub use crate::binding::{BindingPath, IBindingContext};
 pub use crate::command::{ICommand, ParamMeta};
 pub use crate::component::IComponent;
-pub use crate::converter::IConverter;
+pub use crate::converter::{BoolToYesNo, Currency, IConverter, LowerCase, Percent, Trim, UpperCase};
 pub use crate::element_ref::ElementRef;
 pub use crate::event::IEvent;
 pub use crate::events::*;

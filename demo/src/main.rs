@@ -9,10 +9,12 @@ use rml_app::RmlApplication;
 
 #[path = "counter.rml.rs"]
 mod counter;
+#[path = "todos.rml.rs"]
+mod todos;
 
 fn main() {
     RmlApplication::new()
-        .title("RML Counter Demo")
-        .size(px(400.), px(300.))
-        .run::<counter::Counter>();
+        .title("RML Todos Demo")
+        .size(px(400.), px(400.))
+        .run::<todos::Todos>();
 }

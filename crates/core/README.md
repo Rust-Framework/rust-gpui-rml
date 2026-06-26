@@ -22,7 +22,7 @@
 | `command` | `ICommand`, `ParamMeta` | 命令系统契约，`#[command]` 方法可被 `on*` 事件绑定调用 |
 | `lifecycle` | `ILifecycle` | 视图生命周期（创建→加载→更新→卸载） |
 | `binding` | `BindingPath`, `IBindingContext` | 绑定路径解析与运行时订阅 |
-| `converter` | `IConverter<S, T>` | 值转换器，绑定类型转换 |
+| `converter` | `IConverter` (关联类型 `Source`/`Target`) + 内置转换器 | 值转换器，`{x \| Converter}` 语法，内置 `UpperCase`/`LowerCase`/`Trim`/`Currency`/`Percent`/`BoolToYesNo` |
 | `two_way_binding` | `ITwoWayBinding` | 组件双向绑定契约 |
 | `event` | `IEvent` | 事件基础契约，`prevent_default` / `stop_propagation` |
 | `events` | `ClickEvent`, `MouseEvent`, ... | RML 事件对象类型（11 个） |

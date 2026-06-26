@@ -19,6 +19,7 @@
 
 use crate::compiler::expr;
 use crate::compiler::{CodegenCtx, CodegenError};
+use crate::css;
 use crate::parser::ast::{Attribute, Directive, Element, Node, TextSegment};
 use crate::tags;
 use crate::compiler::component as comp;
@@ -45,7 +46,8 @@ pub fn codegen(root: &Node, ctx: &CodegenCtx) -> Result<String, CodegenError> {
     out.push_str("        use rml::runtime::event_flow::convert as rml_convert;\n");
 
     let mut id_counter: usize = 0;
-    let root_expr = gen_node(root, ctx, 0, &mut id_counter)?;
+    let empty: Vec<String> = Vec::new();
+    let (root_expr, _) = gen_node(root, ctx, 0, &mut id_counter, &empty)?;
     out.push_str(&format!("        {}\n", root_expr));
     out.push_str("    }\n");
     out.push_str("}\n");
@@ -53,23 +55,40 @@ pub fn codegen(root: &Node, ctx: &CodegenCtx) -> Result<String, CodegenError> {
     Ok(out)
 }
 
-/// 为单个节点生成构建代码，返回一个表达式字符串
+/// codegen 结果：元素代码 + 是否为迭代器
+///
+/// 当 `is_iter` 为 true 时，代码是 `self.<iterable>.iter().map(|<item>| { <element> })`，
+/// 父元素应使用 `.children(...)` 而非 `.child(...)` 传入。
+type GenResult = (String, bool);
+
+/// 为单个节点生成构建代码，返回 (代码, 是否迭代器)
+///
+/// `loop_vars` 是当前作用域内的 each 循环变量名列表，
+/// 用于在 `{todo.text}` 这类插值中生成 `todo.text` 而非 `self.todo.text`。
 fn gen_node(
     node: &Node,
     ctx: &CodegenCtx,
     depth: usize,
     id_counter: &mut usize,
-) -> Result<String, CodegenError> {
+    loop_vars: &[String],
+) -> Result<GenResult, CodegenError> {
+    let lv: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
+    let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
     match node {
-        Node::Element(elem) => gen_element(elem, ctx, depth, id_counter),
-        Node::Text(text) => Ok(format!("{:?}", text)),
-        Node::Interpolation(expr) => {
+        Node::Element(elem) => gen_element(elem, ctx, depth, id_counter, loop_vars),
+        Node::Text(text) => Ok((format!("{:?}", text), false)),
+        Node::Interpolation(expr_str) => {
             // 单个插值：{field} → format!("{}", self.field)
             // {count + 1} → format!("{}", (self.count + 1))（通过 expr 解析器）
-            // String 实现 IntoElement，可作为 child 直接传入
-            Ok(format!("format!(\"{{}}\", {})", gen_expr_code(expr)))
+            // {computed_name} → format!("{}", self.computed_name())（计算属性，加 ()）
+            Ok((
+                format!("format!(\"{{}}\", {})", gen_expr_code(expr_str, &lv, &computed)),
+                false,
+            ))
         }
-        Node::MixedText(segments) => Ok(gen_mixed_text(segments)),
+        Node::MixedText(segments) => {
+            Ok((gen_mixed_text(segments, &lv, &computed), false))
+        }
     }
 }
 
@@ -78,45 +97,93 @@ fn gen_element(
     ctx: &CodegenCtx,
     depth: usize,
     id_counter: &mut usize,
-) -> Result<String, CodegenError> {
+    loop_vars: &[String],
+) -> Result<GenResult, CodegenError> {
     let tag = &elem.tag;
 
     // 扩展组件（PascalCase）：路由到 gpui-component 构造器
     if tags::is_component(tag) {
-        return comp::gen_component(elem, ctx, depth, id_counter);
+        let code = comp::gen_component(elem, ctx, depth, id_counter, loop_vars)?;
+        return Ok((code, false));
+    }
+
+    // model 指令：input/textarea 的双向绑定
+    // 当 input/textarea 标签有 model 指令时，路由到 rml_ui::Input 组件
+    let model_field = elem.directives.iter().find_map(|d| match d {
+        Directive::Model(f) => Some(f.clone()),
+        _ => None,
+    });
+
+    if model_field.is_some() && (tag == "input" || tag == "textarea") {
+        let code = gen_model_input(elem, ctx, id_counter, model_field.unwrap())?;
+        return Ok((code, false));
     }
 
     let builtin = tags::lookup(tag).ok_or_else(|| CodegenError {
         message: format!("unknown tag: <{}>", tag),
     })?;
 
+    // 检查 each 指令：列表渲染
+    let each_clause = elem.directives.iter().find_map(|d| match d {
+        Directive::Each(c) => Some(c.clone()),
+        _ => None,
+    });
+
+    // 构建当前作用域的循环变量集合。
+    // each 指令所在的元素本身就在 each 作用域内，其属性和子节点都应使用扩展后的 loop_vars。
+    let mut child_loop_vars: Vec<String> = loop_vars.to_vec();
+    if let Some(clause) = &each_clause {
+        child_loop_vars.push(clause.item.clone());
+        if let Some(idx) = &clause.index {
+            child_loop_vars.push(idx.clone());
+        }
+    }
+    let lv: Vec<&str> = child_loop_vars.iter().map(|s| s.as_str()).collect();
+
     // 1. 生成元素构造调用
     let mut code = String::from(builtin.codegen_ctor());
 
-    // 2. 检查是否有事件处理器 —— 若有，必须先 .id() 使元素成为 Stateful<Div>
-    //    GPUI 的 on_click/on_key_down 等方法定义在 StatefulInteractiveElement trait 上，
-    //    仅 Stateful<T> 实现该 trait。Div 实现 InteractiveElement::id() 返回 Stateful<Div>。
+    // 2. 检查 ref 指令：为元素生成稳定 ID，供 ElementRef 关联
+    //    ref="name" → .id(("rml_ref", "name"))
+    //    若元素同时有事件处理器，ref ID 优先（同时满足 Stateful 要求）
+    let ref_name: Option<&str> = elem.directives.iter().find_map(|d| match d {
+        Directive::Ref(name) => Some(name.as_str()),
+        _ => None,
+    });
+
+    // 检查是否有事件处理器 —— 若有，必须先 .id() 使元素成为 Stateful<Div>
     let has_events = elem
         .attributes
         .iter()
         .any(|attr| matches!(attr, Attribute::Event { .. }));
 
-    if has_events {
+    if let Some(name) = ref_name {
+        // ref 指令：生成稳定字符串 ID（GPUI ElementId 支持 &'static str）
+        // 用 "rml_ref:<name>" 格式，便于调试与 Runtime 关联
+        code.push_str(&format!(".id({:?})", format!("rml_ref:{}", name)));
+    } else if has_events {
         let id_val = *id_counter;
         *id_counter += 1;
-        // 使用 ("rml_el", n) 元组作为 ElementId，GPUI 支持 From<(&'static str, usize)>
-        // 显式标注 usize 避免整数字面量默认推断为 i32
         code.push_str(&format!(".id((\"rml_el\", {}usize))", id_val));
     }
 
-    // 3. 应用静态属性与绑定属性
+    // 2b. 应用 CSS 样式（class/id 属性匹配全局样式表）
+    if let Some(sheet) = &ctx.stylesheet {
+        let style_code = apply_css_styles(elem, tag, sheet);
+        if !style_code.is_empty() {
+            code.push_str(&style_code);
+        }
+    }
+
+    // 3. 应用静态属性与绑定属性（class/id/style 已由 CSS 或下方跳过处理）
     for attr in &elem.attributes {
         match attr {
             Attribute::Static { name, value } => {
                 code.push_str(&apply_static_attr(name, value));
             }
             Attribute::Bind { name, expr } => {
-                code.push_str(&apply_bind_attr(name, expr));
+                let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
+                code.push_str(&apply_bind_attr(name, expr, &lv, &computed));
             }
             Attribute::Event { name, handler } => {
                 code.push_str(&event::apply_event(name, handler, ctx));
@@ -124,44 +191,118 @@ fn gen_element(
         }
     }
 
-    // 4. 处理 model 指令：input/textarea 的双向绑定
-    //    Phase B-1 简化：仅生成 value 显示，Phase B-2 补全 on_change 回写
-    for d in &elem.directives {
-        if let Directive::Model(field) = d {
-            code.push_str(&format!(".child(format!(\"{{}}\", self.{}))", field));
+    // 4. 处理子节点（传入扩展后的 child_loop_vars）
+    for child in &elem.children {
+        let (child_code, is_iter) = gen_node(child, ctx, depth + 1, id_counter, &child_loop_vars)?;
+        if is_iter {
+            // each 指令生成的迭代器：用 .children() 传入
+            code.push_str(&format!("\n            .children({})", child_code));
+        } else {
+            code.push_str(&format!("\n            .child({})", child_code));
         }
     }
 
-    // 5. 处理子节点
-    for child in &elem.children {
-        let child_code = gen_node(child, ctx, depth + 1, id_counter)?;
-        code.push_str(&format!("\n            .child({})", child_code));
+    // 5. 处理 each 指令：将元素包装在迭代器中
+    if let Some(clause) = each_clause {
+        // 生成 self.<iterable>.iter().map(|<item>| { <element> })
+        // 在 map 闭包内，迭代变量名不加 self. 前缀
+        let iter_code = format!(
+            "self.{}.iter().map(|{}| {{\n                {}\n            }})",
+            clause.iterable, clause.item, code
+        );
+        return Ok((iter_code, true));
     }
 
     // 6. 处理 if/show 指令：条件渲染
-    //    .when() 不会隐藏元素，必须用 if/else 表达式包裹，返回 AnyElement 统一类型
     let cond: Option<String> = elem.directives.iter().find_map(|d| match d {
         Directive::If(c) => Some(c.clone()),
         Directive::Show(c) => Some(c.clone()),
         _ => None,
     });
 
+    // 6b. 处理 once 指令：首次渲染后不更新
+    //     Phase B-2：识别指令但不生成缓存代码（GPUI 元素类型不满足 Send+Sync，
+    //     无法用 static OnceLock 缓存）。完整缓存实现需 ViewModel 级字段，
+    //     留到 Phase B-3 配合 #[view] 宏自动生成 once 缓存字段。
+    //     当前行为：once 元素每次渲染都重新计算，与普通元素一致。
+
     if let Some(cond) = cond {
-        // 生成条件表达式：if self.<cond> { <element> } else { gpui::Empty }
-        // 两分支均调用 .into_any_element() 统一为 AnyElement
-        Ok(format!(
-            "if self.{} {{ {}.into_any_element() }} else {{ gpui::Empty.into_any_element() }}",
-            cond, code
+        Ok((
+            format!(
+                "if self.{} {{ {}.into_any_element() }} else {{ gpui::Empty.into_any_element() }}",
+                cond, code
+            ),
+            false,
         ))
     } else {
-        Ok(code)
+        Ok((code, false))
     }
+}
+
+/// 生成带 model 指令的 Input 组件双向绑定代码
+///
+/// `<input model={field} />` 生成：
+/// ```text
+/// rml_ui::Input::new(&self.input_state)
+///     .value(self.field.clone())
+///     .on_change(cx.listener(move |this, state: &rml_ui::InputState, _window, cx| {
+///         this.field = state.value().to_string();
+///         cx.notify();
+///     }))
+/// ```
+///
+/// 要求 View 结构体拥有 `input_state: Entity<rml_ui::InputState>` 字段。
+fn gen_model_input(
+    elem: &Element,
+    _ctx: &CodegenCtx,
+    id_counter: &mut usize,
+    field: String,
+) -> Result<String, CodegenError> {
+    let id_val = *id_counter;
+    *id_counter += 1;
+
+    // 构造 Input 组件（Stateful，需要 input_state 字段）
+    let mut code = format!("rml_ui::Input::new(&self.input_state)");
+
+    // 正向绑定：VM → UI（显示字段值）
+    code.push_str(&format!(".value(self.{}.clone())", field));
+
+    // 反向绑定：UI → VM（回写字段值）
+    code.push_str(&format!(
+        ".on_change(cx.listener(move |this, state: &rml_ui::InputState, _window, cx| {{\n                    \
+         this.{} = state.value().to_string();\n                    \
+         cx.notify();\n                }}))",
+        field
+    ));
+
+    // 应用静态属性（如 placeholder）
+    for attr in &elem.attributes {
+        if let Attribute::Static { name, value } = attr {
+            if name == "placeholder" {
+                code.push_str(&format!(".placeholder({:?})", value));
+            } else if name == "disabled" {
+                let disabled_val = if value.eq_ignore_ascii_case("true") || value == "1" || value.is_empty() {
+                    "true"
+                } else {
+                    "false"
+                };
+                code.push_str(&format!(".disabled({})", disabled_val));
+            }
+        }
+    }
+
+    let _ = id_val;
+    Ok(code)
 }
 
 fn apply_static_attr(name: &str, value: &str) -> String {
     match name {
-        // class/id 在 Phase B-1 跳过（Phase B-3 样式系统实现）
-        "class" | "id" | "style" => String::new(),
+        // class/id/style 由 CSS 系统（apply_css_styles）或 inline style 处理，此处跳过
+        "class" | "id" => String::new(),
+        // ref 是指令（Directive::Ref），不会作为静态属性出现，此处防御性跳过
+        "ref" => String::new(),
+        // style 属性：inline 样式，直接解析并应用（优先级高于 class）
+        "style" => apply_inline_style(value),
         // src/href 等 URL 属性跳过（Phase B-2 资源系统实现）
         "src" | "href" => String::new(),
         // type 属性（button/checkbox 等）跳过（Phase B-2 表单系统实现）
@@ -171,21 +312,67 @@ fn apply_static_attr(name: &str, value: &str) -> String {
     }
 }
 
-fn apply_bind_attr(name: &str, expr: &str) -> String {
-    match name {
-        // value 绑定：将字段值格式化为文本子节点
-        "value" => format!(".child(format!(\"{{}}\", self.{}))", expr),
-        // class/id/style 绑定在 Phase B-1 跳过
-        "class" | "id" | "style" => String::new(),
-        // disabled/checked：用 .when() 控制元素状态（仅当 true 时生效）
-        // 注：.when(false) 返回原元素不变，无法真正禁用 —— Phase B-2 修复
-        "disabled" | "checked" | "readonly" => format!(".when(self.{}, |el| el)", expr),
-        // 其他绑定属性作为文本子节点（调试用）
-        _ => format!(".child(format!(\"{{}}\", self.{}))", expr),
+/// 从元素的 class/id 属性提取值，匹配 CSS 样式表，返回 GPUI 方法调用代码
+fn apply_css_styles(elem: &Element, tag: &str, sheet: &css::StyleSheet) -> String {
+    // 提取静态 class 值（支持 class="a b c"）
+    let class_value: String = elem
+        .attributes
+        .iter()
+        .find_map(|attr| match attr {
+            Attribute::Static { name, value } if name == "class" => Some(value.clone()),
+            _ => None,
+        })
+        .unwrap_or_default();
+
+    // 提取静态 id 值
+    let id_value: Option<&str> = elem
+        .attributes
+        .iter()
+        .find_map(|attr| match attr {
+            Attribute::Static { name, value } if name == "id" => Some(value.as_str()),
+            _ => None,
+        });
+
+    if class_value.is_empty() && id_value.is_none() {
+        return String::new();
+    }
+
+    css::styles_for_class(sheet, tag, &class_value, id_value)
+}
+
+/// 解析 inline style 属性（如 `style="padding: 10px; color: red;"`）
+///
+/// 简化实现：按 `;` 分割声明，用 CSS 解析器解析每个声明，映射为 GPUI 方法调用。
+fn apply_inline_style(style_str: &str) -> String {
+    // 包装成完整 CSS 规则让解析器处理：`* { <style> }`
+    let wrapped = format!("* {{ {} }}", style_str);
+    match css::parse(&wrapped) {
+        Ok(sheet) => {
+            if sheet.rules.is_empty() || sheet.rules[0].declarations.is_empty() {
+                return String::new();
+            }
+            css::mapper::map_declarations(&sheet.rules[0].declarations, &sheet.variables)
+        }
+        Err(_) => String::new(),
     }
 }
 
-fn gen_mixed_text(segments: &[TextSegment]) -> String {
+fn apply_bind_attr(name: &str, expr: &str, loop_vars: &[&str], computed: &[&str]) -> String {
+    match name {
+        // value 绑定：将字段值格式化为文本子节点
+        "value" => format!(".child(format!(\"{{}}\", {}))", gen_expr_code(expr, loop_vars, computed)),
+        // 动态 class/id 绑定：运行时才知道值，codegen 无法静态匹配 CSS
+        // 留待 Phase B-4 运行时样式系统支持
+        "class" | "id" | "style" => String::new(),
+        // disabled/checked：用 .when() 控制元素状态（仅当 true 时生效）
+        // 注：.when(false) 返回原元素不变，无法真正禁用 —— Phase B-2 修复
+        "disabled" | "checked" | "readonly" => format!(".when({}, |el| el)", gen_expr_code(expr, loop_vars, computed)),
+        // 其他绑定属性作为文本子节点（调试用）
+        _ => format!(".child(format!(\"{{}}\", {}))", gen_expr_code(expr, loop_vars, computed)),
+    }
+}
+
+fn gen_mixed_text(segments: &[TextSegment], loop_vars: &[&str], computed: &[&str]) -> String {
     // 构建 format! 调用
     let mut fmt_str = String::new();
     let mut args = Vec::new();
@@ -196,7 +383,7 @@ fn gen_mixed_text(segments: &[TextSegment]) -> String {
             }
             TextSegment::Interpolation(expr) => {
                 fmt_str.push_str("{}");
-                args.push(gen_expr_code(expr));
+                args.push(gen_expr_code(expr, loop_vars, computed));
             }
         }
     }
@@ -210,12 +397,29 @@ fn gen_mixed_text(segments: &[TextSegment]) -> String {
 /// 把插值表达式字符串编译为 Rust 表达式字符串。
 ///
 /// 调用 `expr::parse` 将 `{count + 1}` 这类表达式解析为 AST，
-/// 再用 `expr::to_rust_code` 生成 `(self.count + 1)` 等 Rust 代码。
+/// 再用 `expr::to_rust_code_with_ctx` 生成 `(self.count + 1)` 等 Rust 代码。
+/// `loop_vars` 中的字段名不加 `self.` 前缀（each 循环变量）。
+/// `computed` 中的标识符被视为计算属性方法，生成 `self.name()` 而非 `self.name`。
 /// 解析失败时回退到旧的「单字段」行为（`self.<expr>`），保证向后兼容。
-fn gen_expr_code(expr_str: &str) -> String {
+fn gen_expr_code(expr_str: &str, loop_vars: &[&str], computed: &[&str]) -> String {
     match expr::parse(expr_str) {
-        Ok(parsed) => expr::to_rust_code(&parsed),
-        // 回退：保留旧行为，让简单字段引用 `{count}` 仍可用
-        Err(_) => format!("self.{}", expr_str.trim()),
+        Ok(expr::Expr::Field(name)) if computed.iter().any(|c| *c == name.as_str()) => {
+            if loop_vars.iter().any(|v| *v == name) {
+                format!("{}()", name)
+            } else {
+                format!("self.{}()", name)
+            }
+        }
+        Ok(parsed) => expr::to_rust_code_with_ctx(&parsed, loop_vars),
+        Err(_) => {
+            let trimmed = expr_str.trim();
+            if loop_vars.iter().any(|v| *v == trimmed) {
+                trimmed.to_string()
+            } else if computed.iter().any(|c| *c == trimmed) {
+                format!("self.{}()", trimmed)
+            } else {
+                format!("self.{}", trimmed)
+            }
+        }
     }
 }

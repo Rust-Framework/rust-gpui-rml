@@ -12,6 +12,7 @@ pub extern crate rust_rml_macros as rml_macros;
 
 pub mod build;
 pub mod compiler;
+pub mod css;
 pub mod parser;
 pub mod runtime;
 pub mod tags;

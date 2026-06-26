@@ -8,16 +8,28 @@ pub mod event;
 pub mod expr;
 pub mod validator;
 
+use crate::css::StyleSheet;
 use crate::parser;
 use std::fmt;
 
 /// 代码生成上下文
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct CodegenCtx {
     /// 视图结构体名（如 "Counter"）
     pub view_struct_name: String,
     /// 视图模块路径（如 "my_app::views::counter"）
     pub view_module_path: String,
+    /// 全局样式表（由 build.rs 加载所有 `.css` 文件合并而成）
+    ///
+    /// codegen 在遇到 `class="..."` 属性时查询此样式表，
+    /// 将匹配的 CSS 规则转换为 GPUI 样式方法调用。
+    /// 为 None 时（如单元测试）class 属性不生成样式代码。
+    pub stylesheet: Option<StyleSheet>,
+    /// 计算属性方法名列表（由 build.rs 扫描 `.rml.rs` 文件中的 `#[computed]` 收集）
+    ///
+    /// 当插值 `{name}` 中的 `name` 在此列表中时，codegen 生成 `self.name()`（方法调用）
+    /// 而非 `self.name`（字段访问）。
+    pub computed_methods: Vec<String>,
 }
 
 /// 代码生成错误

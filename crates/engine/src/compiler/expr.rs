@@ -16,7 +16,7 @@
 //! | 逻辑 | `a && b` | `BinaryOp(And, Field("a"), Field("b"))` |
 //! | 一元否定 | `!flag` | `Unary(Not, Field("flag"))` |
 //! | 字面量 | `42` / `"hi"` / `true` | `Lit(...)` |
-//! | 转换器 | `count, HexConverter` | `Convert(Field("count"), "HexConverter")` |
+//! | 转换器 | `count \| HexConverter` | `Convert(Field("count"), "HexConverter")` |
 //! | 括号 | `(a + b) * c` | 嵌套 `BinaryOp(Mul, BinaryOp(Add, ...), Field("c"))` |
 //!
 //! ## 不支持
@@ -47,8 +47,8 @@ pub enum Expr {
     /// 字面量：`42` / `"hello"` / `true` / `false` / `3.14`
     /// 保留原始字符串，由 to_rust_code 原样输出
     Lit(String),
-    /// 转换器：`expr, ConverterName`
-    /// codegen 时生成 `ConverterName.convert_to(&expr)`
+    /// 转换器：`expr | ConverterName`（管道语法，可串联 `expr | A | B`）
+    /// codegen 时生成 `ConverterName.convert(&expr)`（unit struct 实例方法调用）
     Convert(Box<Expr>, String),
 }
 
@@ -138,29 +138,62 @@ pub fn parse(input: &str) -> Result<Expr, ParseError> {
     Ok(expr)
 }
 
-/// 将 AST 转为 Rust 源码表达式
+/// 将 AST 转为 Rust 源码表达式（默认上下文，所有字段加 `self.` 前缀）
 ///
 /// 字段访问会自动加 `self.` 前缀：`Field("count")` → `self.count`
 /// 嵌套字段会保持前缀：`Member(Field("user"), "name")` → `self.user.name`
 pub fn to_rust_code(expr: &Expr) -> String {
+    to_rust_code_with_ctx(expr, &[])
+}
+
+/// 将 AST 转为 Rust 源码表达式（带循环变量上下文）
+///
+/// `loop_vars` 中的字段名不加 `self.` 前缀（它们是 each 闭包的迭代变量）。
+/// 例如 `each={todo in todos}` 内的 `{todo.text}` 应生成 `todo.text` 而非 `self.todo.text`。
+pub fn to_rust_code_with_ctx(expr: &Expr, loop_vars: &[&str]) -> String {
     match expr {
-        Expr::Field(name) => format!("self.{}", name),
-        Expr::Member(target, name) => format!("{}.{}", to_rust_code(target), name),
+        Expr::Field(name) => {
+            if loop_vars.iter().any(|v| *v == name) {
+                name.clone()
+            } else {
+                format!("self.{}", name)
+            }
+        }
+        Expr::Member(target, name) => {
+            format!("{}.{}", to_rust_code_with_ctx(target, loop_vars), name)
+        }
         Expr::Index(target, index) => {
-            format!("{}[{}]", to_rust_code(target), to_rust_code(index))
+            format!(
+                "{}[{}]",
+                to_rust_code_with_ctx(target, loop_vars),
+                to_rust_code_with_ctx(index, loop_vars)
+            )
         }
         Expr::MethodCall(target, name, args) => {
-            let args_str: Vec<String> = args.iter().map(to_rust_code).collect();
-            format!("{}.{}({})", to_rust_code(target), name, args_str.join(", "))
+            let args_str: Vec<String> = args
+                .iter()
+                .map(|e| to_rust_code_with_ctx(e, loop_vars))
+                .collect();
+            format!(
+                "{}.{}({})",
+                to_rust_code_with_ctx(target, loop_vars),
+                name,
+                args_str.join(", ")
+            )
         }
-        Expr::BinaryOp(op, lhs, rhs) => {
-            format!("({} {} {})", to_rust_code(lhs), op.as_str(), to_rust_code(rhs))
-        }
-        Expr::Unary(op, expr) => format!("({}{})", op.as_str(), to_rust_code(expr)),
+        Expr::BinaryOp(op, lhs, rhs) => format!(
+            "({} {} {})",
+            to_rust_code_with_ctx(lhs, loop_vars),
+            op.as_str(),
+            to_rust_code_with_ctx(rhs, loop_vars)
+        ),
+        Expr::Unary(op, expr) => format!("({}{})", op.as_str(), to_rust_code_with_ctx(expr, loop_vars)),
         Expr::Lit(s) => s.clone(),
-        Expr::Convert(target, converter) => {
-            format!("{}::convert_to(&{})", converter, to_rust_code(target))
-        }
+        Expr::Convert(target, converter) => format!(
+            "{}.convert(&{})",
+            converter,
+            to_rust_code_with_ctx(target, loop_vars)
+        ),
     }
 }
 
@@ -267,16 +300,18 @@ impl<'a> Parser<'a> {
     fn parse_convert(&mut self) -> Result<Expr, ParseError> {
         let lhs = self.parse_logic()?;
         self.skip_ws();
-        // 转换器语法：expr , Ident
-        // 注意：与函数参数中的逗号有歧义，但本子集不支持函数定义，
-        // 顶层表达式只可能是 `expr, Converter` 形式
-        if self.peek() == Some(',') {
+        // 转换器管道语法：expr | Ident | Ident | ...
+        // 借鉴 shell 管道，从左到右串联，前一个的输出作为后一个的输入。
+        // 单个 | 与逻辑或 || 不会混淆：|| 在 parse_logic 中用 eat_str("||") 匹配。
+        let mut result = lhs;
+        while self.peek() == Some('|') {
             self.advance();
             self.skip_ws();
             let converter = self.parse_ident()?;
-            return Ok(Expr::Convert(Box::new(lhs), converter));
+            result = Expr::Convert(Box::new(result), converter);
+            self.skip_ws();
         }
-        Ok(lhs)
+        Ok(result)
     }
 
     fn parse_logic(&mut self) -> Result<Expr, ParseError> {
@@ -404,7 +439,7 @@ impl<'a> Parser<'a> {
                 Some('[') => {
                     self.advance();
                     self.skip_ws();
-                    // 索引表达式不能用 convert 语法（`, Converter`），
+                    // 索引表达式不能用 convert 语法（`| Converter`），
                     // 否则 `arr[a, b]` 会被误解为转换器
                     let index = self.parse_logic()?;
                     self.skip_ws();
@@ -428,7 +463,7 @@ impl<'a> Parser<'a> {
             return Ok(args);
         }
         loop {
-            // 参数不能用 convert 语法（`, Converter`），
+            // 参数不能用 convert 语法（`| Converter`），
             // 否则 `f(a, b)` 中的逗号会被误解为转换器分隔符
             let arg = self.parse_logic()?;
             args.push(arg);
@@ -453,7 +488,7 @@ impl<'a> Parser<'a> {
         match self.peek() {
             Some('(') => {
                 self.advance();
-                // 括号内不能用 convert 语法，否则 `(a, b)` 会被误解为 `Convert(a, "b")`
+                // 括号内不能用 convert 语法，否则 `(a, b)` 不会被误解（现在用 | 不是逗号）
                 let inner = self.parse_logic()?;
                 self.skip_ws();
                 if self.peek() != Some(')') {
@@ -676,8 +711,23 @@ mod tests {
     #[test]
     fn parses_converter() {
         assert_eq!(
-            parse_ok("count, HexConverter"),
+            parse_ok("count | HexConverter"),
             Expr::Convert(Box::new(Expr::Field("count".into())), "HexConverter".into())
+        );
+    }
+
+    #[test]
+    fn parses_converter_chain() {
+        // value | A | B → Convert(Convert(value, "A"), "B")
+        assert_eq!(
+            parse_ok("value | Trim | Upper"),
+            Expr::Convert(
+                Box::new(Expr::Convert(
+                    Box::new(Expr::Field("value".into())),
+                    "Trim".into()
+                )),
+                "Upper".into()
+            )
         );
     }
 
@@ -728,7 +778,7 @@ mod tests {
     #[test]
     fn to_rust_converter() {
         let expr = Expr::Convert(Box::new(Expr::Field("count".into())), "HexConverter".into());
-        assert_eq!(to_rust_code(&expr), "HexConverter::convert_to(&self.count)");
+        assert_eq!(to_rust_code(&expr), "HexConverter.convert(&self.count)");
     }
 
     #[test]
@@ -1026,8 +1076,8 @@ mod tests {
 
     #[test]
     fn parses_converter_with_binary_expr() {
-        // (count + 1), HexConverter → Convert(BinaryOp(Add, ...), "HexConverter")
-        let parsed = parse_ok("(count + 1), HexConverter");
+        // (count + 1) | HexConverter → Convert(BinaryOp(Add, ...), "HexConverter")
+        let parsed = parse_ok("(count + 1) | HexConverter");
         match parsed {
             Expr::Convert(target, converter) => {
                 assert_eq!(converter, "HexConverter");
@@ -1046,9 +1096,9 @@ mod tests {
 
     #[test]
     fn parses_converter_with_member_access() {
-        // user.name, UpperConverter
+        // user.name | UpperConverter
         assert_eq!(
-            parse_ok("user.name, UpperConverter"),
+            parse_ok("user.name | UpperConverter"),
             Expr::Convert(
                 Box::new(Expr::Member(
                     Box::new(Expr::Field("user".into())),
@@ -1094,9 +1144,9 @@ mod tests {
     }
 
     #[test]
-    fn rejects_double_comma_in_converter() {
-        // convert 语法只支持单个转换器
-        assert!(parse("count,,").is_err());
+    fn rejects_empty_converter_name() {
+        // 管道符后必须跟转换器名
+        assert!(parse("count |").is_err());
     }
 
     #[test]
@@ -1190,7 +1240,23 @@ mod tests {
         );
         assert_eq!(
             to_rust_code(&expr),
-            "HexConverter::convert_to(&(self.count + 1))"
+            "HexConverter.convert(&(self.count + 1))"
+        );
+    }
+
+    #[test]
+    fn to_rust_converter_chain() {
+        // value | Trim | Upper → Upper.convert(&Trim.convert(&self.value))
+        let expr = Expr::Convert(
+            Box::new(Expr::Convert(
+                Box::new(Expr::Field("value".into())),
+                "Trim".into(),
+            )),
+            "Upper".into(),
+        );
+        assert_eq!(
+            to_rust_code(&expr),
+            "Upper.convert(&Trim.convert(&self.value))"
         );
     }
 

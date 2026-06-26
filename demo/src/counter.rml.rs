@@ -8,6 +8,11 @@ pub struct Counter {
 }
 
 impl Counter {
+    #[computed]
+    pub fn double_count(&self) -> i32 {
+        self.count * 2
+    }
+
     #[command]
     pub fn increment(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.count += 1;
