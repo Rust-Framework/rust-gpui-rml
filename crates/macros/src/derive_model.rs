@@ -38,7 +38,8 @@ pub fn derive(input: TokenStream) -> TokenStream {
             None => return None, // 元组字段跳过（无名字无法绑定）
         };
         let name_str = name.to_string();
-        let ty_str = quote!(#f.ty).to_string().replace(' ', "");
+        let ty = &f.ty;
+        let ty_str = quote!(#ty).to_string().replace(' ', "");
         Some(quote! {
             rml_core::model::FieldMeta { name: #name_str, ty: #ty_str }
         })

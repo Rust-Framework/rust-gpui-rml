@@ -154,7 +154,7 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>, ParseError> {
 }
 
 fn skip_comment(chars: &mut CharStream) -> Result<(), ParseError> {
-    while let Some(c) = chars.peek() {
+    while chars.peek().is_some() {
         if chars.starts_with("-->") {
             chars.advance_n(3);
             return Ok(());

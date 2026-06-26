@@ -37,14 +37,10 @@ fn validate_node(node: &Node, ctx: &mut ValidationCtx) -> Result<(), ValidationE
 
 fn validate_element(elem: &Element, ctx: &mut ValidationCtx) -> Result<(), ValidationError> {
     // 校验指令
-    let mut has_if = false;
-    let mut has_each = false;
     let mut has_model = false;
 
     for d in &elem.directives {
         match d {
-            Directive::If(_) => has_if = true,
-            Directive::Each(_) => has_each = true,
             Directive::Model(_) => has_model = true,
             Directive::Ref(name) => {
                 if !ctx.ref_names.insert(name.clone()) {
@@ -53,12 +49,11 @@ fn validate_element(elem: &Element, ctx: &mut ValidationCtx) -> Result<(), Valid
                     });
                 }
             }
-            Directive::Else => {
-                return Err(ValidationError {
-                    message: "`else` must immediately follow an `if` element".into(),
-                });
-            }
-            _ => {}
+            // Phase B-1：允许 if/each/else/once/html/key/slot/show 通过校验
+            // Phase B-2 会补全 else 必须紧跟 if 的语义校验、each 子句校验等
+            Directive::If(_) | Directive::Each(_) | Directive::Else | Directive::Once
+            | Directive::Html(_) | Directive::Key(_) | Directive::Slot(_)
+            | Directive::Show(_) => {}
         }
     }
 

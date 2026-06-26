@@ -1,13 +1,13 @@
 [package]
-name = "rml"
+name = "rust-rml-engine"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "RML 解析引擎与编译器（.rml → Rust/GPUI 代码生成）"
 
 [dependencies]
-rml-core = { workspace = true }
-rml-macros = { workspace = true }
+rust-rml-core = { workspace = true }
+rust-rml-macros = { workspace = true }
 gpui = { workspace = true }
 gpui-component = { workspace = true, optional = true }
 serde = { version = "1", features = ["derive"] }

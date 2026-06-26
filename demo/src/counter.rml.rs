@@ -1,6 +1,6 @@
 use rml::prelude::*;
 
-#[derive(IModel, Default)]
+#[derive(Default)]
 #[view]
 pub struct Counter {
     pub count: i32,

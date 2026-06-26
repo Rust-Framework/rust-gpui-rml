@@ -1,15 +1,15 @@
 [package]
-name = "rml-demo"
+name = "rust-rml-demo"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "RML 计数器 demo —— 验证 .rml + .rml.rs + build.rs 三件套闭环"
 
 [dependencies]
-rml = { workspace = true }
-rml-app = { workspace = true }
-rml-core = { workspace = true }
+rust-rml-engine = { workspace = true }
+rust-rml-app = { workspace = true }
+rust-rml-core = { workspace = true }
 gpui = { workspace = true }
 
 [build-dependencies]
-rml = { workspace = true }
+rust-rml-engine = { workspace = true }

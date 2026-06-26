@@ -57,7 +57,8 @@ fn gen_impl_i_model(struct_name: &Ident, fields: &Fields) -> TokenStream {
             None => return None,
         };
         let name_str = name.to_string();
-        let ty_str = quote!(#f.ty).to_string().replace(' ', "");
+        let ty = &f.ty;
+        let ty_str = quote!(#ty).to_string().replace(' ', "");
         Some(quote! {
             rml_core::model::FieldMeta { name: #name_str, ty: #ty_str }
         })
@@ -165,11 +166,11 @@ fn expand_view_like(args: TokenStream, input: TokenStream, is_component: bool) -
     };
 
     // include! 生成代码
+    // 注：include! 必须在模块顶层，不能放在 const 块中，
+    // 因为被包含的文件含 impl Render 等 item，不能出现在 const 表达式块内部。
     let include_stmt = quote! {
         #[allow(non_snake_case, unused_imports, unused_variables, dead_code)]
-        const _: () = {
-            include!(concat!(env!("OUT_DIR"), "/rml_generated/", #generated_file));
-        };
+        include!(concat!(env!("OUT_DIR"), "/rml_generated/", #generated_file));
     };
 
     // 重新构造 struct（移除 #[element] 等内部属性以免告警）
