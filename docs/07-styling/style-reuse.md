@@ -367,8 +367,7 @@ CSS 模块提供作用域隔离，避免样式冲突：
 // src/components/button/button.rml.rs
 use rml::prelude::*;
 
-#[derive(Model)]
-#[component(template = "components/button/button.rml")]
+#[component]
 pub struct Button {
     pub text: SharedString,
     pub variant: SharedString,

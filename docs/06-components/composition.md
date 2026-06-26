@@ -39,8 +39,8 @@
 
 ```rust
 // 子组件
-#[derive(Model)]
-#[component(template = "components/child.rml")]
+#[derive(IModel)]
+#[component]
 pub struct ChildComponent {
     pub title: SharedString,
     pub data: Vec<Item>,
@@ -54,7 +54,7 @@ pub struct ChildComponent {
 // 子组件内部
 impl ChildComponent {
     #[command]
-    pub fn on_internal_change(&mut self, ev: &ChangeEvent, cx: &mut ViewContext<Self>) {
+    pub fn on_internal_change(&mut self, ev: &ChangeEvent, cx: &mut Context<Self>) {
         // 处理内部变化...
 
         // 触发事件通知父视图
@@ -87,7 +87,7 @@ impl ChildComponent {
 ```
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct UserManagement {
     pub users: Vec<User>,
@@ -96,7 +96,7 @@ pub struct UserManagement {
 
 impl UserManagement {
     #[command]
-    pub fn handle_save(&mut self, user: User, _: &SaveEvent, cx: &mut ViewContext<Self>) {
+    pub fn handle_save(&mut self, user: User, _: &SaveEvent, cx: &mut Context<Self>) {
         if let Some(existing) = self.users.iter_mut().find(|u| u.id == user.id) {
             *existing = user;
         } else {
@@ -107,19 +107,19 @@ impl UserManagement {
     }
 
     #[command]
-    pub fn handle_cancel(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn handle_cancel(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.editing_user = None;
         cx.notify();
     }
 
     #[command]
-    pub fn handle_edit(&mut self, user_id: u64, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn handle_edit(&mut self, user_id: u64, _: &ClickEvent, cx: &mut Context<Self>) {
         self.editing_user = self.users.iter().find(|u| u.id == user_id).cloned();
         cx.notify();
     }
 
     #[command]
-    pub fn handle_delete(&mut self, user_id: u64, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn handle_delete(&mut self, user_id: u64, _: &ClickEvent, cx: &mut Context<Self>) {
         self.users.retain(|u| u.id != user_id);
         cx.notify();
     }
@@ -145,7 +145,7 @@ impl UserManagement {
 ```
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct SearchPanel {
     pub search_results: Vec<SearchResult>,
@@ -153,12 +153,12 @@ pub struct SearchPanel {
 
 impl SearchPanel {
     #[command]
-    pub fn handle_search(&mut self, ev: &SearchEvent, cx: &mut ViewContext<Self>) {
+    pub fn handle_search(&mut self, ev: &SearchEvent, cx: &mut Context<Self>) {
         let query = ev.query.clone();
         self.perform_search(&query, cx);
     }
 
-    fn perform_search(&mut self, query: &str, cx: &mut ViewContext<Self>) {
+    fn perform_search(&mut self, query: &str, cx: &mut Context<Self>) {
         // 执行搜索，更新 search_results
         cx.notify();
     }
@@ -188,7 +188,7 @@ impl SearchPanel {
 ```rust
 use rml::prelude::*;
 
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct App {
     pub theme: Entity<Theme>,
@@ -206,7 +206,7 @@ impl App {
     }
 
     #[on_loaded]
-    pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
         // 提供依赖
         cx.provide(self.theme.clone());
         cx.provide(self.user_session.clone());
@@ -218,8 +218,8 @@ impl App {
 ### 注入依赖
 
 ```rust
-#[derive(Model)]
-#[component(template = "components/user_avatar.rml")]
+#[derive(IModel)]
+#[component]
 pub struct UserAvatar {
     pub user_id: u64,
     pub avatar_url: SharedString,
@@ -238,7 +238,7 @@ impl UserAvatar {
     }
 
     #[on_loaded]
-    pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
         // 注入依赖
         self.user_session = cx.use_provider::<Entity<UserSession>>();
 
@@ -273,7 +273,7 @@ pub fn with_loading<T: Model>(inner: Entity<T>) -> impl Model {
     LoadingWrapper::new(inner)
 }
 
-#[derive(Model)]
+#[derive(IModel)]
 #[component(template = "components/loading_wrapper.rml")]
 pub struct LoadingWrapper {
     pub is_loading: bool,
@@ -317,7 +317,7 @@ impl LoadingWrapper {
 
 ```rust
 // 容器组件：负责数据获取和状态管理
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct UserListContainer {
     pub users: Vec<User>,
@@ -327,11 +327,11 @@ pub struct UserListContainer {
 
 impl UserListContainer {
     #[on_loaded]
-    pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
         self.fetch_users(cx);
     }
 
-    fn fetch_users(&mut self, cx: &mut ViewContext<Self>) {
+    fn fetch_users(&mut self, cx: &mut Context<Self>) {
         self.is_loading = true;
         cx.notify();
 
@@ -373,7 +373,7 @@ impl UserListContainer {
 
 ```rust
 // 展示组件：只负责 UI 展示
-#[derive(Model)]
+#[derive(IModel)]
 #[component(template = "components/user_list_presentation.rml")]
 pub struct UserListPresentation {
     pub users: Vec<User>,
@@ -386,7 +386,7 @@ pub struct UserListPresentation {
 
 ```rust
 // 主组件
-#[derive(Model)]
+#[derive(IModel)]
 #[component(template = "components/tabs.rml")]
 pub struct Tabs {
     pub active_tab: SharedString,
@@ -394,7 +394,7 @@ pub struct Tabs {
 }
 
 // 子组件
-#[derive(Model)]
+#[derive(IModel)]
 #[component(template = "components/tab_item.rml")]
 pub struct TabItem {
     pub id: SharedString,
@@ -402,7 +402,7 @@ pub struct TabItem {
     pub is_active: bool,
 }
 
-#[derive(Model)]
+#[derive(IModel)]
 #[component(template = "components/tab_panel.rml")]
 pub struct TabPanel {
     pub id: SharedString,
@@ -505,7 +505,7 @@ pub struct UserAvatar { ... }
 
 ```rust
 // ✅ 显式声明依赖
-#[component(template = "components/user_avatar.rml")]
+#[component]
 pub struct UserAvatar {
     pub user_id: u64,
     pub avatar_url: SharedString,
@@ -572,7 +572,7 @@ use rml::prelude::*;
 use crate::components::{search_box::SearchBox, dialog::Dialog, button::Button};
 use crate::views::user_management::{user_list::UserList, user_form::UserForm};
 
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct UserManagement {
     pub users: Vec<User>,
@@ -600,11 +600,11 @@ impl UserManagement {
     }
 
     #[on_loaded]
-    pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
         self.fetch_users(cx);
     }
 
-    fn fetch_users(&mut self, cx: &mut ViewContext<Self>) {
+    fn fetch_users(&mut self, cx: &mut Context<Self>) {
         cx.spawn(|this, mut cx| async move {
             let users = fetch_users_from_api().await.unwrap_or_default();
             let _ = this.update(&mut cx, |this, cx| {
@@ -616,21 +616,21 @@ impl UserManagement {
     }
 
     #[command]
-    pub fn show_add_form(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn show_add_form(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.editing_user = None;
         self.is_form_visible = true;
         cx.notify();
     }
 
     #[command]
-    pub fn handle_edit(&mut self, user_id: u64, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn handle_edit(&mut self, user_id: u64, _: &ClickEvent, cx: &mut Context<Self>) {
         self.editing_user = self.users.iter().find(|u| u.id == user_id).cloned();
         self.is_form_visible = true;
         cx.notify();
     }
 
     #[command]
-    pub fn handle_save(&mut self, user: User, _: &SaveEvent, cx: &mut ViewContext<Self>) {
+    pub fn handle_save(&mut self, user: User, _: &SaveEvent, cx: &mut Context<Self>) {
         if let Some(existing) = self.users.iter_mut().find(|u| u.id == user.id) {
             *existing = user;
         } else {
@@ -643,14 +643,14 @@ impl UserManagement {
     }
 
     #[command]
-    pub fn handle_cancel(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn handle_cancel(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.is_form_visible = false;
         self.editing_user = None;
         cx.notify();
     }
 
     #[command]
-    pub fn handle_delete(&mut self, user_id: u64, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn handle_delete(&mut self, user_id: u64, _: &ClickEvent, cx: &mut Context<Self>) {
         if let Some(user) = self.users.iter().find(|u| u.id == user_id) {
             self.deleting_user_id = Some(user_id);
             self.deleting_user_name = user.name.clone();
@@ -660,7 +660,7 @@ impl UserManagement {
     }
 
     #[command]
-    pub fn handle_delete_confirm(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn handle_delete_confirm(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         if let Some(id) = self.deleting_user_id.take() {
             self.users.retain(|u| u.id != id);
             self.apply_filter();
@@ -670,28 +670,28 @@ impl UserManagement {
     }
 
     #[command]
-    pub fn handle_delete_cancel(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn handle_delete_cancel(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.is_delete_dialog_open = false;
         self.deleting_user_id = None;
         cx.notify();
     }
 
     #[command]
-    pub fn handle_delete_dialog_close(&mut self, _: &DialogCloseEvent, cx: &mut ViewContext<Self>) {
+    pub fn handle_delete_dialog_close(&mut self, _: &DialogCloseEvent, cx: &mut Context<Self>) {
         self.is_delete_dialog_open = false;
         self.deleting_user_id = None;
         cx.notify();
     }
 
     #[command]
-    pub fn handle_search(&mut self, ev: &SearchEvent, cx: &mut ViewContext<Self>) {
+    pub fn handle_search(&mut self, ev: &SearchEvent, cx: &mut Context<Self>) {
         self.search_query = ev.query.clone();
         self.apply_filter();
         cx.notify();
     }
 
     #[command]
-    pub fn handle_clear_search(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn handle_clear_search(&mut self, cx: &mut Context<Self>) {
         self.search_query = SharedString::default();
         self.filtered_users = self.users.clone();
         cx.notify();

@@ -27,7 +27,7 @@
 ### 用途一：加载数据
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct UserListView {
     pub users: Vec<User>,
@@ -45,11 +45,11 @@ impl UserListView {
     }
 
     #[on_loaded]
-    pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
         self.fetch_users(cx);
     }
 
-    fn fetch_users(&mut self, cx: &mut ViewContext<Self>) {
+    fn fetch_users(&mut self, cx: &mut Context<Self>) {
         self.is_loading = true;
         self.error = None;
         cx.notify();
@@ -81,7 +81,7 @@ impl UserListView {
 ```rust
 use std::time::Duration;
 
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct ClockView {
     pub current_time: SharedString,
@@ -97,12 +97,12 @@ impl ClockView {
     }
 
     #[on_loaded]
-    pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
         self.update_time(cx);
         self.start_timer(cx);
     }
 
-    fn start_timer(&mut self, cx: &mut ViewContext<Self>) {
+    fn start_timer(&mut self, cx: &mut Context<Self>) {
         self.timer = Some(cx.spawn(|this, mut cx| async move {
             loop {
                 cx.background_executor()
@@ -115,7 +115,7 @@ impl ClockView {
         }));
     }
 
-    fn update_time(&mut self, cx: &mut ViewContext<Self>) {
+    fn update_time(&mut self, cx: &mut Context<Self>) {
         self.current_time = chrono::Local::now().format("%H:%M:%S").to_string().into();
         cx.notify();
     }
@@ -125,7 +125,7 @@ impl ClockView {
 ### 用途三：订阅事件
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct NotificationView {
     pub notifications: Vec<Notification>,
@@ -141,7 +141,7 @@ impl NotificationView {
     }
 
     #[on_loaded]
-    pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
         // 订阅全局通知服务
         let notification_service = cx.global::<Entity<NotificationService>>();
 
@@ -153,7 +153,7 @@ impl NotificationView {
         ));
     }
 
-    fn handle_notification(&mut self, event: &NotificationEvent, cx: &mut ViewContext<Self>) {
+    fn handle_notification(&mut self, event: &NotificationEvent, cx: &mut Context<Self>) {
         self.notifications.push(event.notification.clone());
         cx.notify();
     }
@@ -163,7 +163,7 @@ impl NotificationView {
 ### 用途四：获取焦点
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct SearchView {
     pub query: SharedString,
@@ -181,7 +181,7 @@ impl SearchView {
     }
 
     #[on_loaded]
-    pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
         // 自动聚焦搜索框
         self.search_input.focus(cx);
     }
@@ -202,7 +202,7 @@ impl SearchView {
 ### 用途五：初始化第三方库
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct ChartView {
     pub data: Vec<f64>,
@@ -219,18 +219,18 @@ impl ChartView {
     }
 
     #[on_loaded]
-    pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
         // 初始化图表
         self.init_chart(cx);
         self.load_data(cx);
     }
 
-    fn init_chart(&mut self, cx: &mut ViewContext<Self>) {
+    fn init_chart(&mut self, cx: &mut Context<Self>) {
         // 获取图表容器，初始化图表库
         // self.chart_container...
     }
 
-    fn load_data(&mut self, cx: &mut ViewContext<Self>) {
+    fn load_data(&mut self, cx: &mut Context<Self>) {
         cx.spawn(|this, mut cx| async move {
             let data = fetch_chart_data().await;
             let _ = this.update(&mut cx, |this, cx| {
@@ -240,7 +240,7 @@ impl ChartView {
         }).detach();
     }
 
-    fn update_chart(&mut self, cx: &mut ViewContext<Self>) {
+    fn update_chart(&mut self, cx: &mut Context<Self>) {
         // 更新图表数据
         cx.notify();
     }
@@ -254,24 +254,24 @@ impl ChartView {
 ```rust
 // ✅ 分离初始化逻辑
 #[on_loaded]
-pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
     self.load_initial_data(cx);
     self.setup_subscriptions(cx);
     self.start_background_tasks(cx);
     self.focus_initial_element(cx);
 }
 
-fn load_initial_data(&mut self, cx: &mut ViewContext<Self>) {
+fn load_initial_data(&mut self, cx: &mut Context<Self>) {
     // 只负责加载数据
 }
 
-fn setup_subscriptions(&mut self, cx: &mut ViewContext<Self>) {
+fn setup_subscriptions(&mut self, cx: &mut Context<Self>) {
     // 只负责设置订阅
 }
 
 // ❌ 所有逻辑堆在一起
 #[on_loaded]
-pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
     // 加载数据
     self.is_loading = true;
     cx.notify();
@@ -299,7 +299,7 @@ pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
 ```rust
 // ✅ 异步操作用 spawn
 #[on_loaded]
-pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
     cx.spawn(|this, mut cx| async move {
         let data = fetch_data().await;
         let _ = this.update(&mut cx, |this, cx| {
@@ -311,7 +311,7 @@ pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
 
 // ❌ 阻塞 UI
 #[on_loaded]
-pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
     let data = fetch_data_blocking();  // 阻塞 UI 线程
     self.data = data;
     cx.notify();
@@ -322,11 +322,11 @@ pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
 
 ```rust
 #[on_loaded]
-pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
     self.load_data(cx);
 }
 
-fn load_data(&mut self, cx: &mut ViewContext<Self>) {
+fn load_data(&mut self, cx: &mut Context<Self>) {
     self.is_loading = true;
     cx.notify();
 
@@ -355,7 +355,7 @@ fn load_data(&mut self, cx: &mut ViewContext<Self>) {
 ### 4. 避免重复加载
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct DataView {
     pub data: Vec<Item>,
@@ -364,7 +364,7 @@ pub struct DataView {
 
 impl DataView {
     #[on_loaded]
-    pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
         if !self.is_loaded {
             self.load_data(cx);
             self.is_loaded = true;
@@ -384,7 +384,7 @@ impl DataView {
 ```
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct DetailView {
     pub data: Item,
@@ -392,7 +392,7 @@ pub struct DetailView {
 
 impl DetailView {
     #[on_loaded]
-    pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
         println!("详情视图加载");
         self.load_related_data(cx);
     }
@@ -415,15 +415,15 @@ impl DetailView {
 ```
 
 ```rust
-#[derive(Model)]
-#[component(template = "components/item_view.rml")]
+#[derive(IModel)]
+#[component]
 pub struct ItemView {
     pub item: Item,
 }
 
 impl ItemView {
     #[on_loaded]
-    pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
         // 每个新项都会触发
         self.load_thumbnail(cx);
     }
@@ -436,7 +436,7 @@ impl ItemView {
 use std::time::Duration;
 use rml::prelude::*;
 
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct UserProfileView {
     pub user_id: u64,
@@ -465,7 +465,7 @@ impl UserProfileView {
     }
 
     #[on_loaded]
-    pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
         // 1. 加载用户数据
         self.load_user(cx);
 
@@ -476,7 +476,7 @@ impl UserProfileView {
         self.start_refresh_timer(cx);
     }
 
-    fn load_user(&mut self, cx: &mut ViewContext<Self>) {
+    fn load_user(&mut self, cx: &mut Context<Self>) {
         self.is_loading = true;
         cx.notify();
 
@@ -502,7 +502,7 @@ impl UserProfileView {
         }).detach();
     }
 
-    fn load_posts(&mut self, cx: &mut ViewContext<Self>) {
+    fn load_posts(&mut self, cx: &mut Context<Self>) {
         let user_id = self.user_id;
         cx.spawn(|this, mut cx| async move {
             match fetch_user_posts(user_id).await {
@@ -522,7 +522,7 @@ impl UserProfileView {
         }).detach();
     }
 
-    fn start_refresh_timer(&mut self, cx: &mut ViewContext<Self>) {
+    fn start_refresh_timer(&mut self, cx: &mut Context<Self>) {
         self.refresh_timer = Some(cx.spawn(|this, mut cx| async move {
             loop {
                 cx.background_executor()
@@ -535,13 +535,13 @@ impl UserProfileView {
         }));
     }
 
-    fn refresh_data(&mut self, cx: &mut ViewContext<Self>) {
+    fn refresh_data(&mut self, cx: &mut Context<Self>) {
         self.load_user(cx);
         self.load_posts(cx);
     }
 
     #[command]
-    pub fn on_avatar_change(&mut self, ev: &ChangeEvent, cx: &mut ViewContext<Self>) {
+    pub fn on_avatar_change(&mut self, ev: &ChangeEvent, cx: &mut Context<Self>) {
         if let Some(user) = &mut self.user {
             user.avatar_url = ev.value.clone();
             cx.notify();

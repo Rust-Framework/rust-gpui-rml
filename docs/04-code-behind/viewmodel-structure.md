@@ -15,7 +15,7 @@ ViewModel 是 `.rml.rs` 文件中的核心结构体，承担以下职责：
 // counter.rml.rs
 use rml::prelude::*;
 
-#[derive(Model)]    // 1. 成为 GPUI Entity
+#[derive(IModel)]    // 1. 成为 GPUI Entity
 #[component]             // 2. 标记为 RML 视图
 pub struct Counter {
     pub count: i32,  // 3. 响应式状态
@@ -27,19 +27,19 @@ impl Counter {
     }
 
     #[command]  // 5. 命令方法
-    pub fn increment(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn increment(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.count += 1;
         cx.notify();
     }
 }
 ```
 
-## 4.1.2 `#[derive(Model)]`
+## 4.1.2 `#[derive(IModel)]`
 
-`#[derive(Model)]` 让结构体成为 GPUI 管理的 Entity：
+`#[derive(IModel)]` 让结构体成为 GPUI 管理的 Entity：
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 pub struct Counter {
     pub count: i32,
 }
@@ -49,7 +49,7 @@ pub struct Counter {
 
 - **响应式状态**：字段变化时可通过 `cx.notify()` 触发 UI 更新
 - **GPUI Entity**：可通过 `Entity<T>` 句柄被其他视图引用
-- **ViewContext**：在命令方法中接收 `cx: &mut ViewContext<Self>`
+- **ViewContext**：在命令方法中接收 `cx: &mut Context<Self>`
 
 ### Model 派生的要求
 
@@ -58,7 +58,7 @@ pub struct Counter {
 
 ```rust
 // ✅ 满足要求
-#[derive(Model)]
+#[derive(IModel)]
 pub struct MyView {
     pub name: SharedString,  // SharedString: Send + 'static
     pub count: i32,          // i32: Send + 'static
@@ -66,7 +66,7 @@ pub struct MyView {
 }
 
 // ❌ 不满足要求
-#[derive(Model)]
+#[derive(IModel)]
 pub struct BadView {
     pub callback: Rc<dyn Fn()>,  // Rc 不是 Send
     pub borrowed: &'static str,  // 引用需要 'static
@@ -81,7 +81,7 @@ pub struct BadView {
 2. 编译器应为它生成 `Render` trait 的实现
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct Counter {
     pub count: i32,
@@ -104,8 +104,8 @@ src/views/counter.rml.rs    ← ViewModel（Counter 结构体）
 如果需要偏离命名约定，可以显式指定模板路径：
 
 ```rust
-#[derive(Model)]
-#[component(template = "views/custom_counter.rml")]
+#[derive(IModel)]
+#[component]
 pub struct Counter {
     pub count: i32,
 }
@@ -118,7 +118,7 @@ pub struct Counter {
 UI 可以通过 `{field}` 绑定访问的字段：
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct MyView {
     pub user_name: SharedString,  // UI 可绑定 {user_name}
@@ -136,7 +136,7 @@ pub struct MyView {
 不需要在 UI 中暴露的字段可以保持 private：
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct TodoViewModel {
     pub todos: Vec<TodoItem>,  // pub：UI 需要遍历
@@ -222,7 +222,7 @@ RML 借鉴 WPF 的 MVVM 模式，区分 Model 和 ViewModel：
 ### Model：纯数据
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 pub struct TodoItem {
     pub id: u64,
     pub text: SharedString,
@@ -238,7 +238,7 @@ pub struct TodoItem {
 ### ViewModel：视图状态
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct TodoViewModel {
     pub todos: Vec<TodoItem>,
@@ -247,7 +247,7 @@ pub struct TodoViewModel {
 
 impl TodoViewModel {
     #[command]
-    pub fn add_todo(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn add_todo(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         // ...
     }
 }
@@ -263,20 +263,20 @@ impl TodoViewModel {
 ViewModel 可以包含 Model 作为字段：
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 pub struct User {
     pub name: SharedString,
     pub email: SharedString,
     pub profile: UserProfile,
 }
 
-#[derive(Model)]
+#[derive(IModel)]
 pub struct UserProfile {
     pub avatar: SharedString,
     pub bio: SharedString,
 }
 
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct UserView {
     pub user: User,  // 嵌套 Model
@@ -321,7 +321,7 @@ pub struct UserView {
 // views/user_list.rml.rs
 use rml::prelude::*;
 
-#[derive(Model)]
+#[derive(IModel)]
 pub struct User {
     pub id: u64,
     pub name: SharedString,
@@ -329,7 +329,7 @@ pub struct User {
     pub is_active: bool,
 }
 
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct UserListViewModel {
     pub users: Vec<User>,
@@ -369,7 +369,7 @@ impl UserListViewModel {
     }
 
     #[command]
-    pub fn add_user(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn add_user(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.is_loading = true;
         cx.notify();
 
@@ -387,13 +387,13 @@ impl UserListViewModel {
     }
 
     #[command]
-    pub fn select_user(&mut self, id: u64, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn select_user(&mut self, id: u64, _: &ClickEvent, cx: &mut Context<Self>) {
         self.selected_user_id = Some(id);
         cx.notify();
     }
 
     #[on_loaded]
-    pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
         // 加载初始数据
         self.add_user(&ClickEvent::default(), cx);
         self.add_user(&ClickEvent::default(), cx);
@@ -405,7 +405,7 @@ impl UserListViewModel {
 
 ViewModel 的标准结构：
 
-1. **`#[derive(Model)]`**：成为 GPUI Entity
+1. **`#[derive(IModel)]`**：成为 GPUI Entity
 2. **`#[component]`**：标记为 RML 视图，关联 `.rml` 文件
 3. **`pub` 字段**：UI 可绑定的响应式状态
 4. **`private` 字段**：内部状态，不暴露给 UI

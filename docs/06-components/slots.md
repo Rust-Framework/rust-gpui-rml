@@ -158,7 +158,7 @@
 
 ```rust
 // 父视图
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct MyView {
     pub user_name: SharedString,  // 父视图的字段
@@ -179,8 +179,8 @@ pub struct MyView {
 ```
 
 ```rust
-#[derive(Model)]
-#[component(template = "components/list.rml")]
+#[derive(IModel)]
+#[component]
 pub struct List {
     pub items: Vec<Item>,
 }
@@ -345,8 +345,8 @@ pub struct List {
 // components/dialog.rml.rs
 use rml::prelude::*;
 
-#[derive(Model)]
-#[component(template = "components/dialog.rml")]
+#[derive(IModel)]
+#[component]
 pub struct Dialog {
     pub title: SharedString,
     pub is_open: bool,
@@ -367,12 +367,12 @@ impl Dialog {
         }
     }
 
-    pub fn open(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn open(&mut self, cx: &mut Context<Self>) {
         self.is_open = true;
         cx.notify();
     }
 
-    pub fn close(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn close(&mut self, cx: &mut Context<Self>) {
         self.is_open = false;
         cx.notify();
 
@@ -382,19 +382,19 @@ impl Dialog {
     }
 
     #[command]
-    pub fn on_close_click(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn on_close_click(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.close(cx);
     }
 
     #[command]
-    pub fn on_overlay_click(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn on_overlay_click(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         if self.closable {
             self.close(cx);
         }
     }
 
     #[command]
-    pub fn on_content_click(&mut self, ev: &ClickEvent, _cx: &mut ViewContext<Self>) {
+    pub fn on_content_click(&mut self, ev: &ClickEvent, _cx: &mut Context<Self>) {
         ev.stop_propagation();
     }
 }

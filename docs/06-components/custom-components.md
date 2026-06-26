@@ -30,8 +30,8 @@
 // components/counter.rml.rs
 use rml::prelude::*;
 
-#[derive(Model)]
-#[component(template = "components/counter.rml")]
+#[derive(IModel)]
+#[component]
 pub struct Counter {
     pub count: i32,
     pub min: i32,
@@ -48,7 +48,7 @@ impl Counter {
     }
 
     #[command]
-    pub fn increment(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn increment(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         if self.count < self.max {
             self.count += 1;
             cx.notify();
@@ -56,7 +56,7 @@ impl Counter {
     }
 
     #[command]
-    pub fn decrement(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn decrement(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         if self.count > self.min {
             self.count -= 1;
             cx.notify();
@@ -80,7 +80,7 @@ impl Counter {
 use rml::prelude::*;
 use crate::components::counter::Counter;
 
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct MyView {
     pub initial_count: i32,
@@ -98,8 +98,8 @@ impl MyView {
 `#[component]` 宏标记一个结构体为 RML 组件：
 
 ```rust
-#[derive(Model)]
-#[component(template = "components/counter.rml")]
+#[derive(IModel)]
+#[component]
 pub struct Counter {
     pub count: i32,
     pub min: i32,
@@ -121,7 +121,7 @@ pub struct Counter {
 
 ```rust
 // src/components/counter.rml
-#[component(template = "components/counter.rml")]
+#[component]
 
 // src/views/user/profile.rml
 #[component(template = "views/user/profile.rml")]
@@ -132,8 +132,8 @@ pub struct Counter {
 组件的属性就是结构体的 `pub` 字段：
 
 ```rust
-#[derive(Model)]
-#[component(template = "components/button.rml")]
+#[derive(IModel)]
+#[component]
 pub struct Button {
     pub text: SharedString,        // 输入属性
     pub variant: SharedString,     // 输入属性
@@ -179,8 +179,8 @@ pub struct Button {
 组件可以通过 `Option<Arc<dyn Fn(...)>>` 字段声明事件回调：
 
 ```rust
-#[derive(Model)]
-#[component(template = "components/counter.rml")]
+#[derive(IModel)]
+#[component]
 pub struct Counter {
     pub count: i32,
     pub min: i32,
@@ -197,7 +197,7 @@ pub struct Counter {
 ```rust
 impl Counter {
     #[command]
-    pub fn increment(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn increment(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         if self.count < self.max {
             self.count += 1;
             cx.notify();
@@ -232,12 +232,12 @@ impl Counter {
 
 ```rust
 #[command]
-pub fn handle_count_change(&mut self, new_count: i32, cx: &mut ViewContext<Self>) {
+pub fn handle_count_change(&mut self, new_count: i32, cx: &mut Context<Self>) {
     println!("计数变化: {}", new_count);
 }
 
 #[command]
-pub fn handle_reach_max(&mut self, cx: &mut ViewContext<Self>) {
+pub fn handle_reach_max(&mut self, cx: &mut Context<Self>) {
     println!("达到最大值！");
 }
 ```
@@ -249,8 +249,8 @@ pub fn handle_reach_max(&mut self, cx: &mut ViewContext<Self>) {
 组件可以通过 `model` 指令实现双向绑定：
 
 ```rust
-#[derive(Model)]
-#[component(template = "components/counter.rml")]
+#[derive(IModel)]
+#[component]
 pub struct Counter {
     pub count: i32,
     pub min: i32,
@@ -276,7 +276,7 @@ impl TwoWayBinding for Counter {
         self.count
     }
 
-    fn set_value(&mut self, value: Self::Value, cx: &mut ViewContext<Self>) {
+    fn set_value(&mut self, value: Self::Value, cx: &mut Context<Self>) {
         self.count = value;
         cx.notify();
     }
@@ -328,7 +328,7 @@ impl TwoWayBinding for Counter {
 组件支持与视图相同的生命周期回调：
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component(template = "components/data_loader.rml")]
 pub struct DataLoader {
     pub data: Vec<Item>,
@@ -337,16 +337,16 @@ pub struct DataLoader {
 
 impl DataLoader {
     #[on_loaded]
-    pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
         self.load_data(cx);
     }
 
     #[on_unloaded]
-    pub fn on_unloaded(&mut self, _cx: &mut ViewContext<Self>) {
+    pub fn on_unloaded(&mut self, _cx: &mut Context<Self>) {
         // 清理资源
     }
 
-    fn load_data(&mut self, cx: &mut ViewContext<Self>) {
+    fn load_data(&mut self, cx: &mut Context<Self>) {
         self.is_loading = true;
         cx.notify();
 
@@ -403,7 +403,7 @@ pub struct SearchEvent {
     pub query: SharedString,
 }
 
-#[derive(Model)]
+#[derive(IModel)]
 #[component(template = "components/search_box.rml")]
 pub struct SearchBox {
     pub query: SharedString,
@@ -429,7 +429,7 @@ impl SearchBox {
     }
 
     #[command]
-    pub fn on_input(&mut self, ev: &InputEvent, cx: &mut ViewContext<Self>) {
+    pub fn on_input(&mut self, ev: &InputEvent, cx: &mut Context<Self>) {
         self.query = ev.value.clone();
         cx.notify();
 
@@ -458,7 +458,7 @@ impl SearchBox {
     }
 
     #[command]
-    pub fn on_clear_click(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn on_clear_click(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         if let Some(task) = self.debounce_task.take() {
             task.abort();
         }
@@ -519,7 +519,7 @@ impl SearchBox {
 use rml::prelude::*;
 use crate::components::search_box::{SearchBox, SearchEvent};
 
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct UserListView {
     pub users: Vec<User>,
@@ -537,19 +537,19 @@ impl UserListView {
     }
 
     #[command]
-    pub fn handle_search(&mut self, ev: &SearchEvent, cx: &mut ViewContext<Self>) {
+    pub fn handle_search(&mut self, ev: &SearchEvent, cx: &mut Context<Self>) {
         self.search_query = ev.query.clone();
         self.filter_users(cx);
     }
 
     #[command]
-    pub fn handle_clear(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn handle_clear(&mut self, cx: &mut Context<Self>) {
         self.search_query = SharedString::default();
         self.filtered_users = self.users.clone();
         cx.notify();
     }
 
-    fn filter_users(&mut self, cx: &mut ViewContext<Self>) {
+    fn filter_users(&mut self, cx: &mut Context<Self>) {
         let query = self.search_query.to_lowercase();
         self.filtered_users = self
             .users
@@ -585,7 +585,7 @@ pub struct UserAvatarAndNameAndActions { ... }
 
 ```rust
 // ✅ 通过属性配置
-#[component(template = "components/button.rml")]
+#[component]
 pub struct Button {
     pub variant: SharedString,  // primary, secondary, danger
     pub size: SharedString,     // small, medium, large
@@ -650,8 +650,8 @@ impl Button {
 /// ```html
 /// <Button text="提交" variant="primary" size="large" on_click={submit} />
 /// ```
-#[derive(Model)]
-#[component(template = "components/button.rml")]
+#[derive(IModel)]
+#[component]
 pub struct Button {
     pub text: SharedString,
     pub variant: SharedString,

@@ -9,8 +9,8 @@
 ### 基础类型
 
 ```rust
-#[derive(Model)]
-#[component(template = "components/button.rml")]
+#[derive(IModel)]
+#[component]
 pub struct Button {
     pub text: SharedString,         // 字符串
     pub count: i32,                 // 整数
@@ -23,8 +23,8 @@ pub struct Button {
 ### 集合类型
 
 ```rust
-#[derive(Model)]
-#[component(template = "components/list.rml")]
+#[derive(IModel)]
+#[component]
 pub struct List {
     pub items: Vec<Item>,           // 列表
     pub selected_ids: HashSet<u64>, // 集合
@@ -34,7 +34,7 @@ pub struct List {
 ### Option 类型
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component(template = "components/avatar.rml")]
 pub struct Avatar {
     pub src: SharedString,
@@ -45,14 +45,14 @@ pub struct Avatar {
 ### 自定义类型
 
 ```rust
-#[derive(Model, Clone)]
+#[derive(IModel, Clone)]
 pub struct User {
     pub id: u64,
     pub name: SharedString,
     pub email: SharedString,
 }
 
-#[derive(Model)]
+#[derive(IModel)]
 #[component(template = "components/user_card.rml")]
 pub struct UserCard {
     pub user: User,                 // 自定义类型
@@ -70,8 +70,8 @@ pub enum ButtonVariant {
     Ghost,
 }
 
-#[derive(Model)]
-#[component(template = "components/button.rml")]
+#[derive(IModel)]
+#[component]
 pub struct Button {
     pub variant: ButtonVariant,     // 枚举
 }
@@ -137,8 +137,8 @@ impl Button {
 ### 通过 `#[prop]` 属性
 
 ```rust
-#[derive(Model)]
-#[component(template = "components/button.rml")]
+#[derive(IModel)]
+#[component]
 pub struct Button {
     pub text: SharedString,
     #[prop(default = "primary")]
@@ -173,7 +173,7 @@ pub struct Button {
 ```
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct ParentView {
     pub user_name: SharedString,
@@ -183,7 +183,7 @@ pub struct ParentView {
 
 impl ParentView {
     #[command]
-    pub fn submit(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn submit(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.is_loading = true;
         self.button_text = "加载中...".into();
         cx.notify();
@@ -205,7 +205,7 @@ impl ParentView {
 用 `#[on_prop_change]` 监听属性变化：
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component(template = "components/data_view.rml")]
 pub struct DataView {
     pub data_id: u64,
@@ -214,11 +214,11 @@ pub struct DataView {
 
 impl DataView {
     #[on_prop_change(data_id)]
-    pub fn on_data_id_change(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn on_data_id_change(&mut self, cx: &mut Context<Self>) {
         self.load_data(self.data_id, cx);
     }
 
-    fn load_data(&mut self, id: u64, cx: &mut ViewContext<Self>) {
+    fn load_data(&mut self, id: u64, cx: &mut Context<Self>) {
         cx.spawn(|this, mut cx| async move {
             let data = fetch_data(id).await;
             let _ = this.update(&mut cx, |this, cx| {
@@ -237,7 +237,7 @@ impl DataView {
 ### 实现双向绑定
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component(template = "components/counter.rml")]
 pub struct Counter {
     pub value: i32,
@@ -252,7 +252,7 @@ impl TwoWayBinding for Counter {
         self.value
     }
 
-    fn set_value(&mut self, value: Self::Value, cx: &mut ViewContext<Self>) {
+    fn set_value(&mut self, value: Self::Value, cx: &mut Context<Self>) {
         self.value = value.clamp(self.min, self.max);
         cx.notify();
     }
@@ -269,7 +269,7 @@ impl TwoWayBinding for Counter {
 ```
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct MyView {
     pub my_count: i32,
@@ -304,7 +304,7 @@ impl ProgressBar {
 
 ```rust
 impl ProgressBar {
-    pub fn set_value(&mut self, value: f64, cx: &mut ViewContext<Self>) {
+    pub fn set_value(&mut self, value: f64, cx: &mut Context<Self>) {
         self.value = value.clamp(0.0, 100.0);
         cx.notify();
     }
@@ -315,7 +315,7 @@ impl ProgressBar {
 
 ```rust
 #[on_prop_change(value)]
-pub fn on_value_change(&mut self, cx: &mut ViewContext<Self>) {
+pub fn on_value_change(&mut self, cx: &mut Context<Self>) {
     if self.value < 0.0 || self.value > 100.0 {
         self.value = self.value.clamp(0.0, 100.0);
         cx.notify();
@@ -329,7 +329,7 @@ pub fn on_value_change(&mut self, cx: &mut ViewContext<Self>) {
 
 ```rust
 // ✅ 精简的属性
-#[component(template = "components/button.rml")]
+#[component]
 pub struct Button {
     pub text: SharedString,
     pub variant: SharedString,
@@ -338,7 +338,7 @@ pub struct Button {
 }
 
 // ❌ 过多的属性
-#[component(template = "components/button.rml")]
+#[component]
 pub struct Button {
     pub text: SharedString,
     pub text_color: SharedString,
@@ -416,7 +416,7 @@ impl Default for ProgressVariant {
     }
 }
 
-#[derive(Model)]
+#[derive(IModel)]
 #[component(template = "components/progress_bar.rml")]
 pub struct ProgressBar {
     pub value: f64,
@@ -467,7 +467,7 @@ impl TwoWayBinding for ProgressBar {
         self.value
     }
 
-    fn set_value(&mut self, value: Self::Value, cx: &mut ViewContext<Self>) {
+    fn set_value(&mut self, value: Self::Value, cx: &mut Context<Self>) {
         self.value = value.clamp(0.0, self.max);
         cx.notify();
     }
@@ -514,7 +514,7 @@ impl TwoWayBinding for ProgressBar {
 use rml::prelude::*;
 use crate::components::progress_bar::{ProgressBar, ProgressVariant};
 
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct UploadView {
     pub upload_progress: f64,
@@ -534,7 +534,7 @@ impl UploadView {
     }
 
     #[command]
-    pub fn handle_file_select(&mut self, ev: &ChangeEvent, cx: &mut ViewContext<Self>) {
+    pub fn handle_file_select(&mut self, ev: &ChangeEvent, cx: &mut Context<Self>) {
         self.is_uploading = true;
         self.upload_progress = 0.0;
         self.upload_complete = false;
@@ -564,7 +564,7 @@ impl UploadView {
     }
 
     #[command]
-    pub fn cancel_upload(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn cancel_upload(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.is_uploading = false;
         self.upload_progress = 0.0;
         self.upload_variant = ProgressVariant::Danger;

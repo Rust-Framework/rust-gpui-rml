@@ -19,7 +19,7 @@
 `#[window]` 标记结构体为 RML 窗口的 ViewModel：
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[window]
 pub struct Counter {
     pub count: i32,
@@ -60,8 +60,8 @@ pub struct Counter {
 `#[component]` 标记结构体为自定义组件：
 
 ```rust
-#[derive(Model)]
-#[component(template = "components/primary_button.rml")]
+#[derive(IModel)]
+#[component]
 pub struct PrimaryButton {
     pub label: SharedString,
     pub on_click: Option<Arc<dyn Fn(&ClickEvent)>>,
@@ -76,7 +76,7 @@ pub struct PrimaryButton {
 
 ```rust
 #[command]
-pub fn increment(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+pub fn increment(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
     self.count += 1;
     cx.notify();
 }
@@ -89,15 +89,15 @@ pub fn increment(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
 ```rust
 // 无参数命令
 #[command]
-pub fn method_name(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>)
+pub fn method_name(&mut self, _: &ClickEvent, cx: &mut Context<Self>)
 
 // 带参数命令（参数在事件对象之前）
 #[command]
-pub fn method_name(&mut self, param: T, _: &ClickEvent, cx: &mut ViewContext<Self>)
+pub fn method_name(&mut self, param: T, _: &ClickEvent, cx: &mut Context<Self>)
 
 // 多参数命令
 #[command]
-pub fn method_name(&mut self, p1: T1, p2: T2, _: &ClickEvent, cx: &mut ViewContext<Self>)
+pub fn method_name(&mut self, p1: T1, p2: T2, _: &ClickEvent, cx: &mut Context<Self>)
 ```
 
 ### 在 `.rml` 中调用
@@ -157,7 +157,7 @@ pub fn bad_computed(&self, x: i32) -> i32  // ❌
 
 ```rust
 #[on_loaded]
-pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
     // 加载初始数据
     self.load_initial_data(cx);
 }
@@ -182,7 +182,7 @@ pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
 
 ```rust
 #[on_loaded]
-pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
     // 加载本地存储
     self.load_from_storage(cx);
 
@@ -208,7 +208,7 @@ pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
 
 ```rust
 #[on_unloaded]
-pub fn on_unloaded(&mut self, _cx: &mut ViewContext<Self>) {
+pub fn on_unloaded(&mut self, _cx: &mut Context<Self>) {
     // 清理资源
     self.save_to_storage();
     self.cancel_pending_requests();
@@ -233,7 +233,7 @@ pub fn on_unloaded(&mut self, _cx: &mut ViewContext<Self>) {
 
 ```rust
 #[on_unloaded]
-pub fn on_unloaded(&mut self, _cx: &mut ViewContext<Self>) {
+pub fn on_unloaded(&mut self, _cx: &mut Context<Self>) {
     // 保存状态
     if let Err(e) = self.save_state() {
         log::error!("保存状态失败: {}", e);
@@ -251,7 +251,7 @@ pub fn on_unloaded(&mut self, _cx: &mut ViewContext<Self>) {
 `#[element]` 标记字段为 `ref` 引用的 UI 元素：
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct MyView {
     pub user_name: SharedString,
@@ -277,7 +277,7 @@ pub struct MyView {
 多个宏属性可以组合使用：
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct MyView {
     pub count: i32,
@@ -297,12 +297,12 @@ impl MyView {
     }
 
     #[on_loaded]
-    pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
         self.username_input.focus(cx);
     }
 
     #[command]
-    pub fn submit(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn submit(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         if self.user_name.is_empty() {
             return;
         }
@@ -316,7 +316,7 @@ impl MyView {
     }
 
     #[on_unloaded]
-    pub fn on_unloaded(&mut self, _cx: &mut ViewContext<Self>) {
+    pub fn on_unloaded(&mut self, _cx: &mut Context<Self>) {
         log::info!("视图卸载，最终计数: {}", self.count);
     }
 }
@@ -324,7 +324,7 @@ impl MyView {
 
 ## 4.2.10 宏属性的常见错误
 
-### 错误一：忘记 `#[derive(Model)]`
+### 错误一：忘记 `#[derive(IModel)]`
 
 ```rust
 // ❌ 缺少 Model 派生
@@ -345,7 +345,7 @@ pub fn bad_command(&mut self) {
 
 // ✅ 正确签名
 #[command]
-pub fn good_command(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+pub fn good_command(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
     self.count += 1;
     cx.notify();
 }

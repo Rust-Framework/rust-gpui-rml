@@ -59,7 +59,7 @@ View 重新读取 {user_name} 显示
 ### 文本输入
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct LoginForm {
     pub username: SharedString,
@@ -75,7 +75,7 @@ pub struct LoginForm {
 ### 数字输入
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct Settings {
     pub age: i32,
@@ -91,7 +91,7 @@ pub struct Settings {
 ### 复选框
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct Preferences {
     pub remember_me: bool,
@@ -113,7 +113,7 @@ pub struct Preferences {
 ### 多行文本
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct NoteEditor {
     pub content: SharedString,
@@ -133,7 +133,7 @@ pub struct NoteEditor {
 3. **实现 `Default`**：通常需要默认值初始化
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct MyView {
     pub user_name: SharedString,  // ✅ pub，可赋值
@@ -160,7 +160,7 @@ pub struct MyView {
 
 ```rust
 #[command]
-pub fn on_search_input(&mut self, _: &InputEvent, cx: &mut ViewContext<Self>) {
+pub fn on_search_input(&mut self, _: &InputEvent, cx: &mut Context<Self>) {
     // model 已经更新了 search_text，这里可以执行额外逻辑
     self.perform_search(cx);
 }
@@ -191,7 +191,7 @@ pub fn on_search_input(&mut self, _: &InputEvent, cx: &mut ViewContext<Self>) {
 ```
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct MyView {
     pub email: SharedString,
@@ -200,7 +200,7 @@ pub struct MyView {
 
 impl MyView {
     #[command]
-    pub fn validate_email(&mut self, _: &FocusEvent, cx: &mut ViewContext<Self>) {
+    pub fn validate_email(&mut self, _: &FocusEvent, cx: &mut Context<Self>) {
         if self.email.is_empty() || !self.email.contains('@') {
             self.email_error = Some("请输入有效的邮箱地址".into());
         } else {
@@ -218,8 +218,8 @@ impl MyView {
 自定义组件也可以支持 `model`，需要在组件中声明可绑定的属性：
 
 ```rust
-#[derive(Model)]
-#[component(template = "components/slider.rml")]
+#[derive(IModel)]
+#[component]
 pub struct Slider {
     pub value: f64,
     pub min: f64,
@@ -248,7 +248,7 @@ pub struct Slider {
 
 ```rust
 #[command]
-pub fn update_user_name(&mut self, ev: &InputEvent, cx: &mut ViewContext<Self>) {
+pub fn update_user_name(&mut self, ev: &InputEvent, cx: &mut Context<Self>) {
     self.user.profile.name = ev.value.clone();
     cx.notify();
 }
@@ -272,7 +272,7 @@ pub fn update_user_name(&mut self, ev: &InputEvent, cx: &mut ViewContext<Self>) 
 ### 陷阱一：忘记 `pub`
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct MyView {
     user_name: SharedString,  // ❌ 非 pub，model 无法访问
@@ -283,7 +283,7 @@ pub struct MyView {
 
 ```rust
 #[command]
-pub fn on_input(&mut self, ev: &InputEvent, cx: &mut ViewContext<Self>) {
+pub fn on_input(&mut self, ev: &InputEvent, cx: &mut Context<Self>) {
     // model 已经更新了 user_name，这里又改一次会导致冲突
     self.user_name = ev.value.to_uppercase().into();
     cx.notify();
@@ -314,7 +314,7 @@ pub fn on_input(&mut self, ev: &InputEvent, cx: &mut ViewContext<Self>) {
 
 ```rust
 #[command]
-pub fn update_user_name(&mut self, index: usize, ev: &InputEvent, cx: &mut ViewContext<Self>) {
+pub fn update_user_name(&mut self, index: usize, ev: &InputEvent, cx: &mut Context<Self>) {
     self.users[index].name = ev.value.clone();
     cx.notify();
 }

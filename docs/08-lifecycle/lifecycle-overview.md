@@ -38,12 +38,12 @@ RML 提供两个生命周期回调：
 
 ```rust
 #[on_loaded]
-pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
     // 视图加载完成
 }
 
 #[on_unloaded]
-pub fn on_unloaded(&mut self, cx: &mut ViewContext<Self>) {
+pub fn on_unloaded(&mut self, cx: &mut Context<Self>) {
     // 视图即将卸载
 }
 ```
@@ -93,7 +93,7 @@ pub fn on_unloaded(&mut self, cx: &mut ViewContext<Self>) {
 创建阶段通过构造函数完成：
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct MyView {
     pub data: Vec<Item>,
@@ -132,7 +132,7 @@ impl MyView {
 ```rust
 impl MyView {
     #[on_loaded]
-    pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
         // 1. 加载数据
         self.load_data(cx);
 
@@ -146,7 +146,7 @@ impl MyView {
         self.focus_input(cx);
     }
 
-    fn load_data(&mut self, cx: &mut ViewContext<Self>) {
+    fn load_data(&mut self, cx: &mut Context<Self>) {
         self.is_loading = true;
         cx.notify();
 
@@ -160,7 +160,7 @@ impl MyView {
         }).detach();
     }
 
-    fn start_timer(&mut self, cx: &mut ViewContext<Self>) {
+    fn start_timer(&mut self, cx: &mut Context<Self>) {
         self.timer = Some(cx.spawn(|this, mut cx| async move {
             loop {
                 cx.background_executor()
@@ -173,13 +173,13 @@ impl MyView {
         }));
     }
 
-    fn subscribe_to_global_state(&mut self, cx: &mut ViewContext<Self>) {
+    fn subscribe_to_global_state(&mut self, cx: &mut Context<Self>) {
         self.subscription = Some(cx.subscribe(&self.global_state, |this, _, event, cx| {
             this.handle_global_event(event, cx);
         }));
     }
 
-    fn focus_input(&mut self, cx: &mut ViewContext<Self>) {
+    fn focus_input(&mut self, cx: &mut Context<Self>) {
         self.input_element.focus(cx);
     }
 }
@@ -200,7 +200,7 @@ impl MyView {
 
 ```rust
 #[command]
-pub fn increment(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+pub fn increment(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
     self.count += 1;       // 1. 修改状态
     cx.notify();           // 2. 通知变化 → 3. 重新渲染
 }
@@ -211,8 +211,8 @@ pub fn increment(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
 组件可以通过 `#[on_prop_change]` 监听属性变化：
 
 ```rust
-#[derive(Model)]
-#[component(template = "components/data_view.rml")]
+#[derive(IModel)]
+#[component]
 pub struct DataView {
     pub data_id: u64,
     pub data: Option<Data>,
@@ -220,7 +220,7 @@ pub struct DataView {
 
 impl DataView {
     #[on_prop_change(data_id)]
-    pub fn on_data_id_change(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn on_data_id_change(&mut self, cx: &mut Context<Self>) {
         self.load_data(self.data_id, cx);
     }
 }
@@ -233,7 +233,7 @@ impl DataView {
 ```rust
 impl MyView {
     #[on_unloaded]
-    pub fn on_unloaded(&mut self, _cx: &mut ViewContext<Self>) {
+    pub fn on_unloaded(&mut self, _cx: &mut Context<Self>) {
         // 1. 取消定时器
         if let Some(timer) = self.timer.take() {
             timer.abort();
@@ -307,7 +307,7 @@ let view = cx.new_model(|_| MyView::new());
 
 ```rust
 #[on_loaded]
-pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
     println!("视图加载完成");  // 只打印一次
 }
 ```
@@ -316,7 +316,7 @@ pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
 
 ```rust
 #[on_unloaded]
-pub fn on_unloaded(&mut self, cx: &mut ViewContext<Self>) {
+pub fn on_unloaded(&mut self, cx: &mut Context<Self>) {
     // 此时还能访问 cx，可以做清理工作
     println!("视图即将卸载");
 }
@@ -326,7 +326,7 @@ pub fn on_unloaded(&mut self, cx: &mut ViewContext<Self>) {
 
 ```rust
 #[on_unloaded]
-pub fn on_unloaded(&mut self, _cx: &mut ViewContext<Self>) {
+pub fn on_unloaded(&mut self, _cx: &mut Context<Self>) {
     // 不取消会导致任务继续运行，访问已销毁的视图
     if let Some(task) = self.async_task.take() {
         task.abort();
@@ -339,7 +339,7 @@ pub fn on_unloaded(&mut self, _cx: &mut ViewContext<Self>) {
 ```rust
 // ❌ 阻塞 UI
 #[on_loaded]
-pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
     let data = heavy_computation();  // 阻塞
     self.data = data;
     cx.notify();
@@ -347,7 +347,7 @@ pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
 
 // ✅ 异步执行
 #[on_loaded]
-pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
     cx.spawn(|this, mut cx| async move {
         let data = heavy_computation().await;  // 不阻塞
         let _ = this.update(&mut cx, |this, cx| {
@@ -363,7 +363,7 @@ pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
 ### 状态持久化
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct EditorView {
     pub content: SharedString,
@@ -377,7 +377,7 @@ impl EditorView {
     }
 
     #[on_loaded]
-    pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
         // 从本地存储加载内容
         if let Some(saved) = cx.local_storage().get("editor_content") {
             self.content = saved.into();
@@ -386,7 +386,7 @@ impl EditorView {
     }
 
     #[on_unloaded]
-    pub fn on_unloaded(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn on_unloaded(&mut self, cx: &mut Context<Self>) {
         // 保存内容到本地存储
         cx.local_storage().set("editor_content", &self.content);
     }
@@ -396,7 +396,7 @@ impl EditorView {
 ### 跨视图状态同步
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct ParentView {
     pub shared_state: Entity<SharedState>,
@@ -405,7 +405,7 @@ pub struct ParentView {
 
 impl ParentView {
     #[on_loaded]
-    pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
         // 订阅共享状态
         cx.subscribe(&self.shared_state, |this, state, event, cx| {
             // 同步状态到子视图

@@ -33,14 +33,14 @@ RML 的“职责”天然按文件分层：
 
 ```rust
 // ❌ 这个 ViewModel 同时承担：状态、网络、缓存、序列化
-#[derive(Model)]
+#[derive(IModel)]
 pub struct UserViewModel {
     pub user: User,
 }
 
 impl UserViewModel {
     #[command]
-    pub fn save(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn save(&mut self, cx: &mut Context<Self>) {
         // 网络请求
         let resp = reqwest::blocking::post(...);
         // 缓存
@@ -59,7 +59,7 @@ impl UserViewModel {
 ```rust
 // ✅ ViewModel 只管状态
 #[command]
-pub fn save(&mut self, cx: &mut ViewContext<Self>) {
+pub fn save(&mut self, cx: &mut Context<Self>) {
     let user = self.user.clone();
     self.is_saving = true;
     cx.notify();
@@ -100,11 +100,11 @@ RML 提供三条扩展通道，**无需修改既有代码**即可增加新行为
 
 ```rust
 // 已有：基础按钮组件
-#[component(template = "button.rml")]
+#[component]
 pub struct Button { label: SharedString, on_click: Option<Command> }
 
 // 扩展：危险按钮，不改 Button
-#[component(template = "danger_button.rml")]
+#[component]
 pub struct DangerButton {
     #[slot] content: Slot,
     on_click: Option<Command>,
@@ -154,11 +154,11 @@ pub trait Clickable {
     fn is_disabled(&self) -> bool;
 }
 
-#[component(template = "button.rml")]
+#[component]
 pub struct Button { ... }
 impl Clickable for Button { ... }
 
-#[component(template = "link_button.rml")]
+#[component]
 pub struct LinkButton { ... }
 impl Clickable for LinkButton { ... }
 ```
@@ -185,7 +185,7 @@ ViewModel 对 View 暴露的字段 / 命令应当**精确**：只暴露该视图
 
 ```rust
 // ❌ 一个 ViewModel 服务所有视图，暴露所有字段
-#[derive(Model)]
+#[derive(IModel)]
 pub struct AppViewModel {
     pub user: User,
     pub todos: Vec<Todo>,
@@ -202,13 +202,13 @@ pub struct AppViewModel {
 
 ```rust
 // ✅ 每个视图一个精简 ViewModel
-#[derive(Model)]
+#[derive(IModel)]
 pub struct ProfileViewModel { pub user: User, pub is_editing: bool }
 
-#[derive(Model)]
+#[derive(IModel)]
 pub struct TodoListViewModel { pub todos: Vec<Todo>, pub filter: Filter }
 
-#[derive(Model)]
+#[derive(IModel)]
 pub struct CartViewModel { pub items: Vec<CartItem>, pub total: f64 }
 ```
 
@@ -226,7 +226,7 @@ ViewModel 不应直接依赖具体的 Service 实现，而应依赖 trait；具�
 
 ```rust
 #[command]
-pub fn load(&mut self, cx: &mut ViewContext<Self>) {
+pub fn load(&mut self, cx: &mut Context<Self>) {
     let users = reqwest::get("/api/users").await...; // 直接依赖 reqwest
     self.users = users;
     cx.notify();
@@ -251,14 +251,14 @@ pub struct MockUserRepo;
 impl UserRepo for MockUserRepo { ... }
 
 // ViewModel 依赖抽象
-#[derive(Model)]
+#[derive(IModel)]
 pub struct UserListViewModel {
     pub users: Vec<User>,
     repo: Arc<dyn UserRepo>, // 注入
 }
 
 #[command]
-pub fn load(&mut self, cx: &mut ViewContext<Self>) {
+pub fn load(&mut self, cx: &mut Context<Self>) {
     let repo = self.repo.clone();
     cx.spawn(|this, mut cx| async move {
         let users = repo.fetch_all(&mut cx).await;

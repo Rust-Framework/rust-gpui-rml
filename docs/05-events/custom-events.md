@@ -15,8 +15,8 @@
 在组件中用 `Option<Arc<dyn Fn(...)>>` 字段声明事件回调：
 
 ```rust
-#[derive(Model)]
-#[component(template = "components/search_box.rml")]
+#[derive(IModel)]
+#[component]
 pub struct SearchBox {
     pub query: SharedString,
     pub on_search: Option<Arc<dyn Fn(&SearchEvent)>>,
@@ -74,7 +74,7 @@ impl SearchBox {
     }
 
     #[command]
-    pub fn perform_search(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn perform_search(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         if let Some(callback) = &self.on_search {
             callback(&SearchEvent {
                 query: self.query.clone(),
@@ -84,7 +84,7 @@ impl SearchBox {
     }
 
     #[command]
-    pub fn clear(&mut self, ev: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn clear(&mut self, ev: &ClickEvent, cx: &mut Context<Self>) {
         self.query = SharedString::default();
         cx.notify();
 
@@ -115,7 +115,7 @@ impl SearchBox {
 ```
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct SearchPanel {
     pub search_results: Vec<SearchResult>,
@@ -123,18 +123,18 @@ pub struct SearchPanel {
 
 impl SearchPanel {
     #[command]
-    pub fn handle_search(&mut self, ev: &SearchEvent, cx: &mut ViewContext<Self>) {
+    pub fn handle_search(&mut self, ev: &SearchEvent, cx: &mut Context<Self>) {
         // ev.query 是搜索框的输入值
         self.perform_search(&ev.query, cx);
     }
 
     #[command]
-    pub fn handle_clear(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn handle_clear(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.search_results.clear();
         cx.notify();
     }
 
-    fn perform_search(&mut self, query: &str, cx: &mut ViewContext<Self>) {
+    fn perform_search(&mut self, query: &str, cx: &mut Context<Self>) {
         // 执行搜索...
         cx.notify();
     }
@@ -183,7 +183,7 @@ pub on_close: Option<Arc<dyn Fn()>>,
 
 ```rust
 #[command]
-pub fn handle_close(&mut self, _: &CloseEvent, cx: &mut ViewContext<Self>) {
+pub fn handle_close(&mut self, _: &CloseEvent, cx: &mut Context<Self>) {
     self.is_dialog_open = false;
     cx.notify();
 }
@@ -201,7 +201,7 @@ pub on_select: Option<Arc<dyn Fn(u64, &SelectEvent)>>,
 
 ```rust
 #[command]
-pub fn handle_select(&mut self, id: u64, ev: &SelectEvent, cx: &mut ViewContext<Self>) {
+pub fn handle_select(&mut self, id: u64, ev: &SelectEvent, cx: &mut Context<Self>) {
     self.selected_id = Some(id);
     cx.notify();
 }
@@ -230,7 +230,7 @@ pub on_change: Option<Arc<dyn Fn(&ChangeEvent)>>,
 ```rust
 // SearchBox 内部
 #[command]
-pub fn perform_search(&mut self, ev: &ClickEvent, cx: &mut ViewContext<Self>) {
+pub fn perform_search(&mut self, ev: &ClickEvent, cx: &mut Context<Self>) {
     // 触发 on_search 事件
     if let Some(callback) = &self.on_search {
         callback(&SearchEvent { /* ... */ });
@@ -259,8 +259,8 @@ pub enum CloseReason {
     CancelClicked,
 }
 
-#[derive(Model)]
-#[component(template = "components/dialog.rml")]
+#[derive(IModel)]
+#[component]
 pub struct Dialog {
     pub title: SharedString,
     pub is_open: bool,
@@ -280,12 +280,12 @@ impl Dialog {
         }
     }
 
-    pub fn open(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn open(&mut self, cx: &mut Context<Self>) {
         self.is_open = true;
         cx.notify();
     }
 
-    pub fn close(&mut self, reason: CloseReason, cx: &mut ViewContext<Self>) {
+    pub fn close(&mut self, reason: CloseReason, cx: &mut Context<Self>) {
         self.is_open = false;
         cx.notify();
 
@@ -295,7 +295,7 @@ impl Dialog {
     }
 
     #[command]
-    pub fn on_confirm_click(&mut self, ev: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn on_confirm_click(&mut self, ev: &ClickEvent, cx: &mut Context<Self>) {
         if let Some(callback) = &self.on_confirm {
             callback(ev);
         }
@@ -303,7 +303,7 @@ impl Dialog {
     }
 
     #[command]
-    pub fn on_cancel_click(&mut self, ev: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn on_cancel_click(&mut self, ev: &ClickEvent, cx: &mut Context<Self>) {
         if let Some(callback) = &self.on_cancel {
             callback(ev);
         }
@@ -311,12 +311,12 @@ impl Dialog {
     }
 
     #[command]
-    pub fn on_overlay_click(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn on_overlay_click(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.close(CloseReason::UserClosed, cx);
     }
 
     #[command]
-    pub fn on_content_click(&mut self, ev: &ClickEvent, _cx: &mut ViewContext<Self>) {
+    pub fn on_content_click(&mut self, ev: &ClickEvent, _cx: &mut Context<Self>) {
         ev.stop_propagation();  // 阻止冒泡，不关闭对话框
     }
 }
@@ -358,7 +358,7 @@ impl Dialog {
 
 ```rust
 // views/user_view.rml.rs
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct UserView {
     pub user_name: SharedString,
@@ -374,23 +374,23 @@ impl UserView {
     }
 
     #[command]
-    pub fn show_delete_dialog(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn show_delete_dialog(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.delete_dialog.update(cx, |dialog, cx| dialog.open(cx));
     }
 
     #[command]
-    pub fn handle_delete_confirm(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn handle_delete_confirm(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         // 执行删除
         self.delete_user(cx);
     }
 
     #[command]
-    pub fn handle_delete_cancel(&mut self, _: &ClickEvent, _cx: &mut ViewContext<Self>) {
+    pub fn handle_delete_cancel(&mut self, _: &ClickEvent, _cx: &mut Context<Self>) {
         // 取消，无需额外处理
     }
 
     #[command]
-    pub fn handle_dialog_close(&mut self, ev: &DialogCloseEvent, cx: &mut ViewContext<Self>) {
+    pub fn handle_dialog_close(&mut self, ev: &DialogCloseEvent, cx: &mut Context<Self>) {
         match ev.reason {
             CloseReason::ConfirmClicked => {
                 // 已在 handle_delete_confirm 处理
@@ -404,7 +404,7 @@ impl UserView {
         }
     }
 
-    fn delete_user(&mut self, cx: &mut ViewContext<Self>) {
+    fn delete_user(&mut self, cx: &mut Context<Self>) {
         // 删除逻辑...
         cx.notify();
     }
