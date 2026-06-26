@@ -35,7 +35,7 @@ pub struct List {
 
 ```rust
 #[derive(IModel)]
-#[component(template = "components/avatar.rml")]
+#[component]
 pub struct Avatar {
     pub src: SharedString,
     pub alt: Option<SharedString>,  // 可选属性
@@ -53,7 +53,7 @@ pub struct User {
 }
 
 #[derive(IModel)]
-#[component(template = "components/user_card.rml")]
+#[component]
 pub struct UserCard {
     pub user: User,                 // 自定义类型
 }
@@ -206,7 +206,7 @@ impl ParentView {
 
 ```rust
 #[derive(IModel)]
-#[component(template = "components/data_view.rml")]
+#[component]
 pub struct DataView {
     pub data_id: u64,
     pub data: Option<Data>,
@@ -238,7 +238,7 @@ impl DataView {
 
 ```rust
 #[derive(IModel)]
-#[component(template = "components/counter.rml")]
+#[component]
 pub struct Counter {
     pub value: i32,
     pub min: i32,
@@ -371,7 +371,7 @@ pub variant: SharedString,  // 容易拼写错误
 
 ```rust
 // ✅ 组合
-#[component(template = "components/user_card.rml")]
+#[component]
 pub struct UserCard {
     pub user: User,
     pub avatar_size: AvatarSize,
@@ -417,7 +417,7 @@ impl Default for ProgressVariant {
 }
 
 #[derive(IModel)]
-#[component(template = "components/progress_bar.rml")]
+#[component]
 pub struct ProgressBar {
     pub value: f64,
     pub max: f64,

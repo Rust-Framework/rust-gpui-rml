@@ -124,7 +124,7 @@ pub struct Counter {
 #[component]
 
 // src/views/user/profile.rml
-#[component(template = "views/user/profile.rml")]
+#[component]
 ```
 
 ## 6.2.4 组件的属性
@@ -329,7 +329,7 @@ impl TwoWayBinding for Counter {
 
 ```rust
 #[derive(IModel)]
-#[component(template = "components/data_loader.rml")]
+#[component]
 pub struct DataLoader {
     pub data: Vec<Item>,
     pub is_loading: bool,
@@ -404,7 +404,7 @@ pub struct SearchEvent {
 }
 
 #[derive(IModel)]
-#[component(template = "components/search_box.rml")]
+#[component]
 pub struct SearchBox {
     pub query: SharedString,
     pub placeholder: SharedString,
@@ -665,7 +665,7 @@ pub struct Button {
 
 自定义组件是 RML 的核心复用机制：
 
-- **创建**：`#[component(template = "...")]` + `.rml` 模板
+- **创建**：`#[component]` + `.rml` 模板
 - **属性**：结构体的 `pub` 字段
 - **事件**：`Option<Arc<dyn Fn(...)>>` 字段
 - **双向绑定**：实现 `TwoWayBinding` trait

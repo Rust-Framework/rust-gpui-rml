@@ -32,18 +32,27 @@ pub struct Counter {
 - 触发编译器生成 `Render` trait 实现
 - 注册生命周期回调
 
-### 参数
+### 声明式根节点配置
 
-```rust
-// 默认：按命名约定关联 counter.rml
-#[window]
+`#[window]` 不接受任何参数。窗口属性在 `.rml` 根节点上声明式配置：
 
-// 显式指定模板路径
-#[window(template = "views/custom_counter.rml")]
+```text
+<!-- 默认：透明标题栏（现代风格） -->
+<window title="My App" width="800" height="600">
+    <!-- 子元素 -->
+</window>
 
-// 指定生成的 Render 实现位置
-#[window(generated_path = "OUT_DIR/views/counter.generated.rs")]
+<!-- 原生标题栏（系统风格） -->
+<modern_window title="My App" width="800" height="600">
+    <!-- 子元素 -->
+</modern_window>
 ```
+
+属性说明：
+- `title`：窗口标题（字符串）
+- `width` / `height`：窗口尺寸（像素，整数）
+
+若未指定属性，使用默认值：`title="RML Window"`, `width=800`, `height=600`。
 
 ### 与 `#[component]` 的区别
 

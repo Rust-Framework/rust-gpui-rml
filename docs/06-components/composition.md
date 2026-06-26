@@ -274,7 +274,7 @@ pub fn with_loading<T: Model>(inner: Entity<T>) -> impl Model {
 }
 
 #[derive(IModel)]
-#[component(template = "components/loading_wrapper.rml")]
+#[component]
 pub struct LoadingWrapper {
     pub is_loading: bool,
     pub error: Option<SharedString>,
@@ -374,7 +374,7 @@ impl UserListContainer {
 ```rust
 // 展示组件：只负责 UI 展示
 #[derive(IModel)]
-#[component(template = "components/user_list_presentation.rml")]
+#[component]
 pub struct UserListPresentation {
     pub users: Vec<User>,
     pub on_edit: Option<Arc<dyn Fn(u64, &ClickEvent)>>,
@@ -387,7 +387,7 @@ pub struct UserListPresentation {
 ```rust
 // 主组件
 #[derive(IModel)]
-#[component(template = "components/tabs.rml")]
+#[component]
 pub struct Tabs {
     pub active_tab: SharedString,
     pub tabs: Vec<TabItem>,
@@ -395,7 +395,7 @@ pub struct Tabs {
 
 // 子组件
 #[derive(IModel)]
-#[component(template = "components/tab_item.rml")]
+#[component]
 pub struct TabItem {
     pub id: SharedString,
     pub title: SharedString,
@@ -403,7 +403,7 @@ pub struct TabItem {
 }
 
 #[derive(IModel)]
-#[component(template = "components/tab_panel.rml")]
+#[component]
 pub struct TabPanel {
     pub id: SharedString,
     pub is_active: bool,
@@ -468,14 +468,14 @@ pub struct TabPanel {
 
 ```rust
 // ✅ 无状态展示组件
-#[component(template = "components/user_card.rml")]
+#[component]
 pub struct UserCard {
     pub user: User,
     pub on_click: Option<Arc<dyn Fn(u64)>>,
 }
 
 // ❌ 有状态展示组件
-#[component(template = "components/user_card.rml")]
+#[component]
 pub struct UserCard {
     pub user: User,
     pub is_hovered: bool,  // 内部状态，增加复杂度
