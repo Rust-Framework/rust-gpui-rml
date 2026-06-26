@@ -1,127 +1,73 @@
 //! `RmlApplication` —— 应用启动器
 //!
-//! 封装 GPUI 的 `Application` + 单窗口创建，提供 `RmlApplication::new().run::<RootView>()` API。
-//! 详见文档 §1.3.6 入口编写。
+//! 封装 GPUI 的 `Application`，提供 `RmlApplication::new().run::<A>()` API，
+//! 其中 `A: IAppLifecycle`。窗口创建权交给 App（类比 WPF `Application`）。
 //!
 //! ## Feature `ui-components`（默认开启）
 //!
-//! 启用时：在 `Application::run` 启动回调中调用 `rml_ui::init(cx)`，并将窗口根 view 替换为
-//! `rml_ui::Root` 包裹业务 view（`Entity<R>`），从而启用 Dialog/Sheet/Notification/Tooltip
-//! 等浮层组件支持。
+//! 启用时：在 `Application::run` 启动回调中调用 `rml_ui::init(cx)` 初始化
+//! gpui-component 全局状态（theme / global_state / root / dialog / ...）。
 //!
-//! 关闭时：业务 view 直接作为窗口根 view，不引入 gpui-component 依赖。
+//! 关闭时：不引入 gpui-component 依赖，App 需自行管理窗口。
+//!
+//! ## 典型用法
+//!
+//! ```rust,ignore
+//! use rml_app::{IAppLifecycle, RmlApplication, ModernWindow};
+//! use gpui::App;
+//!
+//! struct MyApp;
+//!
+//! impl IAppLifecycle for MyApp {
+//!     fn on_launch(&mut self, cx: &mut App) {
+//!         ModernWindow::new("My App", gpui::px(800.), gpui::px(600.))
+//!             .open::<MyView>(cx);
+//!     }
+//! }
+//!
+//! fn main() {
+//!     RmlApplication::new().run::<MyApp>();
+//! }
+//! ```
 
-use gpui::{
-    App, AppContext, Bounds, Entity, Pixels, Render, Size, TitlebarOptions, WindowBounds,
-    WindowOptions, px,
-};
-#[cfg(feature = "ui-components")]
-use gpui::Window;
-use rml_core::view::IRmlView;
+use gpui::App;
+
+use crate::lifecycle::IAppLifecycle;
 
 /// RML 应用启动器
 ///
-/// ```rust
-/// use rml_app::RmlApplication;
-///
-/// fn main() {
-///     RmlApplication::new()
-///         .title("My App")
-///         .size(px(800.), px(600.))
-///         .run::<MyView>();
-/// }
-/// ```
-pub struct RmlApplication {
-    title: gpui::SharedString,
-    width: Pixels,
-    height: Pixels,
-}
+/// 不再直接绑定视图类型，而是由 `A: IAppLifecycle` 控制窗口创建。
+/// 这类比 WPF 的 `Application` 类：App 负责打开主窗口，而非框架自动创建。
+pub struct RmlApplication;
 
 impl RmlApplication {
     pub fn new() -> Self {
-        Self {
-            title: "RML App".into(),
-            width: px(800.),
-            height: px(600.),
-        }
+        Self
     }
 
-    /// 设置窗口标题
-    pub fn title(mut self, t: impl Into<gpui::SharedString>) -> Self {
-        self.title = t.into();
-        self
-    }
-
-    /// 设置窗口尺寸
-    pub fn size(mut self, w: Pixels, h: Pixels) -> Self {
-        self.width = w;
-        self.height = h;
-        self
-    }
-
-    /// 启动应用，以 `R` 为根视图。
+    /// 启动应用，由 `A: IAppLifecycle` 控制窗口创建与生命周期。
     ///
-    /// `R` 必须实现 `IRmlView`（marker）、`Render`（由 `#[view]` + build.rs 生成）、
-    /// `Default`（用于构造初始实例）。
-    ///
-    /// 启用 feature `ui-components` 时，`R` 会作为子 view 嵌入 `rml_ui::Root`，
-    /// 后者负责 Dialog/Sheet/Notification 等浮层管理。
-    pub fn run<R>(self)
+    /// `A` 必须实现 `IAppLifecycle`（含 `on_launch`）和 `Default`。
+    /// 在 `on_launch` 中调用 `rml_app::Window::new(...).open::<V>(cx)` 或
+    /// `rml_app::ModernWindow::new(...).open::<V>(cx)` 打开主窗口。
+    pub fn run<A>(self)
     where
-        R: IRmlView + Render + Default + 'static,
+        A: IAppLifecycle + Default + 'static,
     {
-        let title = self.title;
-        let size = Size {
-            width: self.width,
-            height: self.height,
-        };
-
         gpui_platform::application().run(move |cx: &mut App| {
             // 初始化 gpui-component 全局状态：theme / global_state / root / dialog / ...
             // 必须在打开窗口前完成
             #[cfg(feature = "ui-components")]
             rml_ui::init(cx);
 
-            let options = WindowOptions {
-                window_bounds: Some(WindowBounds::Windowed(Bounds {
-                    origin: Default::default(),
-                    size,
-                })),
-                titlebar: Some(TitlebarOptions {
-                    title: Some(title.clone()),
-                    appears_transparent: false,
-                    traffic_light_position: None,
-                }),
-                ..Default::default()
-            };
+            // 创建 App 实例并触发 on_launch —— 由 App 负责打开主窗口
+            let mut app = A::default();
+            app.on_launch(cx);
 
-            cx.open_window(options, open_window_root::<R>)
-                .expect("failed to open window");
+            // Phase 4：注册 on_exit / on_activate / on_deactivate 回调
+            // GPUI 当前没有显式的 on_exit 钩子，可在 on_release 中近似处理
         });
     }
-}
-
-/// 窗口构建闭包：根据 feature 决定返回 `Entity<Root>` 或 `Entity<R>`。
-///
-/// 独立为函数便于在 cfg 分支中分别实现，避免闭包内联时类型推断混淆。
-#[cfg(feature = "ui-components")]
-fn open_window_root<R>(window: &mut Window, cx: &mut App) -> Entity<rml_ui::Root>
-where
-    R: IRmlView + Render + Default + 'static,
-{
-    // 1. 构造业务 view
-    let view = cx.new(|_cx| R::default());
-    // 2. 用 Root 包裹，从而获得 Dialog/Sheet/Notification 等浮层支持
-    // Root::new 第三个参数为 &mut Context<Root>，由 cx.new::<Root> 提供
-    cx.new(|cx| rml_ui::Root::new(view, window, cx))
-}
-
-#[cfg(not(feature = "ui-components"))]
-fn open_window_root<R>(_window: &mut gpui::Window, cx: &mut App) -> Entity<R>
-where
-    R: IRmlView + Render + Default + 'static,
-{
-    cx.new(|_cx| R::default())
 }
 
 impl Default for RmlApplication {

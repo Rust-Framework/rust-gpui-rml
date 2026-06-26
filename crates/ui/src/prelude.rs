@@ -4,7 +4,8 @@
 
 pub use crate::{
     Badge, Button, ButtonGroup, ButtonVariants, Checkbox, Dialog, Disableable, Form, Input,
-    InputState, Label, List, Notification, NotificationList, NotificationType, Popover, Progress,
-    ProgressCircle, Radio, Root, Select, Selectable, Separator, Sizable, Slider, StyledExt,
-    Switch, Tab, TabBar, Table, Tag, Tooltip, WindowExt,
+    InputState, IWindowActions, Kbd, Label, List, MenuItem, ModernWindow, Notification,
+    NotificationKind, NotificationList, NotificationType, Popover, Progress, ProgressCircle,
+    Radio, Root, Select, Selectable, Separator, Sizable, Slider, StatusBar, StatusBarItem,
+    StyledExt, Switch, Tab, TabBar, Table, Tag, TitleBar, Tooltip, WindowExt,
 };

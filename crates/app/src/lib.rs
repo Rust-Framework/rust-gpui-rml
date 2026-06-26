@@ -19,7 +19,10 @@ extern crate rust_rml_core as rml_core;
 extern crate rust_rml_ui as rml_ui;
 
 pub mod application;
+pub mod lifecycle;
 pub mod resources;
 pub mod window;
 
 pub use application::RmlApplication;
+pub use lifecycle::IAppLifecycle;
+pub use window::{Window, ModernWindow};

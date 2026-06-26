@@ -31,6 +31,7 @@
 extern crate rust_rml_core as rml_core;
 
 pub mod prelude;
+pub mod window;
 
 /// 初始化扩展组件。
 ///
@@ -42,13 +43,14 @@ pub fn init(cx: &mut gpui::App) {
 
 // 直接 re-export 高频组件，避免在每个使用点写完整路径
 pub use gpui_component::{
-    Root, WindowExt,
+    Root, TitleBar, WindowExt,
     badge::Badge,
     button::{Button, ButtonGroup},
     checkbox::Checkbox,
     dialog::Dialog,
     form::Form,
     input::{Input, InputState},
+    kbd::Kbd,
     label::Label,
     list::List,
     notification::{Notification, NotificationList, NotificationType},
@@ -58,6 +60,7 @@ pub use gpui_component::{
     select::Select,
     separator::Separator,
     slider::Slider,
+    status_bar::StatusBar,
     switch::Switch,
     tab::{Tab, TabBar},
     table::Table,
@@ -69,3 +72,6 @@ pub use gpui_component::{
 pub use gpui_component::{
     button::ButtonVariants, Disableable, Sizable, Selectable, StyledExt,
 };
+
+// 窗口组件：ModernWindow 内置封装 + 数据类型 + 助手 trait
+pub use window::{IWindowActions, MenuItem, ModernWindow, NotificationKind, StatusBarItem};

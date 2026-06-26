@@ -9,6 +9,7 @@ description = "RML 扩展组件库：封装 gpui-component，提供 Dialog/Input
 rust-rml-core = { workspace = true }
 gpui = { workspace = true }
 gpui-component = { workspace = true }
+smallvec = "1"
 
 [features]
 default = ["ui-components"]
