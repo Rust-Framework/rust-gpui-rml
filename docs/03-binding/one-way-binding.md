@@ -35,7 +35,7 @@
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct MyView {
     pub user: User,
 }
@@ -278,7 +278,7 @@ pub fn greeting(&self) -> SharedString {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct MyView {
     pub user_name: SharedString,  // ✅ pub
     private_field: i32,           // ❌ 不能绑定

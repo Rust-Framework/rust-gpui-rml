@@ -81,7 +81,7 @@ use rml::prelude::*;
 use crate::components::counter::Counter;
 
 #[derive(Model)]
-#[view]
+#[component]
 pub struct MyView {
     pub initial_count: i32,
 }
@@ -520,7 +520,7 @@ use rml::prelude::*;
 use crate::components::search_box::{SearchBox, SearchEvent};
 
 #[derive(Model)]
-#[view]
+#[component]
 pub struct UserListView {
     pub users: Vec<User>,
     pub search_query: SharedString,

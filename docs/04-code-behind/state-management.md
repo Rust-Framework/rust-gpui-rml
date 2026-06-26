@@ -105,7 +105,7 @@ ViewModel 通过 `#[derive(Model)]` 成为 GPUI 管理的 Entity。Entity 是 GP
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct MyView {
     pub count: i32,
 }
@@ -121,7 +121,8 @@ Entity 在 ViewModel 的 `new()` 方法中创建，由 `RmlApplication` 自动�
 ```rust
 fn main() {
     RmlApplication::new()
-        .run::<MyView>()  // 自动创建 MyView 的 Entity
+        .main_window::<MyView>()  // 自动创建 MyView 的 Entity
+        .run()
         .unwrap();
 }
 ```
@@ -134,7 +135,7 @@ fn main() {
 use gpui::Entity;
 
 #[derive(Model)]
-#[view]
+#[component]
 pub struct ParentView {
     pub child: Entity<ChildView>,
 }
@@ -148,7 +149,7 @@ pub struct ParentView {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct ParentView {
     pub child: Entity<ChildView>,
     pub parent_count: i32,
@@ -196,7 +197,8 @@ fn main() {
             primary_color: rgb(0x1890ff).into(),
             background: rgb(0xffffff).into(),
         })
-        .run::<MyView>()
+        .main_window::<MyView>()
+        .run()
         .unwrap();
 }
 ```
@@ -204,7 +206,7 @@ fn main() {
 ```rust
 // 在 ViewModel 中访问全局状态
 #[derive(Model)]
-#[view]
+#[component]
 pub struct MyView {
     pub theme: AppTheme,
 }
@@ -406,14 +408,14 @@ pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
 ```rust
 // ✅ 单一职责
 #[derive(Model)]
-#[view]
+#[component]
 pub struct UserListView {
     pub users: Vec<User>,
     pub selected_user: Option<u64>,
 }
 
 #[derive(Model)]
-#[view]
+#[component]
 pub struct UserDetailView {
     pub user: User,
     pub is_editing: bool,
@@ -421,7 +423,7 @@ pub struct UserDetailView {
 
 // ❌ 上帝 ViewModel
 #[derive(Model)]
-#[view]
+#[component]
 pub struct MegaView {
     pub users: Vec<User>,
     pub selected_user: Option<u64>,
@@ -440,7 +442,7 @@ pub struct MegaView {
 ```rust
 // ✅ 最小状态 + 计算属性
 #[derive(Model)]
-#[view]
+#[component]
 pub struct CartView {
     pub items: Vec<CartItem>,  // 唯一状态
 }
@@ -459,7 +461,7 @@ impl CartView {
 
 // ❌ 冗余状态
 #[derive(Model)]
-#[view]
+#[component]
 pub struct BadCartView {
     pub items: Vec<CartItem>,
     pub total_price: f64,    // 冗余，可计算
@@ -474,7 +476,7 @@ pub struct BadCartView {
 ```rust
 // ✅ 字段 pub 但通过命令修改
 #[derive(Model)]
-#[view]
+#[component]
 pub struct Counter {
     pub count: i32,
 }
@@ -493,7 +495,7 @@ impl Counter {
 ```rust
 // ❌ 深度嵌套，难以维护
 #[derive(Model)]
-#[view]
+#[component]
 pub struct DeepView {
     pub data: Outer,
 }
@@ -506,7 +508,7 @@ pub struct Inner { pub value: i32 }
 
 // ✅ 扁平化结构
 #[derive(Model)]
-#[view]
+#[component]
 pub struct FlatView {
     pub value: i32,
 }

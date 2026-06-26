@@ -1,7 +1,7 @@
 //! 窗口数据类型 —— 用于 MVVM 绑定的纯数据结构
 //!
 //! `MenuItem` / `StatusBarItem` 是 ViewModel 持有的数据字段，
-//! 在 `.rml` 中通过 `menu={self.menu_items}` / `status_bar={self.status_items}` 绑定到 `<ModernWindow>`。
+//! 在 `.rml` 中通过 `menu={self.menu_items}` / `status_bar={self.status_items}` 绑定到 `<ModernWindowShell>`。
 //!
 //! 闭包捕获 `WeakEntity<T>`，符合 GPUI 事件模式，避免引入字符串命令派发的间接层。
 

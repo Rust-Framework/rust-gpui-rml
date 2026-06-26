@@ -73,5 +73,8 @@ pub use gpui_component::{
     button::ButtonVariants, Disableable, Sizable, Selectable, StyledExt,
 };
 
-// 窗口组件：ModernWindow 内置封装 + 数据类型 + 助手 trait
-pub use window::{IWindowActions, MenuItem, ModernWindow, NotificationKind, StatusBarItem};
+// 窗口组件：ModernWindowShell 内置封装 + 内置 Window/ModernWindow + 数据类型 + 助手 trait
+pub use window::{
+    IWindowActions, MenuItem, ModernWindow, ModernWindowShell, NotificationKind, StatusBarItem,
+    Window,
+};

@@ -9,7 +9,7 @@
 **核心约束**：
 - `#![forbid(unsafe_code)]` 全 crate 启用
 - 仅依赖 `gpui` 基础类型（`App` / `Context` / `Entity` / `SharedString` / `Pixels` 等），不依赖 `gpui` 渲染层
-- 所有 trait 以 `I` 开头（`IModel` / `IViewModel` / `IRmlView` / `ICommand` / `IConverter` / `ITwoWayBinding` / `ILifecycle` / `IBindingContext` / `IEvent` / `IComponent`）
+- 所有 trait 以 `I` 开头（`IModel` / `IViewModel` / `IComponent` / `IWindow` / `ICommand` / `IConverter` / `ITwoWayBinding` / `ILifecycle` / `IBindingContext` / `IEvent`）
 
 ## 模块结构
 
@@ -17,8 +17,8 @@
 |------|---------|------|
 | `model` | `IModel`, `FieldMeta` | 响应式数据模型标记，`rml_fields()` 返回字段元信息 |
 | `view_model` | `IViewModel` | ViewModel 层契约，扩展 `IModel` + `ILifecycle` |
-| `view` | `IRmlView` | RML 视图标记，声明关联 `.rml` 模板路径 |
-| `component` | `IComponent` | 可复用组件契约，扩展 `IRmlView`，支持嵌套/插槽 |
+| `component` | `IComponent` | 组件契约，扩展 `IViewModel`，声明 `.rml` 模板路径与标签名（合并自旧 `IRmlView`） |
+| `window` | `IWindow`, `WindowChrome`, `WindowState` | 窗口抽象接口，扩展 `IComponent`，提供 open/close/show/hide/activate/state 默认实现 |
 | `command` | `ICommand`, `ParamMeta` | 命令系统契约，`#[command]` 方法可被 `on*` 事件绑定调用 |
 | `lifecycle` | `ILifecycle` | 视图生命周期（创建→加载→更新→卸载） |
 | `binding` | `BindingPath`, `IBindingContext` | 绑定路径解析与运行时订阅 |
@@ -36,3 +36,4 @@
 3. **FieldMeta 驱动**：`IModel::rml_fields()` 返回 `&'static [FieldMeta]`，供编译期字段校验与 LSP 补全
 4. **事件对象独立**：RML 事件对象（`ClickEvent` 等）与 GPUI 事件类型解耦，通过 `event_flow::convert` 桥接
 5. **Default + Clone**：所有事件对象实现 `Default`，允许跨 crate 用 `default()` + 字段赋值构造
+6. **WPF 风格窗口**：`IWindow` trait 提供窗口操作的默认实现（close/show/hide/activate/state），基于 `handle()` 自管理，类比 WPF `Window` 类

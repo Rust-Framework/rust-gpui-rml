@@ -20,7 +20,7 @@
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct MyView {
     pub user_name: SharedString,  // ← 绑定源
     pub count: i32,               // ← 绑定源
@@ -127,7 +127,7 @@ RML 的 ViewModel 是 GPUI 的 Entity。理解这一点对掌握绑定至关重�
 
 ```rust
 #[derive(Model)]  // ← 使结构体成为 GPUI Entity
-#[view]
+#[component]
 pub struct MyView {
     pub count: i32,
 }

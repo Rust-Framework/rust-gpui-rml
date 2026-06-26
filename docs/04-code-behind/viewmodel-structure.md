@@ -16,7 +16,7 @@ ViewModel 是 `.rml.rs` 文件中的核心结构体，承担以下职责：
 use rml::prelude::*;
 
 #[derive(Model)]    // 1. 成为 GPUI Entity
-#[view]             // 2. 标记为 RML 视图
+#[component]             // 2. 标记为 RML 视图
 pub struct Counter {
     pub count: i32,  // 3. 响应式状态
 }
@@ -73,16 +73,16 @@ pub struct BadView {
 }
 ```
 
-## 4.1.3 `#[view]` 属性
+## 4.1.3 `#[component]` 属性
 
-`#[view]` 标记结构体为 RML 视图，告诉编译器：
+`#[component]` 标记结构体为 RML 视图，告诉编译器：
 
 1. 这个 ViewModel 关联一个 `.rml` 文件
 2. 编译器应为它生成 `Render` trait 的实现
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct Counter {
     pub count: i32,
 }
@@ -90,7 +90,7 @@ pub struct Counter {
 
 ### 文件关联规则
 
-`#[view]` 默认按命名约定关联 `.rml` 文件：
+`#[component]` 默认按命名约定关联 `.rml` 文件：
 
 ```
 src/views/counter.rml       ← UI 标记
@@ -105,7 +105,7 @@ src/views/counter.rml.rs    ← ViewModel（Counter 结构体）
 
 ```rust
 #[derive(Model)]
-#[view(template = "views/custom_counter.rml")]
+#[component(template = "views/custom_counter.rml")]
 pub struct Counter {
     pub count: i32,
 }
@@ -119,7 +119,7 @@ UI 可以通过 `{field}` 绑定访问的字段：
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct MyView {
     pub user_name: SharedString,  // UI 可绑定 {user_name}
     pub count: i32,               // UI 可绑定 {count}
@@ -137,7 +137,7 @@ pub struct MyView {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct TodoViewModel {
     pub todos: Vec<TodoItem>,  // pub：UI 需要遍历
     pub new_todo_text: SharedString,  // pub：UI 需要双向绑定
@@ -207,7 +207,8 @@ impl UserView {
 ```rust
 fn main() {
     RmlApplication::new()
-        .run::<views::counter::Counter>()
+        .main_window::<views::counter::Counter>()
+        .run()
         .unwrap();
 }
 ```
@@ -229,7 +230,7 @@ pub struct TodoItem {
 }
 ```
 
-- 不标注 `#[view]`
+- 不标注 `#[component]`
 - 不含命令方法
 - 不含计算属性
 - 可被多个 ViewModel 共享
@@ -238,7 +239,7 @@ pub struct TodoItem {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct TodoViewModel {
     pub todos: Vec<TodoItem>,
     pub new_todo_text: SharedString,
@@ -252,7 +253,7 @@ impl TodoViewModel {
 }
 ```
 
-- 标注 `#[view]`
+- 标注 `#[component]`
 - 包含命令方法
 - 包含计算属性
 - 与特定 `.rml` 文件关联
@@ -276,7 +277,7 @@ pub struct UserProfile {
 }
 
 #[derive(Model)]
-#[view]
+#[component]
 pub struct UserView {
     pub user: User,  // 嵌套 Model
     pub is_editing: bool,
@@ -295,7 +296,7 @@ pub struct UserView {
 ## 4.1.8 ViewModel 的生命周期
 
 ```
-1. RmlApplication::run::<MyView>()
+1. RmlApplication::main_window::<MyView>().run()
    ↓
 2. MyView::new() 被调用，创建 ViewModel 实例
    ↓
@@ -329,7 +330,7 @@ pub struct User {
 }
 
 #[derive(Model)]
-#[view]
+#[component]
 pub struct UserListViewModel {
     pub users: Vec<User>,
     pub search_text: SharedString,
@@ -405,7 +406,7 @@ impl UserListViewModel {
 ViewModel 的标准结构：
 
 1. **`#[derive(Model)]`**：成为 GPUI Entity
-2. **`#[view]`**：标记为 RML 视图，关联 `.rml` 文件
+2. **`#[component]`**：标记为 RML 视图，关联 `.rml` 文件
 3. **`pub` 字段**：UI 可绑定的响应式状态
 4. **`private` 字段**：内部状态，不暴露给 UI
 5. **`new()` 方法**：构造函数

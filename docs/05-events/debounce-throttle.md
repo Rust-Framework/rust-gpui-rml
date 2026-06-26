@@ -43,7 +43,7 @@ use std::time::Duration;
 use gpui::Timer;
 
 #[derive(Model)]
-#[view]
+#[component]
 pub struct SearchView {
     pub search_text: SharedString,
     pub search_results: Vec<SearchResult>,
@@ -142,7 +142,7 @@ impl SearchView {
 use std::time::{Duration, Instant};
 
 #[derive(Model)]
-#[view]
+#[component]
 pub struct DragView {
     pub drag_position: Point<Pixels>,
     pub is_dragging: bool,
@@ -267,7 +267,7 @@ impl Debounce {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct SearchView {
     pub search_text: SharedString,
     search_debounce: Debounce,
@@ -302,7 +302,7 @@ use std::time::Duration;
 use rml::prelude::*;
 
 #[derive(Model)]
-#[view]
+#[component]
 pub struct SearchView {
     pub search_text: SharedString,
     pub search_results: Vec<SearchResult>,

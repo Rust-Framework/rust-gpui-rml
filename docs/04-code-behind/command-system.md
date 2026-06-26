@@ -346,7 +346,7 @@ pub struct CartItem {
 }
 
 #[derive(Model)]
-#[view]
+#[component]
 pub struct CartView {
     pub items: Vec<CartItem>,
     pub is_checking_out: bool,

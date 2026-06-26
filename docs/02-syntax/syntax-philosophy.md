@@ -163,7 +163,7 @@ RML 支持 HTML 风格注释：
 
 - 每个 `.rml` 文件**必须有且仅有一个根元素**
 - 根元素可以是任意 HTML 标签或自定义组件
-- 文件名与 `.rml.rs` 中的 ViewModel 通过 `#[view]` 宏自动关联
+- 文件名与 `.rml.rs` 中的 ViewModel 通过 `#[component]` 宏自动关联
 
 ## 2.1.7 小结
 

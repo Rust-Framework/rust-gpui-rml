@@ -13,8 +13,8 @@ pub use crate::events::*;
 pub use crate::lifecycle::ILifecycle;
 pub use crate::model::{FieldMeta, IModel};
 pub use crate::two_way_binding::ITwoWayBinding;
-pub use crate::view::IRmlView;
 pub use crate::view_model::IViewModel;
+pub use crate::window::{IWindow, WindowChrome, WindowState};
 
 // 重导出 GPUI 常用类型，让 .rml.rs 文件只需 `use rml::prelude::*;`
 pub use gpui::{

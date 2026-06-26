@@ -92,7 +92,7 @@ rml-framework/
 │   │
 │   ├── macros/                         # 过程宏定义
 │   │   └── src/
-│   │       ├── view.rs                 # #[view] 属性宏
+│   │   │       ├── window.rs                 # #[window] 窗口宏
 │   │       ├── component.rs            # #[component] 组件宏
 │   │       ├── command.rs              # #[command] 命令宏
 │   │       └── computed.rs             # #[computed] 计算属性宏
@@ -125,7 +125,7 @@ rml-framework/
 | ----------------- | ----------------------------------- | ----------------- |
 | `rml-core`        | 定义 `RmlView`、`BindingContext` 等基础 trait | 被所有其他 crate 依赖    |
 | `rml`             | 解析 `.rml`、生成 Rust 代码                | 依赖 `rml-core`     |
-| `rml-macros`      | 提供 `#[view]`、`#[component]` 等过程宏    | 依赖 `rml-core`     |
+| `rml-macros`      | 提供 `#[component]`、`#[window]` 等过程宏    | 依赖 `rml-core`     |
 | `rml-app`         | 应用启动器、窗口管理、资源加载                     | 依赖 `rml-core`、GPUI |
 | `gpui-component`  | 高层组件库（Button、Input、Dialog 等）         | 依赖 GPUI           |
 

@@ -1,10 +1,12 @@
-//! ModernWindow —— 内置封装的窗口视觉外壳组件
+//! ModernWindowShell —— 内置封装的窗口视觉外壳组件
 //!
 //! 组合 `TitleBar` + `Menu` + `StatusBar`，用户通过 MVVM 数据绑定配置，
 //! 无需在 `.rml` 中编写 `<TitleBar><Menu>...</Menu></TitleBar>` 布局。
 //!
 //! 用户也可选择手动组装：用 `<TitleBar>` / `<StatusBar>` / `<Kbd>` 原子组件自行构建。
-//! ModernWindow 是易用性封装，基于它构建的 `.rml` 文件代码更少，更符合现代视觉应用设计。
+//! ModernWindowShell 是易用性封装，基于它构建的 `.rml` 文件代码更少，更符合现代视觉应用设计。
+//!
+//! 注：重命名自 `ModernWindow`，以释放该名称给 `IWindow` 实现使用。
 
 use gpui::{
     AnyElement, App, IntoElement, ParentElement, RenderOnce, Styled, Window, div,
@@ -16,23 +18,23 @@ use smallvec::SmallVec;
 use super::menu_bar::render_menu_bar;
 use super::types::{MenuItem, StatusBarItem};
 
-/// ModernWindow —— 内置封装 TitleBar + Menu + StatusBar 的 RenderOnce 组件
+/// ModernWindowShell —— 内置封装 TitleBar + Menu + StatusBar 的 RenderOnce 组件
 ///
 /// 在 `.rml` 中作为根标签使用：
 /// ```html
-/// <ModernWindow title="My App" menu={menu_items} status_bar={status_items}>
+/// <ModernWindowShell title="My App" menu={menu_items} status_bar={status_items}>
 ///     <!-- 业务内容 -->
-/// </ModernWindow>
+/// </ModernWindowShell>
 /// ```
 #[derive(IntoElement)]
-pub struct ModernWindow {
+pub struct ModernWindowShell {
     title: Option<gpui::SharedString>,
     menu: Option<Vec<MenuItem>>,
     status_bar: Option<Vec<StatusBarItem>>,
     children: SmallVec<[AnyElement; 4]>,
 }
 
-impl ModernWindow {
+impl ModernWindowShell {
     pub fn new() -> Self {
         Self {
             title: None,
@@ -63,19 +65,19 @@ impl ModernWindow {
     }
 }
 
-impl Default for ModernWindow {
+impl Default for ModernWindowShell {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl ParentElement for ModernWindow {
+impl ParentElement for ModernWindowShell {
     fn extend(&mut self, elements: impl IntoIterator<Item = AnyElement>) {
         self.children.extend(elements);
     }
 }
 
-impl RenderOnce for ModernWindow {
+impl RenderOnce for ModernWindowShell {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
         div()
             .flex()

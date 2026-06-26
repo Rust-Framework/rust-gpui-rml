@@ -22,7 +22,7 @@
 ```rust
 // .rml.rs 中用 ElementRef 访问
 #[derive(Model)]
-#[view]
+#[component]
 pub struct MyView {
     pub user_name: SharedString,
 
@@ -77,7 +77,7 @@ impl MyView {
 use rml::prelude::*;
 
 #[derive(Model)]
-#[view]
+#[component]
 pub struct MyView {
     #[element]
     pub username_input: ElementRef<Input>,      // 引用 Input 组件
@@ -108,7 +108,7 @@ pub struct MyView {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct MyView {
     #[element]
     pub username_input: ElementRef<Input>,
@@ -333,7 +333,7 @@ self.username_input.set_value(self.user_name.clone(), cx);
 use rml::prelude::*;
 
 #[derive(Model)]
-#[view]
+#[component]
 pub struct LoginView {
     pub username: SharedString,
     pub password: SharedString,

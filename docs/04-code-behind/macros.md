@@ -1,12 +1,12 @@
 # 4.2 宏属性详解
 
-> **本节目标**：完整掌握 RML 的全部宏属性——`#[view]`、`#[component]`、`#[command]`、`#[computed]`、`#[element]`、`#[on_loaded]`、`#[on_unloaded]`。
+> **本节目标**：完整掌握 RML 的全部宏属性——`#[window]`、`#[component]`、`#[command]`、`#[computed]`、`#[element]`、`#[on_loaded]`、`#[on_unloaded]`。
 
 ## 4.2.1 宏属性总览
 
 | 宏属性              | 用途                         | 作用对象  |
 | ---------------- | -------------------------- | ----- |
-| `#[view]`        | 标记结构体为 RML 视图的 Code-Behind | 结构体   |
+| `#[window]`      | 标记结构体为 RML 窗口的 Code-Behind | 结构体   |
 | `#[component]`   | 标记结构体为自定义组件                | 结构体   |
 | `#[command]`     | 标记方法为 UI 可调用的命令            | 方法    |
 | `#[computed]`    | 标记为计算属性（依赖其他字段自动更新）        | 方法    |
@@ -14,13 +14,13 @@
 | `#[on_unloaded]` | 视图卸载前的清理回调                 | 方法    |
 | `#[element]`     | 标记字段为 `ref` 引用的 UI 元素      | 字段    |
 
-## 4.2.2 `#[view]`：标记视图
+## 4.2.2 `#[window]`：标记窗口
 
-`#[view]` 标记结构体为 RML 视图的 ViewModel：
+`#[window]` 标记结构体为 RML 窗口的 ViewModel：
 
 ```rust
 #[derive(Model)]
-#[view]
+#[window]
 pub struct Counter {
     pub count: i32,
 }
@@ -36,24 +36,24 @@ pub struct Counter {
 
 ```rust
 // 默认：按命名约定关联 counter.rml
-#[view]
+#[window]
 
 // 显式指定模板路径
-#[view(template = "views/custom_counter.rml")]
+#[window(template = "views/custom_counter.rml")]
 
 // 指定生成的 Render 实现位置
-#[view(generated_path = "OUT_DIR/views/counter.generated.rs")]
+#[window(generated_path = "OUT_DIR/views/counter.generated.rs")]
 ```
 
 ### 与 `#[component]` 的区别
 
-| 特性     | `#[view]`        | `#[component]`           |
-| ------ | ---------------- | ------------------------ |
-| 用途     | 顶层视图             | 可复用组件                    |
-| 关联文件   | `.rml`           | `.rml`                   |
-| 可被嵌套   | 否                | 是                        |
-| 插槽     | 不支持              | 支持                       |
-| 启动入口   | 可作为 `RmlApplication::run` 的入口 | 不能直接启动                   |
+| 特性     | `#[window]`         | `#[component]`           |
+| ------ | ------------------- | ------------------------ |
+| 用途     | 顶层窗口                | 可复用组件                    |
+| 关联文件   | `.rml`              | `.rml`                   |
+| 可被嵌套   | 否                   | 是                        |
+| 插槽     | 不支持                 | 支持                       |
+| 启动入口   | 可作为 `RmlApplication::main_window` 的入口 | 不能直接启动                   |
 
 ## 4.2.3 `#[component]`：标记组件
 
@@ -252,7 +252,7 @@ pub fn on_unloaded(&mut self, _cx: &mut ViewContext<Self>) {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct MyView {
     pub user_name: SharedString,
 
@@ -278,7 +278,7 @@ pub struct MyView {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct MyView {
     pub count: i32,
     pub user_name: SharedString,
@@ -328,7 +328,7 @@ impl MyView {
 
 ```rust
 // ❌ 缺少 Model 派生
-#[view]
+#[component]
 pub struct MyView {
     pub count: i32,
 }
@@ -384,7 +384,7 @@ pub username_input: ElementRef<Input>,
 
 RML 的 7 个宏属性是 `.rml.rs` 的核心工具：
 
-- **结构体级**：`#[view]`、`#[component]`
+- **结构体级**：`#[window]`、`#[component]`
 - **方法级**：`#[command]`、`#[computed]`、`#[on_loaded]`、`#[on_unloaded]`
 - **字段级**：`#[element]`
 

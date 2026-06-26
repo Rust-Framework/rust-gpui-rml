@@ -11,7 +11,7 @@
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct TodoViewModel {
     pub todos: Vec<TodoItem>,
 }

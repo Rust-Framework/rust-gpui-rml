@@ -236,7 +236,7 @@ use rml::prelude::*;
 use crate::theme::{ThemeManager, Theme};
 
 #[derive(Model)]
-#[view]
+#[component]
 pub struct App {
     pub theme_manager: Entity<ThemeManager>,
 }

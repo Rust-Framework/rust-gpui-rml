@@ -15,8 +15,8 @@ pub mod events;
 pub mod lifecycle;
 pub mod model;
 pub mod two_way_binding;
-pub mod view;
 pub mod view_model;
+pub mod window;
 
 pub mod prelude;
 

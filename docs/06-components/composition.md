@@ -88,7 +88,7 @@ impl ChildComponent {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct UserManagement {
     pub users: Vec<User>,
     pub editing_user: Option<User>,
@@ -146,7 +146,7 @@ impl UserManagement {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct SearchPanel {
     pub search_results: Vec<SearchResult>,
 }
@@ -189,7 +189,7 @@ impl SearchPanel {
 use rml::prelude::*;
 
 #[derive(Model)]
-#[view]
+#[component]
 pub struct App {
     pub theme: Entity<Theme>,
     pub user_session: Entity<UserSession>,
@@ -318,7 +318,7 @@ impl LoadingWrapper {
 ```rust
 // 容器组件：负责数据获取和状态管理
 #[derive(Model)]
-#[view]
+#[component]
 pub struct UserListContainer {
     pub users: Vec<User>,
     pub is_loading: bool,
@@ -573,7 +573,7 @@ use crate::components::{search_box::SearchBox, dialog::Dialog, button::Button};
 use crate::views::user_management::{user_list::UserList, user_form::UserForm};
 
 #[derive(Model)]
-#[view]
+#[component]
 pub struct UserManagement {
     pub users: Vec<User>,
     pub search_query: SharedString,

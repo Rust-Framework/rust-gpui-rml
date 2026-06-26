@@ -52,7 +52,7 @@ div(class="counter")
 ```rust
 // ViewModel 定义
 #[derive(Model)]
-#[view]
+#[component]
 pub struct Counter {
     pub count: i32,
 }
@@ -280,7 +280,7 @@ pub fn batch_update(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
 ```rust
 // ❌ 单一巨型 ViewModel，任何 notify 都触发全量重绘
 #[derive(Model)]
-#[view]
+#[component]
 pub struct MegaView {
     pub header_data: HeaderData,
     pub sidebar_data: SidebarData,

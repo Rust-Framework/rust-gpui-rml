@@ -29,7 +29,7 @@ RML 的核心价值是**关注点分离**。如果开发者把业务逻辑塞进
 └──────────────────────────────────────────────────────────────┘
 ```
 
-> **关键澄清**：在 RML 中，ViewModel 与 View **不是两个独立的类型**。ViewModel 结构体（标注 `#[derive(Model)]` + `#[view]`）本身就是 GPUI 的 Entity；View 是编译器在 `OUT_DIR` 中为该 ViewModel 生成的 `impl Render` 代码块。开发者只写 ViewModel，不写 View。
+> **关键澄清**：在 RML 中，ViewModel 与 View **不是两个独立的类型**。ViewModel 结构体（标注 `#[derive(Model)]` + `#[component]`）本身就是 GPUI 的 Entity；View 是编译器在 `OUT_DIR` 中为该 ViewModel 生成的 `impl Render` 代码块。开发者只写 ViewModel，不写 View。
 
 ## 9.1.3 各层职责详解
 
@@ -70,7 +70,7 @@ RML 的核心价值是**关注点分离**。如果开发者把业务逻辑塞进
 
 **应该做的**：
 
-- 定义 ViewModel 结构体，标注 `#[derive(Model)]` + `#[view]`
+- 定义 ViewModel 结构体，标注 `#[derive(Model)]` + `#[component]`
 - 实现 `#[command]` 命令方法
 - 实现 `#[computed]` 计算属性
 - 实现 `#[on_loaded]` / `#[on_unloaded]` 生命周期
@@ -97,7 +97,7 @@ RML 的核心价值是**关注点分离**。如果开发者把业务逻辑塞进
 //   4. cx.spawn 把异步 I/O 委托给 service，命令方法本身保持同步且可单测——
 //      传统 MVVM 常常把网络请求直接写进 ViewModel，导致单测必须 mock HTTP。
 #[derive(Model)]
-#[view]
+#[component]
 pub struct UserViewModel {
     pub user: User,
     pub is_following: bool,  // pub 字段自动响应式，.rml 中 {is_following} 即可绑定
@@ -139,7 +139,7 @@ pub fn render_detail(&mut self, _ev: &ClickEvent, cx: &mut ViewContext<Self>) {
 - `#[derive(Model)]` 派生的普通结构体（可按需附加 `Clone`、`Debug`、`Serialize` 等）
 - 字段是纯数据：`String`、`i32`、`Vec<T>`、`Option<T>`、嵌套 Model
 - **不依赖** `gpui::*`、不持有 `ViewContext`、不实现 `Render`
-- **不标注** `#[view]`（那是 ViewModel 的标记）
+- **不标注** `#[component]`（那是 ViewModel 的标记）
 - 通常是 API 响应、配置、领域模型的反序列化目标
 
 **职责**：
@@ -149,13 +149,13 @@ pub fn render_detail(&mut self, _ev: &ClickEvent, cx: &mut ViewContext<Self>) {
 - 可被序列化 / 反序列化
 
 ```rust
-// ✅ Model：纯数据，无 GPUI 依赖，不标注 #[view]
+// ✅ Model：纯数据，无 GPUI 依赖，不标注 #[component]
 //
 // 【对比传统 MVVM】在传统 WPF MVVM 中，Model 与 ViewModel 的边界经常模糊——
 // 开发者为了让数据能绑定，常常让 Model 也实现 INotifyPropertyChanged，
 // 导致数据层被 UI 框架污染，无法在控制台、服务端、测试用例中复用。
 // RML 的设计更纯粹：
-//   1. Model 只 #[derive(Model)]，不标注 #[view]，编译器不会为它生成 Render；
+//   1. Model 只 #[derive(Model)]，不标注 #[component]，编译器不会为它生成 Render；
 //   2. Model 的方法（如 full_name/is_visible）是纯函数，无副作用，可自由单测；
 //   3. Model 不依赖 gpui::*，可以放进 core crate，被 CLI/服务端/桌面端共享；
 //   4. 当 Model 需要被 UI 消费时，由 ViewModel 持有它并把字段暴露为绑定源，
@@ -188,7 +188,7 @@ impl User {
 
 **特征**：
 
-- `#[derive(Model)]` 派生，并标注 `#[view]`（标记为 RML 视图的 Code-Behind）
+- `#[derive(Model)]` 派生，并标注 `#[component]`（标记为 RML 视图的 Code-Behind）
 - **持有视图专属状态**
 - 通过 `#[command]` 暴露可被 UI 触发的方法
 - 通过 `#[computed]` 暴露派生数据
@@ -205,7 +205,7 @@ impl User {
 **ViewModel 不应该**：
 
 - ❌ 持有其他 ViewModel 的强引用（用 `WeakEntity` 或 Context 事件）
-- ❌ 手写 `impl Render`（由编译器根据 `.rml` 自动生成，开发者只需标注 `#[view]`）
+- ❌ 手写 `impl Render`（由编译器根据 `.rml` 自动生成，开发者只需标注 `#[component]`）
 - ❌ 跨越多个视图共享（每个视图一个 ViewModel；跨视图共享用 Context / 全局 Model）
 
 ### ⑤ View —— 渲染产物层
@@ -226,7 +226,7 @@ impl User {
 **开发者与 View 的关系**：
 
 - 永远不直接构造 View，也不手写 `impl Render`
-- 通过 `RmlApplication::new().run::<MyViewModel>()` 启动根视图
+- 通过 `RmlApplication::new().main_window::<MyWindow>().run()` 启动根窗口
 - 通过 `ElementRef` 在 ViewModel 中拿到元素句柄，但**不修改结构**
 
 ## 9.1.4 职责速查表
@@ -282,7 +282,7 @@ impl User {
 //   4. 状态机清晰：is_loading/error/email/password 四个字段就是完整状态空间，
 //      UI 的所有外观都由这四个字段推导，不存在隐式的"控件可见性"等命令式状态。
 #[derive(Model)]
-#[view]
+#[component]
 pub struct LoginViewModel {
     pub email: SharedString,       // 双向绑定：input ↔ ViewModel
     pub password: SharedString,    // 双向绑定：input ↔ ViewModel

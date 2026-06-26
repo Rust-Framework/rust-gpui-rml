@@ -116,7 +116,7 @@ impl SearchBox {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct SearchPanel {
     pub search_results: Vec<SearchResult>,
 }
@@ -359,7 +359,7 @@ impl Dialog {
 ```rust
 // views/user_view.rml.rs
 #[derive(Model)]
-#[view]
+#[component]
 pub struct UserView {
     pub user_name: SharedString,
     pub delete_dialog: Entity<Dialog>,

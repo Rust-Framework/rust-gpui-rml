@@ -199,7 +199,7 @@ pub fn pending_todos(&self) -> Vec<&TodoItem> {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct MyView {
     pub user_name: SharedString,  // ✅ 可以双向绑定
     pub age: i32,                 // ✅ 可以双向绑定
@@ -287,7 +287,7 @@ pub fn user_bio_text(&self) -> SharedString {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct MyView {
     pub user_name: SharedString,
     #[element]

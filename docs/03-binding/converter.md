@@ -161,7 +161,7 @@ RML 提供常用内置转换器：
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct MyView {
     pub price: f64,
     pub status: Status,
@@ -261,7 +261,7 @@ impl Converter for CurrencyConverter {
 ```rust
 // view.rml.rs
 #[derive(Model)]
-#[view]
+#[component]
 pub struct PaymentView {
     pub amount: f64,
     pub error: Option<SharedString>,

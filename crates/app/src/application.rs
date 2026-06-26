@@ -1,27 +1,41 @@
 //! `RmlApplication` —— 应用启动器
 //!
-//! 封装 GPUI 的 `Application`，提供 `RmlApplication::new().run::<A>()` API，
-//! 其中 `A: IAppLifecycle`。窗口创建权交给 App（类比 WPF `Application`）。
+//! 参考 WPF `Application` 类设计：
+//! - `main_window::<W: IWindow>()` 设置主窗口类型（内置功能，非扩展）
+//! - `run()` 启动应用并打开主窗口（声明式）或由 `IAppLifecycle` 控制（命令式）
 //!
-//! ## Feature `ui-components`（默认开启）
+//! ## 双入口使用模式
 //!
-//! 启用时：在 `Application::run` 启动回调中调用 `rml_ui::init(cx)` 初始化
-//! gpui-component 全局状态（theme / global_state / root / dialog / ...）。
-//!
-//! 关闭时：不引入 gpui-component 依赖，App 需自行管理窗口。
-//!
-//! ## 典型用法
+//! **模式 A：声明式（WPF StartupUri 风格，推荐）**
 //!
 //! ```rust,ignore
-//! use rml_app::{IAppLifecycle, RmlApplication, ModernWindow};
+//! use rml_app::RmlApplication;
+//! use rml_ui::prelude::*;  // 启用 #[window] 宏 + 内置组件
+//!
+//! #[window(title = "My App", width = 800, height = 600)]
+//! #[derive(Default)]
+//! pub struct MainWindow {
+//!     pub count: i32,
+//! }
+//!
+//! fn main() {
+//!     RmlApplication::new()
+//!         .main_window::<MainWindow>()  // 内置方法，无需 Ext trait
+//!         .run();
+//! }
+//! ```
+//!
+//! **模式 B：命令式（WPF OnStartup 重写风格）**
+//!
+//! ```rust,ignore
+//! use rml_app::{IAppLifecycle, RmlApplication};
 //! use gpui::App;
 //!
 //! struct MyApp;
 //!
 //! impl IAppLifecycle for MyApp {
 //!     fn on_launch(&mut self, cx: &mut App) {
-//!         ModernWindow::new("My App", gpui::px(800.), gpui::px(600.))
-//!             .open::<MyView>(cx);
+//!         // 手动创建并打开窗口
 //!     }
 //! }
 //!
@@ -30,47 +44,74 @@
 //! }
 //! ```
 
+use std::marker::PhantomData;
+
 use gpui::App;
+use rml_core::window::IWindow;
 
 use crate::lifecycle::IAppLifecycle;
 
+/// 标记类型：未设置主窗口（不可实现 `IWindow`，避免 impl 冲突）
+pub struct NoWindow;
+
 /// RML 应用启动器
 ///
-/// 不再直接绑定视图类型，而是由 `A: IAppLifecycle` 控制窗口创建。
-/// 这类比 WPF 的 `Application` 类：App 负责打开主窗口，而非框架自动创建。
-pub struct RmlApplication;
+/// 内置主窗口设置，无需扩展 trait。
+/// 类比 WPF `Application` + `StartupUri`。
+///
+/// 使用泛型类型状态模式 `RmlApplication<W>`：
+/// - `RmlApplication<NoWindow>`：未设置主窗口，需用命令式 `run::<A>()`
+/// - `RmlApplication<W: IWindow>`：已设置主窗口 `W`，用声明式 `run()`
+pub struct RmlApplication<W = NoWindow> {
+    _window: PhantomData<W>,
+}
 
-impl RmlApplication {
+impl RmlApplication<NoWindow> {
+    /// 创建应用启动器
     pub fn new() -> Self {
-        Self
+        Self { _window: PhantomData }
     }
 
-    /// 启动应用，由 `A: IAppLifecycle` 控制窗口创建与生命周期。
+    /// 声明式设置主窗口类型（WPF StartupUri 风格，内置方法）
     ///
-    /// `A` 必须实现 `IAppLifecycle`（含 `on_launch`）和 `Default`。
-    /// 在 `on_launch` 中调用 `rml_app::Window::new(...).open::<V>(cx)` 或
-    /// `rml_app::ModernWindow::new(...).open::<V>(cx)` 打开主窗口。
+    /// ```rust,ignore
+    /// RmlApplication::new()
+    ///     .main_window::<MainWindow>()
+    ///     .run();
+    /// ```
+    pub fn main_window<NewW: IWindow + Default + 'static>(self) -> RmlApplication<NewW> {
+        RmlApplication { _window: PhantomData }
+    }
+
+    /// 命令式启动（WPF OnStartup 重写风格）
+    ///
+    /// `A: IAppLifecycle` 负责窗口创建与生命周期。
     pub fn run<A>(self)
     where
         A: IAppLifecycle + Default + 'static,
     {
         gpui_platform::application().run(move |cx: &mut App| {
-            // 初始化 gpui-component 全局状态：theme / global_state / root / dialog / ...
-            // 必须在打开窗口前完成
-            #[cfg(feature = "ui-components")]
-            rml_ui::init(cx);
-
-            // 创建 App 实例并触发 on_launch —— 由 App 负责打开主窗口
             let mut app = A::default();
             app.on_launch(cx);
-
-            // Phase 4：注册 on_exit / on_activate / on_deactivate 回调
-            // GPUI 当前没有显式的 on_exit 钩子，可在 on_release 中近似处理
         });
     }
 }
 
-impl Default for RmlApplication {
+impl<W: IWindow + Default + 'static> RmlApplication<W> {
+    /// 启动应用并打开主窗口
+    ///
+    /// 框架自动：
+    /// 1. 创建 `W::default()` 实例
+    /// 2. 调用 `IWindow::open()` 打开主窗口
+    pub fn run(self) {
+        gpui_platform::application().run(move |cx: &mut App| {
+            let mut window = W::default();
+            window.open(cx);
+        });
+    }
+}
+
+impl Default for RmlApplication<NoWindow> {
     fn default() -> Self {
         Self::new()
     }

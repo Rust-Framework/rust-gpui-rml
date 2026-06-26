@@ -174,7 +174,7 @@ pub struct Button {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct ParentView {
     pub user_name: SharedString,
     pub button_text: SharedString,
@@ -270,7 +270,7 @@ impl TwoWayBinding for Counter {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct MyView {
     pub my_count: i32,
 }
@@ -515,7 +515,7 @@ use rml::prelude::*;
 use crate::components::progress_bar::{ProgressBar, ProgressVariant};
 
 #[derive(Model)]
-#[view]
+#[component]
 pub struct UploadView {
     pub upload_progress: f64,
     pub is_uploading: bool,

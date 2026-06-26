@@ -1,0 +1,196 @@
+//! `IWindow` trait —— 窗口抽象接口
+//!
+//! 参考 WPF `Window` 类设计：
+//! - 窗口 IS 组件（继承 `IComponent`，有模板和标签）
+//! - 窗口有配置属性（`title` / `width` / `height` / `chrome`）
+//! - 窗口自管理生命周期操作（`open` / `show` / `close` / `state`）
+//!
+//! 窗口操作（close/show/hide/activate/state）提供**默认实现**，基于 `handle()`
+//! 调用 GPUI API。实现方只需提供 6 个核心方法即可获得完整窗口行为。
+//! 由 `#[window]` 宏自动实现，也可手动 impl。
+
+use gpui::{
+    AnyWindowHandle, App, Bounds, Pixels, Point, Size, TitlebarOptions, WindowBounds,
+    WindowOptions, px,
+};
+
+use crate::component::IComponent;
+
+/// 窗口标题栏样式（WPF: `Window.WindowStyle`）
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum WindowChrome {
+    /// 系统原生标题栏
+    Native,
+    /// 透明标题栏（现代风格，由 `TitleBar` 组件自绘）
+    #[default]
+    Transparent,
+}
+
+/// 窗口状态（WPF: `WindowState`）
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum WindowState {
+    #[default]
+    Normal,
+    Minimized,
+    Maximized,
+}
+
+/// 窗口抽象接口（WPF `Window` 类等价物）。
+///
+/// 窗口是一种特殊组件，可作为顶层 OS 窗口打开。
+/// 窗口自管理其窗口句柄（`AnyWindowHandle`），无需扩展 trait。
+///
+/// # 自管理窗口操作
+///
+/// `close` / `show` / `hide` / `activate` / `state` 提供默认实现，
+/// 基于 `handle()` 调用 GPUI API。实现方只需覆盖核心方法：
+/// - 配置：`title()` / `width()` / `height()`
+/// - 句柄：`handle()` / `set_handle()`
+/// - 打开：`open()`
+///
+/// 通过 `#[window]` 宏自动实现，或手动 impl。
+///
+/// # 示例
+///
+/// ```rust,ignore
+/// #[window]
+/// #[derive(Default)]
+/// pub struct MainWindow {
+///     count: i32,
+/// }
+///
+/// fn main() {
+///     RmlApplication::new()
+///         .main_window::<MainWindow>()
+///         .run();
+/// }
+/// ```
+pub trait IWindow: IComponent {
+    // ── 必需：配置属性（WPF: Window.Title / Width / Height）──
+
+    /// 窗口标题
+    fn title(&self) -> &str;
+
+    /// 窗口宽度
+    fn width(&self) -> Pixels;
+
+    /// 窗口高度
+    fn height(&self) -> Pixels;
+
+    // ── 必需：句柄管理 ──
+
+    /// 获取窗口句柄（未打开时返回 `None`）
+    fn handle(&self) -> Option<AnyWindowHandle>;
+
+    /// 设置窗口句柄（由 `open()` 内部调用）
+    fn set_handle(&mut self, handle: AnyWindowHandle);
+
+    // ── 必需：打开窗口（WPF: `Window.Show()`）──
+    //
+    // 创建 OS 窗口并显示。窗口句柄存储在实例内部。
+    // 不提供默认实现，因为创建视图 + Root 包装的逻辑特定于具体窗口类型。
+    fn open(&mut self, cx: &mut App);
+
+    // ── 默认：窗口装饰（WPF: Window.WindowStyle）──
+
+    /// 标题栏样式（默认透明/现代风格）
+    fn chrome(&self) -> WindowChrome {
+        WindowChrome::Transparent
+    }
+
+    // ── 默认：窗口选项构建 ──
+
+    /// 从配置构建 GPUI `WindowOptions`
+    fn window_options(&self) -> WindowOptions {
+        let titlebar = match self.chrome() {
+            WindowChrome::Native => TitlebarOptions {
+                title: Some(self.title().into()),
+                appears_transparent: false,
+                traffic_light_position: None,
+            },
+            WindowChrome::Transparent => TitlebarOptions {
+                title: Some(self.title().into()),
+                appears_transparent: true,
+                traffic_light_position: Some(Point::new(px(9.), px(9.))),
+            },
+        };
+
+        WindowOptions {
+            window_bounds: Some(WindowBounds::Windowed(Bounds {
+                origin: Default::default(),
+                size: Size {
+                    width: self.width(),
+                    height: self.height(),
+                },
+            })),
+            titlebar: Some(titlebar),
+            ..Default::default()
+        }
+    }
+
+    // ── 默认：窗口操作（基于 handle 自管理，WPF: Window.Show/Close/Activate）──
+
+    /// 关闭窗口（WPF: `Window.Close()`）
+    ///
+    /// 默认实现通过 `handle()` 调用 GPUI `window.remove_window()`。
+    fn close(&mut self, cx: &mut App) {
+        if let Some(handle) = self.handle() {
+            let _ = handle.update(cx, |_view, window, _cx| {
+                window.remove_window();
+            });
+        }
+    }
+
+    /// 显示窗口（若已隐藏）
+    ///
+    /// 默认实现通过 `handle()` 调用 GPUI `window.activate_window()`。
+    fn show(&mut self, cx: &mut App) {
+        if let Some(handle) = self.handle() {
+            let _ = handle.update(cx, |_view, window, _cx| {
+                window.activate_window();
+            });
+        }
+    }
+
+    /// 隐藏窗口（WPF: `Window.Hide()`）
+    ///
+    /// GPUI 不支持单窗口隐藏，默认实现使用 `minimize_window()` 作为最接近的替代。
+    fn hide(&mut self, cx: &mut App) {
+        if let Some(handle) = self.handle() {
+            let _ = handle.update(cx, |_view, window, _cx| {
+                window.minimize_window();
+            });
+        }
+    }
+
+    /// 激活窗口（置于前台）
+    ///
+    /// 默认实现通过 `handle()` 调用 GPUI `window.activate_window()`。
+    fn activate(&mut self, cx: &mut App) {
+        if let Some(handle) = self.handle() {
+            let _ = handle.update(cx, |_view, window, _cx| {
+                window.activate_window();
+            });
+        }
+    }
+
+    // ── 默认：状态查询（WPF: Window.WindowState）──
+
+    /// 获取窗口状态
+    ///
+    /// 默认实现通过 `handle()` 查询 GPUI `window.is_maximized()`。
+    /// 注意：GPUI 仅支持查询 `is_maximized()`，无法查询最小化状态。
+    /// `WindowState::Minimized` 需由实现方覆盖此方法自行追踪。
+    fn state(&self, cx: &mut App) -> WindowState {
+        if let Some(handle) = self.handle() {
+            if let Ok(maximized) = handle.update(cx, |_view, window, _cx| {
+                window.is_maximized()
+            }) {
+                if maximized {
+                    return WindowState::Maximized;
+                }
+            }
+        }
+        WindowState::Normal
+    }
+}

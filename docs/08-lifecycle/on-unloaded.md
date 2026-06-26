@@ -27,7 +27,7 @@
 use std::time::Duration;
 
 #[derive(Model)]
-#[view]
+#[component]
 pub struct DataView {
     pub data: Vec<Item>,
     load_task: Option<Task<()>>,
@@ -83,7 +83,7 @@ impl DataView {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct NotificationView {
     pub notifications: Vec<Notification>,
     subscription: Option<Subscription>,
@@ -112,7 +112,7 @@ impl NotificationView {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct EditorView {
     pub content: SharedString,
     pub cursor_position: usize,
@@ -141,7 +141,7 @@ impl EditorView {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct VideoPlayerView {
     pub video_url: SharedString,
     pub is_playing: bool,
@@ -169,7 +169,7 @@ impl VideoPlayerView {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct ChatView {
     pub is_active: bool,
     pub user_id: u64,
@@ -304,7 +304,7 @@ use std::time::Duration;
 use rml::prelude::*;
 
 #[derive(Model)]
-#[view]
+#[component]
 pub struct ChatView {
     pub messages: Vec<Message>,
     pub input_text: SharedString,

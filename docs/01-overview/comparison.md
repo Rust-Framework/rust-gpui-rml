@@ -126,7 +126,7 @@ impl Render for Counter {
 use rml::prelude::*;
 
 #[derive(Model)]
-#[view]
+#[component]
 pub struct Counter {
     pub count: i32,
 }

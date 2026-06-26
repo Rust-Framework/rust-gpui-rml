@@ -94,7 +94,7 @@ pub fn on_unloaded(&mut self, cx: &mut ViewContext<Self>) {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct MyView {
     pub data: Vec<Item>,
     pub is_loading: bool,
@@ -364,7 +364,7 @@ pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct EditorView {
     pub content: SharedString,
 }
@@ -397,7 +397,7 @@ impl EditorView {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct ParentView {
     pub shared_state: Entity<SharedState>,
     pub child_view: Entity<ChildView>,

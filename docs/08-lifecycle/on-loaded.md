@@ -28,7 +28,7 @@
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct UserListView {
     pub users: Vec<User>,
     pub is_loading: bool,
@@ -82,7 +82,7 @@ impl UserListView {
 use std::time::Duration;
 
 #[derive(Model)]
-#[view]
+#[component]
 pub struct ClockView {
     pub current_time: SharedString,
     timer: Option<Task<()>>,
@@ -126,7 +126,7 @@ impl ClockView {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct NotificationView {
     pub notifications: Vec<Notification>,
     subscription: Option<Subscription>,
@@ -164,7 +164,7 @@ impl NotificationView {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct SearchView {
     pub query: SharedString,
 
@@ -203,7 +203,7 @@ impl SearchView {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct ChartView {
     pub data: Vec<f64>,
     #[element]
@@ -356,7 +356,7 @@ fn load_data(&mut self, cx: &mut ViewContext<Self>) {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct DataView {
     pub data: Vec<Item>,
     pub is_loaded: bool,
@@ -385,7 +385,7 @@ impl DataView {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct DetailView {
     pub data: Item,
 }
@@ -437,7 +437,7 @@ use std::time::Duration;
 use rml::prelude::*;
 
 #[derive(Model)]
-#[view]
+#[component]
 pub struct UserProfileView {
     pub user_id: u64,
     pub user: Option<User>,

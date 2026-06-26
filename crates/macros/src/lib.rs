@@ -1,10 +1,10 @@
 //! RML 过程宏集合
 //!
-//! 提供 `#[derive(IModel)]`、`#[view]`、`#[component]`、`#[command]`、
+//! 提供 `#[derive(IModel)]`、`#[component]`、`#[window]`、`#[command]`、
 //! `#[computed]`、`#[on_loaded]`、`#[on_unloaded]` 等宏。
 //!
 //! 注：`#[element]` 作为字段属性，通过 `#[derive(IModel)]` 的 helper attribute
-//! 声明（`attributes(element)`），由 `#[view]` 在展开时剥离并解析。
+//! 声明（`attributes(element)`），由 `#[component]`/`#[window]` 在展开时剥离并解析。
 
 #![forbid(unsafe_code)]
 
@@ -12,10 +12,11 @@
 extern crate rust_rml_core as rml_core;
 
 mod command;
+mod component;
 mod computed;
 mod derive_model;
 mod lifecycle;
-mod view;
+mod window;
 
 use proc_macro::TokenStream;
 
@@ -28,21 +29,42 @@ pub fn derive_i_model(input: TokenStream) -> TokenStream {
     derive_model::derive(input.into()).into()
 }
 
-/// 标记结构体为 RML 视图的 Code-Behind（ViewModel）。
+/// 标记结构体为 RML 组件（Code-Behind ViewModel）。
 ///
 /// 编译器会为该结构体生成 `Render` trait 实现。
 ///
 /// # 参数
 /// - `template = "path"`：显式指定 `.rml` 模板路径（默认按命名约定）
-#[proc_macro_attribute]
-pub fn view(args: TokenStream, input: TokenStream) -> TokenStream {
-    view::expand(args.into(), input.into()).into()
-}
-
-/// 标记结构体为可复用的自定义组件。
+///
+/// 合并自旧 `#[view]` + `#[component]`。
 #[proc_macro_attribute]
 pub fn component(args: TokenStream, input: TokenStream) -> TokenStream {
-    view::expand_component(args.into(), input.into()).into()
+    component::expand(args.into(), input.into()).into()
+}
+
+/// 标记结构体为窗口（顶层 OS 窗口）。
+///
+/// 在 `#[component]` 基础上额外生成 `IWindow` trait 实现，
+/// 包含窗口配置（title/width/height）和窗口操作（open/close/show/hide/activate/state）。
+///
+/// # 参数
+/// - `title = "..."`：窗口标题
+/// - `width = N`：窗口宽度（像素）
+/// - `height = N`：窗口高度（像素）
+/// - `template = "path"`：显式指定 `.rml` 模板路径
+///
+/// # 示例
+///
+/// ```rust,ignore
+/// #[window(title = "My App", width = 800, height = 600)]
+/// #[derive(Default)]
+/// pub struct MainWindow {
+///     pub count: i32,
+/// }
+/// ```
+#[proc_macro_attribute]
+pub fn window(args: TokenStream, input: TokenStream) -> TokenStream {
+    window::expand(args.into(), input.into()).into()
 }
 
 /// 标记方法为 UI 可调用的命令。

@@ -319,7 +319,7 @@ pub trait Event {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct EditorView {
     pub content: SharedString,
     pub is_saved: bool,

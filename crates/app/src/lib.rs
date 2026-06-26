@@ -1,28 +1,23 @@
-//! RML 应用启动器与窗口管理
+//! RML 应用启动器
 //!
 //! 提供 `RmlApplication` 作为应用入口，封装 GPUI 的窗口创建与生命周期管理。
 //!
-//! ## Feature: `ui-components`（默认开启）
+//! ## 双入口使用模式
 //!
-//! 启用后：
-//! - 在 `Application::run` 启动时调用 `rml_ui::init(cx)` 初始化 gpui-component 全局状态
-//! - 窗口顶层使用 `rml_ui::Root` 包裹业务 view，从而支持 Dialog/Sheet/Notification 等浮层
+//! - **声明式**：`RmlApplication::new().main_window::<W>().run()`（WPF StartupUri 风格）
+//! - **命令式**：`RmlApplication::new().run::<A>()`（WPF OnStartup 重写风格）
 //!
-//! 关闭后退化为「裸 GPUI 窗口」，业务 view 直接作为窗口根 view。
+//! `app` crate **不依赖** `ui` crate。`IWindow` trait 定义在 `core` crate，
+//! 窗口打开逻辑由 `W` 的 `IWindow::open()` 实现负责（在 `ui` crate 或用户代码中）。
 
 #![forbid(unsafe_code)]
 
 // 包名统一为 rust-rml-* 前缀，通过 extern crate 别名保留源码中的短名引用
 extern crate rust_rml_core as rml_core;
 
-#[cfg(feature = "ui-components")]
-extern crate rust_rml_ui as rml_ui;
-
 pub mod application;
 pub mod lifecycle;
 pub mod resources;
-pub mod window;
 
 pub use application::RmlApplication;
 pub use lifecycle::IAppLifecycle;
-pub use window::{Window, ModernWindow};

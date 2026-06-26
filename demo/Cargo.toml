@@ -7,7 +7,7 @@ description = "RML 计数器 demo —— 验证 .rml + .rml.rs + build.rs 三件
 
 [dependencies]
 rust-rml-engine = { workspace = true }
-rust-rml-app = { workspace = true, features = ["ui-components"] }
+rust-rml-app = { workspace = true }
 rust-rml-core = { workspace = true }
 rust-rml-ui = { workspace = true }
 gpui = { workspace = true }

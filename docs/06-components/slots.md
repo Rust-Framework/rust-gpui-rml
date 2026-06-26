@@ -159,7 +159,7 @@
 ```rust
 // 父视图
 #[derive(Model)]
-#[view]
+#[component]
 pub struct MyView {
     pub user_name: SharedString,  // 父视图的字段
 }

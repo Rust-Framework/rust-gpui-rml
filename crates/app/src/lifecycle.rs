@@ -6,15 +6,16 @@
 //! ## 典型用法
 //!
 //! ```rust,ignore
-//! use rml_app::{IAppLifecycle, RmlApplication, ModernWindow};
+//! use rml_app::{IAppLifecycle, RmlApplication};
+//! use rml_core::window::IWindow;
 //! use gpui::App;
 //!
 //! struct MyApp;
 //!
 //! impl IAppLifecycle for MyApp {
 //!     fn on_launch(&mut self, cx: &mut App) {
-//!         ModernWindow::new("My App", gpui::px(800.), gpui::px(600.))
-//!             .open::<MyView>(cx);
+//!         // 在此处打开窗口（IWindow::open）
+//!         // 或使用 RmlApplication::new().main_window::<W>().run() 声明式 API
 //!     }
 //! }
 //!
@@ -35,8 +36,8 @@ pub trait IAppLifecycle: Sized + Send + 'static {
     /// 应用启动时调用（仅一次）
     ///
     /// 典型用途：打开主窗口、初始化全局状态、注册 app 级 Action。
-    /// 在此处调用 `rml_app::Window::new(...).open::<MyView>(cx)` 或
-    /// `rml_app::ModernWindow::new(...).open::<MyView>(cx)`。
+    /// 在此处调用 `IWindow::open()` 打开窗口，或使用
+    /// `RmlApplication::new().main_window::<W>().run()` 声明式 API。
     fn on_launch(&mut self, cx: &mut App);
 
     /// 应用退出前调用（仅一次）

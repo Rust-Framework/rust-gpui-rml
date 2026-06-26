@@ -1,7 +1,7 @@
 use rml::prelude::*;
 
+#[window(title = "RML Counter Demo", width = 400, height = 500)]
 #[derive(Default)]
-#[view]
 pub struct Counter {
     pub count: i32,
     pub hovered: bool,

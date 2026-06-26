@@ -22,7 +22,7 @@ RML 应用中常见的异步任务：
 use rml::prelude::*;
 
 #[derive(Model)]
-#[view]
+#[component]
 pub struct DataView {
     pub data: Vec<Item>,
     pub is_loading: bool,
@@ -92,7 +92,7 @@ if let Some(task) = self.task.take() {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct SearchView {
     pub search_text: SharedString,
     pub search_results: Vec<SearchResult>,
@@ -329,7 +329,7 @@ cx.spawn(|this, mut cx| async move {
 use std::time::Duration;
 
 #[derive(Model)]
-#[view]
+#[component]
 pub struct ClockView {
     pub current_time: SharedString,
     timer: Option<Task<()>>,
@@ -393,7 +393,7 @@ self.timer = Some(cx.spawn(|this, mut cx| async move {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct UploadView {
     pub upload_progress: f64,
     pub is_uploading: bool,
@@ -513,7 +513,7 @@ use std::time::Duration;
 use rml::prelude::*;
 
 #[derive(Model)]
-#[view]
+#[component]
 pub struct DataLoader {
     pub data: Vec<Item>,
     pub is_loading: bool,

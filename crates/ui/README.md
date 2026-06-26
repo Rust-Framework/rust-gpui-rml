@@ -1,6 +1,6 @@
 # rust-rml-ui
 
-> RML 扩展组件库 —— 封装 [`gpui-component`](https://github.com/longbridge/gpui-component)，提供 Button / Input / Dialog / List / Form 等高级组件。
+> RML 扩展组件库 —— 封装 [`gpui-component`](https://github.com/longbridge/gpui-component)，提供 Button / Input / Dialog / List / Form 等高级组件，以及内置窗口类型。
 
 ## 职责
 
@@ -34,7 +34,7 @@ rml_ui::init(cx);
 ```rust
 use rml_ui::prelude::*;
 
-// 在 #[view] 的 render 中
+// 在 #[component] 的 render 中
 gpui::div().child(
     Button::new("my-btn")
         .label("Click me")
@@ -45,7 +45,36 @@ gpui::div().child(
 
 ### 窗口顶层 Root
 
-`gpui_component::Root` 是窗口的顶层 view，管理 Dialog/Sheet/Notification 的层级。由 `RmlApplication::run` 在内部自动创建并包裹业务 view，用户无需手动管理。
+`gpui_component::Root` 是窗口的顶层 view，管理 Dialog/Sheet/Notification 的层级。由 `#[window]` 宏在 `open()` 内部自动创建并包裹业务 view，用户无需手动管理。
+
+### 内置窗口类型
+
+本 crate 提供开箱即用的 `IWindow` 实现：
+
+- **`Window`** — 基础窗口，无装饰，适用于占位窗口、启动画面等简单场景
+- **`ModernWindow`** — 现代窗口，使用 `ModernWindowShell` 提供 TitleBar/StatusBar 外观
+
+```rust
+use rml_app::RmlApplication;
+
+fn main() {
+    RmlApplication::new()
+        .main_window::<rml_ui::ModernWindow>()
+        .run();
+}
+```
+
+用户创建带 RML 模板的窗口应使用 `#[window]` 宏。
+
+### ModernWindowShell
+
+`ModernWindowShell` 是内置封装组件，组合 `TitleBar` + `Menu` + `StatusBar`。在 `.rml` 中作为根标签使用：
+
+```html
+<ModernWindowShell title="My App" menu={menu_items} status_bar={status_items}>
+    <!-- 业务内容 -->
+</ModernWindowShell>
+```
 
 ## 文档参考
 

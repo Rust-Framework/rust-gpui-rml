@@ -138,7 +138,7 @@ pub struct TodoItem {
 }
 
 #[derive(Model)]
-#[view]
+#[component]
 pub struct TodoViewModel {
     pub new_todo_text: SharedString,
     pub todos: Vec<TodoItem>,

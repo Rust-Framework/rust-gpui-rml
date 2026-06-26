@@ -10,8 +10,8 @@ impl Default for TodoItem {
     }
 }
 
+#[window(title = "RML Todos Demo", width = 400, height = 400)]
 #[derive(Default)]
-#[view]
 pub struct Todos {
     pub todos: Vec<TodoItem>,
 }

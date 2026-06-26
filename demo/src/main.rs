@@ -4,17 +4,13 @@ extern crate rust_rml_app as rml_app;
 extern crate rust_rml_core as rml_core;
 extern crate rust_rml_ui as rml_ui;
 
-use gpui::px;
 use rml_app::RmlApplication;
 
 #[path = "counter.rml.rs"]
 mod counter;
-#[path = "todos.rml.rs"]
-mod todos;
 
 fn main() {
     RmlApplication::new()
-        .title("RML Todos Demo")
-        .size(px(400.), px(400.))
-        .run::<todos::Todos>();
+        .main_window::<counter::Counter>()
+        .run();
 }

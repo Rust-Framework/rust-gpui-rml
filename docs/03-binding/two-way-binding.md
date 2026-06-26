@@ -60,7 +60,7 @@ View 重新读取 {user_name} 显示
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct LoginForm {
     pub username: SharedString,
     pub password: SharedString,
@@ -76,7 +76,7 @@ pub struct LoginForm {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct Settings {
     pub age: i32,
     pub score: f64,
@@ -92,7 +92,7 @@ pub struct Settings {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct Preferences {
     pub remember_me: bool,
     pub auto_save: bool,
@@ -114,7 +114,7 @@ pub struct Preferences {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct NoteEditor {
     pub content: SharedString,
 }
@@ -134,7 +134,7 @@ pub struct NoteEditor {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct MyView {
     pub user_name: SharedString,  // ✅ pub，可赋值
     pub age: i32,                 // ✅ pub，可赋值
@@ -192,7 +192,7 @@ pub fn on_search_input(&mut self, _: &InputEvent, cx: &mut ViewContext<Self>) {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct MyView {
     pub email: SharedString,
     pub email_error: Option<SharedString>,
@@ -273,7 +273,7 @@ pub fn update_user_name(&mut self, ev: &InputEvent, cx: &mut ViewContext<Self>) 
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct MyView {
     user_name: SharedString,  // ❌ 非 pub，model 无法访问
 }

@@ -99,7 +99,7 @@ fn main() {
 use rml::prelude::*;
 
 #[derive(Model)]
-#[view]  // 极简宏：标记为 RML 视图
+#[component]  // 极简宏：标记为 RML 组件
 pub struct Counter {
     pub count: i32,
 }
@@ -134,7 +134,7 @@ impl Counter {
 **关键点**：
 
 - `#[derive(Model)]` —— 让结构体成为 GPUI Entity，字段自动成为响应式状态
-- `#[view]` —— 标记为 RML 视图，编译器会为其生成 `Render` 实现
+- `#[component]` —— 标记为 RML 组件，编译器会为其生成 `Render` 实现
 - `#[command]` —— 标记方法为 UI 可调用的命令，`.rml` 中的 `onclick={increment}` 直接绑定到这里
 - `cx.notify()` —— 状态变更后必须调用，否则 UI 不会更新
 
@@ -151,7 +151,8 @@ mod views;
 fn main() {
     RmlApplication::new()
         .with_hot_reload(vec!["src/views".into()])  // 启用热重载
-        .run::<views::counter::Counter>()
+        .main_window::<views::counter::Counter>()
+        .run()
         .unwrap();
 }
 ```
@@ -206,7 +207,7 @@ views/mod.rs            ← 模块导出
 📋 **清单**：完成本节后，你应该能够：
 
 - [ ] 创建三件套文件结构
-- [ ] 用 `#[derive(Model)]` + `#[view]` 定义 ViewModel
+- [ ] 用 `#[derive(Model)]` + `#[component]` 定义 ViewModel
 - [ ] 用 `#[command]` 暴露方法给 UI
 - [ ] 在 `.rml` 中使用 `{}`、`if`、`onclick` 三种基础语法
 - [ ] 启用热重载并体验实时更新

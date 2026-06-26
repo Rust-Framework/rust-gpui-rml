@@ -24,7 +24,7 @@ pub struct ParamMeta {
 /// Phase B 会自动生成 `ICommand` 实现并填充元信息。
 ///
 /// 注：由于 `#[command]` 作用于方法而非结构体，宏无法获取结构体名，
-/// 因此 `impl ICommand` 的自动生成需要 `#[view]` 宏配合或在 build.rs 中扫描。
+/// 因此 `impl ICommand` 的自动生成需要 `#[component]` 宏配合或在 build.rs 中扫描。
 /// 当前 Phase B-2 采用 pass-through + 编译期元信息提取策略。
 pub trait ICommand {
     /// 命令名称（方法名），供绑定引擎校验

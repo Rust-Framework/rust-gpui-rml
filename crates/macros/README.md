@@ -1,6 +1,6 @@
 # rust-rml-macros
 
-> RML 框架过程宏集合（`#[derive(IModel)]`、`#[view]`、`#[command]` 等）。
+> RML 框架过程宏集合（`#[derive(IModel)]`、`#[component]`、`#[window]`、`#[command]` 等）。
 
 ## 职责
 
@@ -16,8 +16,8 @@
 | 宏 | 类型 | 生成内容 |
 |----|------|---------|
 | `#[derive(IModel)]` | derive | 为 `pub` 字段生成 `FieldMeta`，实现 `IModel::rml_fields()` |
-| `#[view]` | attribute | 生成 `IModel`/`ILifecycle`/`IViewModel`/`IRmlView` impl + `include!` 注入 `Render` impl |
-| `#[component]` | attribute | 同 `#[view]` 但额外生成 `IComponent` impl，支持 Props/插槽 |
+| `#[component]` | attribute | 生成 `IModel`/`ILifecycle`/`IViewModel`/`IComponent` impl + `include!` 注入 `Render` impl |
+| `#[window]` | attribute | 在 `#[component]` 基础上额外生成 `IWindow` impl（title/width/height/open/handle/set_handle），窗口操作由 trait 默认实现提供 |
 | `#[command]` | attribute | 标记方法为 UI 可调用命令（Phase B 生成 `ICommand` impl） |
 | `#[computed]` | attribute | 标记计算属性（Phase B 生成依赖追踪 + 缓存代码） |
 | `#[on_loaded]` | attribute | 视图首次渲染完成后触发（Phase B 联动 `ILifecycle`） |
@@ -29,7 +29,8 @@
 |------|------|
 | `lib.rs` | 过程宏入口，导出所有 `#[proc_macro_*]` 函数 |
 | `derive_model.rs` | `#[derive(IModel)]` 实现：遍历 `pub` 字段生成 `FieldMeta` 静态数组 |
-| `view.rs` | `#[view]` / `#[component]` 实现：生成 trait impl 链 + `include!` |
+| `component.rs` | `#[component]` 实现：生成 trait impl 链 + `include!` |
+| `window.rs` | `#[window]` 实现：在 `#[component]` 基础上生成 `IWindow` impl + 窗口句柄字段 |
 | `command.rs` | `#[command]` 实现：Phase A pass-through，Phase B 生成 `ICommand` |
 | `computed.rs` | `#[computed]` 实现：Phase A pass-through，Phase B 生成缓存代码 |
 | `lifecycle.rs` | `#[on_loaded]` / `#[on_unloaded]` 实现：方法重命名 + 联动 |
@@ -39,5 +40,6 @@
 1. **include! 位置**：`include!` 必须在模块顶层（不能在 `const _: () = { ... }` 块内），因为生成文件含 `impl Render` 块
 2. **字段插值**：`syn::Field` 未实现 `ToTokens`，必须用 `let ty = &f.ty; quote!(#ty)` 而非 `quote!(#f.ty)`
 3. **命名约定**：生成的方法名以 `__rml_` 前缀（如 `__rml_on_loaded_impl`），避免与用户方法冲突
-4. **helper attribute**：`#[element]` 通过 `#[derive(IModel, attributes(element))]` 声明，`#[view]` 在展开时剥离并解析
+4. **helper attribute**：`#[element]` 通过 `#[derive(IModel, attributes(element))]` 声明，`#[component]` 在展开时剥离并解析
 5. **pass-through 策略**：Phase A 宏仅校验签名不生成代码，Phase B 逐步补全实际实现
+6. **窗口宏精简**：`#[window]` 仅生成核心方法（title/width/height/open/handle/set_handle），窗口操作（close/show/hide/activate/state）由 `IWindow` trait 默认实现提供

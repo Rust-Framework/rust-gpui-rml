@@ -3,7 +3,7 @@ name = "rust-rml-macros"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "RML 框架过程宏（#[derive(IModel)]、#[view]、#[command] 等）"
+description = "RML 框架过程宏（#[derive(IModel)]、#[component]、#[window]、#[command] 等）"
 
 [lib]
 proc-macro = true

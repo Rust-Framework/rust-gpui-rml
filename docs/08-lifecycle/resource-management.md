@@ -22,7 +22,7 @@ RML 应用中需要管理的资源：
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct DataView {
     file_handle: Option<FileHandle>,  // 我获取的，我负责释放
 }
@@ -95,7 +95,7 @@ use std::fs::File;
 use std::io::Read;
 
 #[derive(Model)]
-#[view]
+#[component]
 pub struct FileView {
     pub content: SharedString,
     pub is_loading: bool,
@@ -166,7 +166,7 @@ pub fn save_file(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct ApiView {
     pub data: Option<ApiResponse>,
     pub is_loading: bool,
@@ -217,7 +217,7 @@ impl ApiView {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct ChatView {
     pub messages: Vec<Message>,
     pub is_connected: bool,
@@ -313,7 +313,7 @@ impl DatabaseManager {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct NotificationView {
     pub notifications: Vec<Notification>,
     subscription: Option<Subscription>,
@@ -350,7 +350,7 @@ impl NotificationView {
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct DashboardView {
     pub user_updates: Vec<UserUpdate>,
     pub system_alerts: Vec<SystemAlert>,
@@ -462,7 +462,7 @@ where
 
 ```rust
 #[derive(Model)]
-#[view]
+#[component]
 pub struct CachedDataView {
     pub data: Option<Data>,
     pub is_loading: bool,
@@ -700,7 +700,7 @@ impl ImageCache {
 }
 
 #[derive(Model)]
-#[view]
+#[component]
 pub struct ImageViewer {
     pub current_image: Option<ImageData>,
     pub is_loading: bool,
