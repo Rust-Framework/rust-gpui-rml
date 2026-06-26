@@ -3,6 +3,8 @@
 //! 串起 parse → validate → codegen，输出 Rust 源码字符串。
 
 pub mod codegen;
+pub mod component;
+pub mod event;
 pub mod expr;
 pub mod validator;
 
@@ -18,12 +20,28 @@ pub struct CodegenCtx {
     pub view_module_path: String,
 }
 
+/// 代码生成错误
+///
+/// 由 codegen / event / component 模块共用，定义在此避免循环依赖。
+#[derive(Debug, Clone)]
+pub struct CodegenError {
+    pub message: String,
+}
+
+impl fmt::Display for CodegenError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Codegen error: {}", self.message)
+    }
+}
+
+impl std::error::Error for CodegenError {}
+
 /// 编译错误
 #[derive(Debug)]
 pub enum CompileError {
     Parse(parser::ParseError),
     Validate(validator::ValidationError),
-    Codegen(codegen::CodegenError),
+    Codegen(CodegenError),
 }
 
 impl fmt::Display for CompileError {
@@ -48,8 +66,8 @@ impl From<validator::ValidationError> for CompileError {
         CompileError::Validate(e)
     }
 }
-impl From<codegen::CodegenError> for CompileError {
-    fn from(e: codegen::CodegenError) -> Self {
+impl From<CodegenError> for CompileError {
+    fn from(e: CodegenError) -> Self {
         CompileError::Codegen(e)
     }
 }
@@ -68,3 +86,4 @@ pub fn compile(source: &str, ctx: &CodegenCtx) -> Result<String, CompileError> {
     let code = codegen::codegen(&root, ctx)?;
     Ok(code)
 }
+

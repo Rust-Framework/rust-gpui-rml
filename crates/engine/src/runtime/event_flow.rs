@@ -95,8 +95,21 @@ pub mod convert {
     ///
     /// GPUI 仅有 `FocusOutEvent`（on_focus_out 监听器），不直接提供 `FocusInEvent`。
     /// RML `FocusEvent` 的 target 字段留空，由运行时补全。
+    ///
+    /// 注：`on_focus_out` 是 `Window`/`Context` 级方法，不是元素级方法。
+    /// 元素级事件绑定（`.on_focus_out(...)`）在 GPUI 中不存在。
     pub fn from_gpui_focus_out(_ev: &gpui::FocusOutEvent) -> rml_core::events::FocusEvent {
         rml_core::events::FocusEvent::default()
+    }
+
+    /// 转换 GPUI 悬停事件
+    ///
+    /// GPUI `on_hover` 回调接收 `&bool`（true = 进入，false = 离开），
+    /// RML 将其封装为 `HoverEvent`。
+    pub fn from_gpui_hover(is_hovering: &bool) -> rml_core::events::HoverEvent {
+        let mut out = rml_core::events::HoverEvent::default();
+        out.is_hovering = *is_hovering;
+        out
     }
 
     // —— 以下事件类型 GPUI 不直接提供 ——

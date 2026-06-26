@@ -4,7 +4,8 @@
     <p class="next">下一个：{count + 1}</p>
     <p class="double">两倍：{count * 2}</p>
     <p class="positive">是否为正：{count > 0}</p>
-    <div class="buttons">
+    <p class="hover">悬停状态：{hovered}</p>
+    <div class="buttons" onhover={on_hover_change}>
         <Button label="-" onclick={decrement} />
         <Button label="+" primary="" onclick={increment} />
     </div>

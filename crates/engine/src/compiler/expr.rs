@@ -404,7 +404,9 @@ impl<'a> Parser<'a> {
                 Some('[') => {
                     self.advance();
                     self.skip_ws();
-                    let index = self.parse_convert()?;
+                    // 索引表达式不能用 convert 语法（`, Converter`），
+                    // 否则 `arr[a, b]` 会被误解为转换器
+                    let index = self.parse_logic()?;
                     self.skip_ws();
                     if self.peek() != Some(']') {
                         return Err(self.err("expected ']' after index expression"));
@@ -426,7 +428,9 @@ impl<'a> Parser<'a> {
             return Ok(args);
         }
         loop {
-            let arg = self.parse_convert()?;
+            // 参数不能用 convert 语法（`, Converter`），
+            // 否则 `f(a, b)` 中的逗号会被误解为转换器分隔符
+            let arg = self.parse_logic()?;
             args.push(arg);
             self.skip_ws();
             match self.peek() {
@@ -449,7 +453,8 @@ impl<'a> Parser<'a> {
         match self.peek() {
             Some('(') => {
                 self.advance();
-                let inner = self.parse_convert()?;
+                // 括号内不能用 convert 语法，否则 `(a, b)` 会被误解为 `Convert(a, "b")`
+                let inner = self.parse_logic()?;
                 self.skip_ws();
                 if self.peek() != Some(')') {
                     return Err(self.err("expected ')' after expression"));
@@ -758,5 +763,451 @@ mod tests {
             Box::new(Expr::Lit("1".into())),
         );
         assert_eq!(parsed, expected);
+    }
+
+    // ─── 运算符覆盖 ───
+
+    #[test]
+    fn parses_subtraction() {
+        assert_eq!(
+            parse_ok("a - b"),
+            Expr::BinaryOp(
+                Op::Sub,
+                Box::new(Expr::Field("a".into())),
+                Box::new(Expr::Field("b".into()))
+            )
+        );
+    }
+
+    #[test]
+    fn parses_multiplication() {
+        assert_eq!(
+            parse_ok("a * b"),
+            Expr::BinaryOp(
+                Op::Mul,
+                Box::new(Expr::Field("a".into())),
+                Box::new(Expr::Field("b".into()))
+            )
+        );
+    }
+
+    #[test]
+    fn parses_division() {
+        assert_eq!(
+            parse_ok("a / b"),
+            Expr::BinaryOp(
+                Op::Div,
+                Box::new(Expr::Field("a".into())),
+                Box::new(Expr::Field("b".into()))
+            )
+        );
+    }
+
+    #[test]
+    fn parses_modulo() {
+        assert_eq!(
+            parse_ok("a % b"),
+            Expr::BinaryOp(
+                Op::Mod,
+                Box::new(Expr::Field("a".into())),
+                Box::new(Expr::Field("b".into()))
+            )
+        );
+    }
+
+    #[test]
+    fn parses_equality() {
+        assert_eq!(
+            parse_ok("a == b"),
+            Expr::BinaryOp(
+                Op::Eq,
+                Box::new(Expr::Field("a".into())),
+                Box::new(Expr::Field("b".into()))
+            )
+        );
+    }
+
+    #[test]
+    fn parses_not_equal() {
+        assert_eq!(
+            parse_ok("a != b"),
+            Expr::BinaryOp(
+                Op::Ne,
+                Box::new(Expr::Field("a".into())),
+                Box::new(Expr::Field("b".into()))
+            )
+        );
+    }
+
+    #[test]
+    fn parses_greater_equal() {
+        assert_eq!(
+            parse_ok("a >= b"),
+            Expr::BinaryOp(
+                Op::Ge,
+                Box::new(Expr::Field("a".into())),
+                Box::new(Expr::Field("b".into()))
+            )
+        );
+    }
+
+    #[test]
+    fn parses_less_equal() {
+        assert_eq!(
+            parse_ok("a <= b"),
+            Expr::BinaryOp(
+                Op::Le,
+                Box::new(Expr::Field("a".into())),
+                Box::new(Expr::Field("b".into()))
+            )
+        );
+    }
+
+    #[test]
+    fn parses_less_than() {
+        assert_eq!(
+            parse_ok("a < b"),
+            Expr::BinaryOp(
+                Op::Lt,
+                Box::new(Expr::Field("a".into())),
+                Box::new(Expr::Field("b".into()))
+            )
+        );
+    }
+
+    #[test]
+    fn parses_logical_and() {
+        assert_eq!(
+            parse_ok("a && b"),
+            Expr::BinaryOp(
+                Op::And,
+                Box::new(Expr::Field("a".into())),
+                Box::new(Expr::Field("b".into()))
+            )
+        );
+    }
+
+    #[test]
+    fn parses_logical_or() {
+        assert_eq!(
+            parse_ok("a || b"),
+            Expr::BinaryOp(
+                Op::Or,
+                Box::new(Expr::Field("a".into())),
+                Box::new(Expr::Field("b".into()))
+            )
+        );
+    }
+
+    // ─── 一元运算符 ───
+
+    #[test]
+    fn parses_unary_neg() {
+        assert_eq!(
+            parse_ok("-count"),
+            Expr::Unary(UnaryOp::Neg, Box::new(Expr::Field("count".into())))
+        );
+    }
+
+    #[test]
+    fn parses_unary_double_neg() {
+        // --count → -(-count)
+        assert_eq!(
+            parse_ok("--count"),
+            Expr::Unary(
+                UnaryOp::Neg,
+                Box::new(Expr::Unary(UnaryOp::Neg, Box::new(Expr::Field("count".into()))))
+            )
+        );
+    }
+
+    #[test]
+    fn parses_unary_not_with_parens() {
+        // !(a == b)
+        assert_eq!(
+            parse_ok("!(a == b)"),
+            Expr::Unary(
+                UnaryOp::Not,
+                Box::new(Expr::BinaryOp(
+                    Op::Eq,
+                    Box::new(Expr::Field("a".into())),
+                    Box::new(Expr::Field("b".into()))
+                ))
+            )
+        );
+    }
+
+    // ─── 嵌套索引与方法调用 ───
+
+    #[test]
+    fn parses_nested_index() {
+        // matrix[0][1] → Index(Index(Field("matrix"), Lit("0")), Lit("1"))
+        let parsed = parse_ok("matrix[0][1]");
+        let inner = Expr::Index(
+            Box::new(Expr::Field("matrix".into())),
+            Box::new(Expr::Lit("0".into())),
+        );
+        assert_eq!(
+            parsed,
+            Expr::Index(Box::new(inner), Box::new(Expr::Lit("1".into())))
+        );
+    }
+
+    #[test]
+    fn parses_method_call_with_single_arg() {
+        // items.get(0) → MethodCall(Field("items"), "get", [Lit("0")])
+        assert_eq!(
+            parse_ok("items.get(0)"),
+            Expr::MethodCall(
+                Box::new(Expr::Field("items".into())),
+                "get".into(),
+                vec![Expr::Lit("0".into())]
+            )
+        );
+    }
+
+    #[test]
+    fn parses_method_call_with_multiple_args() {
+        // slice(0, len) → MethodCall(Field("items"), "slice", [Lit("0"), Field("len")])
+        assert_eq!(
+            parse_ok("items.slice(0, len)"),
+            Expr::MethodCall(
+                Box::new(Expr::Field("items".into())),
+                "slice".into(),
+                vec![Expr::Lit("0".into()), Expr::Field("len".into())]
+            )
+        );
+    }
+
+    #[test]
+    fn parses_method_call_with_expr_arg() {
+        // items.get(i + 1)
+        let parsed = parse_ok("items.get(i + 1)");
+        match parsed {
+            Expr::MethodCall(target, name, args) => {
+                assert_eq!(*target, Expr::Field("items".into()));
+                assert_eq!(name, "get");
+                assert_eq!(args.len(), 1);
+                assert_eq!(
+                    args[0],
+                    Expr::BinaryOp(
+                        Op::Add,
+                        Box::new(Expr::Field("i".into())),
+                        Box::new(Expr::Lit("1".into()))
+                    )
+                );
+            }
+            other => panic!("expected MethodCall, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parses_chained_method_calls() {
+        // name.to_uppercase().len()
+        let parsed = parse_ok("name.to_uppercase().len()");
+        match parsed {
+            Expr::MethodCall(target, name, args) => {
+                assert_eq!(name, "len");
+                assert!(args.is_empty());
+                assert_eq!(
+                    *target,
+                    Expr::MethodCall(
+                        Box::new(Expr::Field("name".into())),
+                        "to_uppercase".into(),
+                        vec![]
+                    )
+                );
+            }
+            other => panic!("expected MethodCall, got {:?}", other),
+        }
+    }
+
+    // ─── 转换器组合 ───
+
+    #[test]
+    fn parses_converter_with_binary_expr() {
+        // (count + 1), HexConverter → Convert(BinaryOp(Add, ...), "HexConverter")
+        let parsed = parse_ok("(count + 1), HexConverter");
+        match parsed {
+            Expr::Convert(target, converter) => {
+                assert_eq!(converter, "HexConverter");
+                assert_eq!(
+                    *target,
+                    Expr::BinaryOp(
+                        Op::Add,
+                        Box::new(Expr::Field("count".into())),
+                        Box::new(Expr::Lit("1".into()))
+                    )
+                );
+            }
+            other => panic!("expected Convert, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parses_converter_with_member_access() {
+        // user.name, UpperConverter
+        assert_eq!(
+            parse_ok("user.name, UpperConverter"),
+            Expr::Convert(
+                Box::new(Expr::Member(
+                    Box::new(Expr::Field("user".into())),
+                    "name".into()
+                )),
+                "UpperConverter".into()
+            )
+        );
+    }
+
+    // ─── 错误场景 ───
+
+    #[test]
+    fn rejects_unclosed_paren() {
+        assert!(parse("(a + b").is_err());
+    }
+
+    #[test]
+    fn rejects_unclosed_string() {
+        assert!(parse("\"hello").is_err());
+    }
+
+    #[test]
+    fn rejects_unclosed_bracket() {
+        assert!(parse("items[0").is_err());
+    }
+
+    #[test]
+    fn rejects_unclosed_method_call() {
+        assert!(parse("items.get(0").is_err());
+    }
+
+    #[test]
+    fn rejects_invalid_char() {
+        // @ 不是合法起始字符
+        assert!(parse("@invalid").is_err());
+    }
+
+    #[test]
+    fn rejects_invalid_operator_combination() {
+        // a + * b 不是合法表达式
+        assert!(parse("a + * b").is_err());
+    }
+
+    #[test]
+    fn rejects_double_comma_in_converter() {
+        // convert 语法只支持单个转换器
+        assert!(parse("count,,").is_err());
+    }
+
+    #[test]
+    fn rejects_trailing_comma_in_args() {
+        // 方法参数末尾不允许尾随逗号
+        assert!(parse("items.slice(0,)").is_err());
+    }
+
+    #[test]
+    fn rejects_parenthesized_pair_as_convert() {
+        // (a, b) 在括号内不应被误解为 Convert(a, "b")
+        assert!(parse("(a, b)").is_err());
+    }
+
+    // ─── to_rust_code 覆盖 ───
+
+    #[test]
+    fn to_rust_unary_neg() {
+        let expr = Expr::Unary(UnaryOp::Neg, Box::new(Expr::Field("count".into())));
+        assert_eq!(to_rust_code(&expr), "(-self.count)");
+    }
+
+    #[test]
+    fn to_rust_unary_not() {
+        let expr = Expr::Unary(UnaryOp::Not, Box::new(Expr::Field("flag".into())));
+        assert_eq!(to_rust_code(&expr), "(!self.flag)");
+    }
+
+    #[test]
+    fn to_rust_logical_op() {
+        let expr = Expr::BinaryOp(
+            Op::And,
+            Box::new(Expr::Field("a".into())),
+            Box::new(Expr::Field("b".into())),
+        );
+        assert_eq!(to_rust_code(&expr), "(self.a && self.b)");
+    }
+
+    #[test]
+    fn to_rust_comparison_op() {
+        let expr = Expr::BinaryOp(
+            Op::Gt,
+            Box::new(Expr::Field("count".into())),
+            Box::new(Expr::Lit("0".into())),
+        );
+        assert_eq!(to_rust_code(&expr), "(self.count > 0)");
+    }
+
+    #[test]
+    fn to_rust_nested_method_call() {
+        // name.to_uppercase().len() → self.name.to_uppercase().len()
+        let inner = Expr::MethodCall(
+            Box::new(Expr::Field("name".into())),
+            "to_uppercase".into(),
+            vec![],
+        );
+        let expr = Expr::MethodCall(Box::new(inner), "len".into(), vec![]);
+        assert_eq!(to_rust_code(&expr), "self.name.to_uppercase().len()");
+    }
+
+    #[test]
+    fn to_rust_method_call_with_args() {
+        let expr = Expr::MethodCall(
+            Box::new(Expr::Field("items".into())),
+            "get".into(),
+            vec![Expr::Lit("0".into())],
+        );
+        assert_eq!(to_rust_code(&expr), "self.items.get(0)");
+    }
+
+    #[test]
+    fn to_rust_nested_index() {
+        // matrix[0][1]
+        let inner = Expr::Index(
+            Box::new(Expr::Field("matrix".into())),
+            Box::new(Expr::Lit("0".into())),
+        );
+        let expr = Expr::Index(Box::new(inner), Box::new(Expr::Lit("1".into())));
+        assert_eq!(to_rust_code(&expr), "self.matrix[0][1]");
+    }
+
+    #[test]
+    fn to_rust_convert_with_binary() {
+        let expr = Expr::Convert(
+            Box::new(Expr::BinaryOp(
+                Op::Add,
+                Box::new(Expr::Field("count".into())),
+                Box::new(Expr::Lit("1".into())),
+            )),
+            "HexConverter".into(),
+        );
+        assert_eq!(
+            to_rust_code(&expr),
+            "HexConverter::convert_to(&(self.count + 1))"
+        );
+    }
+
+    #[test]
+    fn to_rust_lit_preserves_string() {
+        // 字符串字面量应原样输出（保留引号）
+        assert_eq!(to_rust_code(&Expr::Lit("\"hello\"".into())), "\"hello\"");
+        assert_eq!(to_rust_code(&Expr::Lit("42".into())), "42");
+        assert_eq!(to_rust_code(&Expr::Lit("3.14f64".into())), "3.14f64");
+        assert_eq!(to_rust_code(&Expr::Lit("true".into())), "true");
+    }
+
+    #[test]
+    fn to_rust_unary_neg_double() {
+        // --count → -(-self.count)
+        let inner = Expr::Unary(UnaryOp::Neg, Box::new(Expr::Field("count".into())));
+        let expr = Expr::Unary(UnaryOp::Neg, Box::new(inner));
+        assert_eq!(to_rust_code(&expr), "(-(-self.count))");
     }
 }
