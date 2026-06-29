@@ -1,50 +1,45 @@
 //! `ICommand` trait —— 命令系统契约
 //!
+//! 对齐 WPF `ICommand`：`execute` + `can_execute`，接口纯净无编译器元信息。
+//!
 //! `#[command]` 标记的方法可被 `.rml` 中的 `on*` 事件绑定调用。
 //! 命令方法签名：`fn(&mut self, ev: &Event, cx: &mut Context<Self>)`
 //! 或带参数：`fn(&mut self, param: T, ev: &Event, cx: &mut Context<Self>)`
+//!
+//! `#[command]` 宏是 pass-through（仅校验签名），codegen 直接调用命令方法保留事件类型安全。
+//! `ICommand::execute` 作为统一执行入口，用于快捷键、命令面板等动态调度场景，由用户按需实现。
 
-/// 命令参数元信息
-///
-/// 由 `#[command]` 宏在编译期生成，供绑定引擎校验参数类型与顺序。
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ParamMeta {
-    /// 参数名（来自方法签名）
-    pub name: &'static str,
-    /// 参数类型名（如 "i32"、"SharedString"）
-    pub ty: &'static str,
-}
+use gpui::Context;
 
-/// 命令基础 trait。
+/// 命令基础 trait（对齐 WPF `ICommand`）。
 ///
 /// 命令是 ViewModel 中唯一允许修改视图状态的方法。
 /// 命令执行后必须调用 `cx.notify()` 触发重渲染。
 ///
-/// `#[command]` 宏在 Phase A 为 pass-through（不强制实现此 trait），
-/// Phase B 会自动生成 `ICommand` 实现并填充元信息。
+/// `parameter` 类型擦除为 `&dyn Any`，实现方按需 downcast。
+/// 这与 `#[command]` 标记方法的强类型签名正交：
+/// - codegen 生成的事件绑定直接调用强类型方法（绕过 trait，保留类型安全）
+/// - `ICommand::execute` 用于动态调度场景（快捷键、命令面板、脚本化测试）
 ///
-/// 注：由于 `#[command]` 作用于方法而非结构体，宏无法获取结构体名，
-/// 因此 `impl ICommand` 的自动生成需要 `#[component]` 宏配合或在 build.rs 中扫描。
-/// 当前 Phase B-2 采用 pass-through + 编译期元信息提取策略。
-pub trait ICommand {
-    /// 命令名称（方法名），供绑定引擎校验
-    fn rml_command_name() -> &'static str;
-
-    /// 事件对象类型名（编译期生成，如 "ClickEvent"）
-    fn rml_event_type() -> &'static str {
-        ""
-    }
-
-    /// 参数描述（编译期生成，由 `#[command]` 宏填充）
-    fn rml_params() -> &'static [ParamMeta] {
-        &[]
-    }
-
-    /// 命令是否可执行（用于禁用按钮等）。
+/// `: 'static` 约束与 `IModel` 一致，确保 `Context<Self>` 可用。
+pub trait ICommand: 'static {
+    /// 执行命令（WPF: `Execute`）
     ///
-    /// codegen 在 `disabled={expr}` 绑定时调用此方法，
-    /// 返回 false 时按钮渲染为 disabled 状态。
-    fn can_execute(&self) -> bool {
+    /// `parameter` 类型擦除，实现方按需 `downcast_ref`/`downcast_mut`。
+    /// 无参数命令可忽略 `parameter`。
+    ///
+    /// `where Self: Sized` 约束源于 `Context<Self>` 要求 `Self: Sized`
+    /// （GPUI `Context<T>` 是持有 `T` 类型实体的强类型上下文）。
+    /// 这不影响实际使用——所有用户定义的 ViewModel 结构体都是 `Sized`。
+    fn execute(&mut self, parameter: &dyn std::any::Any, cx: &mut Context<Self>)
+    where
+        Self: Sized;
+
+    /// 是否可执行（WPF: `CanExecute`）
+    ///
+    /// 返回 `false` 时 UI 层应禁用对应控件（如按钮 disabled）。
+    /// 默认实现返回 `true`。
+    fn can_execute(&self, _parameter: &dyn std::any::Any) -> bool {
         true
     }
 }
@@ -57,122 +52,52 @@ pub trait ICommand {
 mod tests {
     use super::*;
 
-    // 测试用的 mock 命令实现
     struct AlwaysEnabled;
     struct AlwaysDisabled;
 
     impl ICommand for AlwaysEnabled {
-        fn rml_command_name() -> &'static str {
-            "increment"
+        fn execute(&mut self, _parameter: &dyn std::any::Any, _cx: &mut Context<Self>) {
+            // no-op for test
         }
     }
 
     impl ICommand for AlwaysDisabled {
-        fn rml_command_name() -> &'static str {
-            "decrement"
+        fn execute(&mut self, _parameter: &dyn std::any::Any, _cx: &mut Context<Self>) {
+            // no-op for test
         }
 
-        fn rml_event_type() -> &'static str {
-            "ClickEvent"
-        }
-
-        fn rml_params() -> &'static [ParamMeta] {
-            &[
-                ParamMeta { name: "amount", ty: "i32" },
-            ]
-        }
-
-        fn can_execute(&self) -> bool {
+        fn can_execute(&self, _parameter: &dyn std::any::Any) -> bool {
             false
         }
-    }
-
-    // ─── ParamMeta ───
-
-    #[test]
-    fn param_meta_construction() {
-        let p = ParamMeta { name: "count", ty: "i32" };
-        assert_eq!(p.name, "count");
-        assert_eq!(p.ty, "i32");
-    }
-
-    #[test]
-    fn param_meta_clone() {
-        let p1 = ParamMeta { name: "value", ty: "SharedString" };
-        let p2 = p1.clone();
-        assert_eq!(p1.name, p2.name);
-        assert_eq!(p1.ty, p2.ty);
-    }
-
-    #[test]
-    fn param_meta_debug_format() {
-        let p = ParamMeta { name: "x", ty: "i32" };
-        let debug_str = format!("{:?}", p);
-        assert!(debug_str.contains("ParamMeta"));
-        assert!(debug_str.contains("x"));
-        assert!(debug_str.contains("i32"));
-    }
-
-    // ─── ICommand 默认实现 ───
-
-    #[test]
-    fn default_event_type_is_empty() {
-        assert_eq!(AlwaysEnabled::rml_event_type(), "");
-    }
-
-    #[test]
-    fn default_params_is_empty() {
-        assert_eq!(AlwaysEnabled::rml_params(), &[] as &[ParamMeta]);
     }
 
     #[test]
     fn default_can_execute_is_true() {
         let cmd = AlwaysEnabled;
-        assert!(cmd.can_execute());
-    }
-
-    // ─── ICommand 自定义实现 ───
-
-    #[test]
-    fn custom_command_name() {
-        assert_eq!(AlwaysEnabled::rml_command_name(), "increment");
-        assert_eq!(AlwaysDisabled::rml_command_name(), "decrement");
-    }
-
-    #[test]
-    fn custom_event_type() {
-        assert_eq!(AlwaysDisabled::rml_event_type(), "ClickEvent");
-    }
-
-    #[test]
-    fn custom_params() {
-        let params = AlwaysDisabled::rml_params();
-        assert_eq!(params.len(), 1);
-        assert_eq!(params[0].name, "amount");
-        assert_eq!(params[0].ty, "i32");
+        assert!(cmd.can_execute(&42_i32));
     }
 
     #[test]
     fn custom_can_execute_false() {
         let cmd = AlwaysDisabled;
-        assert!(!cmd.can_execute());
+        assert!(!cmd.can_execute(&42_i32));
     }
 
-    // ─── ParamMeta 集合使用场景 ───
+    #[test]
+    fn can_execute_accepts_any_parameter_type() {
+        // 验证 parameter 类型擦除：同一命令可接受任意类型参数
+        let cmd = AlwaysEnabled;
+        assert!(cmd.can_execute(&"string"));
+        assert!(cmd.can_execute(&42_i64));
+        assert!(cmd.can_execute(&true));
+        assert!(cmd.can_execute(&vec![1, 2, 3]));
+    }
 
     #[test]
-    fn param_meta_slice_operations() {
-        let params: &[ParamMeta] = &[
-            ParamMeta { name: "a", ty: "i32" },
-            ParamMeta { name: "b", ty: "String" },
-            ParamMeta { name: "c", ty: "bool" },
-        ];
-        assert_eq!(params.len(), 3);
-        assert_eq!(params[0].name, "a");
-        assert_eq!(params[2].ty, "bool");
-
-        // 验证可以迭代
-        let names: Vec<&str> = params.iter().map(|p| p.name).collect();
-        assert_eq!(names, vec!["a", "b", "c"]);
+    fn can_execute_disabled_regardless_of_parameter() {
+        // AlwaysDisabled 对任意参数都返回 false
+        let cmd = AlwaysDisabled;
+        assert!(!cmd.can_execute(&"text"));
+        assert!(!cmd.can_execute(&42));
     }
 }

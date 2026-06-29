@@ -10,7 +10,7 @@
 //! 由 `#[window]` 宏自动实现，也可手动 impl。
 
 use gpui::{
-    AnyWindowHandle, App, Bounds, Pixels, Point, Size, TitlebarOptions, WindowBounds,
+    AnyWindowHandle, App, Bounds, Pixels, Point, Render, Size, TitlebarOptions, WindowBounds,
     WindowOptions, px,
 };
 
@@ -65,7 +65,7 @@ pub enum WindowState {
 ///         .run();
 /// }
 /// ```
-pub trait IWindow: IComponent {
+pub trait IWindow: IComponent + Default + Render {
     // ── 必需：配置属性（WPF: Window.Title / Width / Height）──
 
     /// 窗口标题
@@ -88,7 +88,8 @@ pub trait IWindow: IComponent {
     // ── 必需：打开窗口（WPF: `Window.Show()`）──
     //
     // 创建 OS 窗口并显示。窗口句柄存储在实例内部。
-    // 不提供默认实现，因为创建视图 + Root 包装的逻辑特定于具体窗口类型。
+    // 默认实现见 rml_ui 的 `IWindowExt::open_rooted`（含 init + Root 包裹），
+    // rml_core 不依赖 rml_ui 故无法在此提供默认实现。
     fn open(&mut self, cx: &mut App);
 
     // ── 默认：窗口装饰（WPF: Window.WindowStyle）──
@@ -207,5 +208,46 @@ pub trait IWindow: IComponent {
             }
         }
         WindowState::Normal
+    }
+
+    // ── 默认：状态操作（WPF: Window.WindowState setter）──
+
+    /// 设置窗口状态（WPF: `Window.WindowState = ...`）
+    ///
+    /// 基于 GPUI `zoom_window` toggle 语义：
+    /// - `Minimized` → `minimize_window()`
+    /// - `Maximized` → 仅当未最大化时调用 `zoom_window()`（避免重复 toggle 还原）
+    /// - `Normal` → 仅当已最大化时调用 `zoom_window()`（toggle 还原）
+    fn set_state(&mut self, state: WindowState, cx: &mut App) {
+        if let Some(handle) = self.handle() {
+            let _ = handle.update(cx, |_view, window, _cx| match state {
+                WindowState::Minimized => window.minimize_window(),
+                WindowState::Maximized => {
+                    if !window.is_maximized() {
+                        window.zoom_window();
+                    }
+                }
+                WindowState::Normal => {
+                    if window.is_maximized() {
+                        window.zoom_window();
+                    }
+                }
+            });
+        }
+    }
+
+    /// 最大化窗口
+    fn maximize(&mut self, cx: &mut App) {
+        self.set_state(WindowState::Maximized, cx);
+    }
+
+    /// 最小化窗口
+    fn minimize(&mut self, cx: &mut App) {
+        self.set_state(WindowState::Minimized, cx);
+    }
+
+    /// 还原窗口（从最大化/最小化恢复）
+    fn restore(&mut self, cx: &mut App) {
+        self.set_state(WindowState::Normal, cx);
     }
 }

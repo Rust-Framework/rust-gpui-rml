@@ -8,11 +8,13 @@
 
 pub mod actions;
 pub mod builtin_window;
+pub mod ext;
 pub mod menu_bar;
 pub mod modern_window;
 pub mod types;
 
 pub use actions::{IWindowActions, NotificationKind};
 pub use builtin_window::{ModernWindow, Window};
+pub use ext::IWindowExt;
 pub use modern_window::ModernWindowShell;
 pub use types::{MenuItem, StatusBarItem};

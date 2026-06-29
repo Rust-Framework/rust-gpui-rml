@@ -61,7 +61,7 @@ pub fn gen_component(
             }
         }
         tags::ComponentKind::StatelessNoId => {
-            // 无参构造：TitleBar::new() / StatusBar::new() / ModernWindowShell::new()
+            // 无参构造：TitleBar::new() / StatusBar::new()
             format!("{}::new()", component.ctor_path)
         }
         tags::ComponentKind::Stateful { state_field } => format!(
@@ -101,10 +101,13 @@ pub fn gen_component(
 
     // 3. 子节点处理
     //
-    // StatelessNoId 容器组件（ModernWindowShell/TitleBar/StatusBar）实现 `ParentElement`，
+    // StatelessNoId 容器组件（TitleBar/StatusBar）实现 `ParentElement`，
     // 接收 element 子节点作为业务内容，用 `.child(...)` / `.children(...)` 传入。
     //
     // 其他组件（Button/Input 等）仅支持单个文本子节点作为 label（与显式 `label=` 互斥）。
+    //
+    // 注：ModernWindowShell 不经此路径处理——它由 codegen 根元素处理路径
+    // （gen_modern_window_wrapper）直接生成，不通过 component_lookup 路由表。
     let is_container = matches!(component.kind, tags::ComponentKind::StatelessNoId);
 
     if is_container {
@@ -214,7 +217,8 @@ pub fn component_static_setter(name: &str, value: &str, tag: &str) -> Option<Str
 ///
 /// 对于无法解析的表达式，回退到简单的 `self.<expr>` 引用。
 ///
-/// `tag` 参数用于区分组件类型，支持组件专用 setter（如 ModernWindowShell 的 menu/status_bar）。
+/// `tag` 参数保留用于未来组件专用 setter 扩展，当前无组件特定分支
+/// （ModernWindowShell 的 menu/status_bar/title setter 已移至 codegen 根元素处理路径）。
 pub fn component_bind_setter(
     name: &str,
     expr_str: &str,
@@ -243,17 +247,13 @@ pub fn component_bind_setter(
             }
         }
     };
+    let _ = tag; // 当前无组件专用 setter 分支
     match name {
         "value" => Some(format!(".value({}.clone())", rust_expr)),
         "disabled" => Some(format!(".disabled({})", rust_expr)),
         "selected" => Some(format!(".selected({})", rust_expr)),
         "checked" => Some(format!(".selected({})", rust_expr)),
         "label" => Some(format!(".label({}.clone())", rust_expr)),
-        // ModernWindowShell 专用 MVVM 绑定 setter
-        // .clone() 必需：render 是 &mut self，不能 move 字段；Vec<MenuItem>/Vec<StatusBarItem> 均实现 Clone
-        "menu" if tag == "ModernWindowShell" => Some(format!(".menu({}.clone())", rust_expr)),
-        "status_bar" if tag == "ModernWindowShell" => Some(format!(".status_bar({}.clone())", rust_expr)),
-        "title" if tag == "ModernWindowShell" => Some(format!(".title({}.clone())", rust_expr)),
         _ => None,
     }
 }
@@ -958,7 +958,7 @@ mod tests {
         assert!(component_static_setter("ref", "name", "Button").is_none());
     }
 
-    // ─── StatelessNoId 构造（TitleBar / StatusBar / ModernWindowShell）───
+    // ─── StatelessNoId 构造（TitleBar / StatusBar）───
 
     #[test]
     fn gen_component_titlebar_minimal() {
@@ -981,15 +981,6 @@ mod tests {
     }
 
     #[test]
-    fn gen_component_modern_window_shell_minimal() {
-        // <ModernWindowShell /> → rml_ui::ModernWindowShell::new()
-        let elem = make_element("ModernWindowShell", vec![], vec![]);
-        let mut id = 0;
-        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
-        assert!(code.contains("rml_ui::ModernWindowShell::new()"));
-    }
-
-    #[test]
     fn gen_component_titlebar_ignores_ref_directive() {
         // StatelessNoId 组件不接受 ElementId，ref 指令应被忽略（不生成稳定 ID）
         let elem = make_element_with_directives(
@@ -1005,138 +996,9 @@ mod tests {
         assert!(!code.contains("rml_ref"));
     }
 
-    // ─── ModernWindowShell 专用 setter ───
-
-    #[test]
-    fn bind_setter_modern_window_shell_menu() {
-        // <ModernWindowShell menu={menu_items} /> → .menu(self.menu_items.clone())
-        // .clone() 必需：render 是 &mut self，不能 move 字段
-        let code =
-            component_bind_setter("menu", "menu_items", &[], &[], "ModernWindowShell").unwrap();
-        assert_eq!(code, ".menu(self.menu_items.clone())");
-    }
-
-    #[test]
-    fn bind_setter_modern_window_shell_status_bar() {
-        // <ModernWindowShell status_bar={status_items} /> → .status_bar(self.status_items.clone())
-        let code =
-            component_bind_setter("status_bar", "status_items", &[], &[], "ModernWindowShell")
-                .unwrap();
-        assert_eq!(code, ".status_bar(self.status_items.clone())");
-    }
-
-    #[test]
-    fn bind_setter_modern_window_shell_title() {
-        // <ModernWindowShell title={app_title} /> → .title(self.app_title.clone())
-        let code =
-            component_bind_setter("title", "app_title", &[], &[], "ModernWindowShell").unwrap();
-        assert_eq!(code, ".title(self.app_title.clone())");
-    }
-
-    #[test]
-    fn bind_setter_menu_only_for_modern_window_shell() {
-        // menu setter 仅对 ModernWindowShell 生效，其他组件返回 None
-        assert!(
-            component_bind_setter("menu", "items", &[], &[], "Button").is_none(),
-            "menu setter should not exist for Button"
-        );
-        assert!(
-            component_bind_setter("status_bar", "items", &[], &[], "Window").is_none(),
-            "status_bar setter should not exist for Window"
-        );
-    }
-
-    #[test]
-    fn bind_setter_title_for_modern_window_shell_does_not_leak_to_others() {
-        // title setter 仅对 ModernWindowShell 生效；普通组件的 title 不映射（不在路由表）
-        assert!(
-            component_bind_setter("title", "t", &[], &[], "Button").is_none(),
-            "title setter should not exist for Button"
-        );
-    }
-
-    #[test]
-    fn gen_component_modern_window_shell_with_menu_bind() {
-        // <ModernWindowShell menu={menu_items} status_bar={status_items} /> 完整生成
-        let elem = make_element(
-            "ModernWindowShell",
-            vec![
-                Attribute::Bind {
-                    name: "menu".into(),
-                    expr: "menu_items".into(),
-                },
-                Attribute::Bind {
-                    name: "status_bar".into(),
-                    expr: "status_items".into(),
-                },
-            ],
-            vec![],
-        );
-        let mut id = 0;
-        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
-        assert!(code.contains("rml_ui::ModernWindowShell::new()"));
-        assert!(code.contains(".menu(self.menu_items.clone())"));
-        assert!(code.contains(".status_bar(self.status_items.clone())"));
-    }
-
     // ─── StatelessNoId 容器子节点 codegen ───
-
-    #[test]
-    fn gen_component_modern_window_shell_with_element_child() {
-        // <ModernWindowShell><div class="container"><h1>Hello</h1></div></ModernWindowShell>
-        // 容器组件：element 子节点应通过 .child(...) 传入
-        let div = make_element(
-            "div",
-            vec![Attribute::Static {
-                name: "class".into(),
-                value: "container".into(),
-            }],
-            vec![Node::Text("Hello".into())],
-        );
-        let shell = make_element("ModernWindowShell", vec![], vec![Node::Element(div)]);
-        let mut id = 0;
-        let code = gen_component(&shell, &ctx(), 0, &mut id, &Vec::new()).unwrap();
-        assert!(code.contains("rml_ui::ModernWindowShell::new()"));
-        assert!(code.contains(".child(gpui::div()"));
-    }
-
-    #[test]
-    fn gen_component_modern_window_shell_with_multiple_children() {
-        // <ModernWindowShell><div>A</div><div>B</div></ModernWindowShell>
-        // 多子节点：每个都通过 .child(gpui::div()...) 传入
-        let div_a = make_element("div", vec![], vec![Node::Text("A".into())]);
-        let div_b = make_element("div", vec![], vec![Node::Text("B".into())]);
-        let shell = make_element(
-            "ModernWindowShell",
-            vec![],
-            vec![Node::Element(div_a), Node::Element(div_b)],
-        );
-        let mut id = 0;
-        let code = gen_component(&shell, &ctx(), 0, &mut id, &Vec::new()).unwrap();
-        assert!(code.contains("rml_ui::ModernWindowShell::new()"));
-        // shell 应有两次 .child(gpui::div()...) 传入业务子节点
-        // （内部 .child("A") / .child("B") 是 div 自身的子节点，不在此计数范围）
-        assert_eq!(code.matches(".child(gpui::div(").count(), 2);
-    }
-
-    #[test]
-    fn gen_component_modern_window_shell_with_menu_and_children() {
-        // <ModernWindowShell menu={menu_items}><div>Content</div></ModernWindowShell>
-        // 绑定 + 子节点共存
-        let div = make_element("div", vec![], vec![Node::Text("Content".into())]);
-        let shell = make_element(
-            "ModernWindowShell",
-            vec![Attribute::Bind {
-                name: "menu".into(),
-                expr: "menu_items".into(),
-            }],
-            vec![Node::Element(div)],
-        );
-        let mut id = 0;
-        let code = gen_component(&shell, &ctx(), 0, &mut id, &Vec::new()).unwrap();
-        assert!(code.contains(".menu(self.menu_items.clone())"));
-        assert!(code.contains(".child(gpui::div()"));
-    }
+    // 注：ModernWindowShell 已从路由表移除，其子节点 codegen 由 codegen.rs 的
+    // gen_modern_window_wrapper 处理。此处仅测试 TitleBar/StatusBar 的容器子节点行为。
 
     #[test]
     fn gen_component_button_does_not_use_child_for_element() {

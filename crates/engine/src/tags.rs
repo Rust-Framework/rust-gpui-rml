@@ -141,7 +141,7 @@ pub fn is_component(tag: &str) -> bool {
 pub enum RootTag {
     /// `<window>`：基础窗口（透明标题栏，`WindowChrome::Transparent`）
     Window,
-    /// `<modern_window>`：现代窗口（原生标题栏，`WindowChrome::Native`）
+    /// `<modern_window>`：现代窗口（自绘 TitleBar/Menu/StatusBar，`WindowChrome::Transparent`）
     ModernWindow,
     /// `<component>`：可复用组件（无窗口操作）
     Component,
@@ -176,7 +176,7 @@ pub enum ComponentKind {
     /// 无状态组件：构造调用形如 `Button::new(id)`
     /// `id: impl Into<ElementId>` — 由 codegen 自动分配 `("rml_el", N)` 元组
     Stateless,
-    /// 无状态无参组件：构造调用形如 `TitleBar::new()` / `StatusBar::new()` / `ModernWindowShell::new()`
+    /// 无状态无参组件：构造调用形如 `TitleBar::new()` / `StatusBar::new()`
     /// 用于无 `ElementId` 参数的 RenderOnce 组件
     StatelessNoId,
     /// 有状态组件：构造调用形如 `Input::new(&self.<field>)`
@@ -255,17 +255,15 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             },
         }),
         // 窗口外壳组件（RenderOnce，无 ElementId 参数）
-        // TitleBar / StatusBar 来自 gpui-component，ModernWindowShell 是 RML 内置封装
+        // TitleBar / StatusBar 来自 gpui-component，供用户手动组装标题栏/状态栏
+        // 注：ModernWindowShell 不在此路由表中——它是 `<modern_window>` 根元素的内部实现，
+        // 由 codegen 直接生成包裹代码，不作为用户可用的 `<ModernWindowShell>` 标签
         "TitleBar" => Some(ComponentTag {
             ctor_path: "rml_ui::TitleBar",
             kind: ComponentKind::StatelessNoId,
         }),
         "StatusBar" => Some(ComponentTag {
             ctor_path: "rml_ui::StatusBar",
-            kind: ComponentKind::StatelessNoId,
-        }),
-        "ModernWindowShell" => Some(ComponentTag {
-            ctor_path: "rml_ui::ModernWindowShell",
             kind: ComponentKind::StatelessNoId,
         }),
         _ => None,

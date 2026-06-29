@@ -75,6 +75,6 @@ pub use gpui_component::{
 
 // 窗口组件：ModernWindowShell 内置封装 + 内置 Window/ModernWindow + 数据类型 + 助手 trait
 pub use window::{
-    IWindowActions, MenuItem, ModernWindow, ModernWindowShell, NotificationKind, StatusBarItem,
-    Window,
+    IWindowActions, IWindowExt, MenuItem, ModernWindow, ModernWindowShell, NotificationKind,
+    StatusBarItem, Window,
 };

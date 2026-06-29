@@ -20,7 +20,7 @@
 //! ```
 
 use gpui::{
-    App, AnyWindowHandle, AppContext, Context, IntoElement, ParentElement, Pixels, Render, div, px,
+    App, AnyWindowHandle, Context, IntoElement, ParentElement, Pixels, Render, div, px,
 };
 
 use rml_core::component::IComponent;
@@ -29,6 +29,7 @@ use rml_core::model::IModel;
 use rml_core::view_model::IViewModel;
 use rml_core::window::{IWindow, WindowChrome};
 
+use super::ext::IWindowExt;
 use super::modern_window::ModernWindowShell;
 
 // ─── Window：基础窗口 ───────────────────────────────────────────
@@ -107,15 +108,7 @@ impl IWindow for Window {
     }
 
     fn open(&mut self, cx: &mut App) {
-        crate::init(cx);
-        let options = self.window_options();
-        let handle = cx
-            .open_window(options, |window, cx| {
-                let view = cx.new(|_| Self::default());
-                cx.new(|cx| crate::Root::new(view, window, cx))
-            })
-            .expect("failed to open window");
-        self.window_handle = Some(handle.into());
+        self.open_rooted(cx);
     }
 
     fn handle(&self) -> Option<AnyWindowHandle> {
@@ -201,20 +194,15 @@ impl IWindow for ModernWindow {
         self.height
     }
 
+    // ModernWindowShell 自绘 TitleBar，需要透明标题栏模式
+    // （appears_transparent: true + WindowDecorations::Client）。
+    // 此前的 Native 是 bug，会导致 OS 原生标题栏覆盖自绘标题栏。
     fn chrome(&self) -> WindowChrome {
-        WindowChrome::Native
+        WindowChrome::Transparent
     }
 
     fn open(&mut self, cx: &mut App) {
-        crate::init(cx);
-        let options = self.window_options();
-        let handle = cx
-            .open_window(options, |window, cx| {
-                let view = cx.new(|_| Self::default());
-                cx.new(|cx| crate::Root::new(view, window, cx))
-            })
-            .expect("failed to open window");
-        self.window_handle = Some(handle.into());
+        self.open_rooted(cx);
     }
 
     fn handle(&self) -> Option<AnyWindowHandle> {
