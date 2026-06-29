@@ -342,6 +342,8 @@ mod tests {
             view_module_path: "test::view".into(),
             stylesheet: None,
             computed_methods: Vec::new(),
+            observable_fields: Vec::new(),
+            computed_deps: std::collections::HashMap::new(),
         }
     }
 

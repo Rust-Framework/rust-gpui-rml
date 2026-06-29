@@ -127,7 +127,10 @@ impl Builder {
         for f in &rml_files {
             println!("cargo:rerun-if-changed={}", f.display());
         }
-        let computed_methods = self.scan_computed_methods(&rml_files);
+
+        // Phase B-2：syn 扫描 .rml.rs code-behind，提取每个 struct 的元信息
+        // 元信息按 struct_name 索引，供每个 .rml 文件按 view_struct_name 查询
+        let struct_metas = self.scan_struct_metas(&rml_files);
 
         // 现在可以移动 output_dir
         let output_dir = self.output_dir.ok_or_else(|| BuildError {
@@ -198,11 +201,20 @@ impl Builder {
             let snake = to_snake_case(stem);
             let out_file = generated_dir.join(format!("{}.rs", snake));
 
+            // 查找当前 struct 的元信息（按 view_struct_name 索引）
+            // .rml.rs 不存在或无对应 struct 时使用空元信息
+            let struct_meta = struct_metas
+                .get(&view_struct_name)
+                .cloned()
+                .unwrap_or_default();
+
             let ctx = CodegenCtx {
                 view_struct_name: view_struct_name.clone(),
                 view_module_path: self.namespace.clone().unwrap_or_default(),
                 stylesheet: stylesheet.clone(),
-                computed_methods: computed_methods.clone(),
+                computed_methods: struct_meta.computed_methods.clone(),
+                observable_fields: struct_meta.observable_fields.clone(),
+                computed_deps: struct_meta.computed_deps.clone(),
             };
 
             match compile(&source, &ctx) {
@@ -271,46 +283,30 @@ impl Builder {
         Ok(Some(merged))
     }
 
-    /// 扫描 `.rml.rs` code-behind 文件，收集 `#[computed]` 标注的方法名。
+    /// 扫描所有 `.rml.rs` code-behind 文件，提取每个 struct 的元信息。
     ///
-    /// 使用正则匹配 `#[computed]` 后的 `fn <name>` 模式。
-    /// 这些方法名传给 codegen，使 `{name}` 生成 `self.name()` 而非 `self.name`。
-    fn scan_computed_methods(&self, rml_files: &[PathBuf]) -> Vec<String> {
-        let mut methods = Vec::new();
+    /// 返回扁平化 map：`HashMap<struct_name, StructMetadata>`。
+    /// 多个 .rml.rs 文件中同名 struct 的元信息会被后者覆盖（不应出现）。
+    fn scan_struct_metas(
+        &self,
+        rml_files: &[PathBuf],
+    ) -> std::collections::HashMap<String, scanner::StructMetadata> {
+        let mut all_metas = std::collections::HashMap::new();
         for rml_path in rml_files {
-            // .rml → .rml.rs（在路径后追加 .rs）
             let rml_rs: PathBuf = format!("{}.rs", rml_path.display()).into();
             if !rml_rs.exists() {
                 continue;
             }
             println!("cargo:rerun-if-changed={}", rml_rs.display());
-            let source = match fs::read_to_string(&rml_rs) {
-                Ok(s) => s,
-                Err(_) => continue,
-            };
-            // 简化扫描：查找 #[computed] 后面紧跟的 fn name
-            let lines: Vec<&str> = source.lines().collect();
-            for (i, line) in lines.iter().enumerate() {
-                if line.trim().contains("#[computed]") {
-                    // 下一行或同行后面应该有 fn <name>
-                    let search_in = if i + 1 < lines.len() {
-                        format!("{} {}", line, lines[i + 1])
-                    } else {
-                        line.to_string()
-                    };
-                    if let Some(name) = extract_fn_name(&search_in) {
-                        if !methods.contains(&name) {
-                            methods.push(name);
-                        }
-                    }
-                }
-            }
+            let metas = scanner::scan_struct_metadata(&rml_rs);
+            all_metas.extend(metas);
         }
-        methods
+        all_metas
     }
 }
 
 /// 从源码行中提取 `fn <name>` 的方法名
+#[allow(dead_code)]
 fn extract_fn_name(source: &str) -> Option<String> {
     let after_computed = source.split("#[computed]").nth(1)?;
     let after_fn = after_computed.split("fn").nth(1)?;

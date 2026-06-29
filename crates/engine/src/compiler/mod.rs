@@ -10,6 +10,7 @@ pub mod validator;
 
 use crate::css::StyleSheet;
 use crate::parser;
+use std::collections::HashMap;
 use std::fmt;
 
 /// 代码生成上下文
@@ -30,6 +31,17 @@ pub struct CodegenCtx {
     /// 当插值 `{name}` 中的 `name` 在此列表中时，codegen 生成 `self.name()`（方法调用）
     /// 而非 `self.name`（字段访问）。
     pub computed_methods: Vec<String>,
+    /// 当前 struct 的所有 pub 字段名（Phase B-2：observable 字段追踪）
+    ///
+    /// 由 build.rs 通过 syn 扫描 `.rml.rs` 提取，与 `IModel::rml_fields` 一致。
+    /// codegen 据此生成 `__rml_bump_version`/`__rml_get_version` 的 match 臂。
+    pub observable_fields: Vec<String>,
+    /// 每个 `#[computed]` 方法 → 依赖的 pub 字段列表（Phase B-2：缓存依赖追踪）
+    ///
+    /// 由 build.rs 通过 `syn::visit::Visit` 扫描 `#[computed]` 方法体中的
+    /// `self.<field>` 访问收集。codegen 据此生成 `__rml_computed_deps_version` 方法，
+    /// 对每个 computed 方法 sum 其依赖字段的版本号作为缓存键。
+    pub computed_deps: HashMap<String, Vec<String>>,
 }
 
 /// 代码生成错误

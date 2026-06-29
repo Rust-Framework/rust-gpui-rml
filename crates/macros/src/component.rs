@@ -14,8 +14,8 @@
 
 use crate::derive_model::to_snake_case;
 use proc_macro2::TokenStream;
-use quote::quote;
-use syn::{Fields, Ident, ItemStruct, Visibility};
+use quote::{quote, format_ident};
+use syn::{Field, Fields, Ident, ItemStruct, Visibility, parse_quote};
 
 /// 生成 `impl IModel`（同 derive_model 的核心逻辑）
 fn gen_impl_i_model(struct_name: &Ident, fields: &Fields) -> TokenStream {
@@ -58,6 +58,50 @@ fn gen_impl_i_model(struct_name: &Ident, fields: &Fields) -> TokenStream {
             }
         }
     }
+}
+
+/// 为 pub 字段注入版本追踪字段 + ComputedCache 字段
+///
+/// Phase B-2：每个 pub 字段自动成为 observable 字段，宏注入以下字段（均为私有）：
+/// - `__rml_<field>_version: AtomicU64`（每个 pub 字段一个，作为版本计数器）
+/// - `__rml_computed_cache: ComputedCache`（每结构体一个，存储 #[computed] 结果）
+///
+/// 注入字段为私有，不会进入 `IModel::rml_fields()`（其只收集 pub 字段）。
+/// `AtomicU64: Default = 0`，`ComputedCache::default() = 空 map`，`#[derive(Default)]` 兼容。
+pub fn inject_tracking_fields(fields: &mut Fields) {
+    let Fields::Named(named) = fields else {
+        return;
+    };
+
+    // 收集 pub 字段名（与 IModel 一致：仅 pub 字段参与追踪）
+    let pub_field_names: Vec<String> = named
+        .named
+        .iter()
+        .filter_map(|f| {
+            if matches!(f.vis, Visibility::Public(_)) {
+                f.ident.as_ref().map(|i| i.to_string())
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    // 为每个 pub 字段注入 AtomicU64 版本计数器
+    for name in &pub_field_names {
+        let version_field_name = format_ident!("__rml_{}_version", name);
+        let field: Field = parse_quote! {
+            #[allow(non_snake_case, dead_code)]
+            #version_field_name: std::sync::atomic::AtomicU64
+        };
+        named.named.push(field);
+    }
+
+    // 注入 ComputedCache（供 #[computed] 缓存包装使用）
+    let cache_field: Field = parse_quote! {
+        #[allow(dead_code)]
+        __rml_computed_cache: rml_core::computed_cache::ComputedCache
+    };
+    named.named.push(cache_field);
 }
 
 /// 生成组件所需的全部 trait 实现（IModel + ILifecycle + IViewModel + IComponent）
@@ -127,6 +171,10 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
 
     // 生成文件名（不含扩展名）：<snake_case>
     let generated_file = format!("{}.rs", snake);
+
+    // 注入追踪字段（AtomicU64 + ComputedCache）
+    let mut item = item;
+    inject_tracking_fields(&mut item.fields);
 
     // 生成全部 trait 实现
     let trait_impls = expand_component_impls(

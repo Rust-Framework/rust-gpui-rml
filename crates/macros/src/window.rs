@@ -11,7 +11,7 @@
 //!
 //! 参考 WPF `Window` 类：窗口 IS 组件，额外拥有窗口生命周期操作。
 
-use crate::component::expand_component_impls;
+use crate::component::{expand_component_impls, inject_tracking_fields};
 use crate::derive_model::to_snake_case;
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -60,6 +60,9 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
                 .to_compile_error();
         }
     }
+
+    // 注入追踪字段（AtomicU64 版本计数器 + ComputedCache）
+    inject_tracking_fields(&mut item.fields);
 
     // 生成组件 trait 实现（IModel + ILifecycle + IViewModel + IComponent）
     // 注意：不生成 impl IWindow —— 由 RML 编译器从 <window> 根节点生成
