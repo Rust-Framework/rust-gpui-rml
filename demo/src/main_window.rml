@@ -1,5 +1,5 @@
 <modern_window title="MainWindow" width="800" height="450"
-    menu={menu_items} status_bar={status_items}>
+    icon={IconName::Frame} menu={menu_items} status_bar={status_items}>
     <div class="container">
         <h1 ref="title">Hello, RML!</h1>
         <p class="count">点击次数：{count}</p>

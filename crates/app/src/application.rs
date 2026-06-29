@@ -90,10 +90,12 @@ impl RmlApplication<NoWindow> {
     where
         A: IAppLifecycle + Default + 'static,
     {
-        gpui_platform::application().run(move |cx: &mut App| {
-            let mut app = A::default();
-            app.on_launch(cx);
-        });
+        gpui_platform::application()
+            .with_assets(gpui_component_assets::Assets)
+            .run(move |cx: &mut App| {
+                let mut app = A::default();
+                app.on_launch(cx);
+            });
     }
 }
 
@@ -104,10 +106,12 @@ impl<W: IWindow + Default + 'static> RmlApplication<W> {
     /// 1. 创建 `W::default()` 实例
     /// 2. 调用 `IWindow::open()` 打开主窗口
     pub fn run(self) {
-        gpui_platform::application().run(move |cx: &mut App| {
-            let mut window = W::default();
-            window.open(cx);
-        });
+        gpui_platform::application()
+            .with_assets(gpui_component_assets::Assets)
+            .run(move |cx: &mut App| {
+                let mut window = W::default();
+                window.open(cx);
+            });
     }
 }
 

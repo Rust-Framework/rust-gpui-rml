@@ -1,5 +1,5 @@
 use rml::prelude::*;
-use rml_ui::{MenuItem, StatusBarItem};
+use rml_ui::{IconName, MenuItem, StatusBarItem};
 
 #[window]
 #[derive(Default)]

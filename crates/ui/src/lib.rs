@@ -43,7 +43,7 @@ pub fn init(cx: &mut gpui::App) {
 
 // 直接 re-export 高频组件，避免在每个使用点写完整路径
 pub use gpui_component::{
-    Root, TitleBar, WindowExt,
+    Icon, IconName, Root, TitleBar, WindowExt,
     badge::Badge,
     button::{Button, ButtonGroup},
     checkbox::Checkbox,

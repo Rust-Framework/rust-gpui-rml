@@ -9,3 +9,4 @@ description = "RML 应用启动器（WPF 风格 Application + main_window 内置
 rust-rml-core = { workspace = true }
 gpui = { workspace = true }
 gpui_platform = { workspace = true }
+gpui-component-assets = { workspace = true }

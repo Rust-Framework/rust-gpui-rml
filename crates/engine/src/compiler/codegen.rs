@@ -221,28 +221,55 @@ fn gen_modern_window_wrapper(
     // title 复用 IWindow::title()，消除根元素 title 属性的重复定义
     code.push_str(".title(self.title().to_string())");
 
-    // menu/status_bar 从根元素 bind 属性提取
+    // menu/status_bar/icon 从根元素 bind 属性提取
     for attr in &elem.attributes {
         if let Attribute::Bind { name, expr } = attr {
-            let rust_expr = match expr::parse(expr) {
-                Ok(expr::Expr::Field(field_name))
-                    if computed.iter().any(|c| *c == field_name.as_str()) =>
-                {
-                    format!("self.{}()", field_name)
-                }
-                Ok(parsed) => expr::to_rust_code_with_ctx(&parsed, &empty),
-                Err(_) => {
-                    let trimmed = expr.trim();
-                    if computed.iter().any(|c| *c == trimmed) {
-                        format!("self.{}()", trimmed)
-                    } else {
-                        format!("self.{}", trimmed)
+            match name.as_str() {
+                "menu" | "status_bar" => {
+                    // menu/status_bar 是 Vec<T>，需要 .clone()
+                    let rust_expr = match expr::parse(expr) {
+                        Ok(expr::Expr::Field(field_name))
+                            if computed.iter().any(|c| *c == field_name.as_str()) =>
+                        {
+                            format!("self.{}()", field_name)
+                        }
+                        Ok(parsed) => expr::to_rust_code_with_ctx(&parsed, &empty),
+                        Err(_) => {
+                            let trimmed = expr.trim();
+                            if computed.iter().any(|c| *c == trimmed) {
+                                format!("self.{}()", trimmed)
+                            } else {
+                                format!("self.{}", trimmed)
+                            }
+                        }
+                    };
+                    match name.as_str() {
+                        "menu" => code.push_str(&format!(".menu({}.clone())", rust_expr)),
+                        "status_bar" => {
+                            code.push_str(&format!(".status_bar({}.clone())", rust_expr))
+                        }
+                        _ => {}
                     }
                 }
-            };
-            match name.as_str() {
-                "menu" => code.push_str(&format!(".menu({}.clone())", rust_expr)),
-                "status_bar" => code.push_str(&format!(".status_bar({}.clone())", rust_expr)),
+                "icon" => {
+                    // icon 是 IconName（Copy），支持三种形式：
+                    //   icon={IconName::Frame}     → 直接枚举值（expr 解析器不支持 :: 路径，原样输出）
+                    //   icon={self.app_icon}      → 字段引用
+                    //   icon={app_icon}            → computed 方法（如果 app_icon 在 computed_methods 中）
+                    let rust_expr = match expr::parse(expr) {
+                        Ok(expr::Expr::Field(field_name))
+                            if computed.iter().any(|c| *c == field_name.as_str()) =>
+                        {
+                            format!("self.{}()", field_name)
+                        }
+                        Ok(parsed) => expr::to_rust_code_with_ctx(&parsed, &empty),
+                        Err(_) => {
+                            // 解析失败：原样输出（支持 IconName::Frame 这类路径表达式）
+                            expr.trim().to_string()
+                        }
+                    };
+                    code.push_str(&format!(".icon({})", rust_expr));
+                }
                 _ => {}
             }
         }

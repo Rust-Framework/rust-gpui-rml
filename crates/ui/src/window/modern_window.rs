@@ -3,16 +3,23 @@
 //! 组合 `TitleBar` + `Menu` + `StatusBar`，用户通过 MVVM 数据绑定配置，
 //! 无需在 `.rml` 中编写 `<TitleBar><Menu>...</Menu></TitleBar>` 布局。
 //!
-//! 用户也可选择手动组装：用 `<TitleBar>` / `<StatusBar>` / `<Kbd>` 原子组件自行构建。
-//! ModernWindowShell 是易用性封装，基于它构建的 `.rml` 文件代码更少，更符合现代视觉应用设计。
+//! ## 标题栏布局
 //!
-//! 注：重命名自 `ModernWindow`，以释放该名称给 `IWindow` 实现使用。
+//! 默认从左到右排列：
+//! ```text
+//! [图标][主窗口菜单] ... [窗口标题居中占满] ... [可扩展] [窗口操作]
+//! |<------- 左对齐 ------>| |<------ 居中 ------>| |<-- 右对齐 -->| (TitleBar 内置)
+//! ```
+//! - 图标 + 主窗口菜单：左对齐
+//! - 窗口标题：占满剩余空间，文本水平居中
+//! - 可扩展区域：右对齐（位于窗口操作按钮左侧）
+//! - 窗口操作按钮（最小化/最大化/关闭）：由 `TitleBar` 内置在最右侧
 
 use gpui::{
     AnyElement, App, IntoElement, ParentElement, RenderOnce, Styled, Window, div,
     prelude::FluentBuilder as _,
 };
-use gpui_component::{TitleBar, status_bar::StatusBar};
+use gpui_component::{Icon, IconName, Sizable as _, TitleBar, h_flex, status_bar::StatusBar};
 use smallvec::SmallVec;
 
 use super::menu_bar::render_menu_bar;
@@ -22,14 +29,16 @@ use super::types::{MenuItem, StatusBarItem};
 ///
 /// 在 `.rml` 中作为根标签使用：
 /// ```html
-/// <ModernWindowShell title="My App" menu={menu_items} status_bar={status_items}>
+/// <modern_window title="My App" icon={IconName::Frame} menu={menu_items} status_bar={status_items}>
 ///     <!-- 业务内容 -->
-/// </ModernWindowShell>
+/// </modern_window>
 /// ```
 #[derive(IntoElement)]
 pub struct ModernWindowShell {
     title: Option<gpui::SharedString>,
+    icon: Option<IconName>,
     menu: Option<Vec<MenuItem>>,
+    extensible: Option<AnyElement>,
     status_bar: Option<Vec<StatusBarItem>>,
     children: SmallVec<[AnyElement; 4]>,
 }
@@ -38,15 +47,27 @@ impl ModernWindowShell {
     pub fn new() -> Self {
         Self {
             title: None,
+            icon: None,
             menu: None,
+            extensible: None,
             status_bar: None,
             children: SmallVec::new(),
         }
     }
 
-    /// 绑定标题栏内容（MVVM 数据绑定入口）
+    /// 绑定窗口标题（MVVM 数据绑定入口）
+    ///
+    /// 标题在标题栏中占满剩余空间，文本水平居中。
     pub fn title(mut self, title: impl Into<gpui::SharedString>) -> Self {
         self.title = Some(title.into());
+        self
+    }
+
+    /// 绑定窗口图标（MVVM 数据绑定入口）
+    ///
+    /// 图标位于标题栏最左侧，主窗口菜单的左边。
+    pub fn icon(mut self, icon: IconName) -> Self {
+        self.icon = Some(icon);
         self
     }
 
@@ -55,6 +76,14 @@ impl ModernWindowShell {
     /// ViewModel 持有 `Vec<MenuItem>` 字段，在 RML 中 `menu={self.menu_items}`
     pub fn menu(mut self, menu: Vec<MenuItem>) -> Self {
         self.menu = Some(menu);
+        self
+    }
+
+    /// 绑定可扩展区域（标题栏右侧、窗口操作按钮左侧）
+    ///
+    /// 用于放置自定义工具按钮、Kbd 快捷键提示等。
+    pub fn extensible(mut self, element: impl IntoElement) -> Self {
+        self.extensible = Some(element.into_any_element());
         self
     }
 
@@ -84,11 +113,28 @@ impl RenderOnce for ModernWindowShell {
             .flex_col()
             .size_full()
             .child(
-                TitleBar::new()
-                    .when_some(self.title, |this, title| this.child(title))
-                    .when_some(self.menu, |this, menu| {
-                        this.child(render_menu_bar(&menu))
-                    }),
+                TitleBar::new().child(
+                    h_flex()
+                        .flex_1()
+                        .h_full()
+                        .items_center()
+                        // 左侧：图标 + 主窗口菜单（左对齐）
+                        .when_some(self.icon, |this, icon| {
+                            this.child(h_flex().items_center().pl_2().child(Icon::new(icon).small()))
+                        })
+                        .when_some(self.menu, |this, menu| {
+                            this.child(render_menu_bar(&menu))
+                        })
+                        // 中间：窗口标题占满剩余空间，文本水平居中
+                        .child(
+                            div()
+                                .flex_1()
+                                .text_center()
+                                .when_some(self.title, |this, title| this.child(title)),
+                        )
+                        // 右侧：可扩展区域（WindowOps 由 TitleBar 自动渲染在最右）
+                        .when_some(self.extensible, |this, ext| this.child(ext)),
+                ),
             )
             // 业务内容包裹在 flex-1 容器中占据剩余空间，
             // 使 StatusBar 自然贴底（TitleBar 在顶，StatusBar 在底，中间内容 flex-1 填充）
