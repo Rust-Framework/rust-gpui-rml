@@ -1,6 +1,7 @@
 //! `#[command]` 实现
 //!
 //! Phase B-2：自动注入字段版本号 bump 与 `cx.notify()`，用户无需手写。
+//! Phase B-3：支持 `no_notify` 参数，让用户控制 notify 时机。
 //!
 //! ## 行为
 //!
@@ -8,8 +9,15 @@
 //!   `self.<ident> += ...` 等赋值/复合赋值操作（完整覆盖 `=`/`+=`/`-=`/`*=`/`/=`
 //!   /`%=`/`&=`/`|=`/`^=`/`<<=`/`>>=`）。
 //! - 在每个包含字段修改的语句后注入 `self.__rml_bump_version("<field>");`。
-//! - 若方法返回 `()` 且存在 `&mut Context<Self>` 参数，方法末尾追加 `<cx>.notify();`。
+//! - 若方法返回 `()` 且存在 `&mut Context<Self>` 参数，且未指定 `no_notify`，
+//!   方法末尾追加 `<cx>.notify();`。
 //! - 用户已写的 `cx.notify()` 不剥离（GPUI 多次 notify 幂等）。
+//!
+//! ## 参数
+//!
+//! - 无参数：默认行为（注入 notify）
+//! - `no_notify`：不注入 notify（仍注入 bump_version）
+//! - `debounce = "100ms"`：预留，本版本不实现逻辑
 //!
 //! ## 限制
 //!
@@ -20,12 +28,51 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::visit::Visit;
 use syn::{
-    parse_quote, BinOp, Expr, ExprAssign, ExprBinary, ExprField, ExprPath, FnArg, ItemFn, LitStr,
-    Member, Pat, ReturnType, Stmt,
+    parse_quote, BinOp, Expr, ExprAssign, ExprBinary, ExprField, ExprPath, FnArg, Ident, ItemFn,
+    LitStr, Member, Pat, ReturnType, Stmt, Token,
 };
 
+/// `#[command]` 参数
+#[derive(Default)]
+struct CommandArgs {
+    no_notify: bool,
+}
+
+impl syn::parse::Parse for CommandArgs {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let mut args = CommandArgs::default();
+        while !input.is_empty() {
+            let ident: Ident = input.parse()?;
+            match ident.to_string().as_str() {
+                "no_notify" => args.no_notify = true,
+                "debounce" => {
+                    // debounce = "100ms"（预留，解析但不使用）
+                    let _: Token![=] = input.parse()?;
+                    let _: LitStr = input.parse()?;
+                }
+                other => {
+                    return Err(syn::Error::new(
+                        ident.span(),
+                        format!("unknown #[command] argument: {}", other),
+                    ))
+                }
+            }
+            // 允许逗号分隔（可选）
+            if input.peek(Token![,]) {
+                let _: Token![,] = input.parse()?;
+            }
+        }
+        Ok(args)
+    }
+}
+
 /// `#[command]` 入口
-pub fn expand(input: TokenStream) -> TokenStream {
+pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
+    let cmd_args: CommandArgs = match syn::parse2(args) {
+        Ok(a) => a,
+        Err(e) => return e.to_compile_error(),
+    };
+
     let mut item: ItemFn = match syn::parse2(input.clone()) {
         Ok(i) => i,
         Err(e) => return e.to_compile_error(),
@@ -73,9 +120,9 @@ pub fn expand(input: TokenStream) -> TokenStream {
     }
     item.block.stmts = new_stmts;
 
-    // 若检测到字段修改且有 Context 参数且方法返回 ()，末尾追加 cx.notify()
+    // 若检测到字段修改且有 Context 参数且方法返回 () 且未指定 no_notify，末尾追加 cx.notify()
     // 返回类型非 () 时不注入（避免改变返回值类型，用户需手动调用）
-    if !all_mutated_fields.is_empty() {
+    if !all_mutated_fields.is_empty() && !cmd_args.no_notify {
         if let Some(cx) = cx_ident {
             if let ReturnType::Default = item.sig.output {
                 let notify: Stmt = parse_quote! {

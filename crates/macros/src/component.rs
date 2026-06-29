@@ -60,14 +60,24 @@ fn gen_impl_i_model(struct_name: &Ident, fields: &Fields) -> TokenStream {
     }
 }
 
-/// 为 pub 字段注入版本追踪字段 + ComputedCache 字段
+/// 为 pub 字段注入版本追踪字段 + ComputedCache 字段 + InputState 存储 + 订阅 guard
 ///
 /// Phase B-2：每个 pub 字段自动成为 observable 字段，宏注入以下字段（均为私有）：
 /// - `__rml_<field>_version: AtomicU64`（每个 pub 字段一个，作为版本计数器）
 /// - `__rml_computed_cache: ComputedCache`（每结构体一个，存储 #[computed] 结果）
 ///
+/// Phase B-3：双向绑定所需的状态存储：
+/// - `__rml_input_states: HashMap<String, Entity<InputState>>`（每结构体一个，惰性存储
+///   每个 `<input model={field}>` 绑定的 InputState entity，按字段名索引）
+/// - `__rml_input_state_versions: HashMap<String, u64>`（每结构体一个，记录每个字段上次
+///   正向同步到 InputState 的版本号，render 时对比决定是否需 set_value）
+///
+/// 注意：`cx.subscribe` 返回的 `Subscription` 调用 `.detach()` 后随 entity 生命周期存活，
+/// 不存储在结构体中（`Subscription` 非 `Sync`，存储会导致视图不满足 `Send + Sync`）。
+///
 /// 注入字段为私有，不会进入 `IModel::rml_fields()`（其只收集 pub 字段）。
-/// `AtomicU64: Default = 0`，`ComputedCache::default() = 空 map`，`#[derive(Default)]` 兼容。
+/// `AtomicU64: Default = 0`，`ComputedCache::default() = 空 map`，
+/// `HashMap::default() = 空 map`，`Vec::default() = 空 vec`，`#[derive(Default)]` 兼容。
 pub fn inject_tracking_fields(fields: &mut Fields) {
     let Fields::Named(named) = fields else {
         return;
@@ -102,6 +112,24 @@ pub fn inject_tracking_fields(fields: &mut Fields) {
         __rml_computed_cache: rml_core::computed_cache::ComputedCache
     };
     named.named.push(cache_field);
+
+    // Phase B-3：注入 InputState 存储（供双向绑定 <input model={field}> 惰性初始化使用）
+    let input_states_field: Field = parse_quote! {
+        #[allow(dead_code)]
+        __rml_input_states: std::collections::HashMap<String, gpui::Entity<rml_ui::InputState>>
+    };
+    named.named.push(input_states_field);
+
+    // Phase B-3：注入正向同步版本追踪（记录每个字段上次同步到 InputState 的版本号）
+    // render 时对比 __rml_get_version(field) 与此值，若不同则调用 InputState::set_value
+    //
+    // 注意：不注入 Vec<Subscription> 字段——Subscription 非 Sync，会导致视图类型不满足
+    // Send + Sync 约束。改用 cx.subscribe(...).detach() 让订阅随 entity 生命周期存活。
+    let input_versions_field: Field = parse_quote! {
+        #[allow(dead_code)]
+        __rml_input_state_versions: std::collections::HashMap<String, u64>
+    };
+    named.named.push(input_versions_field);
 }
 
 /// 生成组件所需的全部 trait 实现（IModel + ILifecycle + IViewModel + IComponent）

@@ -49,6 +49,11 @@ pub struct StructMetadata {
     /// codegen 生成的包装方法需要显式标注返回类型以调用
     /// `ComputedCache::get_or_compute::<T, _>(...)`。
     pub computed_returns: HashMap<String, String>,
+    /// 每个 pub 字段 → 类型字符串（如 `"i32"`、`"String"`、`"SharedString"`）
+    ///
+    /// Phase B-3：codegen 的 `gen_model_input` 据此生成类型转换代码
+    /// （`i32` → `parse::<i32>()`、`String` → `into()`）。
+    pub field_types: HashMap<String, String>,
 }
 
 /// 扫描 `.rml.rs` code-behind 文件，提取所有 `#[window]`/`#[component]` 标注 struct 的元信息。
@@ -89,7 +94,13 @@ pub fn scan_struct_metadata(rml_rs_path: &Path) -> HashMap<String, StructMetadat
             for f in &s.fields {
                 if matches!(f.vis, Visibility::Public(_)) {
                     if let Some(name) = &f.ident {
-                        meta.observable_fields.push(name.to_string());
+                        let name_str = name.to_string();
+                        meta.observable_fields.push(name_str.clone());
+                        // 提取字段类型字符串（清理 token 间空格：`Vec < MenuItem >` → `Vec<MenuItem>`）
+                        let ty = &f.ty;
+                        let ty_str = quote!(#ty).to_string();
+                        let cleaned = ty_str.split_whitespace().collect::<String>();
+                        meta.field_types.insert(name_str, cleaned);
                     }
                 }
             }
@@ -467,6 +478,51 @@ impl MainWindow {
         assert_eq!(
             m.computed_returns.get("no_return"),
             Some(&"()".to_string())
+        );
+    }
+
+    #[test]
+    fn scans_pub_field_types() {
+        let path = write_temp_rml_rs(
+            r#"
+#[window]
+#[derive(Default)]
+pub struct MainWindow {
+    pub count: i32,
+    pub name: String,
+    pub age: u32,
+    pub score: f64,
+    _private: bool,
+}
+        "#,
+        );
+        let meta = scan_struct_metadata(&path);
+        let m = meta.get("MainWindow").unwrap();
+        assert_eq!(m.field_types.get("count"), Some(&"i32".to_string()));
+        assert_eq!(m.field_types.get("name"), Some(&"String".to_string()));
+        assert_eq!(m.field_types.get("age"), Some(&"u32".to_string()));
+        assert_eq!(m.field_types.get("score"), Some(&"f64".to_string()));
+        // 私有字段不收集
+        assert!(m.field_types.get("_private").is_none());
+    }
+
+    #[test]
+    fn scans_generic_field_types() {
+        let path = write_temp_rml_rs(
+            r#"
+#[component]
+pub struct MyWidget {
+    pub items: Vec<String>,
+    pub optional: Option<i32>,
+}
+        "#,
+        );
+        let meta = scan_struct_metadata(&path);
+        let m = meta.get("MyWidget").unwrap();
+        assert_eq!(m.field_types.get("items"), Some(&"Vec<String>".to_string()));
+        assert_eq!(
+            m.field_types.get("optional"),
+            Some(&"Option<i32>".to_string())
         );
     }
 }

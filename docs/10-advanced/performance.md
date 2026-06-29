@@ -1,187 +1,196 @@
 # 10.1 性能优化
 
-> **本节目标**：理解 RML 的渲染机制，掌握增量渲染、key 策略、避免过度 notify 等优化手段。
+> **本节目标**：理解 RML 基于 GPUI 的真实渲染机制，掌握 `#[computed]` 缓存、`#[command(no_notify)]` 选择性 notify、element ID 稳定性等优化手段。
 
-## 10.1.1 RML 渲染机制回顾
+## 10.1.1 GPUI 渲染模型
 
-RML 的渲染基于 GPUI 的保留模式：
+RML 建立在 GPUI 之上，渲染流程如下：
 
 ```
-状态变化 (cx.notify)
+cx.notify()
     │
     ▼
-绑定引擎重新计算依赖该状态的绑定
+标记 Entity 为脏（app.notify(entity_id)）
     │
     ▼
-生成的 Render 实现重新构建受影响的子树
+下一次 frame：整个 render() 方法重新执行
     │
     ▼
-GPUI diff 新旧树，只重绘变化部分
+重建整棵 element 树（所有 format!()、.child() 重新求值）
+    │
+    ▼
+GPUI element ID intern：相同 ID 的元素复用 layout/paint 状态
     │
     ▼
 GPU 合成帧
 ```
 
-性能瓶颈通常出现在三个环节：
+**关键事实**：
+- `cx.notify()` 触发**整个** `render()` 重建，无法跳过子树
+- `AnyElement` 是 `ArenaBox`，frame 结束时释放，**无法跨 frame 缓存 element**
+- GPUI 的 element ID intern 机制会缓存 layout/paint 状态（非 render 本身），这是内置优化
+- `#[computed]` 缓存的是**数据**（计算结果），不是 element
 
-1. **notify 过频**：触发太多重渲染
-2. **绑定路径过深**：单次重渲染计算量大
-3. **列表无 key**：GPUI 无法复用元素，全量重建
+性能瓶颈通常出现在：
+1. **notify 过频**：每次按键都全量重建
+2. **render 内重计算**：`#[computed]` 未使用，昂贵计算重复执行
+3. **element ID 不稳定**：GPUI 无法复用 layout/paint 状态
 
-## 10.1.2 增量渲染：只重绘变化的部分
+## 10.1.2 `#[computed]` 数据缓存
 
-GPUI 的 diff 算法基于元素标识与属性比对。RML 编译器为每个 `.rml` 元素生成稳定的元素 ID，GPUI 据此复用旧节点。
+`#[computed]` 通过版本号追踪依赖，只在依赖字段变化时重算。这是 RML 最重要的性能优化手段。
+
+```rust
+#[window]
+#[derive(Default)]
+pub struct MainWindow {
+    pub count: i32,
+    pub items: Vec<Item>,
+}
+
+impl MainWindow {
+    /// 只在 count 或 items 变化时重算
+    #[computed]
+    pub fn summary(&self) -> String {
+        format!("共 {} 项，计数 {}", self.items.len(), self.count)
+    }
+}
+```
+
+**缓存机制**：
+- 每个 `pub` 字段注入 `__rml_<field>_version: AtomicU64`
+- `#[command]` 修改字段时自动 `bump_version`
+- `#[computed]` 方法调用时检查依赖字段版本号之和，未变则返回缓存值
+
+**优化要点**：
+- 依赖范围最小化：`#[computed]` 只访问必要的字段
+- 避免在 `#[computed]` 中访问整个 `Vec`（任何元素变化都触发重算）
+
+## 10.1.3 `#[command(no_notify)]` 选择性 notify
+
+默认情况下，`#[command]` 自动注入 `cx.notify()`。但有些场景不需要立即更新 UI：
+
+```rust
+// 默认：自动 notify（即时反馈）
+#[command]
+pub fn on_click(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+    self.count += 1;
+    // 宏自动注入：self.__rml_bump_version("count"); cx.notify();
+}
+
+// 不自动 notify（批量操作）
+#[command(no_notify)]
+pub fn batch_update(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+    self.a = 1;
+    self.b = 2;
+    self.c = 3;
+    // 宏注入 bump_version 但不注入 notify
+    cx.notify(); // 手动调用一次，而非三次
+}
+```
+
+**适用场景**：
+- 批量操作：多个字段修改后只需一次 notify
+- 后台更新：数据加载中，UI 不需即时更新
+- 条件更新：根据业务逻辑决定是否 notify
+
+**`__rml_changed_fields()` 方法**：返回所有 observable 字段名，供手动判断：
+
+```rust
+#[command(no_notify)]
+pub fn conditional_update(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+    self.count += 1;
+    // 只在 count > 10 时更新 UI
+    if self.count > 10 {
+        cx.notify();
+    }
+}
+```
+
+## 10.1.4 Element ID 稳定性
+
+GPUI 的 element ID intern 机制要求元素有稳定 ID。RML 通过 `ref` 指令提供：
 
 ```html
-<!-- 每个元素在编译期获得稳定 ID，GPUI 据此 diff -->
-<div class="list">
-  <li r:each="items" r:key="id">{title}</li>
+<div ref="list_container">
+    <h1 ref="title">{title}</h1>
+    <Button ref="submit_btn" onclick={on_submit} label="提交" />
 </div>
 ```
 
-**优化点**：
-
-- 避免在 `r:if` / `r:each` 之间频繁切换不同类型元素（破坏 diff 复用）
-- 同一位置尽量保持元素类型稳定
-
-## 10.1.3 key 策略：列表复用的关键
-
-`r:each` 必须配合 `r:key` 使用。key 的作用是让 GPUI 在列表变化时复用已有元素，而非全量重建。
-
-### 反例：无 key 或用 index 作 key
-
-```html
-<!-- ❌ 无 key：列表任何变化都全量重建 -->
-<li r:each="items">{title}</li>
-
-<!-- ❌ 用 index 作 key：插入/删除时错位 -->
-<li r:each="items" r:key="{$index}">{title}</li>
+**生成代码**：
+```rust
+// ref="title" → .id("rml_ref:title")
+gpui::div().id("rml_ref:title").child(format!("{}", self.title))
 ```
 
-### 正例：用稳定唯一字段作 key
+**优化要点**：
+- 为有状态的元素（事件监听器、动画）添加 `ref`
+- 列表渲染时用 `each` 指令的 item 变量生成唯一 ID
+- 避免 `r:if` 频繁切换元素类型（破坏 ID 复用）
 
-```html
-<!-- ✅ 用业务唯一 ID -->
-<li r:each="items" r:key="id">{title}</li>
-```
-
-### key 的选择准则
-
-| 场景          | 推荐 key                     | 不推荐              |
-| ----------- | -------------------------- | ---------------- |
-| 数据来自数据库     | 主键 ID                      | 数组索引             |
-| 用户可编辑的列表    | 客户端生成的 UUID                | 创建时间戳（可能重复）      |
-| 静态选项        | 选项的 value                  | 显示文本             |
-| 临时项（如新建未保存） | 临时 UUID                    | `temp` 字符串       |
-
-## 10.1.4 避免过度 notify
-
-`cx.notify()` 会触发当前 ViewModel 的所有绑定重新计算。频繁 notify 是性能杀手。
+## 10.1.5 避免过度 notify
 
 ### 反例：循环中 notify
 
 ```rust
 #[command]
-pub fn load_batch(&mut self, items: Vec<Item>, cx: &mut ViewContext<Self>) {
+pub fn load_batch(&mut self, items: Vec<Item>, cx: &mut Context<Self>) {
     for item in items {
         self.items.push(item);
-        cx.notify(); // ❌ 每次都 notify
+        // ❌ 每次 push 都触发 notify（#[command] 自动注入）
     }
 }
 ```
 
-### 正例：批量修改后单次 notify
+### 正例：批量修改 + 单次 notify
 
 ```rust
-#[command]
-pub fn load_batch(&mut self, items: Vec<Item>, cx: &mut ViewContext<Self>) {
-    self.items.extend(items); // ✅ 批量修改
-    cx.notify();              // ✅ 单次 notify
+#[command(no_notify)]
+pub fn load_batch(&mut self, items: Vec<Item>, cx: &mut Context<Self>) {
+    self.items.extend(items);
+    cx.notify(); // ✅ 单次 notify
 }
 ```
 
 ### 反例：高频输入 notify
 
 ```rust
+// 每次 on_change 都触发全量 render 重建
 #[command]
-pub fn on_input(&mut self, ev: &ChangeEvent, cx: &mut ViewContext<Self>) {
-    self.query = ev.value.clone();
-    cx.notify(); // 每次按键都触发搜索结果重算
+pub fn on_input(&mut self, state: &InputState, cx: &mut Context<Self>) {
+    self.query = state.value();
+    // #[command] 自动注入 cx.notify()
     self.refresh_results(cx); // 又一次 notify
 }
 ```
 
-### 正例：防抖 + 合并 notify
+### 正例：防抖搜索
+
+```rust
+#[command(no_notify)]
+pub fn on_input(&mut self, state: &InputState, cx: &mut Context<Self>) {
+    self.query = state.value();
+    cx.notify(); // 更新输入框显示
+    self.schedule_debounced_search(cx); // 内部防抖，延迟 notify
+}
+```
+
+## 10.1.6 异步任务调度
+
+重计算应放到后台线程，避免阻塞渲染：
 
 ```rust
 #[command]
-pub fn on_input(&mut self, ev: &ChangeEvent, cx: &mut ViewContext<Self>) {
-    self.query = ev.value.clone();
-    cx.notify();
-    self.schedule_debounced_search(cx); // 内部防抖，不立即 notify
-}
-```
-
-## 10.1.5 计算属性的依赖追踪
-
-`#[computed]` 通过依赖追踪只在依赖变化时重算。但若依赖过宽，性能会退化。
-
-### 反例：计算属性依赖整个列表
-
-```rust
-#[computed]
-pub fn first_active_title(&self) -> Option<SharedString> {
-    self.items.iter().find(|i| i.active).map(|i| i.title.clone())
-    // 任何 item 任何字段变化都触发重算
-}
-```
-
-### 正例：拆分状态，缩小依赖
-
-```rust
-#[derive(Model)]
-pub struct VM {
-    pub items: Vec<Item>,
-    pub active_index: Option<usize>, // 显式追踪
-}
-
-impl VM {
-    #[computed]
-    pub fn first_active_title(&self) -> Option<SharedString> {
-        self.active_index.and_then(|i| self.items.get(i)).map(|i| i.title.clone())
-    }
-}
-```
-
-## 10.1.6 大列表的虚拟化
-
-当列表项超过 1000 时，全量渲染会卡顿。RML 提供虚拟列表组件：
-
-```html
-<VirtualList items="{items}" item-height="40" height="600">
-  <template r:slot="item">
-    <div class="row">{title}</div>
-  </template>
-</VirtualList>
-```
-
-`VirtualList` 只渲染可视区域 + 少量缓冲区的项，滚动时动态替换。
-
-## 10.1.7 异步任务的调度
-
-避免在主线程做重计算。用 `cx.background_executor()` 把任务丢到后台：
-
-```rust
-#[command]
-pub fn analyze(&mut self, cx: &mut ViewContext<Self>) {
+pub fn analyze(&mut self, cx: &mut Context<Self>) {
     let data = self.data.clone();
     self.is_analyzing = true;
-    cx.notify();
+    // #[command] 自动注入 notify
+
     cx.spawn(|this, mut cx| async move {
-        // 在后台线程计算
-        let result = cx.background_executor().spawn(async move {
-            heavy_compute(&data)
-        }).await;
+        let result = cx.background_executor()
+            .spawn(async move { heavy_compute(&data) })
+            .await;
         let _ = this.update(&mut cx, |this, cx| {
             this.result = result;
             this.is_analyzing = false;
@@ -191,47 +200,50 @@ pub fn analyze(&mut self, cx: &mut ViewContext<Self>) {
 }
 ```
 
-## 10.1.8 性能测量
+## 10.1.7 性能优化清单
 
-### 渲染耗时
+- [ ] 昂贵计算用 `#[computed]` 缓存
+- [ ] 批量操作用 `#[command(no_notify)]` + 手动单次 notify
+- [ ] 有状态的元素添加 `ref` 指令（稳定 element ID）
+- [ ] 循环中不触发 notify
+- [ ] 高频输入考虑防抖
+- [ ] 重计算放到后台线程
+- [ ] `#[computed]` 依赖范围最小化
+- [ ] 列表渲染用 `each` + 稳定 key
+
+## 10.1.8 性能调试
+
+### 检查 `#[computed]` 缓存命中
+
+在 `#[computed]` 方法中加日志：
 
 ```rust
-#[on_loaded]
-pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
-    cx.observe_render_time(|duration| {
-        if duration > Duration::from_millis(16) {
-            log::warn!("渲染耗时 {:?}，掉帧风险", duration);
-        }
-    });
+#[computed]
+pub fn summary(&self) -> String {
+    eprintln!("summary recomputed"); // 版本号变化时才打印
+    format!("共 {} 项", self.items.len())
 }
 ```
 
-### notify 计数
+如果日志打印次数多于预期，说明依赖范围过宽。
+
+### 检查 notify 频率
 
 ```rust
-// 在测试中统计 notify 次数
-let counter = cx.notify_counter();
-vm.load_batch(items, &mut cx);
-assert_eq!(counter.get(), 1, "应当只 notify 一次");
+#[command(no_notify)]
+pub fn debug_notify(&mut self, cx: &mut Context<Self>) {
+    self.count += 1;
+    eprintln!("before notify");
+    cx.notify();
+    eprintln!("after notify");
+}
 ```
 
-### 绑定追踪
+### GPUI 内置性能工具
 
 ```sh
-RML_TRACE_BINDING=1 cargo run
+# 启用 GPUI 的帧调试
+GPUI_FRAME_DEBUG=1 cargo run -p rust-rml-demo
 ```
-
-环境变量打开后，每次绑定重算都会打印日志，用于定位过度 notify。
-
-## 10.1.9 性能优化清单
-
-- [ ] 所有 `r:each` 都有稳定的 `r:key`
-- [ ] 循环中不调用 `cx.notify()`
-- [ ] 高频输入有防抖
-- [ ] 计算属性依赖范围最小化
-- [ ] 大列表使用 `VirtualList`
-- [ ] 重计算在后台线程
-- [ ] 无 5 层以上的绑定路径
-- [ ] 渲染耗时 < 16ms（60fps）
 
 下一节 → [10.2 调试技巧](./debugging.md)

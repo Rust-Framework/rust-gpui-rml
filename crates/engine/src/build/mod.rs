@@ -216,6 +216,7 @@ impl Builder {
                 observable_fields: struct_meta.observable_fields.clone(),
                 computed_deps: struct_meta.computed_deps.clone(),
                 computed_returns: struct_meta.computed_returns.clone(),
+                field_types: struct_meta.field_types.clone(),
             };
 
             match compile(&source, &ctx) {

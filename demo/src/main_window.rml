@@ -4,5 +4,10 @@
         <h1 ref="title">Hello, RML!</h1>
         <p class="count">点击次数：{count}</p>
         <Button ref="click_btn" label="点击我" primary="" onclick={on_click} />
+        <div class="form">
+            <input model={name} placeholder="姓名" />
+            <input model={age} placeholder="年龄" />
+            <p class="profile">{profile_summary}</p>
+        </div>
     </div>
 </modern_window>

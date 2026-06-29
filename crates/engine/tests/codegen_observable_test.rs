@@ -23,6 +23,7 @@ fn make_ctx() -> CodegenCtx {
             m.insert("doubled".to_string(), "i32".to_string());
             m
         },
+        field_types: HashMap::new(),
     }
 }
 

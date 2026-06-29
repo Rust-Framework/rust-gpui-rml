@@ -76,6 +76,10 @@ pub fn codegen(root: &Node, ctx: &CodegenCtx) -> Result<String, CodegenError> {
     out.push_str(&gen_observable_impl(ctx));
     out.push('\n');
     out.push_str(&gen_computed_wrappers(ctx));
+    out.push('\n');
+
+    // 4. Phase B-3：生成 InputState 惰性初始化方法（供双向绑定使用）
+    out.push_str(&gen_input_state_impl(ctx));
 
     Ok(out)
 }
@@ -479,46 +483,44 @@ fn gen_element(
 
 /// 生成带 model 指令的 Input 组件双向绑定代码
 ///
-/// `<input model={field} />` 生成：
+/// `<input model={field} placeholder="..." />` 生成：
 /// ```text
-/// rml_ui::Input::new(&self.input_state)
-///     .value(self.field.clone())
-///     .on_change(cx.listener(move |this, state: &rml_ui::InputState, _window, cx| {
-///         this.field = state.value().to_string();
-///         cx.notify();
-///     }))
+/// rml_ui::Input::new(&self.__rml_get_or_init_input_state("field", Some("..."), _window, cx))
+///     .disabled(false)
 /// ```
 ///
-/// 要求 View 结构体拥有 `input_state: Entity<rml_ui::InputState>` 字段。
+/// 正向绑定（VM→UI）和反向绑定（UI→VM）均由 `__rml_get_or_init_input_state` 内部处理：
+/// - 正向：首次创建时 `set_value` 初始化 + 后续 render 时版本号对比触发 `set_value`
+/// - 反向：`cx.subscribe` 订阅 `InputEvent::Change`，闭包内回写字段 + bump_version + notify
+///
+/// placeholder 仅支持静态字符串（`InputState::placeholder()` 是 builder 方法，仅创建时可调）。
 fn gen_model_input(
     elem: &Element,
     _ctx: &CodegenCtx,
-    id_counter: &mut usize,
+    _id_counter: &mut usize,
     field: String,
 ) -> Result<String, CodegenError> {
-    let id_val = *id_counter;
-    *id_counter += 1;
+    // 提取静态 placeholder（传入 __rml_get_or_init_input_state，在 InputState::new 时设置）
+    let placeholder = elem.attributes.iter().find_map(|attr| {
+        if let Attribute::Static { name, value } = attr {
+            if name == "placeholder" { Some(value.clone()) } else { None }
+        } else { None }
+    });
+    let placeholder_arg = match placeholder {
+        Some(p) => format!("Some({:?})", p),
+        None => "None".to_string(),
+    };
 
-    // 构造 Input 组件（Stateful，需要 input_state 字段）
-    let mut code = format!("rml_ui::Input::new(&self.input_state)");
+    // 构造 Input 组件，传引用给 Input::new（内部 clone Entity）
+    let mut code = format!(
+        "rml_ui::Input::new(&self.__rml_get_or_init_input_state({:?}, {}, _window, cx))",
+        field, placeholder_arg
+    );
 
-    // 正向绑定：VM → UI（显示字段值）
-    code.push_str(&format!(".value(self.{}.clone())", field));
-
-    // 反向绑定：UI → VM（回写字段值）
-    code.push_str(&format!(
-        ".on_change(cx.listener(move |this, state: &rml_ui::InputState, _window, cx| {{\n                    \
-         this.{} = state.value().to_string();\n                    \
-         cx.notify();\n                }}))",
-        field
-    ));
-
-    // 应用静态属性（如 placeholder）
+    // 应用静态 disabled 属性（Input 有 .disabled() 方法）
     for attr in &elem.attributes {
         if let Attribute::Static { name, value } = attr {
-            if name == "placeholder" {
-                code.push_str(&format!(".placeholder({:?})", value));
-            } else if name == "disabled" {
+            if name == "disabled" {
                 let disabled_val = if value.eq_ignore_ascii_case("true") || value == "1" || value.is_empty() {
                     "true"
                 } else {
@@ -529,8 +531,38 @@ fn gen_model_input(
         }
     }
 
-    let _ = id_val;
     Ok(code)
+}
+
+/// 生成正向值表达式：`self.field` → `gpui::SharedString`
+///
+/// 数字类型需 `to_string().into()`（SharedString: From<String>）；
+/// String/SharedString 等直接 `.clone().into()`。
+fn gen_field_value_expr(field: &str, ty: &str) -> String {
+    match ty {
+        "i32" | "u32" | "i64" | "u64" | "f32" | "f64" | "usize" | "isize" => {
+            format!("self.{}.to_string().into()", field)
+        }
+        _ => format!("self.{}.clone().into()", field),
+    }
+}
+
+/// 生成反向赋值表达式：`value: SharedString` → `this.field = ...`
+///
+/// 数字类型：`parse::<T>().unwrap_or(0)`，输入非法字符时兜底为 0
+/// 浮点类型：同上，兜底为 0.0
+/// bool 类型：`!value.is_empty()`（非空字符串视为 true）
+/// 其他（String/SharedString）：`value.to_string()`
+fn gen_field_assign_expr(field: &str, ty: &str) -> String {
+    match ty {
+        "i32" | "u32" | "i64" | "u64" | "isize" | "usize" => {
+            format!("this.{} = value.parse::<{}>().unwrap_or(0)", field, ty)
+        }
+        "f32" => format!("this.{} = value.parse::<f32>().unwrap_or(0.0)", field),
+        "f64" => format!("this.{} = value.parse::<f64>().unwrap_or(0.0)", field),
+        "bool" => format!("this.{} = !value.is_empty()", field),
+        _ => format!("this.{} = value.to_string()", field),
+    }
 }
 
 fn apply_static_attr(name: &str, value: &str) -> String {
@@ -668,10 +700,11 @@ fn gen_expr_code(expr_str: &str, loop_vars: &[&str], computed: &[&str]) -> Strin
 
 /// 生成 observable 字段版本管理方法 + 计算属性依赖版本方法
 ///
-/// 生成一个 `impl <View> { ... }` 块，包含三个方法：
+/// 生成一个 `impl <View> { ... }` 块，包含四个方法：
 /// - `__rml_bump_version(&self, field: &str)`：将指定字段的版本号 +1
 /// - `__rml_get_version(&self, field: &str) -> u64`：读取字段当前版本号
 /// - `__rml_computed_deps_version(&self, computed: &str) -> u64`：sum 计算属性依赖字段的版本号
+/// - `__rml_changed_fields(&self) -> &'static [&'static str]`：返回所有 observable 字段名列表
 ///
 /// 即使没有 observable 字段也生成空 match（带 `_ => {}` 兜底），
 /// 保证 `#[command]` 注入的 `bump_version` 调用不会因 match 缺失而编译失败。
@@ -712,6 +745,18 @@ fn gen_observable_impl(ctx: &CodegenCtx) -> String {
         }
     }
 
+    // __rml_changed_fields: 返回所有 observable 字段名（供用户在手动 notify 时判断）
+    let field_names: Vec<String> = ctx
+        .observable_fields
+        .iter()
+        .map(|f| format!("\"{}\"", f))
+        .collect();
+    let changed_fields_array = if field_names.is_empty() {
+        "&[]".to_string()
+    } else {
+        format!("&[{}]", field_names.join(", "))
+    };
+
     format!(
         r#"#[allow(dead_code, non_snake_case)]
 impl {view_name} {{
@@ -735,11 +780,17 @@ impl {view_name} {{
 {deps_arms}            _ => 0,
         }}
     }}
+
+    /// 返回所有 observable 字段名列表（供 #[command(no_notify)] 场景手动判断变更字段）
+    fn __rml_changed_fields(&self) -> &'static [&'static str] {{
+        {changed_fields_array}
+    }}
 }}"#,
         view_name = view_name,
         bump_arms = bump_arms,
         get_arms = get_arms,
         deps_arms = deps_arms,
+        changed_fields_array = changed_fields_array,
     )
 }
 
@@ -783,4 +834,100 @@ impl {view_name} {{{methods}}}
         view_name = view_name,
         methods = methods,
     )
+}
+
+/// 生成 InputState 惰性初始化 + 双向同步方法（Phase B-3：双向绑定）
+///
+/// 生成一个 `impl <View>` 块，包含方法 `__rml_get_or_init_input_state`：
+///
+/// - 首次调用：用 `cx.new(|cx| InputState::new(window, cx))` 创建 entity，设置初始值，
+///   订阅 `InputEvent::Change` 实现反向绑定（UI→VM），subscription 存入 `__rml_input_subscriptions`
+/// - 后续调用：对比 `__rml_get_version(field)` 与 `__rml_input_state_versions` 中的版本号，
+///   若不同则调用 `InputState::set_value` 实现正向绑定（VM→UI）
+///
+/// 循环防护：`set_value` 内部设 `emit_events=false` 不触发 Change 事件；
+/// 反向闭包内 bump_version 后立即更新版本号标记，render 时版本号相等跳过冗余 set_value。
+fn gen_input_state_impl(ctx: &CodegenCtx) -> String {
+    let view_name = &ctx.view_struct_name;
+
+    // 生成正向值 match arms（初始值 + 正向同步共用）
+    let mut forward_arms = String::new();
+    for field in &ctx.observable_fields {
+        let ty = ctx.field_types.get(field).cloned().unwrap_or_default();
+        let expr = gen_field_value_expr(field, &ty);
+        forward_arms.push_str(&format!("            \"{}\" => {},\n", field, expr));
+    }
+
+    // 生成反向赋值 match arms
+    let mut reverse_arms = String::new();
+    for field in &ctx.observable_fields {
+        let ty = ctx.field_types.get(field).cloned().unwrap_or_default();
+        let assign = gen_field_assign_expr(field, &ty);
+        reverse_arms.push_str(&format!(
+            "                \"{}\" => {{ {}; this.__rml_bump_version({:?}); }}\n",
+            field, assign, field
+        ));
+    }
+
+    let mut out = String::new();
+    out.push_str("#[allow(dead_code, non_snake_case, unused_variables)]\n");
+    out.push_str(&format!("impl {} {{\n", view_name));
+    out.push_str("    fn __rml_get_or_init_input_state(\n");
+    out.push_str("        &mut self,\n");
+    out.push_str("        field: &'static str,\n");
+    out.push_str("        placeholder: Option<&'static str>,\n");
+    out.push_str("        window: &mut gpui::Window,\n");
+    out.push_str("        cx: &mut gpui::Context<Self>,\n");
+    out.push_str("    ) -> gpui::Entity<rml_ui::InputState> {\n");
+    // --- 首次创建分支 ---
+    out.push_str("        if !self.__rml_input_states.contains_key(field) {\n");
+    out.push_str("            let entity = match placeholder {\n");
+    out.push_str("                Some(p) => cx.new(|cx| rml_ui::InputState::new(window, cx).placeholder(p)),\n");
+    out.push_str("                None => cx.new(|cx| rml_ui::InputState::new(window, cx)),\n");
+    out.push_str("            };\n");
+    // 初始正向同步：从字段值初始化 InputState
+    out.push_str("            let initial_value: gpui::SharedString = match field {\n");
+    out.push_str(&forward_arms);
+    out.push_str("                _ => gpui::SharedString::default(),\n");
+    out.push_str("            };\n");
+    out.push_str("            entity.update(cx, |state, cx| state.set_value(initial_value, window, cx));\n");
+    // 反向订阅：InputEvent::Change → 回写字段 + bump_version + 标记同步 + notify
+    // Subscription 调用 detach() 让订阅随 entity 生命周期存活，不存储在结构体中
+    // （Subscription 非 Sync，存储会导致视图不满足 Send + Sync）
+    out.push_str("            cx.subscribe(&entity, move |this, input_entity, event, cx| {\n");
+    out.push_str("                match event {\n");
+    out.push_str("                    rml_ui::InputEvent::Change => {\n");
+    out.push_str("                        let value = input_entity.read(cx).value();\n");
+    out.push_str("                        match field {\n");
+    out.push_str(&reverse_arms);
+    out.push_str("                            _ => {}\n");
+    out.push_str("                        }\n");
+    out.push_str("                        let v = this.__rml_get_version(field);\n");
+    out.push_str("                        this.__rml_input_state_versions.insert(field.to_string(), v);\n");
+    out.push_str("                        cx.notify();\n");
+    out.push_str("                    }\n");
+    out.push_str("                    _ => {}\n");
+    out.push_str("                }\n");
+    out.push_str("            }).detach();\n");
+    // 记录初始同步版本
+    out.push_str("            let v = self.__rml_get_version(field);\n");
+    out.push_str("            self.__rml_input_state_versions.insert(field.to_string(), v);\n");
+    out.push_str("            self.__rml_input_states.insert(field.to_string(), entity);\n");
+    out.push_str("        }\n");
+    // --- 正向同步：版本号变化时 set_value ---
+    out.push_str("        let entity = self.__rml_input_states.get(field).unwrap().clone();\n");
+    out.push_str("        let current_version = self.__rml_get_version(field);\n");
+    out.push_str("        let last_synced = self.__rml_input_state_versions.get(field).copied().unwrap_or(0);\n");
+    out.push_str("        if current_version != last_synced {\n");
+    out.push_str("            let value: gpui::SharedString = match field {\n");
+    out.push_str(&forward_arms);
+    out.push_str("                _ => gpui::SharedString::default(),\n");
+    out.push_str("            };\n");
+    out.push_str("            entity.update(cx, |state, cx| state.set_value(value, window, cx));\n");
+    out.push_str("            self.__rml_input_state_versions.insert(field.to_string(), current_version);\n");
+    out.push_str("        }\n");
+    out.push_str("        entity\n");
+    out.push_str("    }\n");
+    out.push_str("}\n");
+    out
 }

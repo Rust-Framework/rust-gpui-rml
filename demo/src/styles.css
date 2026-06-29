@@ -22,3 +22,19 @@
     color: var(--text-color);
     padding: 12px;
 }
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px;
+    margin-top: 16px;
+    min-width: 280px;
+}
+
+.profile {
+    font-size: 16px;
+    color: var(--text-color);
+    padding: 8px;
+    margin-top: 4px;
+}

@@ -93,9 +93,36 @@ pub fn window(args: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 /// 标记方法为 UI 可调用的命令。
+///
+/// 自动注入字段版本号 bump（`self.__rml_bump_version("<field>")`）和 `cx.notify()`，
+/// 用户无需手动调用。通过参数可控制 notify 行为。
+///
+/// # 参数
+///
+/// - 无参数：默认行为，方法末尾自动注入 `cx.notify()`
+/// - `no_notify`：不注入 `cx.notify()`（仍注入 `bump_version`），用于批量操作前或手动控制更新时机
+/// - `debounce = "100ms"`：预留参数，本版本不实现 debounce 逻辑
+///
+/// # 示例
+///
+/// ```rust,ignore
+/// // 默认：自动 notify
+/// #[command]
+/// pub fn on_click(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+///     self.count += 1;
+/// }
+///
+/// // 不自动 notify（用户手动控制）
+/// #[command(no_notify)]
+/// pub fn batch_update(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+///     self.a = 1;
+///     self.b = 2;
+///     cx.notify(); // 批量操作完成后手动 notify 一次
+/// }
+/// ```
 #[proc_macro_attribute]
-pub fn command(_args: TokenStream, input: TokenStream) -> TokenStream {
-    command::expand(input.into()).into()
+pub fn command(args: TokenStream, input: TokenStream) -> TokenStream {
+    command::expand(args.into(), input.into()).into()
 }
 
 /// 标记方法为计算属性（依赖追踪 + 缓存）。

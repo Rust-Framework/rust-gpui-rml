@@ -180,6 +180,7 @@ mod tests {
             observable_fields: Vec::new(),
             computed_deps: std::collections::HashMap::new(),
             computed_returns: std::collections::HashMap::new(),
+            field_types: std::collections::HashMap::new(),
         }
     }
 

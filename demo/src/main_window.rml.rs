@@ -5,6 +5,8 @@ use rml_ui::{IconName, MenuItem, StatusBarItem};
 #[derive(Default)]
 pub struct MainWindow {
     pub count: i32,
+    pub name: String,
+    pub age: i32,
 }
 
 impl MainWindow {
@@ -38,6 +40,16 @@ impl MainWindow {
     #[computed]
     pub fn status_items(&self) -> Vec<StatusBarItem> {
         vec![StatusBarItem::new("就绪")]
+    }
+
+    /// 双向绑定展示：姓名 + 年龄输入
+    #[computed]
+    pub fn profile_summary(&self) -> String {
+        if self.name.is_empty() {
+            format!("请输入姓名（年龄：{}）", self.age)
+        } else {
+            format!("你好，{}（{}岁）", self.name, self.age)
+        }
     }
 
     #[command]

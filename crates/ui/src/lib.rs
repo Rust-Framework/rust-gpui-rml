@@ -49,7 +49,7 @@ pub use gpui_component::{
     checkbox::Checkbox,
     dialog::Dialog,
     form::Form,
-    input::{Input, InputState},
+    input::{Input, InputEvent, InputState},
     kbd::Kbd,
     label::Label,
     list::List,

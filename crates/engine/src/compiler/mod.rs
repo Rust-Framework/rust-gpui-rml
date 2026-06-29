@@ -48,6 +48,12 @@ pub struct CodegenCtx {
     /// `ComputedCache::get_or_compute::<T, _>(...)`。
     /// 由 build.rs 从 `method.sig.output` 提取（如 `"i32"`、`"Vec<MenuItem>"`）。
     pub computed_returns: HashMap<String, String>,
+    /// 每个 pub 字段 → 类型字符串（Phase B-3：双向绑定类型转换）
+    ///
+    /// codegen 的 `gen_model_input` 据此生成类型转换代码：
+    /// `i32`/`u32` 等 → `state.value().parse::<T>().unwrap_or(0)`，
+    /// `String`/`SharedString` → `state.value().into()`。
+    pub field_types: HashMap<String, String>,
 }
 
 /// 代码生成错误
