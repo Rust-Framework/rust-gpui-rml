@@ -3,7 +3,7 @@
 //! 定义所有基础 trait（I 前缀）、事件类型、元素引用与绑定路径。
 //! 本 crate 不依赖 GPUI 的渲染系统，仅重导出 `SharedString` 等基础类型。
 
-#![forbid(unsafe_code)]
+#![deny(unsafe_code)]
 
 pub mod binding;
 pub mod command;

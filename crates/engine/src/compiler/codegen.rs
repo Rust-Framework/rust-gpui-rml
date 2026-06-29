@@ -71,6 +71,12 @@ pub fn codegen(root: &Node, ctx: &CodegenCtx) -> Result<String, CodegenError> {
     //    is_modern=true 时用 ModernWindowShell 包裹子节点，提供 TitleBar/Menu/StatusBar
     out.push_str(&gen_render_impl_from_children(elem, ctx, is_modern)?);
 
+    // 3. Phase B-2：生成版本管理方法 + 计算属性包装方法
+    //    （与 #[command] 宏注入的 bump_version 调用、#[computed] 宏的重命名配合）
+    out.push_str(&gen_observable_impl(ctx));
+    out.push('\n');
+    out.push_str(&gen_computed_wrappers(ctx));
+
     Ok(out)
 }
 
@@ -654,4 +660,127 @@ fn gen_expr_code(expr_str: &str, loop_vars: &[&str], computed: &[&str]) -> Strin
             }
         }
     }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+//  Phase B-2：Observable 字段版本管理 + 计算属性缓存包装
+// ──────────────────────────────────────────────────────────────────────────
+
+/// 生成 observable 字段版本管理方法 + 计算属性依赖版本方法
+///
+/// 生成一个 `impl <View> { ... }` 块，包含三个方法：
+/// - `__rml_bump_version(&self, field: &str)`：将指定字段的版本号 +1
+/// - `__rml_get_version(&self, field: &str) -> u64`：读取字段当前版本号
+/// - `__rml_computed_deps_version(&self, computed: &str) -> u64`：sum 计算属性依赖字段的版本号
+///
+/// 即使没有 observable 字段也生成空 match（带 `_ => {}` 兜底），
+/// 保证 `#[command]` 注入的 `bump_version` 调用不会因 match 缺失而编译失败。
+fn gen_observable_impl(ctx: &CodegenCtx) -> String {
+    let view_name = &ctx.view_struct_name;
+
+    let mut bump_arms = String::new();
+    let mut get_arms = String::new();
+    for field in &ctx.observable_fields {
+        bump_arms.push_str(&format!(
+            "            \"{}\" => {{ self.__rml_{}_version.fetch_add(1, std::sync::atomic::Ordering::Relaxed); }}\n",
+            field, field
+        ));
+        get_arms.push_str(&format!(
+            "            \"{}\" => self.__rml_{}_version.load(std::sync::atomic::Ordering::Relaxed),\n",
+            field, field
+        ));
+    }
+
+    let mut deps_arms = String::new();
+    for method in &ctx.computed_methods {
+        let deps = ctx.computed_deps.get(method).cloned().unwrap_or_default();
+        if deps.is_empty() {
+            deps_arms.push_str(&format!(
+                "            \"{}\" => 0,\n",
+                method
+            ));
+        } else {
+            let sum_expr = deps
+                .iter()
+                .map(|d| format!("self.__rml_get_version(\"{}\")", d))
+                .collect::<Vec<_>>()
+                .join(" + ");
+            deps_arms.push_str(&format!(
+                "            \"{}\" => {},\n",
+                method, sum_expr
+            ));
+        }
+    }
+
+    format!(
+        r#"#[allow(dead_code, non_snake_case)]
+impl {view_name} {{
+    /// 将指定字段的版本号 +1（由 #[command] 宏注入）
+    fn __rml_bump_version(&self, field: &str) {{
+        match field {{
+{bump_arms}            _ => {{}}
+        }}
+    }}
+
+    /// 读取字段当前版本号
+    fn __rml_get_version(&self, field: &str) -> u64 {{
+        match field {{
+{get_arms}            _ => 0,
+        }}
+    }}
+
+    /// 返回计算属性依赖字段版本号之和，作为缓存键
+    fn __rml_computed_deps_version(&self, computed: &str) -> u64 {{
+        match computed {{
+{deps_arms}            _ => 0,
+        }}
+    }}
+}}"#,
+        view_name = view_name,
+        bump_arms = bump_arms,
+        get_arms = get_arms,
+        deps_arms = deps_arms,
+    )
+}
+
+/// 生成 `#[computed]` 方法的缓存包装层
+///
+/// `#[computed]` 宏将原方法 `fn xxx` 重命名为 `fn __rml_computed_xxx`，
+/// 本函数生成原签名 `pub fn xxx(&self) -> RetType` 的包装方法，
+/// 内部调用 `ComputedCache::get_or_compute` 实现基于版本号的缓存命中。
+///
+/// 依赖版本号变化时才重算，否则直接返回克隆的缓存值（WPF DependencyProperty 等效语义）。
+fn gen_computed_wrappers(ctx: &CodegenCtx) -> String {
+    if ctx.computed_methods.is_empty() {
+        return String::new();
+    }
+
+    let view_name = &ctx.view_struct_name;
+    let mut methods = String::new();
+    for method in &ctx.computed_methods {
+        let ret_type = ctx
+            .computed_returns
+            .get(method)
+            .cloned()
+            .unwrap_or_else(|| panic!("missing return type for #[computed] method `{}`", method));
+        methods.push_str(&format!(
+            r#"
+    #[allow(dead_code, non_snake_case)]
+    pub fn {method}(&self) -> {ret_type} {{
+        let __v = self.__rml_computed_deps_version("{method}");
+        self.__rml_computed_cache.get_or_compute::<{ret_type}>("{method}", __v, || self.__rml_computed_{method}())
+    }}
+"#,
+            method = method,
+            ret_type = ret_type,
+        ));
+    }
+
+    format!(
+        r#"#[allow(dead_code, non_snake_case, unused_variables)]
+impl {view_name} {{{methods}}}
+"#,
+        view_name = view_name,
+        methods = methods,
+    )
 }

@@ -1,14 +1,21 @@
 //! `#[computed]` 实现
 //!
-//! Phase A：pass-through，仅校验签名是 `&self` 且无参。
-//! Phase B：分析方法体中 `self.field` 访问，生成缓存代码。
+//! Phase B-2：将原方法重命名为 `__rml_computed_<name>`，由 codegen 生成的
+//! 包装方法接管原签名，提供基于版本号的缓存命中。
+//!
+//! ## 行为
+//!
+//! - 校验签名是 `&self` 且无参（除 self 外）
+//! - 将 `fn <name>` 重命名为 `fn __rml_computed_<name>`，保留可见性、返回类型、方法体
+//! - codegen 生成的包装方法 `pub fn <name>(&self) -> <RetType>` 调用
+//!   `ComputedCache::get_or_compute` 实现缓存
 
 use proc_macro2::TokenStream;
-use quote::quote;
+use quote::{format_ident, quote};
 use syn::{FnArg, ItemFn};
 
 pub fn expand(input: TokenStream) -> TokenStream {
-    let item: ItemFn = match syn::parse2(input.clone()) {
+    let mut item: ItemFn = match syn::parse2(input.clone()) {
         Ok(i) => i,
         Err(e) => return e.to_compile_error(),
     };
@@ -41,6 +48,10 @@ pub fn expand(input: TokenStream) -> TokenStream {
         .to_compile_error();
     }
 
-    // Pass-through：原样返回方法
+    // 重命名：fn <name> → fn __rml_computed_<name>
+    // codegen 生成的包装方法将使用原签名调用此重命名后的方法
+    let new_name = format_ident!("__rml_computed_{}", item.sig.ident);
+    item.sig.ident = new_name;
+
     quote! { #item }
 }

@@ -179,6 +179,7 @@ mod tests {
             computed_methods: Vec::new(),
             observable_fields: Vec::new(),
             computed_deps: std::collections::HashMap::new(),
+            computed_returns: std::collections::HashMap::new(),
         }
     }
 

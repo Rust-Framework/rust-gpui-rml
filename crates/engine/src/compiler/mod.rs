@@ -42,6 +42,12 @@ pub struct CodegenCtx {
     /// `self.<field>` 访问收集。codegen 据此生成 `__rml_computed_deps_version` 方法，
     /// 对每个 computed 方法 sum 其依赖字段的版本号作为缓存键。
     pub computed_deps: HashMap<String, Vec<String>>,
+    /// 每个 `#[computed]` 方法 → 返回类型字符串（Phase B-2：缓存包装方法签名）
+    ///
+    /// codegen 生成的包装方法需要显式标注返回类型以调用
+    /// `ComputedCache::get_or_compute::<T, _>(...)`。
+    /// 由 build.rs 从 `method.sig.output` 提取（如 `"i32"`、`"Vec<MenuItem>"`）。
+    pub computed_returns: HashMap<String, String>,
 }
 
 /// 代码生成错误

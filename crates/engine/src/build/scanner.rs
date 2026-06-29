@@ -10,8 +10,9 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use quote::quote;
 use syn::visit::Visit;
-use syn::{Expr, ExprField, File, ImplItem, Item, Type, Visibility};
+use syn::{Expr, ExprField, File, ImplItem, Item, ReturnType, Type, Visibility};
 use walkdir::WalkDir;
 
 /// 递归扫描给定目录列表中的所有 `.rml` 文件，返回排序后的路径列表。
@@ -43,6 +44,11 @@ pub struct StructMetadata {
     pub computed_methods: Vec<String>,
     /// 每个 `#[computed]` 方法 → 依赖的 pub 字段列表（通过 `self.<field>` 访问检测）
     pub computed_deps: HashMap<String, Vec<String>>,
+    /// 每个 `#[computed]` 方法 → 返回类型字符串（如 `"i32"`、`"Vec<MenuItem>"`）
+    ///
+    /// codegen 生成的包装方法需要显式标注返回类型以调用
+    /// `ComputedCache::get_or_compute::<T, _>(...)`。
+    pub computed_returns: HashMap<String, String>,
 }
 
 /// 扫描 `.rml.rs` code-behind 文件，提取所有 `#[window]`/`#[component]` 标注 struct 的元信息。
@@ -106,17 +112,37 @@ pub fn scan_struct_metadata(rml_rs_path: &Path) -> HashMap<String, StructMetadat
                         continue;
                     }
                     let method_name = method.sig.ident.to_string();
+                    // 提取返回类型字符串（codegen 包装方法需显式标注）
+                    let return_type = return_type_str(&method.sig.output);
                     // 收集方法体的 self.<ident> 依赖
                     let mut visitor = ComputedDepVisitor::default();
                     visitor.visit_block(&method.block);
                     meta.computed_methods.push(method_name.clone());
-                    meta.computed_deps.insert(method_name, visitor.deps);
+                    meta.computed_deps.insert(method_name.clone(), visitor.deps);
+                    meta.computed_returns.insert(method_name, return_type);
                 }
             }
         }
     }
 
     result
+}
+
+/// 从 `ReturnType` 提取类型字符串（去除 `->` 与空格）
+///
+/// - `-> i32` → `"i32"`
+/// - `-> Vec<MenuItem>` → `"Vec<MenuItem>"`
+/// - 无返回类型（`-> ()` 隐式）→ `"()"`
+fn return_type_str(output: &ReturnType) -> String {
+    match output {
+        ReturnType::Default => "()".to_string(),
+        ReturnType::Type(_, ty) => {
+            // 用 quote!.to_string() 保留源码形式（含泛型参数）
+            let s = quote!(#ty).to_string();
+            // 清理 token 间空格：`Vec < MenuItem >` → `Vec<MenuItem>`
+            s.split_whitespace().collect::<String>()
+        }
+    }
 }
 
 /// 从 `Type` 提取最内层类型名（如 `MainWindow`、`MyWidget`）
@@ -161,54 +187,91 @@ impl<'ast> Visit<'ast> for ComputedDepVisitor {
     }
 
     fn visit_expr_macro(&mut self, node: &'ast syn::ExprMacro) {
-        // 扫描宏 token 字符串中的 self.<ident> 模式
-        // 覆盖 format!("{}", self.count)、vec![self.x] 等场景
-        let macro_str = node.mac.tokens.to_string();
-        scan_self_field_accesses(&macro_str, &mut self.deps);
+        // 优先用 syn 解析宏参数为逗号分隔的表达式列表
+        // （覆盖 format!("...", a, b)、println!(...)、vec![a, b] 等典型宏）
+        if let Ok(parsed) = node
+            .mac
+            .parse_body_with(syn::punctuated::Punctuated::<syn::Expr, syn::Token![,]>::parse_terminated)
+        {
+            for expr in &parsed {
+                self.visit_expr(expr);
+            }
+        } else {
+            // 兜底：字符串扫描（容忍 `self . field` 形式的空格）
+            let macro_str = node.mac.tokens.to_string();
+            scan_self_field_accesses(&macro_str, &mut self.deps);
+        }
         // 继续递归（嵌套宏）
         syn::visit::visit_expr_macro(self, node);
     }
 
     fn visit_macro(&mut self, node: &'ast syn::Macro) {
         // 兜底：直接遇到的 Macro 节点（如 stmt 位置的宏调用）
-        let macro_str = node.tokens.to_string();
-        scan_self_field_accesses(&macro_str, &mut self.deps);
+        if let Ok(parsed) = node
+            .parse_body_with(syn::punctuated::Punctuated::<syn::Expr, syn::Token![,]>::parse_terminated)
+        {
+            for expr in &parsed {
+                self.visit_expr(expr);
+            }
+        } else {
+            let macro_str = node.tokens.to_string();
+            scan_self_field_accesses(&macro_str, &mut self.deps);
+        }
         syn::visit::visit_macro(self, node);
     }
 }
 
 /// 在字符串中扫描 `self.<ident>` 模式，将识别到的字段名加入 `deps`
 ///
+/// 兜底实现：当 `parse_body_with` 解析失败时使用。容忍 `self . field` 形式的空格
+/// （syn token stream 字符串化时会在 punct 周围插入空格）。
+///
 /// 边界检查：`self` 前必须是非标识符字符（避免匹配 `myself.foo`）。
 fn scan_self_field_accesses(s: &str, deps: &mut Vec<String>) {
-    let bytes = s.as_bytes();
+    let chars: Vec<char> = s.chars().collect();
     let mut i = 0;
-    while i + 5 <= bytes.len() {
-        // 边界检查：前一个字符不能是标识符字符
-        let boundary_ok = i == 0 || !is_ident_byte(bytes[i - 1]);
-        if boundary_ok && &bytes[i..i + 5] == b"self." {
-            // 提取标识符
-            let start = i + 5;
-            let mut end = start;
-            while end < bytes.len() && is_ident_byte(bytes[end]) {
-                end += 1;
+    while i + 4 <= chars.len() {
+        // 匹配 "self" 标识符
+        if chars[i] == 's'
+            && chars[i + 1] == 'e'
+            && chars[i + 2] == 'l'
+            && chars[i + 3] == 'f'
+            // 边界检查：前一个字符不能是标识符字符
+            && (i == 0 || !is_ident_char(chars[i - 1]))
+        {
+            let mut j = i + 4;
+            // 跳过空白
+            while j < chars.len() && chars[j].is_whitespace() {
+                j += 1;
             }
-            if end > start {
-                if let Ok(name) = std::str::from_utf8(&bytes[start..end]) {
-                    if !deps.contains(&name.to_string()) {
-                        deps.push(name.to_string());
+            // 期望 '.'
+            if j < chars.len() && chars[j] == '.' {
+                j += 1;
+                // 跳过空白
+                while j < chars.len() && chars[j].is_whitespace() {
+                    j += 1;
+                }
+                // 提取标识符
+                let start = j;
+                while j < chars.len() && is_ident_char(chars[j]) {
+                    j += 1;
+                }
+                if j > start {
+                    let name: String = chars[start..j].iter().collect();
+                    if !deps.contains(&name) {
+                        deps.push(name);
                     }
                 }
+                i = j;
+                continue;
             }
-            i = end;
-        } else {
-            i += 1;
         }
+        i += 1;
     }
 }
 
-fn is_ident_byte(b: u8) -> bool {
-    b.is_ascii_alphanumeric() || b == b'_'
+fn is_ident_char(c: char) -> bool {
+    c.is_ascii_alphanumeric() || c == '_'
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -365,5 +428,45 @@ impl MainWindow {
         let deps = m.computed_deps.get("summary").unwrap();
         assert!(deps.contains(&"user".to_string()));
         assert!(deps.contains(&"count".to_string()));
+    }
+
+    #[test]
+    fn extracts_computed_return_types() {
+        let path = write_temp_rml_rs(
+            r#"
+#[window]
+pub struct MainWindow {
+    pub count: i32,
+}
+
+impl MainWindow {
+    #[computed]
+    pub fn doubled(&self) -> i32 {
+        self.count * 2
+    }
+
+    #[computed]
+    pub fn items(&self) -> Vec<String> {
+        vec![self.count.to_string()]
+    }
+
+    #[computed]
+    pub fn no_return(&self) {
+        let _ = self.count;
+    }
+}
+        "#,
+        );
+        let meta = scan_struct_metadata(&path);
+        let m = meta.get("MainWindow").unwrap();
+        assert_eq!(m.computed_returns.get("doubled"), Some(&"i32".to_string()));
+        assert_eq!(
+            m.computed_returns.get("items"),
+            Some(&"Vec<String>".to_string())
+        );
+        assert_eq!(
+            m.computed_returns.get("no_return"),
+            Some(&"()".to_string())
+        );
     }
 }
