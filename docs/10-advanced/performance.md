@@ -66,6 +66,44 @@ impl MainWindow {
 - 依赖范围最小化：`#[computed]` 只访问必要的字段
 - 避免在 `#[computed]` 中访问整个 `Vec`（任何元素变化都触发重算）
 
+### 双向绑定的性能特征
+
+`<input model={field}>` 的双向绑定基于 `Entity<InputState>` + `cx.subscribe`，其性能开销分层：
+
+| 操作 | 时机 | 开销 | 备注 |
+|---|---|---|---|
+| `Entity<InputState>` 创建 | 首次 render | 一次性 | 后续 render 复用，存入 `__rml_input_states` |
+| `cx.subscribe` + `.detach()` | 首次 render | 一次性 | 订阅随 entity 存活，不占结构体字段 |
+| 版本号对比 | 每次 render | O(1) | `AtomicU64::load` + 整数比较 |
+| `InputState::set_value` | 仅版本号变化时 | 字符串拷贝 | `emit_events=false` 不触发反向闭包 |
+| 反向闭包执行 | 用户每次输入 | 字段回写 + `HashMap::insert` | 闭包内 `bump_version` + `cx.notify()` |
+
+**关键优化点**：
+
+1. **惰性初始化**：`InputState` entity 仅在首次 render 时创建，后续 render 仅版本号对比
+2. **正向同步条件触发**：`__rml_get_version(field) != __rml_input_state_versions[field]` 时才调用 `set_value`，避免冗余更新
+3. **`Subscription.detach()`**：不存储 `Vec<Subscription>`（避免 `Subscription` 非 `Sync` 导致视图不满足 `Send + Sync`），订阅随 entity 生命周期自动清理
+4. **`cx.notify()` 批量合并**：反向闭包内的 `cx.notify()` 与 `#[command]` 的自动 notify 会合并，多次输入只触发一次 render
+
+**性能瓶颈场景**：
+
+- **大量 `<input model={field}>`**：每个绑定创建独立 `Entity<InputState>` + 订阅，N 个输入框 = N 个 entity + N 个订阅。对于 10+ 输入框的表单，首次 render 会有明显开销
+- **高频输入**：每次按键触发 `InputEvent::Change` → 反向闭包 → `cx.notify()` → 全量 render 重建。对于复杂界面，考虑防抖
+- **`#[command]` 修改 model 绑定字段**：触发正向同步 `set_value`，虽然 `emit_events=false` 避免循环，但仍有字符串拷贝开销
+
+**优化建议**：
+
+```rust
+// ❌ 反例：高频输入触发全量 render
+<input model={search_text} />
+// 每次按键 → InputEvent::Change → cx.notify() → render 重建
+
+// ✅ 正例：防抖搜索（model 同步 + 防抖触发搜索）
+<input model={search_text} />
+<button onclick={perform_search}>搜索</button>
+// 用户点击按钮才触发搜索，而非每次输入
+```
+
 ## 10.1.3 `#[command(no_notify)]` 选择性 notify
 
 默认情况下，`#[command]` 自动注入 `cx.notify()`。但有些场景不需要立即更新 UI：

@@ -73,25 +73,91 @@ pub struct Counter {
 #[component]
 pub struct PrimaryButton {
     pub label: SharedString,
-    pub on_click: Option<Arc<dyn Fn(&ClickEvent)>>,
+    pub on_click: Option<Rc<dyn Fn(&ClickEvent, &mut Window, &mut App)>>,
 }
 ```
+
+### 宏自动注入的字段
+
+`#[component]`（和 `#[window]`）会为每个 `pub` 字段自动注入以下私有字段，用于实现响应式数据绑定与计算属性缓存：
+
+| 注入字段 | 数量 | 用途 |
+|---|---|---|
+| `__rml_<field>_version: AtomicU64` | 每个 `pub` 字段一个 | 字段版本号计数器，`#[command]` 修改字段时自动 `fetch_add` |
+| `__rml_computed_cache: ComputedCache` | 每结构体一个 | `#[computed]` 方法结果缓存，按方法名索引 |
+| `__rml_input_states: HashMap<String, Entity<InputState>>` | 每结构体一个 | 双向绑定的 `InputState` entity 存储（按字段名索引） |
+| `__rml_input_state_versions: HashMap<String, u64>` | 每结构体一个 | 双向绑定正向同步的版本号追踪 |
+
+这些字段均为私有，不会进入 `IModel::rml_fields()`（其只收集 `pub` 字段）。所有注入字段均实现 `Default`，与 `#[derive(Default)]` 兼容。
+
+> ⚠️ **注意**：`Subscription` 不会作为字段存储。`cx.subscribe` 返回的 `Subscription` 调用 `.detach()` 后随 entity 生命周期存活。这是因为 `Subscription` 内部含 `Box<dyn FnOnce() + 'static>`，不满足 `Send + Sync`，存储会导致视图类型无法满足 `open_window` 的 `Send + Sync` 约束。
 
 详见 [第 6 章 · 组件系统](../06-components/INDEX.md)。
 
 ## 4.2.4 `#[command]`：标记命令
 
-`#[command]` 标记方法为 UI 可调用的命令：
+`#[command]` 标记方法为 UI 可调用的命令。**宏会自动注入字段版本号追踪与 `cx.notify()` 调用**，用户无需手写：
 
 ```rust
 #[command]
 pub fn increment(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
     self.count += 1;
-    cx.notify();
+    // 宏自动注入：
+    //   self.__rml_bump_version("count");
+    //   cx.notify();
 }
 ```
 
-### 命令的签名
+### 4.2.4.1 自动行为
+
+`#[command]` 通过 `syn::visit::Visit` 遍历方法体，识别所有 `self.<field> = ...` 和 `self.<field> += ...` 等赋值/复合赋值操作，自动注入以下代码：
+
+1. **字段修改后**：`self.__rml_bump_version("<field>");`（为每个被修改的 `pub` 字段注入一次）
+2. **方法末尾**：`cx.notify();`（仅当方法返回 `()` 且存在 `&mut Context<Self>` 参数时）
+
+**支持的复合赋值运算符**：`=`、`+=`、`-=`、`*=`、`/=`、`%=`、`&=`、`|=`、`^=`、`<<=`、`>>=`
+
+```rust
+#[command]
+pub fn update_user(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+    self.name = "Alice".into();        // 注入：bump_version("name")
+    self.login_count += 1;              // 注入：bump_version("login_count")
+    self.score *= 2;                   // 注入：bump_version("score")
+    // 方法末尾自动注入：cx.notify();
+}
+```
+
+> ⚠️ **限制**：字段修改检测基于 AST 模式匹配，不追踪借用的指针间接修改（如 `let p = &mut self.x; *p = 1;`）。若需此类模式，请手动调用 `self.__rml_bump_version("x")`。
+
+### 4.2.4.2 `no_notify` 参数：禁用自动 notify
+
+默认行为下，`#[command]` 会在方法末尾自动追加 `cx.notify()`。但在某些场景下，你可能不希望立即触发重绘：
+
+```rust
+// 默认：自动注入 bump_version + cx.notify()
+#[command]
+pub fn on_click(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+    self.count += 1;
+}
+
+// 禁用自动 notify（仍注入 bump_version）
+#[command(no_notify)]
+pub fn batch_update(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+    self.a = 1;
+    self.b = 2;
+    // 用户在适当时机手动调用 cx.notify()
+    if self.should_refresh {
+        cx.notify();
+    }
+}
+```
+
+**使用 `no_notify` 的场景**：
+- 批量更新多个字段后，由用户决定 notify 时机
+- 异步任务中连续修改字段，避免每次修改都触发重绘
+- 返回类型非 `()` 时（宏不会为非 `()` 返回类型注入 notify，此时无需 `no_notify`）
+
+### 4.2.4.3 命令的签名
 
 命令方法必须满足以下签名之一：
 
@@ -139,7 +205,49 @@ pub fn completed_count(&self) -> usize {
 }
 ```
 
-### 计算属性的签名
+### 4.2.5.1 版本追踪机制
+
+`#[computed]` 的缓存基于字段版本号追踪：
+
+1. **字段版本号**：每个 `pub` 字段注入 `__rml_<field>_version: AtomicU64`，`#[command]` 修改字段时自动 `fetch_add`
+2. **依赖版本和**：`#[computed]` 方法调用时计算依赖字段的版本号之和（`__rml_computed_deps_version`），若与缓存时的版本号之和不同则重算
+3. **缓存存储**：结果存入 `__rml_computed_cache: ComputedCache`（`Mutex<HashMap<String, (u64, Box<dyn Any>)>>`），按方法名索引
+
+```
+#[computed] pub fn summary(&self) -> String {
+    format!("{} / {}", self.name, self.count)
+}
+
+// 等价于：
+pub fn summary(&self) -> String {
+    let dep_version = self.__rml_get_version("name") + self.__rml_get_version("count");
+    self.__rml_computed_cache.get_or_compute::<String>(
+        "summary",
+        dep_version,
+        || format!("{} / {}", self.name, self.count)
+    )
+}
+```
+
+### 4.2.5.2 依赖自动追踪
+
+`build.rs` 中的 `scan_computed_methods()` 会扫描 `.rml.rs` 文件中所有 `#[computed]` 方法的方法体，识别 `self.<field>` 访问，自动建立依赖关系：
+
+- 扫描 `self.<ident>` 模式的字段访问（包括 `self.count`、`self.name` 等）
+- 支持 `format!`/`println!`/`vec!` 等宏参数内的字段访问
+- 依赖信息存入 `CodegenCtx.computed_deps`，codegen 生成 `__rml_computed_deps_version` 方法
+
+### 4.2.5.3 ComputedCache 实现
+
+`ComputedCache` 使用 `Mutex<HashMap<String, (u64, Box<dyn Any>)>>` 存储：
+
+- **key**：方法名（如 `"summary"`）
+- **value**：`(dep_version_sum, Box<dyn Any>)`，`dep_version_sum` 是依赖字段的版本号之和
+- `get_or_compute::<T: Clone + 'static>(&self, name, version, f)`：若版本号匹配则返回缓存，否则调用 `f` 计算并缓存
+
+> ⚠️ **`unsafe impl Send + Sync`**：`ComputedCache` 内部 `Box<dyn Any>` 存储的类型可能不满足 `Send`（如 `Vec<MenuItem>` 含 `Rc<dyn Fn>`），但 `#[computed]` 仅在 render 线程调用，通过 `Mutex` 保证同步安全。`crates/core/src/lib.rs` 使用 `#![deny(unsafe_code)]` 而非 `#![forbid(unsafe_code)]` 以允许此处的局部 `#[allow(unsafe_code)]`。
+
+### 4.2.5.4 计算属性的签名
 
 ```rust
 // 必须是 &self（只读）
@@ -149,7 +257,13 @@ pub fn method_name(&self) -> ReturnType
 // 不能有参数
 #[computed]
 pub fn bad_computed(&self, x: i32) -> i32  // ❌
+
+// 不能用 &mut self
+#[computed]
+pub fn bad_computed(&mut self) -> i32  // ❌
 ```
+
+**返回类型要求**：必须实现 `Clone + 'static`。常见支持类型：`String`、`SharedString`、`usize`、`i32`、`bool`、`Vec<T>` 等。
 
 ### 在 `.rml` 中访问
 
@@ -316,7 +430,7 @@ impl MyView {
             return;
         }
         self.count += 1;
-        cx.notify();
+        // 宏自动注入：self.__rml_bump_version("count"); cx.notify();
     }
 
     #[computed]
@@ -346,19 +460,20 @@ pub struct MyView {
 ### 错误二：`#[command]` 方法签名错误
 
 ```rust
-// ❌ 缺少 cx 参数
+// ❌ 缺少 cx 参数（宏无法注入 notify）
 #[command]
 pub fn bad_command(&mut self) {
     self.count += 1;
 }
 
-// ✅ 正确签名
+// ✅ 正确签名（宏自动注入 bump_version + notify）
 #[command]
 pub fn good_command(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
     self.count += 1;
-    cx.notify();
 }
 ```
+
+> 注：若 `#[command]` 方法缺少 `&mut Context<Self>` 参数，宏仍会注入 `bump_version`（因为不依赖 `cx`），但不会注入 `cx.notify()`。此时需手动调用 `cx.notify()` 触发重绘。
 
 ### 错误三：`#[computed]` 用了 `&mut self`
 
