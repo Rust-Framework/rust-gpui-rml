@@ -176,6 +176,9 @@ pub enum ComponentKind {
     /// 无状态组件：构造调用形如 `Button::new(id)`
     /// `id: impl Into<ElementId>` — 由 codegen 自动分配 `("rml_el", N)` 元组
     Stateless,
+    /// 无状态无参组件：构造调用形如 `TitleBar::new()` / `StatusBar::new()` / `ModernWindowShell::new()`
+    /// 用于无 `ElementId` 参数的 RenderOnce 组件
+    StatelessNoId,
     /// 有状态组件：构造调用形如 `Input::new(&self.<field>)`
     /// 需要视图中持有对应 state entity 字段（如 `Entity<InputState>`）
     Stateful { state_field: &'static str },
@@ -250,6 +253,20 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             kind: ComponentKind::Stateful {
                 state_field: "input_state",
             },
+        }),
+        // 窗口外壳组件（RenderOnce，无 ElementId 参数）
+        // TitleBar / StatusBar 来自 gpui-component，ModernWindowShell 是 RML 内置封装
+        "TitleBar" => Some(ComponentTag {
+            ctor_path: "rml_ui::TitleBar",
+            kind: ComponentKind::StatelessNoId,
+        }),
+        "StatusBar" => Some(ComponentTag {
+            ctor_path: "rml_ui::StatusBar",
+            kind: ComponentKind::StatelessNoId,
+        }),
+        "ModernWindowShell" => Some(ComponentTag {
+            ctor_path: "rml_ui::ModernWindowShell",
+            kind: ComponentKind::StatelessNoId,
         }),
         _ => None,
     }

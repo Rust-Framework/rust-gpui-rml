@@ -13,6 +13,7 @@
 //! | ID | 按需 `.id(...)` | 构造时必须传入 ElementId |
 
 use crate::compiler::expr;
+use crate::compiler::codegen::gen_node;
 use crate::compiler::{CodegenCtx, CodegenError};
 use crate::parser::ast::{Attribute, Directive, Element, EventHandler, Node};
 use crate::tags;
@@ -59,6 +60,10 @@ pub fn gen_component(
                 format!("{}::new((\"rml_el\", {}usize))", component.ctor_path, id_val)
             }
         }
+        tags::ComponentKind::StatelessNoId => {
+            // 无参构造：TitleBar::new() / StatusBar::new() / ModernWindowShell::new()
+            format!("{}::new()", component.ctor_path)
+        }
         tags::ComponentKind::Stateful { state_field } => format!(
             "{}::new(&self.{})",
             component.ctor_path, state_field
@@ -82,7 +87,7 @@ pub fn gen_component(
             }
             Attribute::Bind { name, expr } => {
                 let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
-                if let Some(setter) = component_bind_setter(name, expr, &lv, &computed) {
+                if let Some(setter) = component_bind_setter(name, expr, &lv, &computed, tag) {
                     code.push_str(&setter);
                 }
             }
@@ -94,8 +99,31 @@ pub fn gen_component(
         }
     }
 
-    // 3. 子节点：仅支持单个文本子节点作为 label（避免与显式 label= 冲突）
-    if !label_set_by_attr {
+    // 3. 子节点处理
+    //
+    // StatelessNoId 容器组件（ModernWindowShell/TitleBar/StatusBar）实现 `ParentElement`，
+    // 接收 element 子节点作为业务内容，用 `.child(...)` / `.children(...)` 传入。
+    //
+    // 其他组件（Button/Input 等）仅支持单个文本子节点作为 label（与显式 `label=` 互斥）。
+    let is_container = matches!(component.kind, tags::ComponentKind::StatelessNoId);
+
+    if is_container {
+        // 容器组件：所有 element/文本子节点作为 children
+        let mut child_codes: Vec<String> = Vec::new();
+        for child in &elem.children {
+            let (child_code, is_iter) = gen_node(child, ctx, 0, id_counter, loop_vars)?;
+            if is_iter {
+                // each 指令生成的迭代器：用 .children() 包裹
+                child_codes.push(format!(".children({})", child_code));
+            } else {
+                child_codes.push(format!(".child({})", child_code));
+            }
+        }
+        for child_code in child_codes {
+            code.push_str(&format!("\n            {}", child_code));
+        }
+    } else if !label_set_by_attr {
+        // 非容器组件：仅支持单个文本子节点作为 label
         for child in &elem.children {
             if let Node::Text(text) = child {
                 code.push_str(&format!(".label({:?})", text));
@@ -185,7 +213,15 @@ pub fn component_static_setter(name: &str, value: &str, tag: &str) -> Option<Str
 /// - `label={user.name}` → `.label(self.user.name.clone())`
 ///
 /// 对于无法解析的表达式，回退到简单的 `self.<expr>` 引用。
-pub fn component_bind_setter(name: &str, expr_str: &str, loop_vars: &[&str], computed: &[&str]) -> Option<String> {
+///
+/// `tag` 参数用于区分组件类型，支持组件专用 setter（如 ModernWindowShell 的 menu/status_bar）。
+pub fn component_bind_setter(
+    name: &str,
+    expr_str: &str,
+    loop_vars: &[&str],
+    computed: &[&str],
+    tag: &str,
+) -> Option<String> {
     // 通过表达式解析器生成 Rust 代码
     let rust_expr = match expr::parse(expr_str) {
         Ok(expr::Expr::Field(name)) if computed.iter().any(|c| *c == name.as_str()) => {
@@ -213,6 +249,11 @@ pub fn component_bind_setter(name: &str, expr_str: &str, loop_vars: &[&str], com
         "selected" => Some(format!(".selected({})", rust_expr)),
         "checked" => Some(format!(".selected({})", rust_expr)),
         "label" => Some(format!(".label({}.clone())", rust_expr)),
+        // ModernWindowShell 专用 MVVM 绑定 setter
+        // .clone() 必需：render 是 &mut self，不能 move 字段；Vec<MenuItem>/Vec<StatusBarItem> 均实现 Clone
+        "menu" if tag == "ModernWindowShell" => Some(format!(".menu({}.clone())", rust_expr)),
+        "status_bar" if tag == "ModernWindowShell" => Some(format!(".status_bar({}.clone())", rust_expr)),
+        "title" if tag == "ModernWindowShell" => Some(format!(".title({}.clone())", rust_expr)),
         _ => None,
     }
 }
@@ -505,73 +546,73 @@ mod tests {
 
     #[test]
     fn bind_setter_value() {
-        let code = component_bind_setter("value", "count", &[], &[]).unwrap();
+        let code = component_bind_setter("value", "count", &[], &[], "Button").unwrap();
         assert_eq!(code, ".value(self.count.clone())");
     }
 
     #[test]
     fn bind_setter_value_with_expr() {
         // value={count + 1} → .value((self.count + 1).clone())
-        let code = component_bind_setter("value", "count + 1", &[], &[]).unwrap();
+        let code = component_bind_setter("value", "count + 1", &[], &[], "Button").unwrap();
         assert_eq!(code, ".value((self.count + 1).clone())");
     }
 
     #[test]
     fn bind_setter_value_with_member_access() {
         // value={user.name} → .value(self.user.name.clone())
-        let code = component_bind_setter("value", "user.name", &[], &[]).unwrap();
+        let code = component_bind_setter("value", "user.name", &[], &[], "Button").unwrap();
         assert_eq!(code, ".value(self.user.name.clone())");
     }
 
     #[test]
     fn bind_setter_disabled_with_expr() {
         // disabled={count > 0} → .disabled((self.count > 0))
-        let code = component_bind_setter("disabled", "count > 0", &[], &[]).unwrap();
+        let code = component_bind_setter("disabled", "count > 0", &[], &[], "Button").unwrap();
         assert_eq!(code, ".disabled((self.count > 0))");
     }
 
     #[test]
     fn bind_setter_label_with_expr() {
         // label={user.name} → .label(self.user.name.clone())
-        let code = component_bind_setter("label", "user.name", &[], &[]).unwrap();
+        let code = component_bind_setter("label", "user.name", &[], &[], "Button").unwrap();
         assert_eq!(code, ".label(self.user.name.clone())");
     }
 
     #[test]
     fn bind_setter_disabled() {
-        let code = component_bind_setter("disabled", "is_locked", &[], &[]).unwrap();
+        let code = component_bind_setter("disabled", "is_locked", &[], &[], "Button").unwrap();
         assert_eq!(code, ".disabled(self.is_locked)");
     }
 
     #[test]
     fn bind_setter_selected() {
-        let code = component_bind_setter("selected", "is_active", &[], &[]).unwrap();
+        let code = component_bind_setter("selected", "is_active", &[], &[], "Button").unwrap();
         assert_eq!(code, ".selected(self.is_active)");
     }
 
     #[test]
     fn bind_setter_checked_maps_to_selected() {
         // checked 绑定映射到 .selected()（GPUI Checkbox 使用 selected 状态）
-        let code = component_bind_setter("checked", "flag", &[], &[]).unwrap();
+        let code = component_bind_setter("checked", "flag", &[], &[], "Button").unwrap();
         assert_eq!(code, ".selected(self.flag)");
     }
 
     #[test]
     fn bind_setter_label() {
-        let code = component_bind_setter("label", "title", &[], &[]).unwrap();
+        let code = component_bind_setter("label", "title", &[], &[], "Button").unwrap();
         assert_eq!(code, ".label(self.title.clone())");
     }
 
     #[test]
     fn bind_setter_unknown_returns_none() {
-        assert!(component_bind_setter("color", "theme", &[], &[]).is_none());
-        assert!(component_bind_setter("", "x", &[], &[]).is_none());
+        assert!(component_bind_setter("color", "theme", &[], &[], "Button").is_none());
+        assert!(component_bind_setter("", "x", &[], &[], "Button").is_none());
     }
 
     #[test]
     fn bind_setter_loop_var() {
         // each={todo in todos} 内 value={todo.text} → .value(todo.text.clone())
-        let code = component_bind_setter("value", "todo.text", &["todo"], &[]).unwrap();
+        let code = component_bind_setter("value", "todo.text", &["todo"], &[], "Button").unwrap();
         assert_eq!(code, ".value(todo.text.clone())");
     }
 
@@ -915,5 +956,211 @@ mod tests {
     fn static_setter_ref_returns_none() {
         // ref 是指令，不会作为静态属性出现，但防御性返回 None
         assert!(component_static_setter("ref", "name", "Button").is_none());
+    }
+
+    // ─── StatelessNoId 构造（TitleBar / StatusBar / ModernWindowShell）───
+
+    #[test]
+    fn gen_component_titlebar_minimal() {
+        // <TitleBar /> → rml_ui::TitleBar::new()
+        let elem = make_element("TitleBar", vec![], vec![]);
+        let mut id = 0;
+        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
+        assert!(code.contains("rml_ui::TitleBar::new()"));
+        // StatelessNoId 不应生成 ElementId 参数
+        assert!(!code.contains("rml_el"));
+    }
+
+    #[test]
+    fn gen_component_statusbar_minimal() {
+        // <StatusBar /> → rml_ui::StatusBar::new()
+        let elem = make_element("StatusBar", vec![], vec![]);
+        let mut id = 0;
+        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
+        assert!(code.contains("rml_ui::StatusBar::new()"));
+    }
+
+    #[test]
+    fn gen_component_modern_window_shell_minimal() {
+        // <ModernWindowShell /> → rml_ui::ModernWindowShell::new()
+        let elem = make_element("ModernWindowShell", vec![], vec![]);
+        let mut id = 0;
+        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
+        assert!(code.contains("rml_ui::ModernWindowShell::new()"));
+    }
+
+    #[test]
+    fn gen_component_titlebar_ignores_ref_directive() {
+        // StatelessNoId 组件不接受 ElementId，ref 指令应被忽略（不生成稳定 ID）
+        let elem = make_element_with_directives(
+            "TitleBar",
+            vec![],
+            vec![Directive::Ref("my_titlebar".into())],
+            vec![],
+        );
+        let mut id = 0;
+        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
+        assert!(code.contains("rml_ui::TitleBar::new()"));
+        // 不应出现 ref: 前缀的 ID
+        assert!(!code.contains("rml_ref"));
+    }
+
+    // ─── ModernWindowShell 专用 setter ───
+
+    #[test]
+    fn bind_setter_modern_window_shell_menu() {
+        // <ModernWindowShell menu={menu_items} /> → .menu(self.menu_items.clone())
+        // .clone() 必需：render 是 &mut self，不能 move 字段
+        let code =
+            component_bind_setter("menu", "menu_items", &[], &[], "ModernWindowShell").unwrap();
+        assert_eq!(code, ".menu(self.menu_items.clone())");
+    }
+
+    #[test]
+    fn bind_setter_modern_window_shell_status_bar() {
+        // <ModernWindowShell status_bar={status_items} /> → .status_bar(self.status_items.clone())
+        let code =
+            component_bind_setter("status_bar", "status_items", &[], &[], "ModernWindowShell")
+                .unwrap();
+        assert_eq!(code, ".status_bar(self.status_items.clone())");
+    }
+
+    #[test]
+    fn bind_setter_modern_window_shell_title() {
+        // <ModernWindowShell title={app_title} /> → .title(self.app_title.clone())
+        let code =
+            component_bind_setter("title", "app_title", &[], &[], "ModernWindowShell").unwrap();
+        assert_eq!(code, ".title(self.app_title.clone())");
+    }
+
+    #[test]
+    fn bind_setter_menu_only_for_modern_window_shell() {
+        // menu setter 仅对 ModernWindowShell 生效，其他组件返回 None
+        assert!(
+            component_bind_setter("menu", "items", &[], &[], "Button").is_none(),
+            "menu setter should not exist for Button"
+        );
+        assert!(
+            component_bind_setter("status_bar", "items", &[], &[], "Window").is_none(),
+            "status_bar setter should not exist for Window"
+        );
+    }
+
+    #[test]
+    fn bind_setter_title_for_modern_window_shell_does_not_leak_to_others() {
+        // title setter 仅对 ModernWindowShell 生效；普通组件的 title 不映射（不在路由表）
+        assert!(
+            component_bind_setter("title", "t", &[], &[], "Button").is_none(),
+            "title setter should not exist for Button"
+        );
+    }
+
+    #[test]
+    fn gen_component_modern_window_shell_with_menu_bind() {
+        // <ModernWindowShell menu={menu_items} status_bar={status_items} /> 完整生成
+        let elem = make_element(
+            "ModernWindowShell",
+            vec![
+                Attribute::Bind {
+                    name: "menu".into(),
+                    expr: "menu_items".into(),
+                },
+                Attribute::Bind {
+                    name: "status_bar".into(),
+                    expr: "status_items".into(),
+                },
+            ],
+            vec![],
+        );
+        let mut id = 0;
+        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
+        assert!(code.contains("rml_ui::ModernWindowShell::new()"));
+        assert!(code.contains(".menu(self.menu_items.clone())"));
+        assert!(code.contains(".status_bar(self.status_items.clone())"));
+    }
+
+    // ─── StatelessNoId 容器子节点 codegen ───
+
+    #[test]
+    fn gen_component_modern_window_shell_with_element_child() {
+        // <ModernWindowShell><div class="container"><h1>Hello</h1></div></ModernWindowShell>
+        // 容器组件：element 子节点应通过 .child(...) 传入
+        let div = make_element(
+            "div",
+            vec![Attribute::Static {
+                name: "class".into(),
+                value: "container".into(),
+            }],
+            vec![Node::Text("Hello".into())],
+        );
+        let shell = make_element("ModernWindowShell", vec![], vec![Node::Element(div)]);
+        let mut id = 0;
+        let code = gen_component(&shell, &ctx(), 0, &mut id, &Vec::new()).unwrap();
+        assert!(code.contains("rml_ui::ModernWindowShell::new()"));
+        assert!(code.contains(".child(gpui::div()"));
+    }
+
+    #[test]
+    fn gen_component_modern_window_shell_with_multiple_children() {
+        // <ModernWindowShell><div>A</div><div>B</div></ModernWindowShell>
+        // 多子节点：每个都通过 .child(gpui::div()...) 传入
+        let div_a = make_element("div", vec![], vec![Node::Text("A".into())]);
+        let div_b = make_element("div", vec![], vec![Node::Text("B".into())]);
+        let shell = make_element(
+            "ModernWindowShell",
+            vec![],
+            vec![Node::Element(div_a), Node::Element(div_b)],
+        );
+        let mut id = 0;
+        let code = gen_component(&shell, &ctx(), 0, &mut id, &Vec::new()).unwrap();
+        assert!(code.contains("rml_ui::ModernWindowShell::new()"));
+        // shell 应有两次 .child(gpui::div()...) 传入业务子节点
+        // （内部 .child("A") / .child("B") 是 div 自身的子节点，不在此计数范围）
+        assert_eq!(code.matches(".child(gpui::div(").count(), 2);
+    }
+
+    #[test]
+    fn gen_component_modern_window_shell_with_menu_and_children() {
+        // <ModernWindowShell menu={menu_items}><div>Content</div></ModernWindowShell>
+        // 绑定 + 子节点共存
+        let div = make_element("div", vec![], vec![Node::Text("Content".into())]);
+        let shell = make_element(
+            "ModernWindowShell",
+            vec![Attribute::Bind {
+                name: "menu".into(),
+                expr: "menu_items".into(),
+            }],
+            vec![Node::Element(div)],
+        );
+        let mut id = 0;
+        let code = gen_component(&shell, &ctx(), 0, &mut id, &Vec::new()).unwrap();
+        assert!(code.contains(".menu(self.menu_items.clone())"));
+        assert!(code.contains(".child(gpui::div()"));
+    }
+
+    #[test]
+    fn gen_component_button_does_not_use_child_for_element() {
+        // Button（Stateless）不应将 element 子节点作为 .child() 传入
+        // 仅文本子节点作为 .label()
+        let button = make_element(
+            "Button",
+            vec![],
+            vec![Node::Text("Click me".into())],
+        );
+        let mut id = 0;
+        let code = gen_component(&button, &ctx(), 0, &mut id, &Vec::new()).unwrap();
+        assert!(code.contains(".label(\"Click me\")"));
+        assert!(!code.contains(".child("));
+    }
+
+    #[test]
+    fn gen_component_titlebar_with_child() {
+        // TitleBar 也是 StatelessNoId 容器，应支持 .child(...)
+        let title = make_element("h1", vec![], vec![Node::Text("My App".into())]);
+        let bar = make_element("TitleBar", vec![], vec![Node::Element(title)]);
+        let mut id = 0;
+        let code = gen_component(&bar, &ctx(), 0, &mut id, &Vec::new()).unwrap();
+        assert!(code.contains("rml_ui::TitleBar::new()"));
+        assert!(code.contains(".child("));
     }
 }

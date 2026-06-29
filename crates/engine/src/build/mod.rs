@@ -163,10 +163,29 @@ impl Builder {
                 }
             };
 
-            // 计算哈希，命中缓存则跳过
+            // 计算哈希
             let hash = hash_str(&source);
             let key = rml_path.to_string_lossy().to_string();
-            if cache.entries.get(&key) == Some(&hash) {
+
+            // 计算 .rml.rs code-behind 哈希（若存在）
+            let rml_rs_path: PathBuf = format!("{}.rs", rml_path.display()).into();
+            let current_cb_hash = if rml_rs_path.exists() {
+                match fs::read_to_string(&rml_rs_path) {
+                    Ok(s) => Some(hash_str(&s)),
+                    Err(_) => None,
+                }
+            } else {
+                None
+            };
+
+            // 缓存命中条件：.rml 源哈希匹配 AND code-behind 哈希匹配
+            // （任一不匹配则需重新生成，确保 computed_methods 等上下文变化生效）
+            let rml_unchanged = cache.entries.get(&key) == Some(&hash);
+            let cb_unchanged = match &current_cb_hash {
+                Some(h) => cache.is_codebehind_unchanged(&key, h),
+                None => cache.is_codebehind_unchanged(&key, ""), // .rml.rs 不存在时检查缓存中是否也无
+            };
+            if rml_unchanged && cb_unchanged {
                 continue;
             }
 
@@ -193,13 +212,18 @@ impl Builder {
                         println!("cargo:warning=RML error in {}: {}", rml_path.display(), msg);
                         return Err(BuildError { message: msg });
                     }
-                    cache.entries.insert(key, hash);
+                    cache.entries.insert(key.clone(), hash);
+                    if let Some(h) = current_cb_hash {
+                        cache.stamp_codebehind(key, h);
+                    } else {
+                        // .rml.rs 不存在：标记为空字符串，避免下次因 cache miss 反复重新生成
+                        cache.stamp_codebehind(key, String::new());
+                    }
                 }
                 Err(e) => {
                     println!(
                         "cargo:warning=RML error in {}: {}",
-                        rml_path.display(),
-                        e
+                        rml_path.display(), e
                     );
                     return Err(BuildError {
                         message: format!("compile {}: {}", rml_path.display(), e),

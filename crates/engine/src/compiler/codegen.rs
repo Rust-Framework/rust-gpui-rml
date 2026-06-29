@@ -196,13 +196,13 @@ fn extract_static_attr(elem: &Element, name: &str) -> Option<String> {
 ///
 /// 当 `is_iter` 为 true 时，代码是 `self.<iterable>.iter().map(|<item>| { <element> })`，
 /// 父元素应使用 `.children(...)` 而非 `.child(...)` 传入。
-type GenResult = (String, bool);
+pub type GenResult = (String, bool);
 
 /// 为单个节点生成构建代码，返回 (代码, 是否迭代器)
 ///
 /// `loop_vars` 是当前作用域内的 each 循环变量名列表，
 /// 用于在 `{todo.text}` 这类插值中生成 `todo.text` 而非 `self.todo.text`。
-fn gen_node(
+pub fn gen_node(
     node: &Node,
     ctx: &CodegenCtx,
     depth: usize,

@@ -90,7 +90,9 @@ impl RenderOnce for ModernWindowShell {
                         this.child(render_menu_bar(&menu))
                     }),
             )
-            .children(self.children)
+            // 业务内容包裹在 flex-1 容器中占据剩余空间，
+            // 使 StatusBar 自然贴底（TitleBar 在顶，StatusBar 在底，中间内容 flex-1 填充）
+            .child(div().flex_1().min_h_0().children(self.children))
             .when_some(self.status_bar, |this, items: Vec<StatusBarItem>| {
                 this.child(render_status_bar(&items))
             })

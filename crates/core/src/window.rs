@@ -101,18 +101,32 @@ pub trait IWindow: IComponent {
     // ── 默认：窗口选项构建 ──
 
     /// 从配置构建 GPUI `WindowOptions`
+    ///
+    /// - `WindowChrome::Native`：使用 OS 原生标题栏（`appears_transparent: false`，
+    ///   `window_decorations` 留默认 `Server`），由 OS 绘制 min/max/close 按钮
+    /// - `WindowChrome::Transparent`：使用 `TitleBar` 组件自绘标题栏
+    ///   （`appears_transparent: true` + `window_decorations: Client`），
+    ///   在 Windows/Linux 上需要 `Client` 装饰才能让 `TitleBar::WindowControls`
+    ///   的 `window_control_area` hit-test 区域生效，并避免 OS 标题栏覆盖自绘标题栏
     fn window_options(&self) -> WindowOptions {
-        let titlebar = match self.chrome() {
-            WindowChrome::Native => TitlebarOptions {
-                title: Some(self.title().into()),
-                appears_transparent: false,
-                traffic_light_position: None,
-            },
-            WindowChrome::Transparent => TitlebarOptions {
-                title: Some(self.title().into()),
-                appears_transparent: true,
-                traffic_light_position: Some(Point::new(px(9.), px(9.))),
-            },
+        let (titlebar, decorations) = match self.chrome() {
+            WindowChrome::Native => (
+                TitlebarOptions {
+                    title: Some(self.title().into()),
+                    appears_transparent: false,
+                    traffic_light_position: None,
+                },
+                None,
+            ),
+            WindowChrome::Transparent => (
+                TitlebarOptions {
+                    title: Some(self.title().into()),
+                    appears_transparent: true,
+                    traffic_light_position: Some(Point::new(px(9.), px(9.))),
+                },
+                // 自绘标题栏模式：必须 Client 装饰才能让 WindowControls 工作
+                Some(gpui::WindowDecorations::Client),
+            ),
         };
 
         WindowOptions {
@@ -124,6 +138,7 @@ pub trait IWindow: IComponent {
                 },
             })),
             titlebar: Some(titlebar),
+            window_decorations: decorations,
             ..Default::default()
         }
     }
