@@ -129,10 +129,11 @@ pub fn is_component(tag: &str) -> bool {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-//  根节点标记：`<window>` / `<modern_window>` / `<component>`
+//  根节点标记：`<window>` / `<modern_window>` / `<tab_window>` / `<dialog>` / `<component>`
 //
-//  RML 根节点必须是这三种之一。编译器从根节点属性提取窗口配置，
-//  生成 `impl IWindow`（仅 `<window>`/`<modern_window>`）+ `impl Render`。
+//  RML 根节点必须是这几种之一。编译器从根节点属性提取窗口/对话框配置，
+//  生成 `impl IWindow`（仅 `<window>`/`<modern_window>`/`<tab_window>`）
+//  或对话框方法（`<dialog>`）+ `impl Render`。
 //  这些不是普通 HTML 标签，不参与 `BuiltinTag` 查找。
 // ──────────────────────────────────────────────────────────────────────────
 
@@ -145,13 +146,22 @@ pub enum RootTag {
     ModernWindow,
     /// `<tab_window>`：TabBar 标题栏 + 可调整插槽高级窗口
     TabWindow,
+    /// `<dialog>`：模态对话框（非独立 OS 窗口，依赖父窗口的 Root 层渲染）
+    ///
+    /// 复用 `#[window]` 宏标注的结构体（获得 `__rml_window_handle` 字段），
+    /// 但 codegen 不生成 `impl IWindow`，而是生成 `open(window, cx)` / `close(cx)`
+    /// 方法，封装 gpui-component 的 `Dialog` 组件。
+    DialogWindow,
     /// `<component>`：可复用组件（无窗口操作）
     Component,
 }
 
 /// 判断标签是否为 RML 根节点标记
 pub fn is_root_tag(tag: &str) -> bool {
-    matches!(tag, "window" | "modern_window" | "tab_window" | "component")
+    matches!(
+        tag,
+        "window" | "modern_window" | "tab_window" | "dialog" | "component"
+    )
 }
 
 /// 查找根节点类型
@@ -160,6 +170,7 @@ pub fn root_tag_lookup(tag: &str) -> Option<RootTag> {
         "window" => Some(RootTag::Window),
         "modern_window" => Some(RootTag::ModernWindow),
         "tab_window" => Some(RootTag::TabWindow),
+        "dialog" => Some(RootTag::DialogWindow),
         "component" => Some(RootTag::Component),
         _ => None,
     }

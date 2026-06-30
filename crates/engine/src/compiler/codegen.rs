@@ -51,9 +51,11 @@ fn collect_model_fields_recursive(elem: &Element, fields: &mut Vec<String>) {
 
 /// 生成 `impl Render for <ViewStruct>` 代码块（可能附带 `impl IWindow`）
 ///
-/// RML 根节点必须是 `<window>`、`<modern_window>`、`<tab_window>` 或 `<component>`：
-/// - `<window>`/`<modern_window>`：生成 `impl IWindow`（从根节点属性提取 title/width/height）
-///   + `impl Render`（使用根节点的子节点作为渲染树）
+/// RML 根节点必须是 `<window>`、`<modern_window>`、`<tab_window>`、`<dialog>` 或 `<component>`：
+/// - `<window>`/`<modern_window>`/`<tab_window>`：生成 `impl IWindow`（从根节点属性提取 title/width/height）
+///   + `impl Render`（使用根节点的子节点作为渲染树，自动注入 Dialog/Sheet/Notification 层）
+/// - `<dialog>`：生成 `open(window, cx)` / `close(cx)` 方法（封装 gpui-component Dialog）
+///   + `impl Render`（使用根节点的子节点作为对话框内容，不注入层 —— 对话框自身是层内 child）
 /// - `<component>`：仅生成 `impl Render`（使用根节点的子节点）
 /// - 其他：报错
 pub fn codegen(root: &Node, ctx: &CodegenCtx) -> Result<String, CodegenError> {
@@ -62,7 +64,7 @@ pub fn codegen(root: &Node, ctx: &CodegenCtx) -> Result<String, CodegenError> {
         _ => {
             return Err(CodegenError {
                 message: format!(
-                    "root element must be <window>, <modern_window>, <tab_window>, or <component>; got <{}>",
+                    "root element must be <window>, <modern_window>, <tab_window>, <dialog>, or <component>; got <{}>",
                     root
                 ),
             });
@@ -87,7 +89,7 @@ pub fn codegen(root: &Node, ctx: &CodegenCtx) -> Result<String, CodegenError> {
         tags::RootTag::ModernWindow | tags::RootTag::TabWindow
     );
 
-    // 1. 窗口类型：生成 impl IWindow（从根节点属性提取配置）
+    // 1. 窗口/对话框类型：生成对应 impl
     match root_tag {
         tags::RootTag::Window => {
             out.push_str(&gen_window_impl(elem, ctx, false)?);
@@ -95,6 +97,10 @@ pub fn codegen(root: &Node, ctx: &CodegenCtx) -> Result<String, CodegenError> {
         }
         tags::RootTag::ModernWindow | tags::RootTag::TabWindow => {
             out.push_str(&gen_window_impl(elem, ctx, chrome_transparent)?);
+            out.push('\n');
+        }
+        tags::RootTag::DialogWindow => {
+            out.push_str(&gen_dialog_impl(elem, ctx)?);
             out.push('\n');
         }
         tags::RootTag::Component => {}
@@ -207,6 +213,90 @@ fn gen_window_impl(
     Ok(code)
 }
 
+/// 从 `<dialog>` 根节点生成 `open(window, cx)` / `close(cx)` 方法
+///
+/// 对话框不是独立 OS 窗口，而是父窗口 `Root` 层内的模态组件。
+/// 复用 `#[window]` 宏注入的 `__rml_window_handle: Option<AnyWindowHandle>` 字段
+/// 存储父窗口句柄，供 `close()` 通过 `AnyWindowHandle::update` 调用
+/// `WindowExt::close_dialog`。
+///
+/// 标题栏由 `rml_ui::dialog_title_bar` 提供，内置拖动支持 + 关闭按钮。
+/// 拖动偏移通过 `DialogDragState` 持久化，builder 闭包每帧读取 offset 并通过
+/// `Styled::style().margin` 叠加到 Dialog 定位上。
+fn gen_dialog_impl(elem: &Element, ctx: &CodegenCtx) -> Result<String, CodegenError> {
+    let view_name = &ctx.view_struct_name;
+
+    let title = extract_static_attr(elem, "title").unwrap_or_else(|| "Dialog".to_string());
+    let width = extract_static_attr(elem, "width")
+        .and_then(|s| s.parse::<f32>().ok())
+        .unwrap_or(480.0);
+    let margin_top = extract_static_attr(elem, "margin_top")
+        .and_then(|s| s.parse::<f32>().ok());
+
+    let margin_top_expr = match margin_top {
+        Some(mt) => format!("Some(gpui::px({:?}))", mt),
+        None => "None".to_string(),
+    };
+
+    let code = format!(
+        r#"impl {view_name} {{
+    /// 在指定父窗口上打开对话框（模态）。
+    ///
+    /// 内部创建 entity + `DialogDragState`，存储父窗口句柄到 `__rml_window_handle`，
+    /// 然后调用 `WindowExt::open_dialog`。标题栏内置拖动 + 关闭按钮。
+    pub fn open(self, window: &mut gpui::Window, cx: &mut gpui::App) {{
+        use rml_ui::WindowExt;
+        use gpui::{{ParentElement, Styled}};
+        let __rml_parent_handle = window.window_handle();
+        let __rml_title: String = {title:?}.to_string();
+        let __rml_width: gpui::Pixels = gpui::px({width:?});
+        let __rml_margin_top: Option<gpui::Pixels> = {margin_top_expr};
+        let __rml_drag_state = cx.new(|_| rml_ui::DialogDragState::default());
+        let __rml_entity = cx.new(|_| {{
+            let mut __rml_this = self;
+            __rml_this.__rml_window_handle = Some(__rml_parent_handle);
+            __rml_this
+        }});
+        window.open_dialog(cx, move |__rml_d, __rml_w, __rml_cx| {{
+            let __rml_offset = {{ __rml_drag_state.read(__rml_cx).offset }};
+            let __rml_title_bar = rml_ui::dialog_title_bar(
+                __rml_title.clone().into(),
+                __rml_drag_state.clone(),
+                __rml_w,
+                __rml_cx,
+            );
+            let mut __rml_d = __rml_d
+                .title(__rml_title_bar)
+                .width(__rml_width)
+                .close_button(false);
+            if let Some(__rml_mt) = __rml_margin_top {{
+                __rml_d = __rml_d.margin_top(__rml_mt);
+            }}
+            __rml_d.style().margin.left = Some(__rml_offset.x.into());
+            __rml_d.style().margin.top = Some(__rml_offset.y.into());
+            __rml_d.child(__rml_entity.clone())
+        }});
+    }}
+
+    /// 关闭对话框（通过父窗口句柄调用 `WindowExt::close_dialog`）。
+    pub fn close(&mut self, cx: &mut gpui::Context<Self>) {{
+        use rml_ui::WindowExt;
+        if let Some(__rml_handle) = self.__rml_window_handle {{
+            let _ = __rml_handle.update(cx, |_, __rml_window, __rml_cx| {{
+                __rml_window.close_dialog(__rml_cx);
+            }});
+        }}
+    }}
+}}"#,
+        view_name = view_name,
+        title = title,
+        width = width,
+        margin_top_expr = margin_top_expr,
+    );
+
+    Ok(code)
+}
+
 /// 从根节点的子节点生成 `impl Render`
 ///
 /// 单个子节点：直接使用其代码。
@@ -285,11 +375,41 @@ fn gen_render_impl_from_children(
         ShellWrap::None => body,
     };
 
-    out.push_str(&format!("        {}\n", final_body));
+    // 窗口根节点（window/modern_window/tab_window）自动注入 Dialog/Sheet/Notification
+    // 渲染层——用户无需在 Render 中手动调用 Root::render_*_layer。
+    // `<component>` 与 `<dialog>` 不注入（dialog 自身是 layer 内的 child，不再叠加）。
+    let with_layers = if matches!(shell, ShellWrap::Modern | ShellWrap::Tab)
+        || root_tag_is_window(elem)
+    {
+        format!(
+            "{{\n            \
+             let __rml_body = {body};\n            \
+             gpui::div()\n                \
+             .size_full()\n                \
+             .child(__rml_body)\n                \
+             .children(rml_ui::Root::render_dialog_layer(_window, cx))\n                \
+             .children(rml_ui::Root::render_sheet_layer(_window, cx))\n                \
+             .children(rml_ui::Root::render_notification_layer(_window, cx))\n            \
+             }}",
+            body = final_body
+        )
+    } else {
+        final_body
+    };
+
+    out.push_str(&format!("        {}\n", with_layers));
     out.push_str("    }\n");
     out.push_str("}\n");
 
     Ok(out)
+}
+
+/// 判断元素是否为窗口根节点（window/modern_window/tab_window）
+fn root_tag_is_window(elem: &Element) -> bool {
+    matches!(
+        tags::root_tag_lookup(&elem.tag),
+        Some(tags::RootTag::Window | tags::RootTag::ModernWindow | tags::RootTag::TabWindow)
+    )
 }
 
 /// 为 `<modern_window>` 根元素生成 ModernWindowShell 包裹代码

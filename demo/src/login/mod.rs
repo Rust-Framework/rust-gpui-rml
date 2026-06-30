@@ -1,4 +1,4 @@
-#[path = "login_window.rml.rs"]
-pub mod login_window;
+#[path = "login_dialog.rml.rs"]
+pub mod login_dialog;
 
-pub use login_window::LoginWindow;
+pub use login_dialog::LoginDialog;

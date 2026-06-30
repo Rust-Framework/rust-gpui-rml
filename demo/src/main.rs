@@ -9,5 +9,12 @@ mod cases;
 mod login;
 mod shell;
 
-// 一键启动:内部完成资源嵌入、资源注册、应用启动
-rml::main!(app::Startup);
+// 嵌入 assets/ 资源到二进制（由 build.rs 生成 RML_ASSETS 注册表）
+rml::embed_assets!();
+
+fn main() {
+    // Program.cs 风格：显式 builder 链，便于在 .run() 之前扩展应用级配置
+    rml_app::RmlApplication::new()
+        .assets(RML_ASSETS)
+        .run::<app::Startup>();
+}

@@ -1,6 +1,6 @@
 //! 国际化（i18n）——`I18nState` Global + `I18nExt` 扩展
 //!
-//! 业务代码通过 `cx.use_i18n` / `cx.set_i18n` / `cx.t` 访问，不暴露独立 App 单例类型。
+//! 业务代码通过 `cx.set_i18n` / `cx.t` 访问，不暴露独立 App 单例类型。
 
 use std::borrow::{Borrow, BorrowMut};
 use std::collections::HashMap;
@@ -160,11 +160,9 @@ pub fn ensure_i18n(cx: &mut App) {
 
 /// `Context` / `App` 国际化扩展
 pub trait I18nExt {
-    /// 加载并绑定指定 locale 的 catalog
-    fn use_i18n(&mut self, locale: impl AsRef<str>);
-    /// 指定资源目录并加载 locale
+    /// 指定资源目录并加载 locale(同时设置默认目录供后续 `set_i18n` 使用)
     fn use_i18n_with_dir(&mut self, locale: impl AsRef<str>, dir: impl AsRef<str>);
-    /// 运行时切换已加载的 locale（未缓存则尝试从磁盘加载）
+    /// 加载(若未缓存)并切换到指定 locale,刷新窗口
     fn set_i18n(&mut self, locale: impl AsRef<str>);
     /// 取当前 locale 下的翻译
     fn t(&self, key: &str) -> SharedString;
@@ -173,19 +171,6 @@ pub trait I18nExt {
 }
 
 impl I18nExt for App {
-    fn use_i18n(&mut self, locale: impl AsRef<str>) {
-        let locale = locale.as_ref().to_string();
-        ensure_i18n(self);
-        // 优先从嵌入资源加载,失败则 fallback 到磁盘
-        let catalog = load_catalog_embedded(&locale, DEFAULT_I18N_DIR)
-            .or_else(|_| load_catalog_from_dir(&locale, DEFAULT_I18N_DIR));
-        if let Ok(catalog) = catalog {
-            self.update_global::<I18nState, _>(|state, _| {
-                state.load_catalog(&locale, catalog);
-            });
-        }
-    }
-
     fn use_i18n_with_dir(&mut self, locale: impl AsRef<str>, dir: impl AsRef<str>) {
         let locale = locale.as_ref().to_string();
         let dir = dir.as_ref().to_string();
@@ -243,10 +228,6 @@ impl I18nExt for App {
 }
 
 impl<T> I18nExt for Context<'_, T> {
-    fn use_i18n(&mut self, locale: impl AsRef<str>) {
-        I18nExt::use_i18n(BorrowMut::<App>::borrow_mut(self), locale);
-    }
-
     fn use_i18n_with_dir(&mut self, locale: impl AsRef<str>, dir: impl AsRef<str>) {
         I18nExt::use_i18n_with_dir(BorrowMut::<App>::borrow_mut(self), locale, dir);
     }

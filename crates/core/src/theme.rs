@@ -152,11 +152,9 @@ pub fn ensure_theme(cx: &mut App) {
 
 /// `Context` / `App` 主题扩展
 pub trait ThemeExt {
-    /// 从嵌入资源加载并绑定指定主题
-    fn use_theme(&mut self, theme: impl AsRef<str>);
-    /// 指定主题目录并加载主题
+    /// 指定主题目录并加载主题(同时设置默认目录供后续 `set_theme` 使用)
     fn use_theme_with_dir(&mut self, theme: impl AsRef<str>, dir: impl AsRef<str>);
-    /// 运行时切换已加载主题(未缓存则尝试从嵌入资源加载)
+    /// 加载(若未缓存)并切换到指定主题,刷新窗口
     fn set_theme(&mut self, theme: impl AsRef<str>);
     /// 从嵌入资源加载全局样式 CSS,提取 `:root` 颜色变量作为基础颜色
     ///
@@ -171,16 +169,6 @@ pub trait ThemeExt {
 }
 
 impl ThemeExt for App {
-    fn use_theme(&mut self, theme: impl AsRef<str>) {
-        let theme = theme.as_ref().to_string();
-        ensure_theme(self);
-        if let Ok(colors) = load_theme_colors_embedded(&theme, DEFAULT_THEMES_DIR) {
-            self.update_global::<ThemeState, _>(|state, _| {
-                state.load_theme(&theme, colors);
-            });
-        }
-    }
-
     fn use_theme_with_dir(&mut self, theme: impl AsRef<str>, dir: impl AsRef<str>) {
         let theme = theme.as_ref().to_string();
         let dir = dir.as_ref().to_string();
@@ -259,10 +247,6 @@ impl ThemeExt for App {
 }
 
 impl<T> ThemeExt for Context<'_, T> {
-    fn use_theme(&mut self, theme: impl AsRef<str>) {
-        ThemeExt::use_theme(BorrowMut::<App>::borrow_mut(self), theme);
-    }
-
     fn use_theme_with_dir(&mut self, theme: impl AsRef<str>, dir: impl AsRef<str>) {
         ThemeExt::use_theme_with_dir(BorrowMut::<App>::borrow_mut(self), theme, dir);
     }

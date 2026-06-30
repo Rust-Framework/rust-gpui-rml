@@ -20,7 +20,7 @@ pub mod lifecycle;
 pub mod resources;
 
 pub use application::{NoWindow, RmlApplication};
-pub use lifecycle::{IAppLifecycle, NoLifecycle};
+pub use lifecycle::IAppLifecycle;
 pub use resources::{
     load_i18n_catalog, load_i18n_from_json, load_theme_colors, load_theme_css,
     DEFAULT_I18N_DIR, DEFAULT_THEMES_DIR,

@@ -13,7 +13,7 @@ use gpui::Context;
 pub trait ILifecycle {
     /// 视图首次渲染完成后触发（仅一次）。
     ///
-    /// 典型用途：加载初始数据、启动定时器、获取焦点、订阅外部事件、`cx.use_i18n(...)`。
+    /// 典型用途：加载初始数据、启动定时器、获取焦点、订阅外部事件、`cx.set_i18n(...)`。
     fn on_loaded(&mut self, _cx: &mut Context<Self>)
     where
         Self: Sized,
