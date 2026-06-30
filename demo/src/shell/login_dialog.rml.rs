@@ -14,7 +14,7 @@ impl LoginDialog {
         if self.username.trim().is_empty() {
             return;
         }
-        // 登录成功：关闭对话框（MainWindow 已在 on_launch 中打开）
+        // 登录成功：关闭对话框
         self.close(cx);
     }
 }

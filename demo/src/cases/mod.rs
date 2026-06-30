@@ -2,4 +2,4 @@
 
 pub mod catalog;
 
-pub use catalog::{case_title_key, init_tree_state, refresh_tree_state, tree_items, OpenTab};
+pub use catalog::{case_title_key, init_tree_state, refresh_tree_state, OpenTab};

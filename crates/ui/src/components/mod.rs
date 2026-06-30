@@ -8,5 +8,5 @@ pub use activity_bar::{
     ActivityAct, ActivityActs, ActivityBar, ActivityPanel, ActivityPanels,
     IActivityAct, IActivityPanel,
 };
-pub use dialog_window::{DialogDragState, dialog_title_bar};
+pub use dialog_window::{DialogDragState, DialogTitleBar};
 pub use tree_view::TreeView;

@@ -5,7 +5,7 @@
 
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Data, DeriveInput, Fields, Ident};
+use syn::{Data, DeriveInput, Ident};
 
 pub fn derive(input: TokenStream) -> TokenStream {
     let input: DeriveInput = match syn::parse2(input) {
@@ -87,17 +87,4 @@ pub fn to_snake_case(ident: &Ident) -> String {
         }
     }
     out
-}
-
-/// 将 snake_case 文件名转为 PascalCase 标识符（如 `counter` → `Counter`）
-pub fn to_pascal_case(s: &str) -> String {
-    s.split('_')
-        .map(|word| {
-            let mut chars = word.chars();
-            match chars.next() {
-                Some(first) => first.to_ascii_uppercase().to_string() + chars.as_str(),
-                None => String::new(),
-            }
-        })
-        .collect()
 }

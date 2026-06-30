@@ -16,7 +16,7 @@
 
 use std::marker::PhantomData;
 
-use gpui::{App, Window};
+use gpui::App;
 use rml_core::i18n::ensure_i18n;
 use rml_core::theme::ensure_theme;
 use rml_core::window::IWindow;
@@ -76,7 +76,7 @@ impl RmlApplication<NoWindow> {
 }
 
 impl<W: IWindow + Default + 'static> RmlApplication<W> {
-    /// 声明式启动：`L::on_launch` → 打开主窗口 `W` → `L::on_main_window_ready`。
+    /// 声明式启动：`L::on_launch` → 打开主窗口 `W`。
     pub fn run<L: IAppLifecycle + 'static>(self) {
         if let Some(assets) = self.assets {
             rml_core::assets::init(assets);
@@ -86,15 +86,8 @@ impl<W: IWindow + Default + 'static> RmlApplication<W> {
             .run(move |cx: &mut App| {
                 ensure_i18n(cx);
                 ensure_theme(cx);
-                let mut hooks = L::default();
-                hooks.on_launch(cx);
-                let mut window = W::default();
-                window.open(cx);
-                if let Some(handle) = window.handle() {
-                    let _ = handle.update(cx, |_, window: &mut Window, cx| {
-                        hooks.on_main_window_ready(window, cx);
-                    });
-                }
+                L::default().on_launch(cx);
+                W::default().open(cx);
             });
     }
 }

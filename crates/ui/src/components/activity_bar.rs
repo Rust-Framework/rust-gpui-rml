@@ -226,8 +226,8 @@ impl RenderOnce for ActivityBar {
                     .ghost()
                     .icon(icon)
                     .tooltip(title)
-                    .w(self.bar_width)
-                    .h(px(48.))
+                    .h(px(36.))
+                    .w(px(36.))
                     .my(px(2.))
                     .when(active, |btn| btn.bg(cx.theme().sidebar_accent))
                     .on_click(move |_, window, cx| {

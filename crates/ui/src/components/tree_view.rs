@@ -8,7 +8,7 @@ use gpui::{
     App, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, px,
 };
 use gpui_component::{
-    Icon, IconName, Sizable as _, Selectable as _,
+    Icon, IconName, Sizable as _,
     h_flex,
     list::ListItem,
     tree::{Tree, TreeItem, TreeState},
@@ -48,11 +48,11 @@ impl TreeView {
 }
 
 impl RenderOnce for TreeView {
-    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
         let on_activate = self.on_activate.clone();
         let state = self.state.clone();
 
-        Tree::new(&self.state, move |ix, entry, selected, window, cx| {
+        Tree::new(&self.state, move |ix, entry, selected, _window, _cx| {
             let icon = if !entry.is_folder() {
                 IconName::File
             } else if entry.is_expanded() {

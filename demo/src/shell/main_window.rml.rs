@@ -1,4 +1,4 @@
-use gpui::{Entity, SharedString};
+use gpui::{Entity, SharedString, Window};
 use rml::prelude::*;
 use rml_core::i18n::{t_static, I18nExt};
 use rml_core::theme::ThemeExt;
@@ -27,7 +27,7 @@ pub struct MainWindow {
 }
 
 impl ILifecycle for MainWindow {
-    fn on_loaded(&mut self, cx: &mut Context<Self>) {
+    fn on_loaded(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.case_tree_state.is_none() {
             self.case_tree_state = Some(cases::init_tree_state(cx));
         }
@@ -39,13 +39,15 @@ impl ILifecycle for MainWindow {
             self.selected_tab = 0;
             self.active_case_id = "welcome".to_string();
         }
-        // 默认显示菜单栏与标题区域
         self.show_chrome = true;
-        // 默认激活 samples 面板
         if self.active_panel_id.is_empty() {
             self.active_panel_id = "samples".to_string();
         }
         self.i18n_version = self.i18n_version.wrapping_add(1);
+        // 弹出登录对话框（defer 到渲染周期外，避免 Root entity 借用冲突）
+        window.defer(cx, |window, cx| {
+            super::LoginDialog::default().open(window, cx);
+        });
     }
 }
 

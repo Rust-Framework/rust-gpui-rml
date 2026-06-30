@@ -84,5 +84,5 @@ pub use window::{
 
 pub use components::{
     ActivityAct, ActivityActs, ActivityBar, ActivityPanel, ActivityPanels,
-    DialogDragState, IActivityAct, IActivityPanel, TreeView, dialog_title_bar,
+    DialogDragState, DialogTitleBar, IActivityAct, IActivityPanel, TreeView,
 };
