@@ -1,37 +1,73 @@
-{
-  "login.title": "登录 RML Demo",
-  "login.hint": "输入任意用户名进入案例库",
-  "login.username": "用户名",
-  "login.submit": "进入",
-  "shell.pick_case": "欢迎使用 RML Showcase",
-  "shell.pick_case_hint": "在左侧案例树中选择一个示例，将在 Tab 中打开",
-  "shell.samples": "案例库",
-  "shell.status_ready": "就绪 — 请从左侧案例树选择示例",
-  "shell.status_case": "当前案例",
-  "shell.case_default": "案例",
-  "tree.cat.binding": "绑定",
-  "tree.cat.components": "组件",
-  "tree.cat.i18n": "国际化",
-  "tree.case.counter": "计数器",
-  "tree.case.two_way": "双向绑定",
-  "tree.case.button": "按钮样式",
-  "tree.case.i18n": "t() 插值",
-  "case.counter.title": "计数器绑定",
-  "case.two_way.title": "双向绑定",
-  "case.button.title": "按钮样式",
-  "case.button.primary": "主要按钮",
-  "case.button.ghost": "幽灵按钮",
-  "case.button.danger": "危险按钮",
-  "case.i18n.title": "国际化 t()",
-  "demo.hello": "Hello, RML!",
-  "demo.click_btn": "点击我",
-  "demo.name_placeholder": "姓名",
-  "demo.age_placeholder": "年龄",
-  "menu.file": "文件",
-  "menu.file_new": "新建",
-  "menu.file_open": "打开",
-  "menu.file_exit": "退出",
-  "menu.help": "帮助",
-  "menu.help_about": "关于 RML Showcase",
-  "menu.lang_en": "English"
-}
+{
+
+  "login.title": "登录 RML Demo",
+
+  "login.hint": "输入任意用户名进入案例库",
+
+  "login.username": "用户名",
+
+  "login.submit": "进入",
+
+  "shell.pick_case": "欢迎使用 RML Showcase",
+  "shell.pick_case_hint": "在左侧案例树中选择一个示例，将在 Tab 中打开",
+  "shell.samples": "案例库",
+  "shell.welcome": "欢迎",
+
+  "shell.status_ready": "就绪 — 请从左侧案例树选择示例",
+
+  "shell.status_case": "当前案例",
+
+  "shell.case_default": "案例",
+
+  "tree.cat.binding": "绑定",
+
+  "tree.cat.components": "组件",
+
+  "tree.cat.i18n": "国际化",
+
+  "tree.case.counter": "计数器",
+
+  "tree.case.two_way": "双向绑定",
+
+  "tree.case.button": "按钮样式",
+
+  "tree.case.i18n": "t() 插值",
+
+  "case.counter.title": "计数器绑定",
+
+  "case.two_way.title": "双向绑定",
+
+  "case.button.title": "按钮样式",
+
+  "case.button.primary": "主要按钮",
+
+  "case.button.ghost": "幽灵按钮",
+
+  "case.button.danger": "危险按钮",
+
+  "case.i18n.title": "国际化 t()",
+
+  "demo.hello": "Hello, RML!",
+
+  "demo.click_btn": "点击我",
+
+  "demo.name_placeholder": "姓名",
+
+  "demo.age_placeholder": "年龄",
+
+  "menu.file": "文件",
+
+  "menu.file_new": "新建",
+
+  "menu.file_open": "打开",
+
+  "menu.file_exit": "退出",
+
+  "menu.help": "帮助",
+
+  "menu.help_about": "关于 RML Showcase",
+
+  "menu.lang_en": "English"
+
+}
+

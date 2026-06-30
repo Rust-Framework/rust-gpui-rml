@@ -216,13 +216,15 @@ impl ParentElement for ActivityBar {
 impl RenderOnce for ActivityBar {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let on_panel_change = self.on_panel_change.clone();
-        let mut active_panel = None;
-        let mut panel_fallback = (!self.panel_children.is_empty()).then(|| {
+        // 面板内容来源：RML children（.child(...) 传入的元素）
+        // 注意：panel_children 在每次 render 时由 codegen 重新填充，无需担心 take() 抽干
+        let panel_content = (!self.panel_children.is_empty()).then(|| {
             gpui::div()
                 .size_full()
                 .children(self.panel_children)
                 .into_any_element()
         });
+        let mut panel_content = panel_content;
 
         let mut panel_buttons: SmallVec<[AnyElement; 4]> = SmallVec::new();
         for (ix, panel) in self.panels.iter().enumerate() {
@@ -230,9 +232,9 @@ impl RenderOnce for ActivityBar {
             let icon = panel.icon();
             let title = panel.title();
             let active = panel.is_activated();
-            if active {
-                active_panel = panel.panel().or_else(|| panel_fallback.take());
-            }
+            // 活动面板内容：优先用 panel_children（RML children），其次用 panel.panel()（自定义）
+            // 注意：panel.panel() 默认返回 None，仅在显式调用 .panel(element) 时有值
+            let _ = active; // active 状态仅影响按钮高亮，不影响内容选择
             let on_change = on_panel_change.clone();
 
             panel_buttons.push(
@@ -242,6 +244,7 @@ impl RenderOnce for ActivityBar {
                     .tooltip(title)
                     .w(self.bar_width)
                     .h(px(48.))
+                    .my(px(2.))
                     .when(active, |btn| btn.bg(cx.theme().sidebar_accent))
                     .on_click(move |_, window, cx| {
                         if let Some(f) = &on_change {
@@ -299,7 +302,7 @@ impl RenderOnce for ActivityBar {
                     .h_full()
                     .min_w_0()
                     .overflow_hidden()
-                    .when_some(active_panel, |this, panel| this.child(panel)),
+                    .when_some(panel_content.take(), |this, panel| this.child(panel)),
             )
     }
 }

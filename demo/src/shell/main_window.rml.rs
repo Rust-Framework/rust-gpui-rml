@@ -14,6 +14,8 @@ pub struct MainWindow {
     selected_tab: usize,
     active_case_id: String,
     show_chrome: bool,
+    /// 当前激活的活动栏面板 id（"samples" / 未来扩展）
+    active_panel_id: String,
     i18n_version: u32,
     count: i32,
     pub name: String,
@@ -27,6 +29,20 @@ impl ILifecycle for MainWindow {
     fn on_loaded(&mut self, cx: &mut Context<Self>) {
         if self.case_tree_state.is_none() {
             self.case_tree_state = Some(cases::init_tree_state(cx));
+        }
+        if self.open_tabs.is_empty() {
+            self.open_tabs.push(OpenTab {
+                id: "welcome".to_string(),
+                title: cx.t("shell.welcome").to_string(),
+            });
+            self.selected_tab = 0;
+            self.active_case_id = "welcome".to_string();
+        }
+        // 默认显示菜单栏与标题区域
+        self.show_chrome = true;
+        // 默认激活 samples 面板
+        if self.active_panel_id.is_empty() {
+            self.active_panel_id = "samples".to_string();
         }
         self.i18n_version = self.i18n_version.wrapping_add(1);
     }
@@ -45,9 +61,10 @@ impl MainWindow {
     #[computed]
     pub fn activity_icons(&self) -> ActivityPanels {
         let _ = self.i18n_version;
+        let active_id = self.active_panel_id.clone();
         vec![
             ActivityPanel::new("samples", IconName::BookOpen, t_static("shell.samples"))
-                .active(true)
+                .active(active_id == "samples")
                 .into_arc(),
         ]
     }
@@ -106,6 +123,15 @@ impl MainWindow {
     pub fn on_chrome_toggle(&mut self, cx: &mut Context<Self>) {
         self.show_chrome = !self.show_chrome;
         cx.notify();
+    }
+
+    #[command]
+    pub fn on_panel_change(&mut self, id: &SharedString, cx: &mut Context<Self>) {
+        let new_id = id.to_string();
+        if self.active_panel_id != new_id {
+            self.active_panel_id = new_id;
+            cx.notify();
+        }
     }
 
     #[command]

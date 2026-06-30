@@ -1,4 +1,3 @@
-use gpui::WeakEntity;
 use rml::prelude::*;
 use rml_core::window::IWindow;
 
@@ -18,12 +17,9 @@ impl LoginWindow {
         if self.username.trim().is_empty() {
             return;
         }
-        let login: WeakEntity<LoginWindow> = cx.weak_entity();
+        // 登录成功：先打开主窗口，再关闭登录窗
+        // 顺序很重要：先 open 再 close，避免窗口全部退出导致应用终止
         MainWindow::default().open(cx);
-        cx.defer(move |cx| {
-            if let Some(entity) = login.upgrade() {
-                entity.update(cx, |win, cx| win.close(cx));
-            }
-        });
+        self.close(cx);
     }
 }

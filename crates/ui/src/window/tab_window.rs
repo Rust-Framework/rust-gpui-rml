@@ -271,6 +271,9 @@ impl RenderOnce for TabWindowShell {
         }
 
         let title_bar = TitleBar::new()
+            // 覆盖 gpui-component TitleBar 默认的 border_b_1，
+            // 避免在 TabBar 下方出现一条分隔线（与 TabBar 自身的视觉重叠）
+            .border_b_0()
             .child(
                 div()
                     .flex_1()

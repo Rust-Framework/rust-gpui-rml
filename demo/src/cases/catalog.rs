@@ -14,6 +14,7 @@ pub struct OpenTab {
 /// 案例标题 i18n key
 pub fn case_title_key(id: &str) -> &'static str {
     match id {
+        "welcome" => "shell.welcome",
         "binding.counter" => "case.counter.title",
         "binding.two-way" => "case.two_way.title",
         "components.button" => "case.button.title",

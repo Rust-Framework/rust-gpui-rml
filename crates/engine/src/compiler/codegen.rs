@@ -760,10 +760,18 @@ fn gen_element(
     //     当前行为：once 元素每次渲染都重新计算，与普通元素一致。
 
     if let Some(cond) = cond {
+        let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
+        let cond_code = gen_expr_code(&cond, &lv, &computed);
+        // gen_expr_code 对 BinaryOp 会生成外层括号 `(a == b)`，if 条件中多余，剥掉
+        let cond_code = cond_code
+            .strip_prefix('(')
+            .and_then(|s| s.strip_suffix(')'))
+            .map(|s| s.to_string())
+            .unwrap_or(cond_code);
         Ok((
             format!(
-                "if self.{} {{ {}.into_any_element() }} else {{ gpui::Empty.into_any_element() }}",
-                cond, code
+                "if {} {{ {}.into_any_element() }} else {{ gpui::Empty.into_any_element() }}",
+                cond_code, code
             ),
             false,
         ))

@@ -11,17 +11,17 @@
     show_chrome={show_chrome}
     on_chrome_toggle="on_chrome_toggle"
     status_bar={status_items}>
-    <slot_left>
-        <ActivityBar panels={activity_icons}>
-            <div class="nav-tree">
-                <Tree on_activate="on_case_activate" />
-            </div>
-        </ActivityBar>
+    <slot_left>
+        <ActivityBar panels={activity_icons} on_panel_change="on_panel_change">
+            <div class="nav-tree">
+                <Tree on_activate="on_case_activate" />
+            </div>
+        </ActivityBar>
     </slot_left>
-    <div class="case-host">
-        <div if={active_case_id == ""} class="case-pane case-empty">
-            <h2 class="case-title">{t("shell.pick_case")}</h2>
-            <p class="case-hint">{t("shell.pick_case_hint")}</p>
+    <div class="case-host">
+        <div if={active_case_id == "welcome" || active_case_id == ""} class="case-pane case-empty">
+            <h2 class="case-title">{t("shell.pick_case")}</h2>
+            <p class="case-hint">{t("shell.pick_case_hint")}</p>
         </div>
         <div if={active_case_id == "binding.counter"} class="case-pane">
             <h2 class="case-title">{t("case.counter.title")}</h2>
