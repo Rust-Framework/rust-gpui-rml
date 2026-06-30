@@ -82,4 +82,7 @@ pub use window::{
     NotificationKind, StatusBarItem, StatusBarTemplate, TabItem, TabWindowShell, Window,
 };
 
-pub use components::{ActivityActionItem, ActivityBar, ActivityPanelItem, TreeView};
+pub use components::{
+    ActivityAct, ActivityActs, ActivityBar, ActivityPanel, ActivityPanels,
+    IActivityAct, IActivityPanel, TreeView,
+};

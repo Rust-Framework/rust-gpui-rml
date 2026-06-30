@@ -11,7 +11,6 @@ pub mod builtin_window;
 pub mod ext;
 pub mod menu_bar;
 pub mod modern_window;
-pub mod rml_title_bar;
 pub mod tab_window;
 pub mod templates;
 pub mod types;

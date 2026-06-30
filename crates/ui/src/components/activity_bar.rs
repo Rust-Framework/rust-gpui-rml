@@ -1,6 +1,8 @@
 //! ActivityBar —— VS Code 风格左侧活动栏控件
 
+use std::cell::RefCell;
 use std::rc::Rc;
+use std::sync::Arc;
 
 use gpui::{
     AnyElement, App, ElementId, InteractiveElement, IntoElement, ParentElement, RenderOnce,
@@ -17,28 +19,57 @@ use smallvec::SmallVec;
 use crate::window::menu_bar::build_popup_menu;
 use crate::window::types::MenuItem;
 
-/// 活动栏面板项（S1–S3）
-pub struct ActivityPanelItem {
-    pub id: SharedString,
-    pub icon: IconName,
-    pub title: SharedString,
-    pub panel: Option<AnyElement>,
-    pub active: bool,
+// ── Trait 定义 ──
+
+/// 活动栏面板项接口（S1–S3）
+pub trait IActivityPanel: 'static {
+    fn id(&self) -> SharedString;
+    fn icon(&self) -> IconName;
+    fn title(&self) -> SharedString;
+    fn is_activated(&self) -> bool;
+    /// 面板内容元素。默认返回 `None`，面板内容通常通过 ActivityBar 的子元素提供。
+    fn panel(&self) -> Option<AnyElement> {
+        None
+    }
 }
 
-impl ActivityPanelItem {
+/// 活动栏底部动作项接口（B1–B2）
+pub trait IActivityAct: 'static {
+    fn icon(&self) -> IconName;
+    fn title(&self) -> SharedString;
+    fn on_click(&self, window: &mut Window, cx: &mut App);
+    fn context_menu(&self) -> Vec<MenuItem>;
+}
+
+// ── 类型别名（用于 #[computed] 返回类型） ──
+
+pub type ActivityPanels = Vec<Arc<dyn IActivityPanel>>;
+pub type ActivityActs = Vec<Arc<dyn IActivityAct>>;
+
+// ── 默认实现 ──
+
+/// 活动栏面板项默认实现
+pub struct ActivityPanel {
+    id: SharedString,
+    icon: IconName,
+    title: SharedString,
+    panel: RefCell<Option<AnyElement>>,
+    active: bool,
+}
+
+impl ActivityPanel {
     pub fn new(id: impl Into<SharedString>, icon: IconName, title: impl Into<SharedString>) -> Self {
         Self {
             id: id.into(),
             icon,
             title: title.into(),
-            panel: None,
+            panel: RefCell::new(None),
             active: false,
         }
     }
 
-    pub fn panel(mut self, element: impl IntoElement) -> Self {
-        self.panel = Some(element.into_any_element());
+    pub fn panel(self, element: impl IntoElement) -> Self {
+        *self.panel.borrow_mut() = Some(element.into_any_element());
         self
     }
 
@@ -46,30 +77,43 @@ impl ActivityPanelItem {
         self.active = active;
         self
     }
-}
 
-impl Clone for ActivityPanelItem {
-    fn clone(&self) -> Self {
-        Self {
-            id: self.id.clone(),
-            icon: self.icon.clone(),
-            title: self.title.clone(),
-            panel: None,
-            active: self.active,
-        }
+    pub fn into_arc(self) -> Arc<dyn IActivityPanel> {
+        Arc::new(self)
     }
 }
 
-/// 活动栏底部动作项（B1–B2）
-#[derive(Clone)]
-pub struct ActivityActionItem {
-    pub icon: IconName,
-    pub title: SharedString,
-    pub on_click: Option<Rc<dyn Fn(&mut Window, &mut App) + 'static>>,
-    pub context_menu: Vec<MenuItem>,
+impl IActivityPanel for ActivityPanel {
+    fn id(&self) -> SharedString {
+        self.id.clone()
+    }
+
+    fn icon(&self) -> IconName {
+        self.icon.clone()
+    }
+
+    fn title(&self) -> SharedString {
+        self.title.clone()
+    }
+
+    fn is_activated(&self) -> bool {
+        self.active
+    }
+
+    fn panel(&self) -> Option<AnyElement> {
+        self.panel.borrow_mut().take()
+    }
 }
 
-impl ActivityActionItem {
+/// 活动栏底部动作项默认实现
+pub struct ActivityAct {
+    icon: IconName,
+    title: SharedString,
+    on_click: Option<Rc<dyn Fn(&mut Window, &mut App) + 'static>>,
+    context_menu: Vec<MenuItem>,
+}
+
+impl ActivityAct {
     pub fn new(icon: IconName, title: impl Into<SharedString>) -> Self {
         Self {
             icon,
@@ -88,15 +132,41 @@ impl ActivityActionItem {
         self.context_menu = items;
         self
     }
+
+    pub fn into_arc(self) -> Arc<dyn IActivityAct> {
+        Arc::new(self)
+    }
 }
+
+impl IActivityAct for ActivityAct {
+    fn icon(&self) -> IconName {
+        self.icon.clone()
+    }
+
+    fn title(&self) -> SharedString {
+        self.title.clone()
+    }
+
+    fn on_click(&self, window: &mut Window, cx: &mut App) {
+        if let Some(f) = &self.on_click {
+            f(window, cx);
+        }
+    }
+
+    fn context_menu(&self) -> Vec<MenuItem> {
+        self.context_menu.clone()
+    }
+}
+
+// ── ActivityBar 组件 ──
 
 /// ActivityBar 活动栏控件
 #[derive(IntoElement)]
 pub struct ActivityBar {
     id: ElementId,
     bar_width: gpui::Pixels,
-    panels: Vec<ActivityPanelItem>,
-    actions: Vec<ActivityActionItem>,
+    panels: ActivityPanels,
+    actions: ActivityActs,
     on_panel_change: Option<Rc<dyn Fn(&SharedString, &mut Window, &mut App) + 'static>>,
     panel_children: SmallVec<[AnyElement; 2]>,
 }
@@ -118,12 +188,12 @@ impl ActivityBar {
         self
     }
 
-    pub fn panels(mut self, panels: Vec<ActivityPanelItem>) -> Self {
+    pub fn panels(mut self, panels: ActivityPanels) -> Self {
         self.panels = panels;
         self
     }
 
-    pub fn actions(mut self, actions: Vec<ActivityActionItem>) -> Self {
+    pub fn actions(mut self, actions: ActivityActs) -> Self {
         self.actions = actions;
         self
     }
@@ -144,7 +214,7 @@ impl ParentElement for ActivityBar {
 }
 
 impl RenderOnce for ActivityBar {
-    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let on_panel_change = self.on_panel_change.clone();
         let mut active_panel = None;
         let mut panel_fallback = (!self.panel_children.is_empty()).then(|| {
@@ -155,13 +225,13 @@ impl RenderOnce for ActivityBar {
         });
 
         let mut panel_buttons: SmallVec<[AnyElement; 4]> = SmallVec::new();
-        for (ix, panel) in self.panels.into_iter().enumerate() {
-            let id = panel.id.clone();
-            let icon = panel.icon;
-            let title = panel.title.clone();
-            let active = panel.active;
+        for (ix, panel) in self.panels.iter().enumerate() {
+            let id = panel.id();
+            let icon = panel.icon();
+            let title = panel.title();
+            let active = panel.is_activated();
             if active {
-                active_panel = panel.panel.or_else(|| panel_fallback.take());
+                active_panel = panel.panel().or_else(|| panel_fallback.take());
             }
             let on_change = on_panel_change.clone();
 
@@ -187,19 +257,17 @@ impl RenderOnce for ActivityBar {
             .iter()
             .enumerate()
             .map(|(ix, action)| {
-                let on_click = action.on_click.clone();
-                let menu_items = action.context_menu.clone();
+                let menu_items = action.context_menu();
                 let mut btn = Button::new(("activity-action", ix))
                     .ghost()
-                    .icon(action.icon.clone())
-                    .tooltip(action.title.clone())
+                    .icon(action.icon())
+                    .tooltip(action.title())
                     .w(self.bar_width)
                     .h(px(48.));
 
                 if menu_items.is_empty() {
-                    if let Some(f) = on_click {
-                        btn = btn.on_click(move |_, window, cx| f(window, cx));
-                    }
+                    let action = action.clone();
+                    btn = btn.on_click(move |_, window, cx| action.on_click(window, cx));
                     btn.into_any_element()
                 } else {
                     btn.dropdown_menu(move |menu, window, cx| {

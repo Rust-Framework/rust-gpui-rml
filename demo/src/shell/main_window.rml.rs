@@ -2,7 +2,7 @@ use gpui::{Entity, SharedString};
 use rml::prelude::*;
 use rml_core::i18n::{t_static, I18nExt};
 use rml_ui::{
-    ActivityPanelItem, IconName, MenuItem, StatusBarItem, TabItem, TreeState,
+    ActivityPanel, ActivityPanels, IconName, MenuItem, StatusBarItem, TabItem, TreeState,
 };
 
 use crate::cases::{self, OpenTab};
@@ -43,11 +43,12 @@ impl MainWindow {
     }
 
     #[computed]
-    pub fn activity_icons(&self) -> Vec<ActivityPanelItem> {
+    pub fn activity_icons(&self) -> ActivityPanels {
         let _ = self.i18n_version;
         vec![
-            ActivityPanelItem::new("samples", IconName::BookOpen, t_static("shell.samples"))
-                .active(true),
+            ActivityPanel::new("samples", IconName::BookOpen, t_static("shell.samples"))
+                .active(true)
+                .into_arc(),
         ]
     }
 

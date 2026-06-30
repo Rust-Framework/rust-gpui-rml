@@ -28,6 +28,7 @@ fn make_ctx_with_field_types() -> CodegenCtx {
             m
         },
         field_validations: HashMap::new(),
+        model_fields: Vec::new(),
     }
 }
 
@@ -198,6 +199,7 @@ fn gen_model_input_floating_point_types() {
             m
         },
         field_validations: HashMap::new(),
+        model_fields: Vec::new(),
     };
     let source = r#"
 <component>

@@ -42,6 +42,7 @@ fn make_ctx_with_range_validation() -> CodegenCtx {
             );
             m
         },
+        model_fields: Vec::new(),
     }
 }
 
@@ -120,6 +121,7 @@ fn length_validation_generates_len_check() {
             );
             m
         },
+        model_fields: Vec::new(),
     };
     let source = r#"
 <component>
@@ -169,6 +171,7 @@ fn required_validation_generates_empty_check() {
             );
             m
         },
+        model_fields: Vec::new(),
     };
     let source = r#"
 <component>
@@ -220,6 +223,7 @@ fn regex_validation_generates_pattern_match() {
             );
             m
         },
+        model_fields: Vec::new(),
     };
     let source = r#"
 <component>
@@ -274,6 +278,7 @@ fn custom_validation_generates_function_call() {
             );
             m
         },
+        model_fields: Vec::new(),
     };
     let source = r#"
 <component>
@@ -329,6 +334,7 @@ fn multiple_rules_executed_in_order() {
             );
             m
         },
+        model_fields: Vec::new(),
     };
     let source = r#"
 <component>
@@ -425,6 +431,7 @@ fn no_validation_falls_back_to_default() {
             m
         },
         field_validations: HashMap::new(), // 无校验规则
+        model_fields: Vec::new(),
     };
     let code = compile(RML_SOURCE_WITH_AGE, &ctx).expect("compile failed");
 

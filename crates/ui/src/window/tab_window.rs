@@ -8,16 +8,15 @@ use gpui::{
 };
 use gpui_component::{
     Icon, IconName, Sizable as _,
+    TitleBar,
     button::{Button, ButtonVariants as _},
     tab::{Tab, TabBar},
     h_flex,
     resizable::{h_resizable, resizable_panel, v_resizable},
     v_flex,
 };
-use rml_core::window::WindowControlButtons;
 use smallvec::SmallVec;
 
-use super::rml_title_bar::RmlTitleBar;
 use super::templates::{MenuBarTemplate, StatusBarTemplate};
 use super::types::{MenuItem, StatusBarItem};
 
@@ -57,7 +56,6 @@ pub struct TabWindowShell {
     title: Option<SharedString>,
     icon: Option<IconName>,
     show_chrome: bool,
-    window_controls: WindowControlButtons,
     menu_slot: Option<AnyElement>,
     title_ext_slot: Option<AnyElement>,
     tabs: Vec<TabItem>,
@@ -80,7 +78,6 @@ impl TabWindowShell {
             title: None,
             icon: None,
             show_chrome: true,
-            window_controls: WindowControlButtons::default(),
             menu_slot: None,
             title_ext_slot: None,
             tabs: Vec::new(),
@@ -110,11 +107,6 @@ impl TabWindowShell {
 
     pub fn show_chrome(mut self, show: bool) -> Self {
         self.show_chrome = show;
-        self
-    }
-
-    pub fn window_controls(mut self, controls: WindowControlButtons) -> Self {
-        self.window_controls = controls;
         self
     }
 
@@ -246,10 +238,20 @@ impl RenderOnce for TabWindowShell {
             .menu(tab_overflow)
             .selected_index(self.selected_tab);
 
-        if let Some(prefix) = self.menu_slot.filter(|_| self.show_chrome) {
-            tab_bar = tab_bar.prefix(prefix);
-        } else if let Some(toggle) = chrome_toggle {
-            tab_bar = tab_bar.prefix(toggle);
+        let mut prefix_parts: SmallVec<[AnyElement; 3]> = SmallVec::new();
+        if let Some(toggle) = chrome_toggle {
+            prefix_parts.push(toggle);
+        }
+        if self.show_chrome {
+            if let Some(menu) = self.menu_slot {
+                prefix_parts.push(menu);
+            }
+            if let Some(title) = self.title {
+                prefix_parts.push(div().px_2().child(title).into_any_element());
+            }
+        }
+        if !prefix_parts.is_empty() {
+            tab_bar = tab_bar.prefix(h_flex().children(prefix_parts));
         }
 
         for tab in &self.tabs {
@@ -268,8 +270,7 @@ impl RenderOnce for TabWindowShell {
             tab_bar = tab_bar.on_click(move |ix, window, cx| on_click(*ix, window, cx));
         }
 
-        let title_bar = RmlTitleBar::new()
-            .window_controls(self.window_controls)
+        let title_bar = TitleBar::new()
             .child(
                 div()
                     .flex_1()

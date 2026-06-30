@@ -6,11 +6,8 @@ use gpui::{
     AnyElement, App, IntoElement, ParentElement, RenderOnce, Styled, Window, div,
     prelude::FluentBuilder as _,
 };
-use gpui_component::{Icon, IconName, Sizable as _, h_flex};
-use rml_core::window::WindowControlButtons;
+use gpui_component::{Icon, IconName, Sizable as _, TitleBar, h_flex};
 use smallvec::SmallVec;
-
-use super::rml_title_bar::RmlTitleBar;
 
 use super::templates::{MenuBarTemplate, StatusBarTemplate};
 use super::types::{MenuItem, StatusBarItem};
@@ -21,7 +18,6 @@ pub struct ModernWindowShell {
     title: Option<gpui::SharedString>,
     icon: Option<IconName>,
     show_chrome: bool,
-    window_controls: WindowControlButtons,
     menu_slot: Option<AnyElement>,
     title_ext_slot: Option<AnyElement>,
     status_slot: Option<AnyElement>,
@@ -34,7 +30,6 @@ impl ModernWindowShell {
             title: None,
             icon: None,
             show_chrome: true,
-            window_controls: WindowControlButtons::default(),
             menu_slot: None,
             title_ext_slot: None,
             status_slot: None,
@@ -55,11 +50,6 @@ impl ModernWindowShell {
     /// 是否显示菜单与标题区域
     pub fn show_chrome(mut self, show: bool) -> Self {
         self.show_chrome = show;
-        self
-    }
-
-    pub fn window_controls(mut self, controls: WindowControlButtons) -> Self {
-        self.window_controls = controls;
         self
     }
 
@@ -118,8 +108,7 @@ impl RenderOnce for ModernWindowShell {
             .flex_col()
             .size_full()
             .child(
-                RmlTitleBar::new()
-                    .window_controls(self.window_controls)
+                TitleBar::new()
                     .child(
                         h_flex()
                             .flex_1()

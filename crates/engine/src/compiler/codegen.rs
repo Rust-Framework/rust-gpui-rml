@@ -159,7 +159,6 @@ fn gen_window_impl(
         startup.as_deref(),
         min_width,
         min_height,
-        elem,
     );
 
     let chrome_method = if chrome_transparent {
@@ -374,7 +373,6 @@ fn gen_modern_window_wrapper(
     }
 
     code.push_str(&format!(".child({})", children_body));
-    code.push_str(".window_controls(self.window_controls())");
     Ok(code)
 }
 
@@ -516,7 +514,6 @@ fn gen_tab_window_wrapper(
     }
 
     code.push_str(&format!(".child({})", children_body));
-    code.push_str(".window_controls(self.window_controls())");
     Ok(code)
 }
 
@@ -541,14 +538,13 @@ fn shell_bind_expr(expr: &str, computed: &[&str], loop_vars: &[&str]) -> String 
     }
 }
 
-/// 生成 IWindow 可选配置方法（left/top/startup/min_size/window_controls）
+/// 生成 IWindow 可选配置方法（left/top/startup/min_size）
 fn gen_window_extra_methods(
     left: Option<f32>,
     top: Option<f32>,
     startup: Option<&str>,
     min_width: Option<f32>,
     min_height: Option<f32>,
-    elem: &Element,
 ) -> String {
     let mut out = String::new();
 
@@ -581,27 +577,7 @@ fn gen_window_extra_methods(
         ));
     }
 
-    let minimize = extract_static_bool_attr(elem, "show_minimize").unwrap_or(true);
-    let maximize = extract_static_bool_attr(elem, "show_maximize").unwrap_or(true);
-    let close = extract_static_bool_attr(elem, "show_close").unwrap_or(true);
-    if !minimize || !maximize || !close {
-        out.push_str(&format!(
-            "\n    fn window_controls(&self) -> rml_core::window::WindowControlButtons {{\n        \
-             rml_core::window::WindowControlButtons {{ minimize: {minimize}, maximize: {maximize}, close: {close} }}\n    }}\n"
-        ));
-    }
-
     out
-}
-
-/// 从元素属性中提取静态布尔值
-fn extract_static_bool_attr(elem: &Element, name: &str) -> Option<bool> {
-    extract_static_attr(elem, name).map(|v| {
-        matches!(
-            v.as_str(),
-            "true" | "1" | "yes" | "True" | "TRUE" | "Yes" | "YES"
-        )
-    })
 }
 
 /// 从元素属性中提取静态属性值
