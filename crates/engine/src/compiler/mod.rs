@@ -35,12 +35,20 @@ pub enum ValidationRule {
 ///
 /// 一个字段可声明多个规则，按声明顺序执行。任一失败则写入错误状态，不赋值、不 bump_version。
 /// `custom_message` 为 `Some` 时覆盖所有失败分支的默认错误消息。
+///
+/// Phase B-3.3：支持 `validator_type` 接口式校验（`#[validate(MyValidator)]`）。
+/// 与 `rules`/`custom_message` 互斥——IValidate 已封装完整校验逻辑（含消息）。
 #[derive(Debug, Clone, Default)]
 pub struct ValidationRuleSet {
     /// 规则列表（按声明顺序）
     pub rules: Vec<ValidationRule>,
     /// 自定义错误消息（覆盖默认消息）
     pub custom_message: Option<String>,
+    /// IValidate 类型名（Phase B-3.3：`#[validate(MyValidator)]`）
+    ///
+    /// 为 `Some` 时，`rules` 与 `custom_message` 必须为空（互斥）。
+    /// codegen 通过 `MyValidator::default().valid_with_view(value, this)` 调用。
+    pub validator_type: Option<String>,
 }
 
 /// 代码生成上下文

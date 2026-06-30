@@ -13,7 +13,7 @@
 | `#[on_loaded]`   | 视图加载完成后的回调                 | 方法    |
 | `#[on_unloaded]` | 视图卸载前的清理回调                 | 方法    |
 | `#[element]`     | 标记字段为 `ref` 引用的 UI 元素      | 字段    |
-| `#[validate]`    | 声明字段的校验规则（range/length/required/regex/custom） | 字段 |
+| `#[validate]`    | 声明字段的校验规则（range/length/required/regex/custom/IValidate） | 字段 |
 
 ## 4.2.2 `#[window]`：标记窗口
 
@@ -503,6 +503,183 @@ match value.parse::<i32>() {
 ```
 
 > ⚠️ `#[validate]` 仅对 `<input model={field}>` 双向绑定生效。单向绑定的 `value={field}` 不触发校验（仅展示，不回写）。
+
+### IValidate 接口式校验
+
+当内置规则（range/length/required/regex/custom）无法表达复杂校验逻辑时，可通过 `IValidate` trait 自定义校验器，并用 `#[validate(MyValidator)]` 引用。
+
+#### IValidate trait 定义
+
+`IValidate` 定义在 `rml_core::validate` 模块（通过 `rml::prelude::*` 重导出）：
+
+```rust
+pub enum ValidResult {
+    Pass,
+    Fail(SharedString),
+}
+
+pub trait IValidate: Default + Send + Sync {
+    /// 简单校验：仅根据 value 判断
+    fn valid(&self, value: &str) -> ValidResult {
+        ValidResult::Pass
+    }
+
+    /// 带视图上下文的校验：可访问 view 的其他字段进行跨字段校验
+    /// 默认委托给 valid()，重写后通过 view.downcast_ref::<MyView>() 取回具体类型
+    fn valid_with_view(&self, value: &str, view: &dyn std::any::Any) -> ValidResult {
+        self.valid(value)
+    }
+
+    /// 将校验结果转换为错误消息
+    /// - None → 校验通过
+    /// - Some(msg) → 校验失败，UI 显示红色边框 + tooltip(msg)
+    fn message(&self, result: &ValidResult) -> Option<SharedString> {
+        match result {
+            ValidResult::Pass => None,
+            ValidResult::Fail(msg) => Some(msg.clone()),
+        }
+    }
+}
+```
+
+#### 声明方式
+
+`#[validate(MyValidator)]` 的参数是**类型名**（单标识符），类型必须实现 `IValidate` + `Default`：
+
+```rust
+use rml::prelude::*;  // 引入 IValidate + ValidResult
+
+#[derive(Default)]
+struct EmailValidator;
+
+impl IValidate for EmailValidator {
+    fn valid(&self, value: &str) -> ValidResult {
+        if value.contains('@') && value.contains('.') {
+            ValidResult::Pass
+        } else {
+            ValidResult::Fail("邮箱格式错误".into())
+        }
+    }
+}
+
+#[window]
+#[derive(Default)]
+pub struct Form {
+    #[validate(EmailValidator)]
+    pub email: String,
+}
+```
+
+#### 跨字段校验（带 Context）
+
+重写 `valid_with_view`，通过 `view.downcast_ref::<MyView>()` 访问视图的其他字段。codegen 自动将 `&self` 作为 `&dyn Any` 注入：
+
+```rust
+#[derive(Default)]
+struct PasswordConfirmValidator;
+
+impl IValidate for PasswordConfirmValidator {
+    fn valid_with_view(&self, value: &str, view: &dyn std::any::Any) -> ValidResult {
+        // downcast 回具体视图类型，访问其他字段
+        if let Some(form) = view.downcast_ref::<RegistrationForm>() {
+            if value != form.password {
+                return ValidResult::Fail("两次输入的密码不一致".into());
+            }
+        }
+        ValidResult::Pass
+    }
+}
+
+#[window]
+#[derive(Default)]
+pub struct RegistrationForm {
+    pub password: String,
+    #[validate(PasswordConfirmValidator)]
+    pub password_confirm: String,
+}
+```
+
+> 此设计让 validator 无需自行获取外部状态——所有依赖由 codegen 注入，符合"不被从外部获取能力的条件"原则。
+
+#### 自定义消息映射
+
+重写 `message()` 实现 i18n 或自定义结果→消息映射：
+
+```rust
+#[derive(Default)]
+struct AgeValidator;
+
+impl IValidate for AgeValidator {
+    fn valid(&self, value: &str) -> ValidResult {
+        match value.parse::<i32>() {
+            Ok(v) if v >= 18 => ValidResult::Pass,
+            Ok(_) => ValidResult::Fail(" underage ".into()),
+            Err(_) => ValidResult::Fail(" invalid ".into()),
+        }
+    }
+
+    fn message(&self, result: &ValidResult) -> Option<SharedString> {
+        match result {
+            ValidResult::Pass => None,
+            ValidResult::Fail(code) => match code.as_ref() {
+                " underage " => Some("必须年满 18 岁".into()),
+                " invalid " => Some("请输入有效的整数".into()),
+                other => Some(other.into()),
+            },
+        }
+    }
+}
+```
+
+#### 与规则式互斥
+
+`#[validate(MyValidator)]` 与 `range`/`length`/`required`/`regex`/`custom` + `message` 互斥。parser 拒绝以下混用：
+
+```rust
+// ❌ 错误：IValidate 类型与规则混用
+#[validate(MyValidator, range(min = 0, max = 10))]
+pub age: i32,
+
+// ❌ 错误：IValidate 类型与 message 覆盖混用（应使用 IValidate::message()）
+#[validate(MyValidator, message = "自定义")]
+pub name: String,
+
+// ✅ 正确：纯 IValidate
+#[validate(MyValidator)]
+pub name: String,
+```
+
+#### codegen 行为
+
+以 `email: String` + `#[validate(EmailValidator)]` 为例，生成的反向赋值代码：
+
+```rust
+{
+    let __rml_value = value.to_string();
+    let __rml_validator = EmailValidator::default();
+    let __rml_result = __rml_validator.valid_with_view(&__rml_value, this as &dyn std::any::Any);
+    if let Some(__rml_err_msg) = __rml_validator.message(&__rml_result) {
+        this.__rml_field_errors.insert("email".to_string(), Some(__rml_err_msg));
+    } else {
+        this.email = __rml_value;
+        this.__rml_field_errors.insert("email".to_string(), None);
+        this.__rml_bump_version("email");
+    }
+}
+```
+
+数字类型（如 `age: i32`）外层包裹 `match value.parse::<i32>()`，parse 失败仍走默认类型错误消息；parse 成功后调用 validator。
+
+#### 规则式 vs 接口式
+
+| 维度 | 规则式（range/length/...） | 接口式（IValidate） |
+|---|---|---|
+| 适用场景 | 简单字段级校验（范围/长度/格式） | 复杂校验（跨字段/异步/状态机） |
+| 声明位置 | `#[validate(range(min=0, max=150))]` | `#[validate(MyValidator)]` |
+| 校验逻辑 | codegen 内联生成 if-else 链 | 用户实现 `valid`/`valid_with_view` |
+| 错误消息 | 默认消息 + `message="..."` 覆盖 | `IValidate::message()` 自定义 |
+| 跨字段校验 | 不支持 | 支持（`view.downcast_ref::<MyView>()`） |
+| 互斥 | 不可与 IValidate 混用 | 不可与规则式 + message 混用 |
 
 ## 4.2.10 宏属性的组合
 

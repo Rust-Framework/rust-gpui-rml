@@ -37,6 +37,7 @@ fn make_ctx_with_range_validation() -> CodegenCtx {
                         max: Some(150.0),
                     }],
                     custom_message: None,
+                    validator_type: None,
                 },
             );
             m
@@ -114,6 +115,7 @@ fn length_validation_generates_len_check() {
                         max: Some(20),
                     }],
                     custom_message: None,
+                    validator_type: None,
                 },
             );
             m
@@ -162,6 +164,7 @@ fn required_validation_generates_empty_check() {
                 ValidationRuleSet {
                     rules: vec![ValidationRule::Required],
                     custom_message: None,
+                    validator_type: None,
                 },
             );
             m
@@ -212,6 +215,7 @@ fn regex_validation_generates_pattern_match() {
                         r"^\w+@\w+\.\w+$".to_string(),
                     )],
                     custom_message: Some("邮箱格式错误".to_string()),
+                    validator_type: None,
                 },
             );
             m
@@ -265,6 +269,7 @@ fn custom_validation_generates_function_call() {
                 ValidationRuleSet {
                     rules: vec![ValidationRule::Custom("validate_phone".to_string())],
                     custom_message: None,
+                    validator_type: None,
                 },
             );
             m
@@ -319,6 +324,7 @@ fn multiple_rules_executed_in_order() {
                         },
                     ],
                     custom_message: None,
+                    validator_type: None,
                 },
             );
             m

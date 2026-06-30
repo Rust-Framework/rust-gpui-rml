@@ -319,18 +319,26 @@ fn is_ident_char(c: char) -> bool {
 ///
 /// 解析逗号分隔的规则列表，如 `required, length(min = 3, max = 20), message = "..."`。
 /// 由 scanner 调用 `attr.parse_args::<ValidateArgs>()` 解析属性参数。
+///
+/// Phase B-3.3：支持 `#[validate(MyValidator)]` 接口式校验。
+/// `MyValidator` 为实现 `rml_core::validate::IValidate` 的类型名（单标识符）。
+/// 与规则式（required/length/range/regex/custom）+ message 互斥。
 struct ValidateArgs {
     rules: Vec<ValidationRule>,
     custom_message: Option<String>,
+    validator_type: Option<String>,
 }
 
 impl syn::parse::Parse for ValidateArgs {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let mut rules = Vec::new();
         let mut custom_message = None;
+        let mut validator_type: Option<String> = None;
+        let mut last_ident_span = None; // 推断为 Option<proc_macro2::Span>
 
         while !input.is_empty() {
             let ident: Ident = input.parse()?;
+            last_ident_span = Some(ident.span());
             match ident.to_string().as_str() {
                 "required" => {
                     rules.push(ValidationRule::Required);
@@ -382,10 +390,14 @@ impl syn::parse::Parse for ValidateArgs {
                     }
                 }
                 other => {
-                    return Err(syn::Error::new(
-                        ident.span(),
-                        format!("unknown #[validate] rule: {}", other),
-                    ));
+                    // Phase B-3.3：未知标识符识别为 IValidate 类型名
+                    if validator_type.is_some() {
+                        return Err(syn::Error::new(
+                            ident.span(),
+                            format!("duplicate validator type: only one IValidate type allowed, got: {}", other),
+                        ));
+                    }
+                    validator_type = Some(other.to_string());
                 }
             }
             if input.peek(Token![,]) {
@@ -393,7 +405,23 @@ impl syn::parse::Parse for ValidateArgs {
             }
         }
 
-        Ok(ValidateArgs { rules, custom_message })
+        // Phase B-3.3：互斥校验——IValidate 类型与规则式 + message 不可混用
+        if validator_type.is_some() {
+            if !rules.is_empty() {
+                return Err(syn::Error::new(
+                    last_ident_span.unwrap(),
+                    "cannot mix IValidate type with rule-based validators (required/length/range/regex/custom)",
+                ));
+            }
+            if custom_message.is_some() {
+                return Err(syn::Error::new(
+                    last_ident_span.unwrap(),
+                    "cannot mix IValidate type with message override (use IValidate::message() instead)",
+                ));
+            }
+        }
+
+        Ok(ValidateArgs { rules, custom_message, validator_type })
     }
 }
 
@@ -402,6 +430,7 @@ impl From<ValidateArgs> for ValidationRuleSet {
         ValidationRuleSet {
             rules: args.rules,
             custom_message: args.custom_message,
+            validator_type: args.validator_type,
         }
     }
 }

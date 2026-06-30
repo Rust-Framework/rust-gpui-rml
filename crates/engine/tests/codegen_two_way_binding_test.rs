@@ -341,26 +341,32 @@ fn gen_field_assign_preserves_old_value_on_error() {
 }
 
 #[test]
-fn gen_model_input_wraps_with_error_div() {
+fn gen_model_input_applies_red_border_to_input() {
     let ctx = make_ctx_with_field_types();
     let code = compile(RML_SOURCE_WITH_MODEL, &ctx).expect("compile failed");
 
-    // 应检查 __rml_field_errors 并条件包裹 div
+    // 应检查 __rml_field_errors 获取错误状态
     assert!(
         code.contains("__rml_field_errors.get("),
         "应检查 __rml_field_errors 获取错误状态"
     );
+    // Phase B-3.3：红色边框应直接应用到 Input 自身（通过 Styled trait .border_color()），
+    // 而非附加在外层 wrapper div 上（避免双层边框 / 间距错位）
     assert!(
-        code.contains("border_1()"),
-        "校验失败时应添加 border_1()"
+        code.contains("let __rml_input = __rml_input.border_color(gpui::rgb(0xff0000))"),
+        "Input 自身应被设置红色边框，实际：\n{}",
+        code
     );
+    // wrapper div 不应再附加 .border_1().border_color(...) 链
     assert!(
-        code.contains("border_color(gpui::rgb(0xff0000))"),
-        "校验失败时应设置红色边框"
+        !code.contains(".border_1().border_color(gpui::rgb(0xff0000))"),
+        "wrapper div 不应再附加 border，实际：\n{}",
+        code
     );
+    // wrapper div 仍需 id 承载 tooltip
     assert!(
         code.contains("rml_input_err:"),
-        "包裹 div 应有 id（rml_input_err:<field>）"
+        "wrapper div 应有 id（rml_input_err:<field>）以承载 tooltip"
     );
 }
 

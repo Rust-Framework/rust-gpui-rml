@@ -531,19 +531,20 @@ fn gen_model_input(
         }
     }
 
-    // 校验失败 UI 表现：检查 __rml_field_errors，若 Some(msg) 则包裹红色边框 + tooltip
-    // .id() 使 div 成为 StatefulInteractiveElement，从而可调用 .tooltip()
-    // .into_any_element() 统一 if/else 分支返回类型为 AnyElement
+    // 校验失败 UI 表现：检查 __rml_field_errors，若 Some(msg) 则修改 Input 自身边框颜色 + tooltip
+    // Phase B-3.3：直接对 Input 调用 .border_color()（Styled trait）覆盖主题色，
+    // 避免 wrapper div 附加外层边框导致双层边框 / 间距错位。
+    // wrapper div 仅承载 .id()（StatefulInteractiveElement 以支持 .tooltip()）+ .child()。
     let wrapper_id = format!("rml_input_err:{}", field);
     let code = format!(
         r#"{{
             let __rml_input = {input_code};
             let __rml_err: Option<gpui::SharedString> = self.__rml_field_errors.get({field:?}).and_then(|e| e.clone());
             if let Some(__rml_err_msg) = __rml_err {{
+                // 直接修改 Input 自身边框颜色（覆盖主题色，Input 内部已 border_1()）
+                let __rml_input = __rml_input.border_color(gpui::rgb(0xff0000));
                 gpui::div()
                     .id({wrapper_id:?})
-                    .border_1()
-                    .border_color(gpui::rgb(0xff0000))
                     .child(__rml_input)
                     .tooltip(move |window, cx| rml_ui::Tooltip::new(__rml_err_msg.clone()).build(window, cx))
                     .into_any_element()
@@ -590,6 +591,13 @@ fn gen_field_assign_expr(
     ty: &str,
     validation: Option<&crate::compiler::ValidationRuleSet>,
 ) -> String {
+    // Phase B-3.3：优先级 1——IValidate 接口式校验
+    if let Some(v) = validation {
+        if let Some(validator_type) = &v.validator_type {
+            return gen_field_assign_with_validator(field, ty, validator_type);
+        }
+    }
+    // 优先级 2——规则式校验（原有逻辑）
     let rules = match validation {
         Some(v) if !v.rules.is_empty() => &v.rules,
         _ => return gen_field_assign_expr_default(field, ty),
@@ -603,6 +611,68 @@ fn gen_field_assign_expr(
         // bool 类型忽略校验规则（语义不明确）
         "bool" => gen_field_assign_expr_default(field, ty),
         _ => gen_string_field_assign_with_validation(field, rules, custom_msg),
+    }
+}
+
+/// IValidate 接口式校验生成（Phase B-3.3）
+///
+/// 为 `#[validate(MyValidator)]` 标注的字段生成调用 `IValidate::valid_with_view` 的代码。
+/// codegen 通过 `MyValidator::default()` 构造实例（要求 `Default`），
+/// 调用 `valid_with_view(value, this as &dyn Any)`（this 即视图结构体引用，支持跨字段校验）。
+/// 通过 `message(&result)` 转换 `ValidResult` 为 `Option<SharedString>`：
+/// - `None` → 校验通过：赋值 + 清除错误 + bump_version
+/// - `Some(msg)` → 校验失败：仅设置错误状态（不赋值、不 bump_version）
+///
+/// **数字类型**：外层 `match value.parse::<T>()`，parse 失败仍走原默认错误消息
+/// **String 类型**：直接调用 validator，无 parse 阶段
+/// **bool 类型**：忽略 IValidate（语义不明确），回退默认逻辑
+fn gen_field_assign_with_validator(field: &str, ty: &str, validator_type: &str) -> String {
+    match ty {
+        "i32" | "u32" | "i64" | "u64" | "isize" | "usize" | "f32" | "f64" => {
+            let is_integer = matches!(ty, "i32" | "u32" | "i64" | "u64" | "isize" | "usize");
+            let type_err = if is_integer { "请输入有效的整数" } else { "请输入有效的数字" };
+            format!(
+                r#"match value.parse::<{ty}>() {{
+    Ok(v) => {{
+        let __rml_validator = {validator_type}::default();
+        let __rml_result = __rml_validator.valid_with_view(value.as_ref(), this as &dyn std::any::Any);
+        if let Some(__rml_err_msg) = __rml_validator.message(&__rml_result) {{
+            this.__rml_field_errors.insert({field:?}.to_string(), Some(__rml_err_msg));
+        }} else {{
+            this.{field} = v;
+            this.__rml_field_errors.insert({field:?}.to_string(), None);
+            this.__rml_bump_version({field:?});
+        }}
+    }}
+    Err(_) => {{
+        this.__rml_field_errors.insert({field:?}.to_string(), Some({type_err:?}.into()));
+    }}
+}}"#,
+                ty = ty,
+                validator_type = validator_type,
+                field = field,
+                type_err = type_err,
+            )
+        }
+        // bool 类型忽略 IValidate（与规则式一致）
+        "bool" => gen_field_assign_expr_default(field, ty),
+        // String / SharedString / 其他
+        _ => format!(
+            r#"{{
+    let __rml_value = value.to_string();
+    let __rml_validator = {validator_type}::default();
+    let __rml_result = __rml_validator.valid_with_view(&__rml_value, this as &dyn std::any::Any);
+    if let Some(__rml_err_msg) = __rml_validator.message(&__rml_result) {{
+        this.__rml_field_errors.insert({field:?}.to_string(), Some(__rml_err_msg));
+    }} else {{
+        this.{field} = __rml_value;
+        this.__rml_field_errors.insert({field:?}.to_string(), None);
+        this.__rml_bump_version({field:?});
+    }}
+}}"#,
+            validator_type = validator_type,
+            field = field,
+        ),
     }
 }
 

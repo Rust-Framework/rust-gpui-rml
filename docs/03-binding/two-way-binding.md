@@ -335,8 +335,8 @@ pub fn uppercase_name(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
 
 ### UI 表现
 
-- **红色边框**：Input 被包裹在 `div().border_1().border_color(red)` 中
-- **tooltip 气泡**：hover 时显示错误提示（如"请输入有效的整数"），不占用布局空间
+- **红色边框**：通过 `Styled` trait 直接对 Input 调用 `.border_color(gpui::rgb(0xff0000))`，覆盖 Input 自身的主题色边框（input.rs 内部 `border_color(theme_color)` → `refine_style(&self.style)` 顺序保证用户样式覆盖主题色）。校验通过时恢复正常主题色。
+- **tooltip 气泡**：Input 被包裹在 `div().id(...).tooltip(...)` 中，hover 时显示错误提示（如"请输入有效的整数"），不占用布局空间。wrapper div 仅承载 tooltip，不再附加边框。
 
 ### 错误状态生命周期
 
@@ -505,6 +505,94 @@ pub struct RegistrationForm {
 <input model={email} placeholder="邮箱" />
 <input model={phone} placeholder="手机号" />
 ```
+
+### IValidate 接口式校验
+
+当内置规则无法表达复杂校验逻辑时，可通过 `IValidate` trait 自定义校验器，用 `#[validate(MyValidator)]` 引用。与规则式（range/length/required/regex/custom）+ `message` 互斥。
+
+#### 声明方式
+
+`MyValidator` 必须实现 `IValidate` + `Default`：
+
+```rust
+use rml::prelude::*;  // 引入 IValidate + ValidResult
+
+#[derive(Default)]
+struct EmailValidator;
+
+impl IValidate for EmailValidator {
+    fn valid(&self, value: &str) -> ValidResult {
+        if value.contains('@') && value.contains('.') {
+            ValidResult::Pass
+        } else {
+            ValidResult::Fail("邮箱格式错误".into())
+        }
+    }
+}
+
+#[window]
+#[derive(Default)]
+pub struct Form {
+    #[validate(EmailValidator)]
+    pub email: String,
+}
+```
+
+`IValidate` 提供三个方法（均有默认实现）：
+- `valid(&self, value: &str) -> ValidResult`：简单校验
+- `valid_with_view(&self, value: &str, view: &dyn Any) -> ValidResult`：带视图上下文（默认委托给 `valid`）
+- `message(&self, result: &ValidResult) -> Option<SharedString>`：结果→消息转换
+
+#### 跨字段校验（Context 注入）
+
+重写 `valid_with_view`，通过 `view.downcast_ref::<MyView>()` 访问视图的其他字段。codegen 自动将 `&self` 作为 `&dyn Any` 注入：
+
+```rust
+#[derive(Default)]
+struct PasswordConfirmValidator;
+
+impl IValidate for PasswordConfirmValidator {
+    fn valid_with_view(&self, value: &str, view: &dyn std::any::Any) -> ValidResult {
+        if let Some(form) = view.downcast_ref::<RegistrationForm>() {
+            if value != form.password {
+                return ValidResult::Fail("两次输入的密码不一致".into());
+            }
+        }
+        ValidResult::Pass
+    }
+}
+
+#[window]
+#[derive(Default)]
+pub struct RegistrationForm {
+    pub password: String,
+    #[validate(PasswordConfirmValidator)]
+    pub password_confirm: String,
+}
+```
+
+#### codegen 行为
+
+以 `email: String` + `#[validate(EmailValidator)]` 为例：
+
+```rust
+{
+    let __rml_value = value.to_string();
+    let __rml_validator = EmailValidator::default();
+    let __rml_result = __rml_validator.valid_with_view(&__rml_value, this as &dyn std::any::Any);
+    if let Some(__rml_err_msg) = __rml_validator.message(&__rml_result) {
+        this.__rml_field_errors.insert("email".to_string(), Some(__rml_err_msg));
+    } else {
+        this.email = __rml_value;
+        this.__rml_field_errors.insert("email".to_string(), None);
+        this.__rml_bump_version("email");
+    }
+}
+```
+
+数字字段（如 `age: i32`）外层包裹 `match value.parse::<i32>()`，parse 失败仍走默认类型错误消息。
+
+详见 [4.2.9 #[validate] 宏](../04-code-behind/macros.md#ivalidate-接口式校验) 的 IValidate 接口式校验章节。
 
 ## 3.3.11 双向绑定的性能
 
