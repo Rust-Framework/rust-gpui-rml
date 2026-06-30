@@ -46,7 +46,7 @@ pub struct StructMetadata {
     pub computed_methods: Vec<String>,
     /// 每个 `#[computed]` 方法 → 依赖的 pub 字段列表（通过 `self.<field>` 访问检测）
     pub computed_deps: HashMap<String, Vec<String>>,
-    /// 每个 `#[computed]` 方法 → 返回类型字符串（如 `"i32"`、`"Vec<MenuItem>"`）
+    /// 每个 `#[computed]` 方法 → 返回类型字符串（如 `"i32"`、`"Vec<TabItem>"`）
     ///
     /// codegen 生成的包装方法需要显式标注返回类型以调用
     /// `ComputedCache::get_or_compute::<T, _>(...)`。
@@ -103,7 +103,7 @@ pub fn scan_struct_metadata(rml_rs_path: &Path) -> HashMap<String, StructMetadat
                     if let Some(name) = &f.ident {
                         let name_str = name.to_string();
                         meta.observable_fields.push(name_str.clone());
-                        // 提取字段类型字符串（清理 token 间空格：`Vec < MenuItem >` → `Vec<MenuItem>`）
+                        // 提取字段类型字符串（清理 token 间空格：`Vec < TabItem >` → `Vec<TabItem>`)
                         let ty = &f.ty;
                         let ty_str = quote!(#ty).to_string();
                         let cleaned = ty_str.split_whitespace().collect::<String>();
@@ -168,7 +168,7 @@ pub fn scan_struct_metadata(rml_rs_path: &Path) -> HashMap<String, StructMetadat
 /// 从 `ReturnType` 提取类型字符串（去除 `->` 与空格）
 ///
 /// - `-> i32` → `"i32"`
-/// - `-> Vec<MenuItem>` → `"Vec<MenuItem>"`
+/// - `-> Vec<TabItem>` → `"Vec<TabItem>"`
 /// - 无返回类型（`-> ()` 隐式）→ `"()"`
 fn return_type_str(output: &ReturnType) -> String {
     match output {
@@ -176,7 +176,7 @@ fn return_type_str(output: &ReturnType) -> String {
         ReturnType::Type(_, ty) => {
             // 用 quote!.to_string() 保留源码形式（含泛型参数）
             let s = quote!(#ty).to_string();
-            // 清理 token 间空格：`Vec < MenuItem >` → `Vec<MenuItem>`
+            // 清理 token 间空格：`Vec < TabItem >` → `Vec<TabItem>`
             s.split_whitespace().collect::<String>()
         }
     }

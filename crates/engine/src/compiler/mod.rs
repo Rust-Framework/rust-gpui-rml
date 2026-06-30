@@ -84,7 +84,7 @@ pub struct CodegenCtx {
     ///
     /// codegen 生成的包装方法需要显式标注返回类型以调用
     /// `ComputedCache::get_or_compute::<T, _>(...)`。
-    /// 由 build.rs 从 `method.sig.output` 提取（如 `"i32"`、`"Vec<MenuItem>"`）。
+    /// 由 build.rs 从 `method.sig.output` 提取（如 `"i32"`、`"Vec<TabItem>"`）。
     pub computed_returns: HashMap<String, String>,
     /// 每个 pub 字段 → 类型字符串（Phase B-3：双向绑定类型转换）
     ///

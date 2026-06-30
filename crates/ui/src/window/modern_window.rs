@@ -1,6 +1,11 @@
 //! ModernWindowShell —— 内置封装的窗口视觉外壳组件
 //!
-//! 组合 `TitleBar` + 插槽化 Menu/StatusBar，用户通过 MVVM 数据绑定或自定义 element 配置。
+//! 组合 `TitleBar` + 插槽化 Menu/StatusBar，用户通过插槽扩展（`slot_menu`/`slot_title_ext`/`slot_status_bar`）
+//! 或自定义 element 配置。
+//!
+//! 菜单 / 状态栏不再接受 `Vec<MenuItem>` / `Vec<StatusBarItem>` 数据结构绑定。
+//! 用户在 RML 中通过 `<slot_menu>` + `<MenuItem command={field} />` 声明菜单结构，
+//! ViewModel 仅持有 `Arc<dyn ICommand>` 字段。
 
 use gpui::{
     AnyElement, App, IntoElement, ParentElement, RenderOnce, Styled, Window, div,
@@ -8,9 +13,6 @@ use gpui::{
 };
 use gpui_component::{Icon, IconName, Sizable as _, TitleBar, h_flex};
 use smallvec::SmallVec;
-
-use super::templates::{MenuBarTemplate, StatusBarTemplate};
-use super::types::{MenuItem, StatusBarItem};
 
 /// ModernWindowShell —— 内置封装 TitleBar + 插槽 + StatusBar 的 RenderOnce 组件
 #[derive(IntoElement)]
@@ -59,32 +61,20 @@ impl ModernWindowShell {
         self
     }
 
-    /// 兼容：绑定 `Vec<MenuItem>` 菜单数据
-    pub fn menu(mut self, menu: Vec<MenuItem>) -> Self {
-        self.menu_slot = Some(MenuBarTemplate::new(menu).into_any_element());
-        self
-    }
-
     /// 标题栏右侧扩展插槽
     pub fn title_ext_slot(mut self, element: impl IntoElement) -> Self {
         self.title_ext_slot = Some(element.into_any_element());
         self
     }
 
-    /// 兼容：可扩展区域别名
-    pub fn extensible(mut self, element: impl IntoElement) -> Self {
+    /// 可扩展区域别名
+    pub fn extensible(self, element: impl IntoElement) -> Self {
         self.title_ext_slot(element)
     }
 
     /// 底部状态栏插槽
     pub fn status_slot(mut self, element: impl IntoElement) -> Self {
         self.status_slot = Some(element.into_any_element());
-        self
-    }
-
-    /// 兼容：绑定 `Vec<StatusBarItem>` 状态栏数据
-    pub fn status_bar(mut self, items: Vec<StatusBarItem>) -> Self {
-        self.status_slot = Some(StatusBarTemplate::new(items).into_any_element());
         self
     }
 }
@@ -133,12 +123,4 @@ impl RenderOnce for ModernWindowShell {
             .child(div().flex_1().min_h_0().children(self.children))
             .when_some(self.status_slot, |this, slot| this.child(slot))
     }
-}
-
-/// 渲染状态栏（供模板复用）
-pub(crate) fn render_status_bar(items: &[StatusBarItem]) -> impl IntoElement {
-    use gpui_component::status_bar::StatusBar;
-    items.iter().fold(StatusBar::new(), |bar, item| {
-        bar.left(item.label.clone())
-    })
 }

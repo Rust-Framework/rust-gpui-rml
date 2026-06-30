@@ -11,13 +11,9 @@ use gpui::{
 use gpui_component::{
     ActiveTheme, IconName,
     button::{Button, ButtonVariants as _},
-    menu::DropdownMenu as _,
     h_flex, v_flex,
 };
 use smallvec::SmallVec;
-
-use crate::window::menu_bar::build_popup_menu;
-use crate::window::types::MenuItem;
 
 // ── Trait 定义 ──
 
@@ -38,7 +34,6 @@ pub trait IActivityAct: 'static {
     fn icon(&self) -> IconName;
     fn title(&self) -> SharedString;
     fn on_click(&self, window: &mut Window, cx: &mut App);
-    fn context_menu(&self) -> Vec<MenuItem>;
 }
 
 // ── 类型别名（用于 #[computed] 返回类型） ──
@@ -110,7 +105,6 @@ pub struct ActivityAct {
     icon: IconName,
     title: SharedString,
     on_click: Option<Rc<dyn Fn(&mut Window, &mut App) + 'static>>,
-    context_menu: Vec<MenuItem>,
 }
 
 impl ActivityAct {
@@ -119,17 +113,11 @@ impl ActivityAct {
             icon,
             title: title.into(),
             on_click: None,
-            context_menu: Vec::new(),
         }
     }
 
     pub fn on_click(mut self, f: impl Fn(&mut Window, &mut App) + 'static) -> Self {
         self.on_click = Some(Rc::new(f));
-        self
-    }
-
-    pub fn context_menu(mut self, items: Vec<MenuItem>) -> Self {
-        self.context_menu = items;
         self
     }
 
@@ -151,10 +139,6 @@ impl IActivityAct for ActivityAct {
         if let Some(f) = &self.on_click {
             f(window, cx);
         }
-    }
-
-    fn context_menu(&self) -> Vec<MenuItem> {
-        self.context_menu.clone()
     }
 }
 
@@ -260,24 +244,15 @@ impl RenderOnce for ActivityBar {
             .iter()
             .enumerate()
             .map(|(ix, action)| {
-                let menu_items = action.context_menu();
-                let mut btn = Button::new(("activity-action", ix))
+                let action = action.clone();
+                Button::new(("activity-action", ix))
                     .ghost()
                     .icon(action.icon())
                     .tooltip(action.title())
                     .w(self.bar_width)
-                    .h(px(48.));
-
-                if menu_items.is_empty() {
-                    let action = action.clone();
-                    btn = btn.on_click(move |_, window, cx| action.on_click(window, cx));
-                    btn.into_any_element()
-                } else {
-                    btn.dropdown_menu(move |menu, window, cx| {
-                        build_popup_menu(menu, &menu_items, window, cx)
-                    })
+                    .h(px(48.))
+                    .on_click(move |_, window, cx| action.on_click(window, cx))
                     .into_any_element()
-                }
             })
             .collect();
 

@@ -1,4 +1,7 @@
 //! TabWindowShell —— TabBar 标题栏 + 可调整插槽的高级窗口壳
+//!
+//! 菜单 / 状态栏通过**插槽扩展**（`slot_menu` / `slot_status_bar`）传入，
+//! 不再接受 `Vec<MenuItem>` / `Vec<StatusBarItem>` 数据结构绑定。
 
 use std::rc::Rc;
 
@@ -16,9 +19,6 @@ use gpui_component::{
     v_flex,
 };
 use smallvec::SmallVec;
-
-use super::templates::{MenuBarTemplate, StatusBarTemplate};
-use super::types::{MenuItem, StatusBarItem};
 
 /// Tab 页签数据
 #[derive(Clone)]
@@ -115,11 +115,6 @@ impl TabWindowShell {
         self
     }
 
-    pub fn menu(mut self, menu: Vec<MenuItem>) -> Self {
-        self.menu_slot = Some(MenuBarTemplate::new(menu).into_any_element());
-        self
-    }
-
     pub fn title_ext_slot(mut self, element: impl IntoElement) -> Self {
         self.title_ext_slot = Some(element.into_any_element());
         self
@@ -171,11 +166,6 @@ impl TabWindowShell {
         self
     }
 
-    pub fn status_bar(mut self, items: Vec<StatusBarItem>) -> Self {
-        self.status_slot = Some(StatusBarTemplate::new(items).into_any_element());
-        self
-    }
-
     pub fn default_sizes(
         mut self,
         left: gpui::Pixels,
@@ -218,7 +208,7 @@ impl RenderOnce for TabWindowShell {
         let chrome_toggle = self.icon.map(|app_icon| {
             Button::new("tab-window-chrome-toggle")
                 .ghost()
-                .xsmall()
+                .h_full()
                 .on_click(move |_, window, cx| {
                     if let Some(f) = &on_chrome_toggle {
                         f(window, cx);

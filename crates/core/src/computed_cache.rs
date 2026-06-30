@@ -9,7 +9,7 @@
 //! GPUI `Entity<T>` 要求 `T: Send + Sync`。`ComputedCache` 使用
 //! `Mutex<HashMap<...>>` 提供线程同步，并通过 `unsafe impl Send + Sync`
 //! 满足约束。这是因为缓存值通过 `Box<dyn Any>` 类型擦除存储，
-//! 其中可能包含非 `Send` 的 GPUI 类型（如 `Vec<MenuItem>` 含 `Rc`）。
+//! 其中可能包含非 `Send` 的 GPUI 类型（如 `Vec<TabItem>` 含 `Rc`）。
 //!
 //! **安全性保证**：
 //! - `Mutex` 确保同一时刻只有一个线程访问缓存内容
@@ -43,7 +43,7 @@ pub struct ComputedCache {
 }
 
 // SAFETY: ComputedCache 通过 Mutex 提供线程同步。
-// 缓存值通过 Box<dyn Any> 类型擦除存储，可能包含非 Send 的 GPUI 类型（如 Vec<MenuItem>）。
+// 缓存值通过 Box<dyn Any> 类型擦除存储，可能包含非 Send 的 GPUI 类型（如 Vec<TabItem>）。
 // 在 GPUI 模型中，#[computed] 方法仅在 render 线程调用，缓存值不会被移动到其他线程。
 #[allow(unsafe_code)]
 unsafe impl Send for ComputedCache {}
