@@ -5,8 +5,10 @@
 
 #![deny(unsafe_code)]
 
+pub mod assets;
 pub mod binding;
 pub mod i18n;
+pub mod theme;
 pub mod command;
 pub mod component;
 pub mod computed_cache;
@@ -23,5 +25,5 @@ pub mod window;
 
 pub mod prelude;
 
-/// 重导出 GPUI 基础类型，供框架各层统一使用
-pub use gpui::{App, Context, Entity, IntoElement, Keystroke, Modifiers, Pixels, Point, Render, SharedString, WeakEntity, Window};
+/// 重导出 GPUI 基础类型,供框架各层统一使用
+pub use gpui::{App, Context, Entity, IntoElement, Keystroke, Modifiers, Pixels, Point, Rgba, Render, SharedString, WeakEntity, Window};

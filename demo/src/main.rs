@@ -9,6 +9,5 @@ mod cases;
 mod login;
 mod shell;
 
-fn main() {
-    app::run();
-}
+// 一键启动:内部完成资源嵌入、资源注册、应用启动
+rml::main!(app::Startup);

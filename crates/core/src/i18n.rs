@@ -134,6 +134,23 @@ pub fn catalog_from_json(json: &str) -> Result<HashMap<String, String>, String> 
     Ok(catalog)
 }
 
+/// 从嵌入资源加载 catalog
+///
+/// `dir` 为相对 cwd 的资源目录(如 `"assets/i18n"`),内部去掉 `"assets/"` 前缀
+/// 得到嵌入资源 key(如 `"i18n/{locale}.json"`)。
+/// 若资源未嵌入或 `assets` 模块未初始化,返回 Err(调用方可 fallback 到磁盘)。
+pub fn load_catalog_embedded(
+    locale: &str,
+    dir: &str,
+) -> Result<HashMap<String, String>, String> {
+    // 嵌入资源 key 是相对 assets/ 根的路径,去掉 "assets/" 前缀
+    let sub_dir = dir.strip_prefix("assets/").unwrap_or(dir);
+    let path = format!("{}/{}.json", sub_dir.trim_end_matches('/'), locale);
+    let json = crate::assets::load_str(&path)
+        .ok_or_else(|| format!("i18n asset not embedded: {}", path))?;
+    catalog_from_json(json)
+}
+
 /// 确保 `I18nState` Global 已注册
 pub fn ensure_i18n(cx: &mut App) {
     if !cx.has_global::<I18nState>() {
@@ -159,7 +176,10 @@ impl I18nExt for App {
     fn use_i18n(&mut self, locale: impl AsRef<str>) {
         let locale = locale.as_ref().to_string();
         ensure_i18n(self);
-        if let Ok(catalog) = load_catalog_from_dir(&locale, DEFAULT_I18N_DIR) {
+        // 优先从嵌入资源加载,失败则 fallback 到磁盘
+        let catalog = load_catalog_embedded(&locale, DEFAULT_I18N_DIR)
+            .or_else(|_| load_catalog_from_dir(&locale, DEFAULT_I18N_DIR));
+        if let Ok(catalog) = catalog {
             self.update_global::<I18nState, _>(|state, _| {
                 state.load_catalog(&locale, catalog);
             });
@@ -170,7 +190,10 @@ impl I18nExt for App {
         let locale = locale.as_ref().to_string();
         let dir = dir.as_ref().to_string();
         ensure_i18n(self);
-        if let Ok(catalog) = load_catalog_from_dir(&locale, &dir) {
+        // 优先从嵌入资源加载,失败则 fallback 到磁盘
+        let catalog = load_catalog_embedded(&locale, &dir)
+            .or_else(|_| load_catalog_from_dir(&locale, &dir));
+        if let Ok(catalog) = catalog {
             self.update_global::<I18nState, _>(|state, _| {
                 state.set_dir(&dir);
                 state.load_catalog(&locale, catalog);
@@ -184,7 +207,10 @@ impl I18nExt for App {
         let has_catalog = self.read_global(|state: &I18nState, _| state.catalogs.contains_key(&locale));
         if !has_catalog {
             let dir = self.read_global(|state: &I18nState, _| state.dir().to_string());
-            if let Ok(catalog) = load_catalog_from_dir(&locale, &dir) {
+            // 优先从嵌入资源加载,失败则 fallback 到磁盘
+            let catalog = load_catalog_embedded(&locale, &dir)
+                .or_else(|_| load_catalog_from_dir(&locale, &dir));
+            if let Ok(catalog) = catalog {
                 self.update_global::<I18nState, _>(|state, _| {
                     state.load_catalog(&locale, catalog);
                 });

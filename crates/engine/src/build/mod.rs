@@ -3,10 +3,12 @@
 //! 在用户 `build.rs` 中调用，扫描 `.rml`、调用编译器、输出到 `OUT_DIR`。
 //! 详见文档 §10.4 构建流程。
 
+pub mod assets_processor;
 pub mod cache;
 pub mod i18n_extractor;
 pub mod scanner;
 
+pub use assets_processor::AssetsProcessor;
 pub use i18n_extractor::I18nExtractor;
 
 use crate::compiler::{compile, CodegenCtx};
@@ -40,6 +42,7 @@ pub struct Builder {
     public: bool,
     style_paths: Vec<PathBuf>,
     i18n_extract: Option<PathBuf>,
+    assets_dir: Option<PathBuf>,
 }
 
 /// 入口：创建一个新的 Builder。
@@ -69,6 +72,7 @@ impl Builder {
             public: false,
             style_paths: Vec::new(),
             i18n_extract: None,
+            assets_dir: None,
         }
     }
 
@@ -127,6 +131,28 @@ impl Builder {
     /// 扫描 `.rml` 中的 `t("key")` 并合并写入 i18n JSON（缺失 key 以 key 为默认值）
     pub fn extract_i18n(mut self, path: impl Into<PathBuf>) -> Self {
         self.i18n_extract = Some(path.into());
+        self
+    }
+
+    /// 注册资源根目录,构建期扫描并嵌入所有文件到二进制
+    ///
+    /// 自动包含 `{assets_dir}/themes/` 主题文件、`{assets_dir}/i18n/` 国际化资源等。
+    /// 运行时通过 `rml_core::assets::load(path)` 查询,路径以相对 `assets/` 的正斜杠形式
+    /// (如 `"themes/dark.css"`、`"i18n/zh-CN.json"`)。
+    ///
+    /// 用户 crate 使用 `rml::main!()` 宏一键完成资源嵌入、注册与应用启动,
+    /// 无需手动调用 `embed_assets!()` 和 `assets::init()`。
+    ///
+    /// ```rust,ignore
+    /// // build.rs
+    /// rml::build()
+    ///     .scan_dir("src")
+    ///     .assets_dir("assets")
+    ///     .output_dir(std::env::var("OUT_DIR").unwrap())
+    ///     .build()
+    /// ```
+    pub fn assets_dir(mut self, dir: impl Into<PathBuf>) -> Self {
+        self.assets_dir = Some(dir.into());
         self
     }
 
@@ -281,6 +307,19 @@ impl Builder {
             println!("cargo:warning=RML: failed to write cache {}: {}", cache_path.display(), e);
         }
 
+        // 5. 嵌入 assets/ 资源(默认扫描 assets/ 目录,始终生成 rml_assets.rs)
+        let assets_dir = self
+            .assets_dir
+            .clone()
+            .unwrap_or_else(|| PathBuf::from("assets"));
+        if assets_dir.exists() {
+            println!("cargo:rerun-if-changed={}", assets_dir.display());
+        }
+        let processor = AssetsProcessor::new(&assets_dir);
+        if let Err(e) = processor.generate(&output_dir) {
+            return Err(e);
+        }
+
         Ok(())
     }
 
@@ -288,12 +327,36 @@ impl Builder {
     ///
     /// 按声明顺序合并：后注册的文件规则追加在末尾（优先级更高）。
     /// `:root` 变量跨文件共享。
+    ///
+    /// 除了通过 `.with_style()` 显式注册的文件外,还会自动扫描 `assets_dir` 根目录下的
+    /// `.css` 文件(不递归子目录,避免误加载 `themes/` 等主题文件)。
     fn load_stylesheets(&self) -> Result<Option<css::StyleSheet>, BuildError> {
-        if self.style_paths.is_empty() {
+        let mut all_paths = self.style_paths.clone();
+
+        // 自动发现 assets/ 根目录下的 CSS 文件(不递归,排除 themes/ 等子目录)
+        let assets_dir = self
+            .assets_dir
+            .clone()
+            .unwrap_or_else(|| PathBuf::from("assets"));
+        if assets_dir.exists() {
+            if let Ok(entries) = fs::read_dir(&assets_dir) {
+                let mut auto_css: Vec<PathBuf> = entries
+                    .filter_map(|e| e.ok())
+                    .map(|e| e.path())
+                    .filter(|p| {
+                        p.is_file() && p.extension().map(|e| e == "css").unwrap_or(false)
+                    })
+                    .collect();
+                auto_css.sort();
+                all_paths.extend(auto_css);
+            }
+        }
+
+        if all_paths.is_empty() {
             return Ok(None);
         }
         let mut merged = css::StyleSheet::default();
-        for path in &self.style_paths {
+        for path in &all_paths {
             println!("cargo:rerun-if-changed={}", path.display());
             let source = fs::read_to_string(path).map_err(|e| BuildError {
                 message: format!("read css {}: {}", path.display(), e),

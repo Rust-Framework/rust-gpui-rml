@@ -34,5 +34,6 @@
   "menu.file_exit": "Exit",
   "menu.help": "Help",
   "menu.help_about": "About RML Showcase",
-  "menu.lang_en": "English"
+  "menu.lang_en": "English",
+  "menu.theme_toggle": "Toggle Theme"
 }

@@ -1,8 +1,9 @@
 use gpui::{Entity, SharedString};
 use rml::prelude::*;
 use rml_core::i18n::{t_static, I18nExt};
+use rml_core::theme::ThemeExt;
 use rml_ui::{
-    ActivityPanel, ActivityPanels, IconName, MenuItem, StatusBarItem, TabItem, TreeState,
+    ActivityPanel, ActivityPanels, IconName, TabItem, TreeState,
 };
 
 use crate::cases::{self, OpenTab};
@@ -67,37 +68,6 @@ impl MainWindow {
                 .active(active_id == "samples")
                 .into_arc(),
         ]
-    }
-
-    #[computed]
-    pub fn menu_items(&self) -> Vec<MenuItem> {
-        let _ = self.i18n_version;
-        vec![
-            MenuItem::new(t_static("menu.file")).submenu(vec![
-                MenuItem::new(t_static("menu.file_new")),
-                MenuItem::new(t_static("menu.file_open")),
-                MenuItem::separator(),
-                MenuItem::new(t_static("menu.file_exit")),
-            ]),
-            MenuItem::new(t_static("menu.help")).submenu(vec![MenuItem::new(t_static(
-                "menu.help_about",
-            ))]),
-        ]
-    }
-
-    #[computed]
-    pub fn status_items(&self) -> Vec<StatusBarItem> {
-        let _ = self.i18n_version;
-        let label = if self.active_case_id.is_empty() {
-            t_static("shell.status_ready").to_string()
-        } else {
-            format!(
-                "{}: {}",
-                t_static("shell.status_case"),
-                t_static(cases::case_title_key(&self.active_case_id))
-            )
-        };
-        vec![StatusBarItem::new(label)]
     }
 
     #[computed]
@@ -188,6 +158,18 @@ impl MainWindow {
         self.open_tabs.iter_mut().for_each(|tab| {
             tab.title = cx.t(cases::case_title_key(&tab.id)).to_string();
         });
+        cx.notify();
+    }
+
+    #[command]
+    pub fn on_toggle_theme(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+        let next = if cx.current_theme() == "dark" {
+            "light"
+        } else {
+            "dark"
+        };
+        cx.set_theme(next);
+        self.i18n_version = self.i18n_version.wrapping_add(1);
         cx.notify();
     }
 }

@@ -253,9 +253,13 @@ mod tests {
     }
 
     #[test]
-    fn var_resolution_in_matcher() {
+    fn color_var_generates_runtime_theme_query() {
+        // 颜色属性的 var() 生成运行时主题查询(不构建期内联)
         let mut sheet = StyleSheet::default();
-        sheet.variables.insert("--primary".to_string(), Value::Color(Color::rgb(0, 123, 255)));
+        sheet.variables.insert(
+            "--primary".to_string(),
+            Value::Color(Color::rgb(0, 123, 255)),
+        );
         sheet.rules.push(Rule {
             selectors: vec![Selector::Class("btn".into())],
             declarations: vec![Declaration {
@@ -265,6 +269,11 @@ mod tests {
         });
         let ctx = ElementContext::from_class_attr("button", "btn", None);
         let code = generate_styles(&sheet, &ctx);
-        assert!(code.contains(".bg(gpui::rgb("));
+        assert!(
+            code.contains("rml::theme::color(\"--primary\")"),
+            "expected runtime theme query, got: {}",
+            code
+        );
+        assert!(code.contains(".bg("));
     }
 }

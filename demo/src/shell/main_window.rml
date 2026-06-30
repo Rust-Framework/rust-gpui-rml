@@ -1,54 +1,81 @@
-<tab_window
-    title="RML Showcase"
-    width="1100"
-    height="720"
-    startup="CenterScreen"
-    icon={IconName::Frame}
-    menu={menu_items}
-    tabs={tab_bar_items}
-    selected_tab={selected_tab}
-    on_tab_click="on_tab_click"
-    show_chrome={show_chrome}
-    on_chrome_toggle="on_chrome_toggle"
-    status_bar={status_items}>
+<tab_window
+    title="RML Showcase"
+    width="1100"
+    height="720"
+    startup="CenterScreen"
+    icon={IconName::Frame}
+    tabs={tab_bar_items}
+    selected_tab={selected_tab}
+    on_tab_click="on_tab_click"
+    show_chrome={show_chrome}
+    on_chrome_toggle="on_chrome_toggle">
+
     <slot_left>
         <ActivityBar panels={activity_icons} on_panel_change="on_panel_change">
             <div class="nav-tree">
                 <Tree on_activate="on_case_activate" />
             </div>
         </ActivityBar>
-    </slot_left>
+    </slot_left>
+
     <div class="case-host">
         <div if={active_case_id == "welcome" || active_case_id == ""} class="case-pane case-empty">
             <h2 class="case-title">{t("shell.pick_case")}</h2>
             <p class="case-hint">{t("shell.pick_case_hint")}</p>
-        </div>
-        <div if={active_case_id == "binding.counter"} class="case-pane">
-            <h2 class="case-title">{t("case.counter.title")}</h2>
-            <p class="count">{counter_text}</p>
-            <Button ref="click_btn" label={t("demo.click_btn")} primary="" onclick={on_click} />
-        </div>
-        <div if={active_case_id == "binding.two-way"} class="case-pane">
-            <h2 class="case-title">{t("case.two_way.title")}</h2>
-            <div class="form">
-                <input model={name} placeholder={t("demo.name_placeholder")} />
-                <input model={age} placeholder={t("demo.age_placeholder")} />
-                <p class="profile">{profile_summary}</p>
-            </div>
-        </div>
-        <div if={active_case_id == "components.button"} class="case-pane">
-            <h2 class="case-title">{t("case.button.title")}</h2>
-            <p class="count">{button_demo_text}</p>
-            <div class="button-row">
-                <Button label={t("case.button.primary")} primary="" onclick={on_button_demo_click} />
-                <Button label={t("case.button.ghost")} ghost="" onclick={on_button_demo_click} />
-                <Button label={t("case.button.danger")} danger="" onclick={on_button_demo_click} />
-            </div>
-        </div>
-        <div if={active_case_id == "i18n.basic"} class="case-pane">
-            <h2 class="case-title">{t("case.i18n.title")}</h2>
-            <p>{t("demo.hello")}</p>
-            <Button label={t("menu.lang_en")} onclick={on_switch_en} />
-        </div>
-    </div>
-</tab_window>
+        </div>
+
+        <div if={active_case_id == "binding.counter"} class="case-pane">
+
+            <h2 class="case-title">{t("case.counter.title")}</h2>
+
+            <p class="count">{counter_text}</p>
+
+            <Button ref="click_btn" label={t("demo.click_btn")} primary="" onclick={on_click} />
+
+        </div>
+
+        <div if={active_case_id == "binding.two-way"} class="case-pane">
+
+            <h2 class="case-title">{t("case.two_way.title")}</h2>
+
+            <div class="form">
+
+                <input model={name} placeholder={t("demo.name_placeholder")} />
+
+                <input model={age} placeholder={t("demo.age_placeholder")} />
+
+                <p class="profile">{profile_summary}</p>
+
+            </div>
+
+        </div>
+
+        <div if={active_case_id == "components.button"} class="case-pane">
+
+            <h2 class="case-title">{t("case.button.title")}</h2>
+
+            <p class="count">{button_demo_text}</p>
+
+            <div class="button-row">
+
+                <Button label={t("case.button.primary")} primary="" onclick={on_button_demo_click} />
+
+                <Button label={t("case.button.ghost")} ghost="" onclick={on_button_demo_click} />
+
+                <Button label={t("case.button.danger")} danger="" onclick={on_button_demo_click} />
+
+            </div>
+
+        </div>
+
+        <div if={active_case_id == "i18n.basic"} class="case-pane">
+            <h2 class="case-title">{t("case.i18n.title")}</h2>
+            <p>{t("demo.hello")}</p>
+            <Button label={t("menu.lang_en")} onclick={on_switch_en} />
+            <Button label={t("menu.theme_toggle")} onclick={on_toggle_theme} />
+        </div>
+
+    </div>
+
+</tab_window>
+

@@ -23,6 +23,16 @@ pub fn map_declarations(decls: &[Declaration], vars: &HashMap<String, Value>) ->
 
 fn map_declaration(decl: &Declaration, vars: &HashMap<String, Value>) -> Option<String> {
     let prop = decl.property.as_str();
+
+    // 颜色属性:保留原始 value(含 Var),由 color_method 决定内联还是运行时主题查询
+    // 这样 var(--primary) 不会被构建期内联,而是生成 rml::theme::color("--primary") 调用
+    match prop {
+        "background" | "background-color" => return color_method("bg", &decl.value, vars),
+        "color" => return color_method("text_color", &decl.value, vars),
+        _ => {}
+    }
+
+    // 非颜色属性:构建期解析 var()(这些变量不参与主题切换)
     let value = resolve_var(&decl.value, vars);
 
     match prop {
@@ -41,11 +51,7 @@ fn map_declaration(decl: &Declaration, vars: &HashMap<String, Value>) -> Option<
         "margin-right" => length_method("mr", &value),
         "border-radius" => length_method("rounded", &value),
 
-        // ─── 背景 ───
-        "background" | "background-color" => color_method("bg", &value),
-
         // ─── 文本 ───
-        "color" => color_method("text_color", &value),
         "font-size" => length_method("text_size", &value),
         "font-weight" => font_weight_method(&value),
         "text-align" => text_align_method(&value),
@@ -136,14 +142,36 @@ fn length_method(method: &str, value: &Value) -> Option<String> {
     }
 }
 
-/// 颜色值 → GPUI rgb() 调用
-fn color_method(method: &str, value: &Value) -> Option<String> {
+/// 颜色值 → GPUI 调用
+///
+/// - `Value::Color`:构建期内联为 `gpui::rgb(0xrrggbbaa)`
+/// - `Value::Var`:生成运行时主题查询 `rml::theme::color("--name")`
+/// - 其他:尝试 `resolve_var` 后再处理
+fn color_method(method: &str, value: &Value, vars: &HashMap<String, Value>) -> Option<String> {
     match value {
         Value::Color(c) => {
-            let rgba = ((c.r as u32) << 24) | ((c.g as u32) << 16) | ((c.b as u32) << 8) | (c.a as u32);
+            let rgba =
+                ((c.r as u32) << 24) | ((c.g as u32) << 16) | ((c.b as u32) << 8) | (c.a as u32);
             Some(format!("{}(gpui::rgb(0x{:08x}))", method, rgba))
         }
-        _ => None,
+        Value::Var(name, _) => {
+            // 主题变量:生成运行时查询,切换主题时即时生效
+            Some(format!("{}(rml::theme::color({:?}))", method, name))
+        }
+        _ => {
+            // 非颜色字面量也非 Var:尝试构建期解析(如嵌套 var 引用非颜色变量)
+            let resolved = resolve_var(value, vars);
+            match &resolved {
+                Value::Color(c) => {
+                    let rgba = ((c.r as u32) << 24)
+                        | ((c.g as u32) << 16)
+                        | ((c.b as u32) << 8)
+                        | (c.a as u32);
+                    Some(format!("{}(gpui::rgb(0x{:08x}))", method, rgba))
+                }
+                _ => None,
+            }
+        }
     }
 }
 
@@ -338,12 +366,43 @@ mod tests {
     }
 
     #[test]
-    fn map_var_resolution() {
-        let mut vars = HashMap::new();
-        vars.insert("--primary".to_string(), Value::Color(Color::rgb(0, 123, 255)));
+    fn map_color_var_generates_runtime_theme_query() {
+        // 颜色属性的 var() 生成运行时主题查询,而非构建期内联
+        let vars = HashMap::new();
         let d = decl("background", Value::Var("--primary".into(), None));
         let code = map_declarations(&[d], &vars);
-        assert!(code.contains(".bg(gpui::rgb("));
+        assert!(
+            code.contains("rml::theme::color(\"--primary\")"),
+            "expected runtime theme query, got: {}",
+            code
+        );
+        assert!(code.contains(".bg("));
+    }
+
+    #[test]
+    fn map_color_var_in_text_color() {
+        let vars = HashMap::new();
+        let d = decl("color", Value::Var("--text-color".into(), None));
+        let code = map_declarations(&[d], &vars);
+        assert!(code.contains("rml::theme::color(\"--text-color\")"));
+        assert!(code.contains(".text_color("));
+    }
+
+    #[test]
+    fn map_non_color_var_still_inlined_at_build_time() {
+        // 非颜色属性的 var() 仍构建期内联(如 padding: var(--spacing))
+        let mut vars = HashMap::new();
+        vars.insert(
+            "--spacing".to_string(),
+            Value::Length(16.0, Unit::Px),
+        );
+        let d = decl("padding", Value::Var("--spacing".into(), None));
+        let code = map_declarations(&[d], &vars);
+        assert!(
+            code.contains(".p(gpui::px(16"),
+            "expected build-time inlined length, got: {}",
+            code
+        );
     }
 
     #[test]

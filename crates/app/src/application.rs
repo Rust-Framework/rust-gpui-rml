@@ -4,6 +4,7 @@ use std::marker::PhantomData;
 
 use gpui::App;
 use rml_core::i18n::ensure_i18n;
+use rml_core::theme::ensure_theme;
 use rml_core::window::IWindow;
 
 use crate::lifecycle::{IAppLifecycle, NoLifecycle};
@@ -44,6 +45,7 @@ impl RmlApplication<NoWindow, NoLifecycle> {
             .with_assets(gpui_component_assets::Assets)
             .run(move |cx: &mut App| {
                 ensure_i18n(cx);
+                ensure_theme(cx);
                 let mut app = A::default();
                 app.on_launch(cx);
             });
@@ -69,6 +71,7 @@ impl<W: IWindow + Default + 'static, L: IAppLifecycle + 'static> RmlApplication<
             .with_assets(gpui_component_assets::Assets)
             .run(move |cx: &mut App| {
                 ensure_i18n(cx);
+                ensure_theme(cx);
                 let mut hooks = L::default();
                 hooks.on_launch(cx);
                 let mut window = W::default();

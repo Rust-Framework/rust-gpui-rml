@@ -67,7 +67,9 @@
 
   "menu.help_about": "关于 RML Showcase",
 
-  "menu.lang_en": "English"
+  "menu.lang_en": "English",
+
+  "menu.theme_toggle": "切换主题"
 
 }
 
