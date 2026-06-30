@@ -64,8 +64,9 @@ fn map_declaration(decl: &Declaration, vars: &HashMap<String, Value>) -> Option<
         },
         "justify-content" => match &value {
             Value::Keyword(k) if k == "center" => Some("justify_center()".into()),
-            Value::Keyword(k) if k == "flex-start" => Some("items_start()".into()),
-            Value::Keyword(k) if k == "flex-end" => Some("items_end()".into()),
+            Value::Keyword(k) if k == "flex-start" || k == "start" => Some("justify_start()".into()),
+            Value::Keyword(k) if k == "flex-end" || k == "end" => Some("justify_end()".into()),
+            Value::Keyword(k) if k == "space-between" => Some("justify_between()".into()),
             _ => None,
         },
         "align-items" => match &value {
@@ -73,6 +74,20 @@ fn map_declaration(decl: &Declaration, vars: &HashMap<String, Value>) -> Option<
             Value::Keyword(k) if k == "flex-start" => Some("items_start()".into()),
             Value::Keyword(k) if k == "flex-end" => Some("items_end()".into()),
             _ => None,
+        },
+        "flex" => match &value {
+            Value::Number(n) if *n == 1.0 => Some("flex_1()".into()),
+            _ => None,
+        },
+        "min-width" => match &value {
+            Value::Number(n) if *n == 0.0 => Some("min_w_0()".into()),
+            Value::Keyword(k) if k == "0" => Some("min_w_0()".into()),
+            _ => length_method("min_w", &value),
+        },
+        "min-height" => match &value {
+            Value::Number(n) if *n == 0.0 => Some("min_h_0()".into()),
+            Value::Keyword(k) if k == "0" => Some("min_h_0()".into()),
+            _ => length_method("min_h", &value),
         },
         "gap" => length_method("gap", &value),
 
@@ -280,6 +295,21 @@ mod tests {
         let d = decl("flex-direction", Value::Keyword("column".into()));
         let code = map_declarations(&[d], &HashMap::new());
         assert!(code.contains(".flex_col()"));
+    }
+
+    #[test]
+    fn map_flex_one() {
+        let d = decl("flex", Value::Number(1.0));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".flex_1()"));
+    }
+
+    #[test]
+    fn map_justify_content_start() {
+        let d = decl("justify-content", Value::Keyword("flex-start".into()));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".justify_start()"));
+        assert!(!code.contains(".items_start()"));
     }
 
     #[test]

@@ -4,8 +4,28 @@
 
 use std::borrow::{Borrow, BorrowMut};
 use std::collections::HashMap;
+use std::sync::RwLock;
 
 use gpui::{App, AppContext, BorrowAppContext, Context, Global, SharedString};
+
+/// 线程内同步翻译表快照，供 `#[computed]` 等无 `App` 上下文场景使用
+static ACTIVE_CATALOG: RwLock<Option<HashMap<String, String>>> = RwLock::new(None);
+
+fn sync_active_catalog(catalog: &HashMap<String, String>) {
+    if let Ok(mut guard) = ACTIVE_CATALOG.write() {
+        *guard = Some(catalog.clone());
+    }
+}
+
+/// 无 `App` 上下文时取翻译（依赖 `sync_active_catalog` 维护的快照）
+pub fn t_static(key: &str) -> SharedString {
+    ACTIVE_CATALOG
+        .read()
+        .ok()
+        .and_then(|guard| guard.as_ref()?.get(key).cloned())
+        .map(|s| SharedString::from(s.as_str()))
+        .unwrap_or_else(|| key.into())
+}
 
 /// 默认 i18n 资源目录（相对工作目录）
 pub const DEFAULT_I18N_DIR: &str = "assets/i18n";
@@ -57,7 +77,8 @@ impl I18nState {
         self.catalogs.insert(locale.clone(), catalog.clone());
         if self.locale.is_empty() || self.locale == locale {
             self.locale = locale;
-            self.catalog = catalog;
+            self.catalog = catalog.clone();
+            sync_active_catalog(&self.catalog);
         }
     }
 
@@ -65,7 +86,8 @@ impl I18nState {
         let locale = locale.into();
         if let Some(catalog) = self.catalogs.get(&locale).cloned() {
             self.locale = locale;
-            self.catalog = catalog;
+            self.catalog = catalog.clone();
+            sync_active_catalog(&self.catalog);
             true
         } else {
             false

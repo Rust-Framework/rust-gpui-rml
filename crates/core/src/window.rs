@@ -35,6 +35,24 @@ pub enum WindowState {
     Maximized,
 }
 
+/// 标题栏窗口操作按钮可见性（minimize / maximize / close）
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct WindowControlButtons {
+    pub minimize: bool,
+    pub maximize: bool,
+    pub close: bool,
+}
+
+impl Default for WindowControlButtons {
+    fn default() -> Self {
+        Self {
+            minimize: true,
+            maximize: true,
+            close: true,
+        }
+    }
+}
+
 /// 窗口启动位置（WPF: `WindowStartupLocation`）
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum WindowStartupLocation {
@@ -132,6 +150,11 @@ pub trait IWindow: IComponent + Default + Render {
     /// 是否允许用户调整窗口大小
     fn resizable(&self) -> bool {
         true
+    }
+
+    /// 标题栏窗口操作按钮可见性（透明标题栏模式下由自绘 `WindowControls` 生效）
+    fn window_controls(&self) -> WindowControlButtons {
+        WindowControlButtons::default()
     }
 
     // ── 默认：窗口选项构建 ──

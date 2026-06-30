@@ -6,8 +6,11 @@ use gpui::{
     AnyElement, App, IntoElement, ParentElement, RenderOnce, Styled, Window, div,
     prelude::FluentBuilder as _,
 };
-use gpui_component::{Icon, IconName, Sizable as _, TitleBar, h_flex};
+use gpui_component::{Icon, IconName, Sizable as _, h_flex};
+use rml_core::window::WindowControlButtons;
 use smallvec::SmallVec;
+
+use super::rml_title_bar::RmlTitleBar;
 
 use super::templates::{MenuBarTemplate, StatusBarTemplate};
 use super::types::{MenuItem, StatusBarItem};
@@ -18,6 +21,7 @@ pub struct ModernWindowShell {
     title: Option<gpui::SharedString>,
     icon: Option<IconName>,
     show_chrome: bool,
+    window_controls: WindowControlButtons,
     menu_slot: Option<AnyElement>,
     title_ext_slot: Option<AnyElement>,
     status_slot: Option<AnyElement>,
@@ -30,6 +34,7 @@ impl ModernWindowShell {
             title: None,
             icon: None,
             show_chrome: true,
+            window_controls: WindowControlButtons::default(),
             menu_slot: None,
             title_ext_slot: None,
             status_slot: None,
@@ -50,6 +55,11 @@ impl ModernWindowShell {
     /// 是否显示菜单与标题区域
     pub fn show_chrome(mut self, show: bool) -> Self {
         self.show_chrome = show;
+        self
+    }
+
+    pub fn window_controls(mut self, controls: WindowControlButtons) -> Self {
+        self.window_controls = controls;
         self
     }
 
@@ -108,26 +118,28 @@ impl RenderOnce for ModernWindowShell {
             .flex_col()
             .size_full()
             .child(
-                TitleBar::new().child(
-                    h_flex()
-                        .flex_1()
-                        .h_full()
-                        .items_center()
-                        .when_some(self.icon, |this, icon| {
-                            this.child(h_flex().items_center().pl_2().child(Icon::new(icon).small()))
-                        })
-                        .when(self.show_chrome, |this| {
-                            this.when_some(self.menu_slot, |bar, menu| bar.child(menu))
-                                .child(
-                                    div()
-                                        .flex_1()
-                                        .text_center()
-                                        .when_some(self.title, |el, title| el.child(title)),
-                                )
-                        })
-                        .when(!self.show_chrome, |this| this.child(div().flex_1()))
-                        .when_some(self.title_ext_slot, |this, ext| this.child(ext)),
-                ),
+                RmlTitleBar::new()
+                    .window_controls(self.window_controls)
+                    .child(
+                        h_flex()
+                            .flex_1()
+                            .h_full()
+                            .items_center()
+                            .when_some(self.icon, |this, icon| {
+                                this.child(h_flex().items_center().pl_2().child(Icon::new(icon).small()))
+                            })
+                            .when(self.show_chrome, |this| {
+                                this.when_some(self.menu_slot, |bar, menu| bar.child(menu))
+                                    .child(
+                                        div()
+                                            .flex_1()
+                                            .text_center()
+                                            .when_some(self.title, |el, title| el.child(title)),
+                                    )
+                            })
+                            .when(!self.show_chrome, |this| this.child(div().flex_1()))
+                            .when_some(self.title_ext_slot, |this, ext| this.child(ext)),
+                    ),
             )
             .child(div().flex_1().min_h_0().children(self.children))
             .when_some(self.status_slot, |this, slot| this.child(slot))

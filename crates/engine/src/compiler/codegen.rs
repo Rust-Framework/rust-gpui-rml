@@ -25,6 +25,30 @@ use crate::tags;
 use crate::compiler::component as comp;
 use crate::compiler::event;
 
+/// 收集 RML 中所有 `model={field}` 绑定的字段名
+pub fn collect_model_fields(root: &Node) -> Vec<String> {
+    let mut fields = Vec::new();
+    if let Node::Element(elem) = root {
+        collect_model_fields_recursive(elem, &mut fields);
+    }
+    fields.sort();
+    fields.dedup();
+    fields
+}
+
+fn collect_model_fields_recursive(elem: &Element, fields: &mut Vec<String>) {
+    for directive in &elem.directives {
+        if let Directive::Model(field) = directive {
+            fields.push(field.clone());
+        }
+    }
+    for child in &elem.children {
+        if let Node::Element(child_elem) = child {
+            collect_model_fields_recursive(child_elem, fields);
+        }
+    }
+}
+
 /// 生成 `impl Render for <ViewStruct>` 代码块（可能附带 `impl IWindow`）
 ///
 /// RML 根节点必须是 `<window>`、`<modern_window>`、`<tab_window>` 或 `<component>`：
@@ -129,7 +153,14 @@ fn gen_window_impl(
     let min_height = extract_static_attr(elem, "min_height")
         .and_then(|s| s.parse::<f32>().ok());
 
-    let extra_methods = gen_window_extra_methods(left, top, startup.as_deref(), min_width, min_height);
+    let extra_methods = gen_window_extra_methods(
+        left,
+        top,
+        startup.as_deref(),
+        min_width,
+        min_height,
+        elem,
+    );
 
     let chrome_method = if chrome_transparent {
         // ModernWindowShell 自绘 TitleBar，需要透明标题栏模式
@@ -209,24 +240,49 @@ fn gen_render_impl_from_children(
     let mut id_counter: usize = 0;
     let empty: Vec<String> = Vec::new();
 
-    let children = &elem.children;
-    let body = if children.is_empty() {
+    let (slot_left, slot_right, slot_bottom, body_children) = if matches!(shell, ShellWrap::Tab) {
+        partition_tab_slot_children(&elem.children)
+    } else {
+        (None, None, None, elem.children.clone())
+    };
+
+    let body = if body_children.is_empty() {
         "gpui::div()".to_string()
-    } else if children.len() == 1 {
-        let (code, _) = gen_node(&children[0], ctx, 0, &mut id_counter, &empty)?;
+    } else if body_children.len() == 1 {
+        let (code, _) = gen_node(&body_children[0], ctx, 0, &mut id_counter, &empty)?;
         code
     } else {
         let mut code = String::from("gpui::div()");
-        for child in children {
+        for child in &body_children {
             let (child_code, _) = gen_node(child, ctx, 0, &mut id_counter, &empty)?;
             code.push_str(&format!("\n            .child({})", child_code));
         }
         code
     };
 
+    let slot_left_code = slot_left
+        .as_ref()
+        .map(|node| gen_node(node, ctx, 0, &mut id_counter, &empty).map(|(c, _)| c))
+        .transpose()?;
+    let slot_right_code = slot_right
+        .as_ref()
+        .map(|node| gen_node(node, ctx, 0, &mut id_counter, &empty).map(|(c, _)| c))
+        .transpose()?;
+    let slot_bottom_code = slot_bottom
+        .as_ref()
+        .map(|node| gen_node(node, ctx, 0, &mut id_counter, &empty).map(|(c, _)| c))
+        .transpose()?;
+
     let final_body = match shell {
         ShellWrap::Modern => gen_modern_window_wrapper(elem, ctx, &body)?,
-        ShellWrap::Tab => gen_tab_window_wrapper(elem, ctx, &body)?,
+        ShellWrap::Tab => gen_tab_window_wrapper(
+            elem,
+            ctx,
+            &body,
+            slot_left_code.as_deref(),
+            slot_right_code.as_deref(),
+            slot_bottom_code.as_deref(),
+        )?,
         ShellWrap::None => body,
     };
 
@@ -310,7 +366,7 @@ fn gen_modern_window_wrapper(
                             expr.trim().to_string()
                         }
                     };
-                    code.push_str(&format!(".icon({})", rust_expr));
+                    code.push_str(&format!(".icon(rml_ui::{})", rust_expr));
                 }
                 _ => {}
             }
@@ -318,7 +374,55 @@ fn gen_modern_window_wrapper(
     }
 
     code.push_str(&format!(".child({})", children_body));
+    code.push_str(".window_controls(self.window_controls())");
     Ok(code)
+}
+
+/// 将 `<tab_window>` 子节点拆分为插槽与主内容
+fn partition_tab_slot_children(
+    children: &[Node],
+) -> (Option<Node>, Option<Node>, Option<Node>, Vec<Node>) {
+    let mut slot_left = None;
+    let mut slot_right = None;
+    let mut slot_bottom = None;
+    let mut body = Vec::new();
+
+    for child in children {
+        if let Node::Element(elem) = child {
+            match elem.tag.as_str() {
+                "slot_left" => {
+                    slot_left = slot_element_content(elem);
+                    continue;
+                }
+                "slot_right" => {
+                    slot_right = slot_element_content(elem);
+                    continue;
+                }
+                "slot_bottom" => {
+                    slot_bottom = slot_element_content(elem);
+                    continue;
+                }
+                _ => {}
+            }
+        }
+        body.push(child.clone());
+    }
+
+    (slot_left, slot_right, slot_bottom, body)
+}
+
+/// 取插槽包装元素的内部内容（单子节点直接 unwrap，多子节点包 div）
+fn slot_element_content(elem: &Element) -> Option<Node> {
+    match elem.children.len() {
+        0 => None,
+        1 => Some(elem.children[0].clone()),
+        _ => Some(Node::Element(Element {
+            tag: "div".into(),
+            attributes: vec![],
+            directives: vec![],
+            children: elem.children.clone(),
+        })),
+    }
 }
 
 /// 从根 `<tab_window>` 的 bind/event 属性生成 `TabWindowShell` 包裹代码
@@ -326,6 +430,9 @@ fn gen_tab_window_wrapper(
     elem: &Element,
     ctx: &CodegenCtx,
     children_body: &str,
+    slot_left: Option<&str>,
+    slot_right: Option<&str>,
+    slot_bottom: Option<&str>,
 ) -> Result<String, CodegenError> {
     let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
     let empty: Vec<&str> = Vec::new();
@@ -336,13 +443,31 @@ fn gen_tab_window_wrapper(
     for attr in &elem.attributes {
         match attr {
             Attribute::Bind { name, expr } => {
+                if name == "icon" {
+                    let rust_expr = match expr::parse(expr) {
+                        Ok(expr::Expr::Field(field_name))
+                            if computed.iter().any(|c| *c == field_name.as_str()) =>
+                        {
+                            format!("self.{}()", field_name)
+                        }
+                        Ok(parsed) => expr::to_rust_code_with_ctx(&parsed, &empty),
+                        Err(_) => expr.trim().to_string(),
+                    };
+                    let icon_expr = if rust_expr.contains("IconName::") {
+                        format!("rml_ui::{rust_expr}")
+                    } else {
+                        rust_expr
+                    };
+                    code.push_str(&format!(".icon({icon_expr})"));
+                    continue;
+                }
                 let rust_expr = shell_bind_expr(expr, &computed, &empty);
                 match name.as_str() {
                     "menu" => code.push_str(&format!(".menu({}.clone())", rust_expr)),
                     "status_bar" => code.push_str(&format!(".status_bar({}.clone())", rust_expr)),
                     "tabs" => code.push_str(&format!(".tabs({}.clone())", rust_expr)),
                     "selected_tab" => code.push_str(&format!(".selected_tab({})", rust_expr)),
-                    "icon" => code.push_str(&format!(".icon({})", rust_expr)),
+                    "show_chrome" => code.push_str(&format!(".show_chrome({})", rust_expr)),
                     _ => {}
                 }
             }
@@ -352,8 +477,27 @@ fn gen_tab_window_wrapper(
                     EventHandler::WithArgs(m, _) => m.as_str(),
                 };
                 code.push_str(&format!(
-                    ".on_tab_click(cx.listener(move |this, index: usize, _window, cx| {{\n                    \
-                     this.{}(index, cx);\n                }}))",
+                    ".on_tab_click({{\n                    \
+                     let weak = cx.weak_entity();\n                    \
+                     move |index: usize, _window: &mut gpui::Window, app: &mut gpui::App| {{\n                        \
+                     if let Some(entity) = weak.upgrade() {{\n                            \
+                     entity.update(app, |this, cx| {{ this.{}(index, cx); }});\n                        \
+                     }}\n                    }}\n                }})",
+                    method
+                ));
+            }
+            Attribute::Event { name, handler } if name == "on_chrome_toggle" => {
+                let method = match handler {
+                    EventHandler::Ident(m) | EventHandler::MethodName(m) => m.as_str(),
+                    EventHandler::WithArgs(m, _) => m.as_str(),
+                };
+                code.push_str(&format!(
+                    ".on_chrome_toggle({{\n                    \
+                     let weak = cx.weak_entity();\n                    \
+                     move |_window: &mut gpui::Window, app: &mut gpui::App| {{\n                        \
+                     if let Some(entity) = weak.upgrade() {{\n                            \
+                     entity.update(app, |this, cx| {{ this.{}(cx); }});\n                        \
+                     }}\n                    }}\n                }})",
                     method
                 ));
             }
@@ -361,35 +505,50 @@ fn gen_tab_window_wrapper(
         }
     }
 
+    if let Some(left) = slot_left {
+        code.push_str(&format!(".slot_left(Some({left}))"));
+    }
+    if let Some(right) = slot_right {
+        code.push_str(&format!(".slot_right(Some({right}))"));
+    }
+    if let Some(bottom) = slot_bottom {
+        code.push_str(&format!(".slot_bottom(Some({bottom}))"));
+    }
+
     code.push_str(&format!(".child({})", children_body));
+    code.push_str(".window_controls(self.window_controls())");
     Ok(code)
 }
 
 /// 将 shell 根元素的 bind 表达式编译为 Rust 代码
 fn shell_bind_expr(expr: &str, computed: &[&str], loop_vars: &[&str]) -> String {
+    let trimmed = expr.trim();
+    if computed.iter().any(|c| *c == trimmed) {
+        return format!("self.{}()", trimmed);
+    }
     match expr::parse(expr) {
         Ok(expr::Expr::Field(field_name)) if computed.iter().any(|c| *c == field_name.as_str()) => {
             format!("self.{}()", field_name)
         }
         Ok(parsed) => expr::to_rust_code_with_ctx(&parsed, loop_vars),
         Err(_) => {
-            let trimmed = expr.trim();
             if computed.iter().any(|c| *c == trimmed) {
                 format!("self.{}()", trimmed)
             } else {
-                expr.trim().to_string()
+                format!("self.{}", trimmed)
             }
         }
     }
 }
 
-/// 生成 IWindow 可选配置方法（left/top/startup/min_size）
+/// 生成 IWindow 可选配置方法（left/top/startup/min_size/window_controls）
 fn gen_window_extra_methods(
     left: Option<f32>,
     top: Option<f32>,
     startup: Option<&str>,
     min_width: Option<f32>,
     min_height: Option<f32>,
+    elem: &Element,
 ) -> String {
     let mut out = String::new();
 
@@ -422,7 +581,27 @@ fn gen_window_extra_methods(
         ));
     }
 
+    let minimize = extract_static_bool_attr(elem, "show_minimize").unwrap_or(true);
+    let maximize = extract_static_bool_attr(elem, "show_maximize").unwrap_or(true);
+    let close = extract_static_bool_attr(elem, "show_close").unwrap_or(true);
+    if !minimize || !maximize || !close {
+        out.push_str(&format!(
+            "\n    fn window_controls(&self) -> rml_core::window::WindowControlButtons {{\n        \
+             rml_core::window::WindowControlButtons {{ minimize: {minimize}, maximize: {maximize}, close: {close} }}\n    }}\n"
+        ));
+    }
+
     out
+}
+
+/// 从元素属性中提取静态布尔值
+fn extract_static_bool_attr(elem: &Element, name: &str) -> Option<bool> {
+    extract_static_attr(elem, name).map(|v| {
+        matches!(
+            v.as_str(),
+            "true" | "1" | "yes" | "True" | "TRUE" | "Yes" | "YES"
+        )
+    })
 }
 
 /// 从元素属性中提取静态属性值
@@ -1206,7 +1385,7 @@ fn gen_expr_code(expr_str: &str, loop_vars: &[&str], computed: &[&str]) -> Strin
 }
 
 /// `{t("key")}` → `cx.t("key")`
-fn try_gen_i18n_call(expr_str: &str, loop_vars: &[&str], computed: &[&str]) -> Option<String> {
+pub(crate) fn try_gen_i18n_call(expr_str: &str, loop_vars: &[&str], computed: &[&str]) -> Option<String> {
     let trimmed = expr_str.trim();
     if !trimmed.starts_with("t(") || !trimmed.ends_with(')') {
         return None;
@@ -1380,10 +1559,15 @@ impl {view_name} {{{methods}}}
 /// 反向闭包内 bump_version 后立即更新版本号标记，render 时版本号相等跳过冗余 set_value。
 fn gen_input_state_impl(ctx: &CodegenCtx) -> String {
     let view_name = &ctx.view_struct_name;
+    let input_fields: Vec<String> = if ctx.model_fields.is_empty() {
+        ctx.observable_fields.clone()
+    } else {
+        ctx.model_fields.clone()
+    };
 
     // 生成正向值 match arms（初始值 + 正向同步共用）
     let mut forward_arms = String::new();
-    for field in &ctx.observable_fields {
+    for field in &input_fields {
         let ty = ctx.field_types.get(field).cloned().unwrap_or_default();
         let expr = gen_field_value_expr(field, &ty);
         forward_arms.push_str(&format!("            \"{}\" => {},\n", field, expr));
@@ -1392,7 +1576,7 @@ fn gen_input_state_impl(ctx: &CodegenCtx) -> String {
     // 生成反向赋值 match arms
     // 注意：gen_field_assign_expr 返回完整代码块（含 bump_version），不再追加 bump_version
     let mut reverse_arms = String::new();
-    for field in &ctx.observable_fields {
+    for field in &input_fields {
         let ty = ctx.field_types.get(field).cloned().unwrap_or_default();
         let validation = ctx.field_validations.get(field);
         let assign = gen_field_assign_expr(field, &ty, validation);

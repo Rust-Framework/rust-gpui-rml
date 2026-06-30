@@ -4,13 +4,11 @@ extern crate rust_rml_app as rml_app;
 extern crate rust_rml_core as rml_core;
 extern crate rust_rml_ui as rml_ui;
 
-use rml_app::RmlApplication;
-
-#[path = "main_window.rml.rs"]
-mod main_window;
+mod app;
+mod cases;
+mod login;
+mod shell;
 
 fn main() {
-    RmlApplication::new()
-        .main_window::<main_window::MainWindow>()
-        .run();
+    app::run();
 }

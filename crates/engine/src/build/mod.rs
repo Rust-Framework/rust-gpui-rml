@@ -237,6 +237,7 @@ impl Builder {
                 computed_returns: struct_meta.computed_returns.clone(),
                 field_types: struct_meta.field_types.clone(),
                 field_validations: struct_meta.field_validations.clone(),
+                model_fields: Vec::new(),
             };
 
             match compile(&source, &ctx) {

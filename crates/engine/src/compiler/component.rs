@@ -64,6 +64,10 @@ pub fn gen_component(
             // 无参构造：TitleBar::new() / StatusBar::new()
             format!("{}::new()", component.ctor_path)
         }
+        tags::ComponentKind::Stateful { state_field } if tag == "Tree" => format!(
+            "{}::new(self.{}.as_ref().expect(\"init TreeState in on_loaded\"))",
+            component.ctor_path, state_field
+        ),
         tags::ComponentKind::Stateful { state_field } => format!(
             "{}::new(&self.{})",
             component.ctor_path, state_field
@@ -108,7 +112,9 @@ pub fn gen_component(
     //
     // 注：ModernWindowShell 不经此路径处理——它由 codegen 根元素处理路径
     // （gen_modern_window_wrapper）直接生成，不通过 component_lookup 路由表。
-    let is_container = matches!(component.kind, tags::ComponentKind::StatelessNoId);
+    // ActivityBar 作为容器，子节点渲染到活动面板区域。
+    let is_container =
+        matches!(component.kind, tags::ComponentKind::StatelessNoId) || tag == "ActivityBar";
 
     if is_container {
         // 容器组件：所有 element/文本子节点作为 children
@@ -226,8 +232,10 @@ pub fn component_bind_setter(
     computed: &[&str],
     tag: &str,
 ) -> Option<String> {
-    // 通过表达式解析器生成 Rust 代码
-    let rust_expr = match expr::parse(expr_str) {
+    let rust_expr = if let Some(code) = crate::compiler::codegen::try_gen_i18n_call(expr_str, loop_vars, computed) {
+        code
+    } else {
+        match expr::parse(expr_str) {
         Ok(expr::Expr::Field(name)) if computed.iter().any(|c| *c == name.as_str()) => {
             if loop_vars.iter().any(|v| *v == name) {
                 format!("{}()", name)
@@ -245,6 +253,7 @@ pub fn component_bind_setter(
             } else {
                 format!("self.{}", trimmed)
             }
+        }
         }
     };
     let _tag = tag;
@@ -323,6 +332,21 @@ pub fn component_event_setter(name: &str, handler: &EventHandler, tag: &str) -> 
             Some(format!(
                 ".on_panel_change(cx.listener(move |this, panel_id: &gpui::SharedString, _window, cx| {{\n                    \
                  this.{}(panel_id, cx);\n                }}))",
+                method
+            ))
+        }
+        "on_activate" if tag == "Tree" => {
+            let method = match handler {
+                EventHandler::Ident(m) | EventHandler::MethodName(m) => m,
+                EventHandler::WithArgs(m, _) => m,
+            };
+            Some(format!(
+                ".on_activate_rc(std::rc::Rc::new({{\n                    \
+                 let weak = cx.weak_entity();\n                    \
+                 move |item: rml_ui::TreeItem, _window: &mut gpui::Window, app: &mut gpui::App| {{\n                        \
+                 if let Some(entity) = weak.upgrade() {{\n                            \
+                 entity.update(app, |this, cx| {{ this.{}(&item.id, cx); }});\n                        \
+                 }}\n                    }}\n                }}))",
                 method
             ))
         }

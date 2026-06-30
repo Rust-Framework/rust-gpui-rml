@@ -3,19 +3,21 @@
 use std::rc::Rc;
 
 use gpui::{
-    AnyElement, App, IntoElement, ParentElement, RenderOnce, SharedString, Styled, Window, div, px,
-    prelude::FluentBuilder as _,
+    AnyElement, App, IntoElement, ParentElement, RenderOnce, SharedString, Styled, Window,
+    div, px, prelude::FluentBuilder as _,
 };
 use gpui_component::{
     Icon, IconName, Sizable as _,
     button::{Button, ButtonVariants as _},
     tab::{Tab, TabBar},
-    TitleBar, h_flex,
+    h_flex,
     resizable::{h_resizable, resizable_panel, v_resizable},
     v_flex,
 };
+use rml_core::window::WindowControlButtons;
 use smallvec::SmallVec;
 
+use super::rml_title_bar::RmlTitleBar;
 use super::templates::{MenuBarTemplate, StatusBarTemplate};
 use super::types::{MenuItem, StatusBarItem};
 
@@ -40,17 +42,28 @@ impl TabItem {
     }
 }
 
+/// 估算 Tab 是否溢出可用宽度（约 96px / tab）
+fn tabs_overflow(tab_count: usize, available_width: gpui::Pixels) -> bool {
+    if tab_count == 0 {
+        return false;
+    }
+    let estimated = px(tab_count as f32 * 96.);
+    estimated > available_width
+}
+
 /// TabWindow 高级窗口壳
 #[derive(IntoElement)]
 pub struct TabWindowShell {
     title: Option<SharedString>,
     icon: Option<IconName>,
     show_chrome: bool,
+    window_controls: WindowControlButtons,
     menu_slot: Option<AnyElement>,
     title_ext_slot: Option<AnyElement>,
     tabs: Vec<TabItem>,
     selected_tab: usize,
     on_tab_click: Option<Rc<dyn Fn(usize, &mut Window, &mut App) + 'static>>,
+    on_chrome_toggle: Option<Rc<dyn Fn(&mut Window, &mut App) + 'static>>,
     slot_left: Option<AnyElement>,
     slot_right: Option<AnyElement>,
     slot_bottom: Option<AnyElement>,
@@ -67,11 +80,13 @@ impl TabWindowShell {
             title: None,
             icon: None,
             show_chrome: true,
+            window_controls: WindowControlButtons::default(),
             menu_slot: None,
             title_ext_slot: None,
             tabs: Vec::new(),
             selected_tab: 0,
             on_tab_click: None,
+            on_chrome_toggle: None,
             slot_left: None,
             slot_right: None,
             slot_bottom: None,
@@ -95,6 +110,11 @@ impl TabWindowShell {
 
     pub fn show_chrome(mut self, show: bool) -> Self {
         self.show_chrome = show;
+        self
+    }
+
+    pub fn window_controls(mut self, controls: WindowControlButtons) -> Self {
+        self.window_controls = controls;
         self
     }
 
@@ -128,6 +148,14 @@ impl TabWindowShell {
         f: impl Fn(usize, &mut Window, &mut App) + 'static,
     ) -> Self {
         self.on_tab_click = Some(Rc::new(f));
+        self
+    }
+
+    pub fn on_chrome_toggle(
+        mut self,
+        f: impl Fn(&mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.on_chrome_toggle = Some(Rc::new(f));
         self
     }
 
@@ -182,19 +210,46 @@ impl ParentElement for TabWindowShell {
 }
 
 impl RenderOnce for TabWindowShell {
-    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
-        let toggle_icon = if self.show_chrome {
+    fn render(self, window: &mut Window, _cx: &mut App) -> impl IntoElement {
+        let tab_count = self.tabs.len();
+        let viewport = window.viewport_size();
+        let tabs_area = (viewport.width - px(420.)).max(px(160.));
+        let tab_overflow = tabs_overflow(tab_count, tabs_area);
+
+        let on_chrome_toggle = self.on_chrome_toggle.clone();
+        let chevron = if self.show_chrome {
             IconName::ChevronLeft
         } else {
             IconName::ChevronRight
         };
 
+        let chrome_toggle = self.icon.map(|app_icon| {
+            Button::new("tab-window-chrome-toggle")
+                .ghost()
+                .xsmall()
+                .on_click(move |_, window, cx| {
+                    if let Some(f) = &on_chrome_toggle {
+                        f(window, cx);
+                    }
+                })
+                .child(
+                    h_flex()
+                        .items_center()
+                        .gap_0p5()
+                        .child(Icon::new(app_icon).small())
+                        .child(Icon::new(chevron).small()),
+                )
+                .into_any_element()
+        });
+
         let mut tab_bar = TabBar::new("tab-window-tabs")
-            .menu(true)
+            .menu(tab_overflow)
             .selected_index(self.selected_tab);
 
         if let Some(prefix) = self.menu_slot.filter(|_| self.show_chrome) {
             tab_bar = tab_bar.prefix(prefix);
+        } else if let Some(toggle) = chrome_toggle {
+            tab_bar = tab_bar.prefix(toggle);
         }
 
         for tab in &self.tabs {
@@ -213,31 +268,19 @@ impl RenderOnce for TabWindowShell {
             tab_bar = tab_bar.on_click(move |ix, window, cx| on_click(*ix, window, cx));
         }
 
-        let title_bar = TitleBar::new().child(
-            h_flex()
-                .flex_1()
-                .h_full()
-                .items_center()
-                .when_some(self.icon, |this, icon| {
-                    this.child(
-                        h_flex()
-                            .items_center()
-                            .pl_2()
-                            .child(
-                                Button::new("tab-window-chrome-toggle")
-                                    .ghost()
-                                    .xsmall()
-                                    .icon(toggle_icon)
-                                    .child(Icon::new(icon).small()),
-                            ),
-                    )
-                })
-                .child(div().flex_1().min_w_0().child(tab_bar)),
-        );
+        let title_bar = RmlTitleBar::new()
+            .window_controls(self.window_controls)
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .h_full()
+                    .child(tab_bar),
+            );
 
         let body = resizable_panel()
             .flex_1()
-            .child(div().flex_1().min_h_0().children(self.children));
+            .child(div().flex_1().min_h_0().size_full().children(self.children));
 
         let center_col = {
             let mut col = v_resizable("tab-window-center-col").child(body);

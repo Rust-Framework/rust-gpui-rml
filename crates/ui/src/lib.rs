@@ -68,6 +68,7 @@ pub use gpui_component::{
     table::Table,
     tag::Tag,
     tooltip::Tooltip,
+    tree::{TreeEntry, TreeEvent, TreeItem, TreeState},
 };
 
 // 共享 trait 体系
@@ -81,4 +82,4 @@ pub use window::{
     NotificationKind, StatusBarItem, StatusBarTemplate, TabItem, TabWindowShell, Window,
 };
 
-pub use components::{ActivityActionItem, ActivityBar, ActivityPanelItem};
+pub use components::{ActivityActionItem, ActivityBar, ActivityPanelItem, TreeView};

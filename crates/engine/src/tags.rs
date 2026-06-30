@@ -273,6 +273,12 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             ctor_path: "rml_ui::ActivityBar",
             kind: ComponentKind::Stateless,
         }),
+        "Tree" => Some(ComponentTag {
+            ctor_path: "rml_ui::TreeView",
+            kind: ComponentKind::Stateful {
+                state_field: "case_tree_state",
+            },
+        }),
         _ => None,
     }
 }

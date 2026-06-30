@@ -1,0 +1,15 @@
+<modern_window
+    title="RML Demo"
+    width="420"
+    height="360"
+    startup="CenterScreen"
+    icon={IconName::Frame}>
+    <div class="login">
+        <h1 class="login-title">{t("login.title")}</h1>
+        <p class="login-hint">{t("login.hint")}</p>
+        <div class="login-form">
+            <input model={username} placeholder={t("login.username")} />
+            <Button label={t("login.submit")} primary="" onclick={on_login} />
+        </div>
+    </div>
+</modern_window>

@@ -10,13 +10,13 @@ pub use crate::converter::{BoolToYesNo, Currency, IConverter, LowerCase, Percent
 pub use crate::element_ref::ElementRef;
 pub use crate::event::IEvent;
 pub use crate::events::*;
-pub use crate::i18n::{I18nExt, t};
+pub use crate::i18n::{I18nExt, t, t_static};
 pub use crate::lifecycle::ILifecycle;
 pub use crate::model::{FieldMeta, IModel};
 pub use crate::two_way_binding::ITwoWayBinding;
 pub use crate::validate::{IValidate, ValidResult};
 pub use crate::view_model::IViewModel;
-pub use crate::window::{IWindow, WindowChrome, WindowStartupLocation, WindowState};
+pub use crate::window::{IWindow, WindowChrome, WindowControlButtons, WindowStartupLocation, WindowState};
 
 // 重导出 GPUI 常用类型，让 .rml.rs 文件只需 `use rml::prelude::*;`
 pub use gpui::{

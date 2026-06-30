@@ -48,6 +48,18 @@ impl ActivityPanelItem {
     }
 }
 
+impl Clone for ActivityPanelItem {
+    fn clone(&self) -> Self {
+        Self {
+            id: self.id.clone(),
+            icon: self.icon.clone(),
+            title: self.title.clone(),
+            panel: None,
+            active: self.active,
+        }
+    }
+}
+
 /// 活动栏底部动作项（B1–B2）
 #[derive(Clone)]
 pub struct ActivityActionItem {
@@ -86,6 +98,7 @@ pub struct ActivityBar {
     panels: Vec<ActivityPanelItem>,
     actions: Vec<ActivityActionItem>,
     on_panel_change: Option<Rc<dyn Fn(&SharedString, &mut Window, &mut App) + 'static>>,
+    panel_children: SmallVec<[AnyElement; 2]>,
 }
 
 impl ActivityBar {
@@ -96,6 +109,7 @@ impl ActivityBar {
             panels: Vec::new(),
             actions: Vec::new(),
             on_panel_change: None,
+            panel_children: SmallVec::new(),
         }
     }
 
@@ -123,38 +137,50 @@ impl ActivityBar {
     }
 }
 
+impl ParentElement for ActivityBar {
+    fn extend(&mut self, elements: impl IntoIterator<Item = AnyElement>) {
+        self.panel_children.extend(elements);
+    }
+}
+
 impl RenderOnce for ActivityBar {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let on_panel_change = self.on_panel_change.clone();
         let mut active_panel = None;
+        let mut panel_fallback = (!self.panel_children.is_empty()).then(|| {
+            gpui::div()
+                .size_full()
+                .children(self.panel_children)
+                .into_any_element()
+        });
 
-        let panel_buttons: SmallVec<[AnyElement; 4]> = self
-            .panels
-            .into_iter()
-            .enumerate()
-            .map(|(ix, panel)| {
-                let id = panel.id.clone();
-                let icon = panel.icon;
-                let title = panel.title.clone();
-                let active = panel.active;
-                if active {
-                    active_panel = panel.panel;
-                }
-                let on_change = on_panel_change.clone();
+        let mut panel_buttons: SmallVec<[AnyElement; 4]> = SmallVec::new();
+        for (ix, panel) in self.panels.into_iter().enumerate() {
+            let id = panel.id.clone();
+            let icon = panel.icon;
+            let title = panel.title.clone();
+            let active = panel.active;
+            if active {
+                active_panel = panel.panel.or_else(|| panel_fallback.take());
+            }
+            let on_change = on_panel_change.clone();
 
+            panel_buttons.push(
                 Button::new(("activity-panel", ix))
                     .ghost()
                     .icon(icon)
                     .tooltip(title)
+                    .w(self.bar_width)
+                    .h(px(48.))
                     .when(active, |btn| btn.bg(cx.theme().sidebar_accent))
                     .on_click(move |_, window, cx| {
                         if let Some(f) = &on_change {
                             f(&id, window, cx);
                         }
                     })
-                    .into_any_element()
-            })
-            .collect();
+                    .into_any_element(),
+            );
+        }
 
         let action_buttons: SmallVec<[AnyElement; 4]> = self
             .actions
@@ -166,7 +192,9 @@ impl RenderOnce for ActivityBar {
                 let mut btn = Button::new(("activity-action", ix))
                     .ghost()
                     .icon(action.icon.clone())
-                    .tooltip(action.title.clone());
+                    .tooltip(action.title.clone())
+                    .w(self.bar_width)
+                    .h(px(48.));
 
                 if menu_items.is_empty() {
                     if let Some(f) = on_click {
@@ -184,22 +212,24 @@ impl RenderOnce for ActivityBar {
 
         h_flex()
             .id(self.id)
-            .size_full()
+            .h_full()
             .child(
                 v_flex()
                     .w(self.bar_width)
                     .h_full()
+                    .flex_shrink_0()
                     .justify_between()
                     .bg(cx.theme().sidebar)
                     .border_r_1()
                     .border_color(cx.theme().border)
-                    .child(v_flex().children(panel_buttons))
-                    .child(v_flex().children(action_buttons)),
+                    .child(v_flex().w_full().items_center().children(panel_buttons))
+                    .child(v_flex().w_full().items_center().children(action_buttons)),
             )
             .child(
                 gpui::div()
                     .flex_1()
                     .h_full()
+                    .min_w_0()
                     .overflow_hidden()
                     .when_some(active_panel, |this, panel| this.child(panel)),
             )

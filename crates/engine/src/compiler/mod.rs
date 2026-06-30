@@ -98,6 +98,8 @@ pub struct CodegenCtx {
     /// codegen 的 `gen_field_assign_expr` 据此在 parse 成功后、赋值前
     /// 生成规则校验链（range/length/required/regex/custom）。
     pub field_validations: HashMap<String, ValidationRuleSet>,
+    /// RML 中声明 `model={field}` 的字段名（双向绑定 input 专用）
+    pub model_fields: Vec<String>,
 }
 
 /// 代码生成错误
@@ -163,7 +165,9 @@ impl From<CodegenError> for CompileError {
 pub fn compile(source: &str, ctx: &CodegenCtx) -> Result<String, CompileError> {
     let root = parser::parse(source)?;
     validator::validate(&root)?;
-    let code = codegen::codegen(&root, ctx)?;
+    let mut ctx = ctx.clone();
+    ctx.model_fields = codegen::collect_model_fields(&root);
+    let code = codegen::codegen(&root, &ctx)?;
     Ok(code)
 }
 
