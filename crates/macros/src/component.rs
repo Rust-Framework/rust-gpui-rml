@@ -83,21 +83,16 @@ pub fn inject_tracking_fields(fields: &mut Fields) {
         return;
     };
 
-    // 收集 pub 字段名（与 IModel 一致：仅 pub 字段参与追踪）
-    let pub_field_names: Vec<String> = named
+    // 收集所有具名字段（pub + private）——版本追踪需要覆盖全部字段，
+    // 因为 #[computed] 方法可能依赖私有字段。IModel 的 pub 过滤在 gen_impl_i_model 中独立处理。
+    let field_names: Vec<String> = named
         .named
         .iter()
-        .filter_map(|f| {
-            if matches!(f.vis, Visibility::Public(_)) {
-                f.ident.as_ref().map(|i| i.to_string())
-            } else {
-                None
-            }
-        })
+        .filter_map(|f| f.ident.as_ref().map(|i| i.to_string()))
         .collect();
 
-    // 为每个 pub 字段注入 AtomicU64 版本计数器
-    for name in &pub_field_names {
+    // 为每个字段注入 AtomicU64 版本计数器
+    for name in &field_names {
         let version_field_name = format_ident!("__rml_{}_version", name);
         let field: Field = parse_quote! {
             #[allow(non_snake_case, dead_code)]

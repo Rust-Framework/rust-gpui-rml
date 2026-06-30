@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use quote::quote;
 use syn::visit::Visit;
-use syn::{Expr, ExprField, File, Ident, ImplItem, Item, Lit, LitStr, ReturnType, Token, Type, Visibility};
+use syn::{Expr, ExprField, File, Ident, ImplItem, Item, Lit, LitStr, ReturnType, Token, Type};
 use walkdir::WalkDir;
 
 use crate::compiler::{ValidationRule, ValidationRuleSet};
@@ -99,31 +99,29 @@ pub fn scan_struct_metadata(rml_rs_path: &Path) -> HashMap<String, StructMetadat
             let struct_name = s.ident.to_string();
             let mut meta = StructMetadata::default();
             for f in &s.fields {
-                if matches!(f.vis, Visibility::Public(_)) {
-                    if let Some(name) = &f.ident {
-                        let name_str = name.to_string();
-                        meta.observable_fields.push(name_str.clone());
-                        // 提取字段类型字符串（清理 token 间空格：`Vec < TabItem >` → `Vec<TabItem>`)
-                        let ty = &f.ty;
-                        let ty_str = quote!(#ty).to_string();
-                        let cleaned = ty_str.split_whitespace().collect::<String>();
-                        meta.field_types.insert(name_str.clone(), cleaned);
+                if let Some(name) = &f.ident {
+                    let name_str = name.to_string();
+                    meta.observable_fields.push(name_str.clone());
+                    // 提取字段类型字符串（清理 token 间空格：`Vec < TabItem >` → `Vec<TabItem>`)
+                    let ty = &f.ty;
+                    let ty_str = quote!(#ty).to_string();
+                    let cleaned = ty_str.split_whitespace().collect::<String>();
+                    meta.field_types.insert(name_str.clone(), cleaned);
 
-                        // Phase B-3.2：解析 #[validate(...)] 属性
-                        for attr in &f.attrs {
-                            if attr.path().is_ident("validate") {
-                                match attr.parse_args::<ValidateArgs>() {
-                                    Ok(args) => {
-                                        let rule_set: ValidationRuleSet = args.into();
-                                        meta.field_validations.insert(name_str.clone(), rule_set);
-                                    }
-                                    Err(e) => {
-                                        // 解析失败：警告但不阻塞编译
-                                        println!(
-                                            "cargo:warning=RML: failed to parse #[validate] on field {}: {}",
-                                            name_str, e
-                                        );
-                                    }
+                    // Phase B-3.2：解析 #[validate(...)] 属性
+                    for attr in &f.attrs {
+                        if attr.path().is_ident("validate") {
+                            match attr.parse_args::<ValidateArgs>() {
+                                Ok(args) => {
+                                    let rule_set: ValidationRuleSet = args.into();
+                                    meta.field_validations.insert(name_str.clone(), rule_set);
+                                }
+                                Err(e) => {
+                                    // 解析失败：警告但不阻塞编译
+                                    println!(
+                                        "cargo:warning=RML: failed to parse #[validate] on field {}: {}",
+                                        name_str, e
+                                    );
                                 }
                             }
                         }
@@ -459,7 +457,7 @@ mod tests {
     }
 
     #[test]
-    fn scans_pub_fields_only() {
+    fn scans_all_named_fields() {
         let path = write_temp_rml_rs(
             r#"
 #[window]
@@ -473,7 +471,8 @@ pub struct MainWindow {
         );
         let meta = scan_struct_metadata(&path);
         let main_window = meta.get("MainWindow").unwrap();
-        assert_eq!(main_window.observable_fields, vec!["count", "name"]);
+        // 所有具名字段（pub + private）都参与版本追踪
+        assert_eq!(main_window.observable_fields, vec!["count", "name", "_private"]);
     }
 
     #[test]
@@ -632,7 +631,7 @@ impl MainWindow {
     }
 
     #[test]
-    fn scans_pub_field_types() {
+    fn scans_field_types() {
         let path = write_temp_rml_rs(
             r#"
 #[window]
@@ -652,8 +651,9 @@ pub struct MainWindow {
         assert_eq!(m.field_types.get("name"), Some(&"String".to_string()));
         assert_eq!(m.field_types.get("age"), Some(&"u32".to_string()));
         assert_eq!(m.field_types.get("score"), Some(&"f64".to_string()));
-        // 私有字段不收集
-        assert!(m.field_types.get("_private").is_none());
+        // 私有字段也参与版本追踪（#[computed] 可能依赖私有字段）
+        assert_eq!(m.field_types.get("_private"), Some(&"bool".to_string()));
+        assert!(m.observable_fields.contains(&"_private".to_string()));
     }
 
     #[test]

@@ -43,9 +43,9 @@ pub(super) fn gen_modern_window_wrapper(
                         }
                     };
                     match name.as_str() {
-                        "menu" => code.push_str(&format!(".menu({}.clone())", rust_expr)),
+                        "menu" => code.push_str(&format!(".menu_slot({})", rust_expr)),
                         "status_bar" => {
-                            code.push_str(&format!(".status_bar({}.clone())", rust_expr))
+                            code.push_str(&format!(".status_slot({})", rust_expr))
                         }
                         _ => {}
                     }
@@ -72,9 +72,13 @@ pub(super) fn gen_modern_window_wrapper(
 }
 
 /// 将 `<tab_window>` 子节点拆分为插槽与主内容
+///
+/// 返回 (menu, status, left, right, bottom, body)
 pub(super) fn partition_tab_slot_children(
     children: &[Node],
-) -> (Option<Node>, Option<Node>, Option<Node>, Vec<Node>) {
+) -> (Option<Node>, Option<Node>, Option<Node>, Option<Node>, Option<Node>, Vec<Node>) {
+    let mut slot_menu = None;
+    let mut slot_status = None;
     let mut slot_left = None;
     let mut slot_right = None;
     let mut slot_bottom = None;
@@ -83,6 +87,14 @@ pub(super) fn partition_tab_slot_children(
     for child in children {
         if let Node::Element(elem) = child {
             match elem.tag.as_str() {
+                "slot_menu" => {
+                    slot_menu = slot_element_content(elem);
+                    continue;
+                }
+                "slot_status" => {
+                    slot_status = slot_element_content(elem);
+                    continue;
+                }
                 "slot_left" => {
                     slot_left = slot_element_content(elem);
                     continue;
@@ -101,7 +113,7 @@ pub(super) fn partition_tab_slot_children(
         body.push(child.clone());
     }
 
-    (slot_left, slot_right, slot_bottom, body)
+    (slot_menu, slot_status, slot_left, slot_right, slot_bottom, body)
 }
 
 /// 取插槽包装元素的内部内容（单子节点直接 unwrap，多子节点包 div）
@@ -123,6 +135,8 @@ pub(super) fn gen_tab_window_wrapper(
     elem: &Element,
     ctx: &CodegenCtx,
     children_body: &str,
+    slot_menu: Option<&str>,
+    slot_status: Option<&str>,
     slot_left: Option<&str>,
     slot_right: Option<&str>,
     slot_bottom: Option<&str>,
@@ -156,8 +170,8 @@ pub(super) fn gen_tab_window_wrapper(
                 }
                 let rust_expr = shell_bind_expr(expr, &computed, &empty);
                 match name.as_str() {
-                    "menu" => code.push_str(&format!(".menu({}.clone())", rust_expr)),
-                    "status_bar" => code.push_str(&format!(".status_bar({}.clone())", rust_expr)),
+                    "menu" => code.push_str(&format!(".menu_slot({})", rust_expr)),
+                    "status_bar" => code.push_str(&format!(".status_slot({})", rust_expr)),
                     "tabs" => code.push_str(&format!(".tabs({}.clone())", rust_expr)),
                     "selected_tab" => code.push_str(&format!(".selected_tab({})", rust_expr)),
                     "show_chrome" => code.push_str(&format!(".show_chrome({})", rust_expr)),
@@ -198,6 +212,12 @@ pub(super) fn gen_tab_window_wrapper(
         }
     }
 
+    if let Some(menu) = slot_menu {
+        code.push_str(&format!(".menu_slot({menu})"));
+    }
+    if let Some(status) = slot_status {
+        code.push_str(&format!(".status_slot({status})"));
+    }
     if let Some(left) = slot_left {
         code.push_str(&format!(".slot_left(Some({left}))"));
     }

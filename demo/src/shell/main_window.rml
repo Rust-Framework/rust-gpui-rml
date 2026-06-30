@@ -18,6 +18,17 @@
         </ActivityBar>
     </slot_left>
 
+    <slot_menu>
+        <div class="menu-bar">
+            <Button label={t("menu.theme_toggle")} ghost="" onclick={on_toggle_theme} />
+            <Button label={t("menu.lang_en")} ghost="" onclick={on_switch_en} />
+        </div>
+    </slot_menu>
+
+    <slot_status>
+        <div class="status-bar">{status_text}</div>
+    </slot_status>
+
     <div class="case-host">
         <div if={active_case_id == "welcome" || active_case_id == ""} class="case-pane case-empty">
             <h2 class="case-title">{t("shell.pick_case")}</h2>

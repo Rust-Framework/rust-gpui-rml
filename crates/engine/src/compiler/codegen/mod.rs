@@ -160,11 +160,12 @@ fn gen_render_impl_from_children(
     let mut id_counter: usize = 0;
     let empty: Vec<String> = Vec::new();
 
-    let (slot_left, slot_right, slot_bottom, body_children) = if matches!(shell, ShellWrap::Tab) {
-        shell::partition_tab_slot_children(&elem.children)
-    } else {
-        (None, None, None, elem.children.clone())
-    };
+    let (slot_menu, slot_status, slot_left, slot_right, slot_bottom, body_children) =
+        if matches!(shell, ShellWrap::Tab) {
+            shell::partition_tab_slot_children(&elem.children)
+        } else {
+            (None, None, None, None, None, elem.children.clone())
+        };
 
     let body = if body_children.is_empty() {
         "gpui::div()".to_string()
@@ -180,6 +181,14 @@ fn gen_render_impl_from_children(
         code
     };
 
+    let slot_menu_code = slot_menu
+        .as_ref()
+        .map(|node| gen_node(node, ctx, 0, &mut id_counter, &empty).map(|(c, _)| c))
+        .transpose()?;
+    let slot_status_code = slot_status
+        .as_ref()
+        .map(|node| gen_node(node, ctx, 0, &mut id_counter, &empty).map(|(c, _)| c))
+        .transpose()?;
     let slot_left_code = slot_left
         .as_ref()
         .map(|node| gen_node(node, ctx, 0, &mut id_counter, &empty).map(|(c, _)| c))
@@ -199,6 +208,8 @@ fn gen_render_impl_from_children(
             elem,
             ctx,
             &body,
+            slot_menu_code.as_deref(),
+            slot_status_code.as_deref(),
             slot_left_code.as_deref(),
             slot_right_code.as_deref(),
             slot_bottom_code.as_deref(),

@@ -134,7 +134,8 @@ pub(super) fn gen_dialog_impl(elem: &Element, ctx: &CodegenCtx) -> Result<String
             let mut __rml_d = __rml_d
                 .title(__rml_title_bar)
                 .width(__rml_width)
-                .close_button(false);
+                .close_button(false)
+                .p_0();
             if let Some(__rml_mt) = __rml_margin_top {{
                 __rml_d = __rml_d.margin_top(__rml_mt);
             }}

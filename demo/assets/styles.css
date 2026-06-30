@@ -105,3 +105,24 @@
     flex-wrap: wrap;
     justify-content: center;
 }
+
+.status-bar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    padding: 4px 12px;
+    height: 28px;
+    width: 100%;
+    background: var(--bg-color);
+    color: var(--text-color);
+    font-size: 12px;
+    box-sizing: border-box;
+}
+
+.menu-bar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    height: 100%;
+}

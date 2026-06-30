@@ -200,9 +200,9 @@ impl ParentElement for ActivityBar {
 impl RenderOnce for ActivityBar {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let on_panel_change = self.on_panel_change.clone();
-        // 面板内容来源：RML children（.child(...) 传入的元素）
-        // 注意：panel_children 在每次 render 时由 codegen 重新填充，无需担心 take() 抽干
-        let panel_content = (!self.panel_children.is_empty()).then(|| {
+        // 仅在有面板激活时显示面板内容（点击已激活面板可折叠）
+        let any_active = self.panels.iter().any(|p| p.is_activated());
+        let panel_content = (any_active && !self.panel_children.is_empty()).then(|| {
             gpui::div()
                 .size_full()
                 .children(self.panel_children)

@@ -91,6 +91,15 @@ impl MainWindow {
         }
     }
 
+    #[computed]
+    pub fn status_text(&self) -> String {
+        if self.active_case_id.is_empty() || self.active_case_id == "welcome" {
+            "Ready".to_string()
+        } else {
+            format!("Active: {}", self.active_case_id)
+        }
+    }
+
     #[command]
     pub fn on_chrome_toggle(&mut self, cx: &mut Context<Self>) {
         self.show_chrome = !self.show_chrome;
@@ -100,9 +109,10 @@ impl MainWindow {
     #[command]
     pub fn on_panel_change(&mut self, id: &SharedString, cx: &mut Context<Self>) {
         let new_id = id.to_string();
-        if self.active_panel_id != new_id {
+        if self.active_panel_id == new_id {
+            self.active_panel_id = String::new();
+        } else {
             self.active_panel_id = new_id;
-            cx.notify();
         }
     }
 
@@ -112,10 +122,13 @@ impl MainWindow {
             return;
         }
         if !self.open_tabs.iter().any(|tab| tab.id == case_id) {
-            self.open_tabs.push(OpenTab {
+            let tab = OpenTab {
                 id: case_id.clone(),
                 title: cx.t(cases::case_title_key(&case_id)).to_string(),
-            });
+            };
+            let mut tabs = std::mem::take(&mut self.open_tabs);
+            tabs.push(tab);
+            self.open_tabs = tabs;
         }
         self.selected_tab = self
             .open_tabs
@@ -123,7 +136,6 @@ impl MainWindow {
             .position(|tab| tab.id == case_id)
             .unwrap_or(0);
         self.active_case_id = case_id;
-        cx.notify();
     }
 
     #[command]
