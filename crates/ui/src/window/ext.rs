@@ -42,7 +42,7 @@ pub trait IWindowExt: IWindow {
     /// 4. `set_handle()` 存储窗口句柄
     fn open_rooted(&mut self, cx: &mut App) {
         crate::init(cx);
-        let options = self.window_options();
+        let options = self.window_options_for(cx);
         let handle = cx
             .open_window(options, |window, cx| {
                 let view = cx.new(|_| Self::default());

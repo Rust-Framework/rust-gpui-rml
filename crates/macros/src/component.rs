@@ -139,6 +139,12 @@ pub fn inject_tracking_fields(fields: &mut Fields) {
         __rml_field_errors: std::collections::HashMap<String, Option<gpui::SharedString>>
     };
     named.named.push(field_errors_field);
+
+    let loaded_field: Field = parse_quote! {
+        #[allow(dead_code)]
+        __rml_loaded: bool
+    };
+    named.named.push(loaded_field);
 }
 
 /// 生成组件所需的全部 trait 实现（IModel + ILifecycle + IViewModel + IComponent）
@@ -151,13 +157,6 @@ pub fn expand_component_impls(
     struct_name_str: &str,
 ) -> TokenStream {
     let impl_i_model = gen_impl_i_model(struct_name, fields);
-
-    let impl_i_lifecycle = quote! {
-        impl rml_core::lifecycle::ILifecycle for #struct_name {
-            fn rml_on_loaded(&mut self, _cx: &mut gpui::Context<Self>) {}
-            fn rml_on_unloaded(&mut self, _cx: &mut gpui::Context<Self>) {}
-        }
-    };
 
     let impl_i_view_model = quote! {
         impl rml_core::view_model::IViewModel for #struct_name {}
@@ -176,7 +175,6 @@ pub fn expand_component_impls(
 
     quote! {
         #impl_i_model
-        #impl_i_lifecycle
         #impl_i_view_model
         #impl_i_component
     }

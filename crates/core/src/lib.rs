@@ -6,6 +6,7 @@
 #![deny(unsafe_code)]
 
 pub mod binding;
+pub mod i18n;
 pub mod command;
 pub mod component;
 pub mod computed_cache;

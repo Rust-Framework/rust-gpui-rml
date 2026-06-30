@@ -247,13 +247,15 @@ pub fn component_bind_setter(
             }
         }
     };
-    let _ = tag; // 当前无组件专用 setter 分支
+    let _tag = tag;
     match name {
         "value" => Some(format!(".value({}.clone())", rust_expr)),
         "disabled" => Some(format!(".disabled({})", rust_expr)),
         "selected" => Some(format!(".selected({})", rust_expr)),
         "checked" => Some(format!(".selected({})", rust_expr)),
         "label" => Some(format!(".label({}.clone())", rust_expr)),
+        "panels" if tag == "ActivityBar" => Some(format!(".panels({}.clone())", rust_expr)),
+        "actions" if tag == "ActivityBar" => Some(format!(".actions({}.clone())", rust_expr)),
         _ => None,
     }
 }
@@ -310,6 +312,17 @@ pub fn component_event_setter(name: &str, handler: &EventHandler, tag: &str) -> 
             Some(format!(
                 ".on_change(cx.listener(move |this, state: &rml_ui::InputState, _window, cx| {{\n                    \
                  this.{}(state, cx);\n                }}))",
+                method
+            ))
+        }
+        "on_panel_change" if tag == "ActivityBar" => {
+            let method = match handler {
+                EventHandler::Ident(m) | EventHandler::MethodName(m) => m,
+                EventHandler::WithArgs(m, _) => m,
+            };
+            Some(format!(
+                ".on_panel_change(cx.listener(move |this, panel_id: &gpui::SharedString, _window, cx| {{\n                    \
+                 this.{}(panel_id, cx);\n                }}))",
                 method
             ))
         }

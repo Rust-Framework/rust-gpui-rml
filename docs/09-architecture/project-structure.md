@@ -198,6 +198,20 @@ assets/
 
 通过 `cx.asset("icons/logo.svg")` 引用，编译期校验路径存在。
 
+在 `on_launch` 中初始化 i18n（命令式或声明式入口均支持）：
+
+```rust
+impl IAppLifecycle for AppBootstrap {
+    fn on_launch(&mut self, cx: &mut App) {
+        cx.use_i18n("zh-CN");
+        // 命令式：先打开登录/欢迎窗，成功后再 open 主窗口
+        // LoginWindow::default().open(cx);
+    }
+}
+```
+
+声明式单主窗口：`RmlApplication::new().lifecycle::<AppBootstrap>().main_window::<MainWindow>().run()` —— `on_launch` 结束后自动打开主窗口。
+
 ## 9.4.7 测试组织
 
 ```

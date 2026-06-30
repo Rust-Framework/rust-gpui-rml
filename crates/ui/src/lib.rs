@@ -31,6 +31,7 @@
 extern crate rust_rml_core as rml_core;
 
 pub mod prelude;
+pub mod components;
 pub mod window;
 
 /// 初始化扩展组件。
@@ -39,6 +40,7 @@ pub mod window;
 /// 内部依次初始化：theme / global_state / root / focus_trap / dialog / sheet / list 等模块。
 pub fn init(cx: &mut gpui::App) {
     gpui_component::init(cx);
+    rml_core::i18n::ensure_i18n(cx);
 }
 
 // 直接 re-export 高频组件，避免在每个使用点写完整路径
@@ -75,6 +77,8 @@ pub use gpui_component::{
 
 // 窗口组件：ModernWindowShell 内置封装 + 内置 Window/ModernWindow + 数据类型 + 助手 trait
 pub use window::{
-    IWindowActions, IWindowExt, MenuItem, ModernWindow, ModernWindowShell, NotificationKind,
-    StatusBarItem, Window,
+    IWindowActions, IWindowExt, MenuBarTemplate, MenuItem, ModernWindow, ModernWindowShell,
+    NotificationKind, StatusBarItem, StatusBarTemplate, TabItem, TabWindowShell, Window,
 };
+
+pub use components::{ActivityActionItem, ActivityBar, ActivityPanelItem};

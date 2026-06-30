@@ -227,20 +227,24 @@ let user = cx.global::<AuthState>().user.clone();
 
 推荐方案：
 
-1. 文本提取到 JSON / YAML 资源文件
-2. ViewModel 持有当前语言状态
-3. 计算属性返回当前语言的文本
-4. 切换语言时 notify
+1. 在 `assets/i18n/` 放置 `zh-CN.json`、`en-US.json` 等资源文件
+2. 在 `on_launch` 或视图 `on_loaded` 中调用 `cx.use_i18n("zh-CN")`
+3. RML 模板使用 `{t("menu.file")}`，codegen 生成 `cx.t(...)`
+4. 切换语言时调用 `cx.set_i18n("en-US")` 并 `cx.notify()`
 
 ```rust
-#[computed]
-pub fn t_save(&self) -> SharedString {
-    self.i18n.t("save")
+impl IAppLifecycle for MyApp {
+    fn on_launch(&mut self, cx: &mut App) {
+        cx.use_i18n("zh-CN");
+        MainWindow::default().open(cx);
+    }
 }
 ```
 
 ```html
-<button>{t_save}</button>
+<button label={t("app.save")} />
 ```
+
+构建期可用 `rml::build().extract_i18n("assets/i18n/zh-CN.json")` 扫描模板并补全缺失 key。
 
 下一节 → [11.5 避坑清单](./pitfall-checklist.md)

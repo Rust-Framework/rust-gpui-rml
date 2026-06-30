@@ -141,15 +141,17 @@ pub fn is_component(tag: &str) -> bool {
 pub enum RootTag {
     /// `<window>`：基础窗口（透明标题栏，`WindowChrome::Transparent`）
     Window,
-    /// `<modern_window>`：现代窗口（自绘 TitleBar/Menu/StatusBar，`WindowChrome::Transparent`）
+    /// `<modern_window>`：现代窗口（自绘 TitleBar/Menu/StatusBar）
     ModernWindow,
+    /// `<tab_window>`：TabBar 标题栏 + 可调整插槽高级窗口
+    TabWindow,
     /// `<component>`：可复用组件（无窗口操作）
     Component,
 }
 
 /// 判断标签是否为 RML 根节点标记
 pub fn is_root_tag(tag: &str) -> bool {
-    matches!(tag, "window" | "modern_window" | "component")
+    matches!(tag, "window" | "modern_window" | "tab_window" | "component")
 }
 
 /// 查找根节点类型
@@ -157,6 +159,7 @@ pub fn root_tag_lookup(tag: &str) -> Option<RootTag> {
     match tag {
         "window" => Some(RootTag::Window),
         "modern_window" => Some(RootTag::ModernWindow),
+        "tab_window" => Some(RootTag::TabWindow),
         "component" => Some(RootTag::Component),
         _ => None,
     }
@@ -265,6 +268,10 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
         "StatusBar" => Some(ComponentTag {
             ctor_path: "rml_ui::StatusBar",
             kind: ComponentKind::StatelessNoId,
+        }),
+        "ActivityBar" => Some(ComponentTag {
+            ctor_path: "rml_ui::ActivityBar",
+            kind: ComponentKind::Stateless,
         }),
         _ => None,
     }

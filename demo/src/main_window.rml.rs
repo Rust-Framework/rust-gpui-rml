@@ -10,6 +10,12 @@ pub struct MainWindow {
     pub age: i32,
 }
 
+impl ILifecycle for MainWindow {
+    fn on_loaded(&mut self, cx: &mut Context<Self>) {
+        cx.use_i18n("zh-CN");
+    }
+}
+
 impl MainWindow {
     #[computed]
     pub fn menu_items(&self) -> Vec<MenuItem> {

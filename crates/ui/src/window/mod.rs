@@ -11,10 +11,14 @@ pub mod builtin_window;
 pub mod ext;
 pub mod menu_bar;
 pub mod modern_window;
+pub mod tab_window;
+pub mod templates;
 pub mod types;
 
 pub use actions::{IWindowActions, NotificationKind};
 pub use builtin_window::{ModernWindow, Window};
 pub use ext::IWindowExt;
 pub use modern_window::ModernWindowShell;
+pub use tab_window::{TabItem, TabWindowShell};
+pub use templates::{MenuBarTemplate, StatusBarTemplate};
 pub use types::{MenuItem, StatusBarItem};

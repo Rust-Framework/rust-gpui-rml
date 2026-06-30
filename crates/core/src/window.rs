@@ -35,6 +35,16 @@ pub enum WindowState {
     Maximized,
 }
 
+/// 窗口启动位置（WPF: `WindowStartupLocation`）
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum WindowStartupLocation {
+    /// 使用 `left()` / `top()` 指定位置
+    #[default]
+    Manual,
+    /// 屏幕居中（在 `open_rooted` 时根据显示器尺寸计算）
+    CenterScreen,
+}
+
 /// 窗口抽象接口（WPF `Window` 类等价物）。
 ///
 /// 窗口是一种特殊组件，可作为顶层 OS 窗口打开。
@@ -99,6 +109,31 @@ pub trait IWindow: IComponent + Default + Render {
         WindowChrome::Transparent
     }
 
+    /// 窗口左边距（`Manual` 启动位置时有效）
+    fn left(&self) -> Option<Pixels> {
+        None
+    }
+
+    /// 窗口顶边距（`Manual` 启动位置时有效）
+    fn top(&self) -> Option<Pixels> {
+        None
+    }
+
+    /// 窗口启动位置
+    fn startup_location(&self) -> WindowStartupLocation {
+        WindowStartupLocation::Manual
+    }
+
+    /// 最小窗口尺寸
+    fn min_size(&self) -> Option<Size<Pixels>> {
+        None
+    }
+
+    /// 是否允许用户调整窗口大小
+    fn resizable(&self) -> bool {
+        true
+    }
+
     // ── 默认：窗口选项构建 ──
 
     /// 从配置构建 GPUI `WindowOptions`
@@ -130,9 +165,17 @@ pub trait IWindow: IComponent + Default + Render {
             ),
         };
 
+        let origin = match self.startup_location() {
+            WindowStartupLocation::Manual => Point::new(
+                self.left().unwrap_or_default(),
+                self.top().unwrap_or_default(),
+            ),
+            WindowStartupLocation::CenterScreen => Point::default(),
+        };
+
         WindowOptions {
             window_bounds: Some(WindowBounds::Windowed(Bounds {
-                origin: Default::default(),
+                origin,
                 size: Size {
                     width: self.width(),
                     height: self.height(),
@@ -140,8 +183,48 @@ pub trait IWindow: IComponent + Default + Render {
             })),
             titlebar: Some(titlebar),
             window_decorations: decorations,
+            is_resizable: self.resizable(),
+            window_min_size: self.min_size(),
             ..Default::default()
         }
+    }
+
+    /// 根据启动位置修正窗口 bounds（`CenterScreen` 需在打开时调用）
+    fn resolve_window_bounds(&self, cx: &App) -> WindowBounds {
+        let size = Size {
+            width: self.width(),
+            height: self.height(),
+        };
+        match self.startup_location() {
+            WindowStartupLocation::CenterScreen => {
+                if let Some(display) = cx.primary_display() {
+                    let bounds = display.bounds();
+                    let origin = Point::new(
+                        bounds.origin.x + (bounds.size.width - size.width) / 2.,
+                        bounds.origin.y + (bounds.size.height - size.height) / 2.,
+                    );
+                    return WindowBounds::Windowed(Bounds { origin, size });
+                }
+                WindowBounds::Windowed(Bounds {
+                    origin: Point::default(),
+                    size,
+                })
+            }
+            WindowStartupLocation::Manual => WindowBounds::Windowed(Bounds {
+                origin: Point::new(
+                    self.left().unwrap_or_default(),
+                    self.top().unwrap_or_default(),
+                ),
+                size,
+            }),
+        }
+    }
+
+    /// 构建带显示器上下文的 `WindowOptions`（处理 `CenterScreen`）
+    fn window_options_for(&self, cx: &App) -> WindowOptions {
+        let mut options = self.window_options();
+        options.window_bounds = Some(self.resolve_window_bounds(cx));
+        options
     }
 
     // ── 默认：窗口操作（基于 handle 自管理，WPF: Window.Show/Close/Activate）──

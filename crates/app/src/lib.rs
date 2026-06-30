@@ -19,5 +19,6 @@ pub mod application;
 pub mod lifecycle;
 pub mod resources;
 
-pub use application::RmlApplication;
-pub use lifecycle::IAppLifecycle;
+pub use application::{NoWindow, RmlApplication};
+pub use lifecycle::{IAppLifecycle, NoLifecycle};
+pub use resources::{load_i18n_catalog, load_i18n_from_json, DEFAULT_I18N_DIR};

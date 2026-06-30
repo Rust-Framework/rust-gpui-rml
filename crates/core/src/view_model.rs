@@ -11,5 +11,5 @@ use crate::model::IModel;
 /// ViewModel 基础 trait，扩展 IModel 并继承 ILifecycle。
 ///
 /// `#[view]` 标记的结构体实现此 trait（由编译器生成的 `Render` 实现依赖它）。
-/// 生命周期回调 `rml_on_loaded` / `rml_on_unloaded` 来自 `ILifecycle`。
+/// 生命周期回调 `on_loaded` / `on_unloaded` 来自 `ILifecycle`。
 pub trait IViewModel: IModel + ILifecycle {}

@@ -4,7 +4,10 @@
 //! 详见文档 §10.4 构建流程。
 
 pub mod cache;
+pub mod i18n_extractor;
 pub mod scanner;
+
+pub use i18n_extractor::I18nExtractor;
 
 use crate::compiler::{compile, CodegenCtx};
 use crate::css;
@@ -36,6 +39,7 @@ pub struct Builder {
     hot_reload: bool,
     public: bool,
     style_paths: Vec<PathBuf>,
+    i18n_extract: Option<PathBuf>,
 }
 
 /// 入口：创建一个新的 Builder。
@@ -64,6 +68,7 @@ impl Builder {
             hot_reload: false,
             public: false,
             style_paths: Vec::new(),
+            i18n_extract: None,
         }
     }
 
@@ -119,6 +124,17 @@ impl Builder {
         self
     }
 
+    /// 扫描 `.rml` 中的 `t("key")` 并合并写入 i18n JSON（缺失 key 以 key 为默认值）
+    pub fn extract_i18n(mut self, path: impl Into<PathBuf>) -> Self {
+        self.i18n_extract = Some(path.into());
+        self
+    }
+
+    /// 与 [`extract_i18n`] 相同，提供文档中的 `I18nExtractor` 命名
+    pub fn plugin(self, extractor: I18nExtractor) -> Self {
+        self.extract_i18n(extractor.path().to_path_buf())
+    }
+
     /// 执行编译主流程。
     pub fn build(self) -> Result<(), BuildError> {
         // 所有 &self 借用必须在 self.output_dir 移动前完成
@@ -156,6 +172,7 @@ impl Builder {
         }
 
         // 3. 逐个编译
+        let mut rml_sources: Vec<String> = Vec::new();
         for rml_path in &rml_files {
             let source = match fs::read_to_string(rml_path) {
                 Ok(s) => s,
@@ -165,6 +182,8 @@ impl Builder {
                     return Err(BuildError { message: msg });
                 }
             };
+
+            rml_sources.push(source.clone());
 
             // 计算哈希
             let hash = hash_str(&source);
@@ -244,6 +263,15 @@ impl Builder {
                         message: format!("compile {}: {}", rml_path.display(), e),
                     });
                 }
+            }
+        }
+
+        if let Some(i18n_path) = &self.i18n_extract {
+            println!("cargo:rerun-if-changed={}", i18n_path.display());
+            let extractor = I18nExtractor::new(i18n_path.clone());
+            let refs: Vec<&str> = rml_sources.iter().map(|s| s.as_str()).collect();
+            if let Err(e) = extractor.extract_from_sources(&refs) {
+                return Err(BuildError { message: e });
             }
         }
 

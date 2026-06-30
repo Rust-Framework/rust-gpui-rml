@@ -63,7 +63,7 @@ fn render_menu_item(idx: usize, item: &MenuItem) -> AnyElement {
 /// 递归将 `&[MenuItem]` 转换为 `PopupMenu` builder 链
 ///
 /// `cx` 是 `&mut Context<PopupMenu>`（`dropdown_menu`/`submenu` builder 提供）
-fn build_popup_menu(
+pub(crate) fn build_popup_menu(
     mut menu: PopupMenu,
     items: &[MenuItem],
     window: &mut Window,
