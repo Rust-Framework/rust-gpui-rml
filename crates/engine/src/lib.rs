@@ -10,6 +10,9 @@
 pub extern crate rust_rml_core as rml_core;
 pub extern crate rust_rml_macros as rml_macros;
 
+// Phase B-3.2：re-export regex crate，供 codegen 生成的校验代码使用（rml::regex::Regex::new(...)）
+pub use regex;
+
 pub mod build;
 pub mod compiler;
 pub mod css;

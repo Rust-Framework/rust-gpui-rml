@@ -24,6 +24,7 @@ fn make_ctx() -> CodegenCtx {
             m
         },
         field_types: HashMap::new(),
+        field_validations: HashMap::new(),
     }
 }
 

@@ -79,11 +79,9 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
         include!(concat!(env!("OUT_DIR"), "/rml_generated/", #generated_file));
     };
 
-    // 重新构造 struct（移除 #[element] 等内部属性以免告警）
+    // 重新构造 struct（移除 #[element]/#[validate] 等内部属性以免告警）
     let mut item_clean = item.clone();
-    for f in item_clean.fields.iter_mut() {
-        f.attrs.retain(|a| !a.path().is_ident("element"));
-    }
+    crate::validate::strip_internal_attributes(&mut item_clean.fields);
 
     let expanded = quote! {
         #item_clean

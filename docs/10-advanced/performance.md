@@ -77,6 +77,7 @@ impl MainWindow {
 | 版本号对比 | 每次 render | O(1) | `AtomicU64::load` + 整数比较 |
 | `InputState::set_value` | 仅版本号变化时 | 字符串拷贝 | `emit_events=false` 不触发反向闭包 |
 | 反向闭包执行 | 用户每次输入 | 字段回写 + `HashMap::insert` | 闭包内 `bump_version` + `cx.notify()` |
+| `__rml_field_errors.get(field)` | 每次 render | O(1) HashMap 查询 | Phase B-3.1 校验状态查询，确定是否包裹红色边框 + tooltip |
 
 **关键优化点**：
 
@@ -90,6 +91,52 @@ impl MainWindow {
 - **大量 `<input model={field}>`**：每个绑定创建独立 `Entity<InputState>` + 订阅，N 个输入框 = N 个 entity + N 个订阅。对于 10+ 输入框的表单，首次 render 会有明显开销
 - **高频输入**：每次按键触发 `InputEvent::Change` → 反向闭包 → `cx.notify()` → 全量 render 重建。对于复杂界面，考虑防抖
 - **`#[command]` 修改 model 绑定字段**：触发正向同步 `set_value`，虽然 `emit_events=false` 避免循环，但仍有字符串拷贝开销
+
+### 校验规则执行开销
+
+`#[validate]` 声明的校验规则在反向绑定（用户输入）时执行，不影响正向渲染性能：
+
+| 规则 | 执行时机 | 复杂度 | 备注 |
+|---|---|---|---|
+| `required` | 反向闭包内 | O(1) | `String::is_empty()` 检查 len，开销可忽略 |
+| `length(min, max)` | 反向闭包内 | O(1) | `len()` 直接读取存储的长度 |
+| `range(min, max)` | 反向闭包内 | O(1) | 数值比较，开销可忽略 |
+| `regex = "..."` | 反向闭包内 | O(n) | `regex` crate 编译 + 匹配；每次输入重复编译 |
+| `custom = "fn"` | 反向闭包内 | 取决于函数 | 用户实现的函数复杂度 |
+
+**关键特点**：
+
+- **仅反向执行**：校验规则在 `InputEvent::Change` 闭包内执行，正向同步（`set_value`）不触发校验
+- **短路求值**：if-else if 链任一规则失败即停止，不执行后续规则
+- **regex 编译开销**：每次校验调用 `rml::regex::Regex::new(pattern).unwrap()`，未缓存编译结果。高频输入场景可考虑用 `custom` 函数 + `std::sync::OnceLock` 缓存编译后的 `Regex`
+- **整体影响极小**：校验仅在用户输入时执行（非每次 render），相比 `cx.notify()` 触发的全量 render 重建，校验开销可忽略
+
+**regex 优化示例**（高频输入场景）：
+
+```rust
+use std::sync::OnceLock;
+use rml::regex::Regex;
+
+impl Form {
+    // 缓存编译后的 regex，避免每次校验重复编译
+    fn email_regex() -> &'static Regex {
+        static REGEX: OnceLock<Regex> = OnceLock::new();
+        REGEX.get_or_init(|| Regex::new(r"^\w+@\w+\.\w+$").unwrap())
+    }
+
+    fn validate_email(value: &str) -> Option<SharedString> {
+        if !Self::email_regex().is_match(value) {
+            Some("邮箱格式错误".into())
+        } else {
+            None
+        }
+    }
+}
+
+// 用 custom 替代 regex 规则，避免重复编译
+#[validate(custom = "validate_email")]
+pub email: String,
+```
 
 **优化建议**：
 

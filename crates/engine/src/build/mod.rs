@@ -217,6 +217,7 @@ impl Builder {
                 computed_deps: struct_meta.computed_deps.clone(),
                 computed_returns: struct_meta.computed_returns.clone(),
                 field_types: struct_meta.field_types.clone(),
+                field_validations: struct_meta.field_validations.clone(),
             };
 
             match compile(&source, &ctx) {

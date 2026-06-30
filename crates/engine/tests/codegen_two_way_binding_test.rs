@@ -27,6 +27,7 @@ fn make_ctx_with_field_types() -> CodegenCtx {
             m.insert("name".to_string(), "String".to_string());
             m
         },
+        field_validations: HashMap::new(),
     }
 }
 
@@ -65,11 +66,19 @@ fn gen_model_input_generates_type_conversion_for_i32() {
     let ctx = make_ctx_with_field_types();
     let code = compile(RML_SOURCE_WITH_MODEL, &ctx).expect("compile failed");
 
-    // i32 字段应生成 parse::<i32>().unwrap_or(0) 转换代码
+    // i32 字段应生成 match value.parse::<i32>() { Ok(v) => ..., Err(_) => ... }
     assert!(
-        code.contains("parse::<i32>().unwrap_or(0)"),
-        "i32 字段应生成 parse 转换代码，实际：\n{}",
+        code.contains("match value.parse::<i32>()"),
+        "i32 字段应生成 match parse 代码，实际：\n{}",
         code
+    );
+    assert!(
+        code.contains("this.count = v"),
+        "i32 字段 parse 成功时应赋值 this.count = v"
+    );
+    assert!(
+        code.contains("Some(\"请输入有效的整数\""),
+        "i32 字段 parse 失败时应设置错误消息"
     );
     // 正向绑定时数字类型应 to_string()
     assert!(
@@ -188,6 +197,7 @@ fn gen_model_input_floating_point_types() {
             m.insert("score".to_string(), "f64".to_string());
             m
         },
+        field_validations: HashMap::new(),
     };
     let source = r#"
 <component>
@@ -196,11 +206,15 @@ fn gen_model_input_floating_point_types() {
 "#;
     let code = compile(source, &ctx).expect("compile failed");
 
-    // f64 应生成 parse::<f64>().unwrap_or(0.0)
+    // f64 应生成 match value.parse::<f64>() { Ok(v) => ..., Err(_) => ... }
     assert!(
-        code.contains("parse::<f64>().unwrap_or(0.0)"),
-        "f64 字段应生成 parse::<f64>().unwrap_or(0.0)，实际：\n{}",
+        code.contains("match value.parse::<f64>()"),
+        "f64 字段应生成 match parse 代码，实际：\n{}",
         code
+    );
+    assert!(
+        code.contains("Some(\"请输入有效的数字\""),
+        "f64 字段 parse 失败时应设置错误消息"
     );
     assert!(
         code.contains("self.score.to_string()"),
@@ -280,5 +294,110 @@ fn gen_input_state_impl_includes_version_tracking() {
     assert!(
         code.contains("this.__rml_input_state_versions.insert(field.to_string(), v)"),
         "反向闭包内应更新版本号标记"
+    );
+}
+
+// ─── Phase B-3.1 校验失败 UI 测试 ───
+
+#[test]
+fn gen_field_assign_generates_error_handling_for_i32() {
+    let ctx = make_ctx_with_field_types();
+    let code = compile(RML_SOURCE_WITH_MODEL, &ctx).expect("compile failed");
+
+    // i32 应生成 match parse + Err 分支 + 错误消息
+    assert!(
+        code.contains("match value.parse::<i32>()"),
+        "i32 字段应生成 match parse 代码"
+    );
+    assert!(
+        code.contains("Err(_) =>"),
+        "i32 字段应生成 Err 分支处理 parse 失败"
+    );
+    assert!(
+        code.contains("Some(\"请输入有效的整数\""),
+        "i32 字段 parse 失败时应设置中文错误消息"
+    );
+}
+
+#[test]
+fn gen_field_assign_preserves_old_value_on_error() {
+    let ctx = make_ctx_with_field_types();
+    let code = compile(RML_SOURCE_WITH_MODEL, &ctx).expect("compile failed");
+
+    // Err 分支不应包含 this.count = ...（不覆盖原值）
+    // 提取 i32 的 Err 分支内容验证
+    let err_section = code.split("Err(_) =>").nth(1).unwrap_or("");
+    let err_block = err_section.split("}").next().unwrap_or("");
+    assert!(
+        !err_block.contains("this.count ="),
+        "Err 分支不应覆盖原值，实际 Err 块：\n{}",
+        err_block
+    );
+    // Err 分支应设置错误状态
+    assert!(
+        err_block.contains("__rml_field_errors.insert"),
+        "Err 分支应设置错误状态"
+    );
+}
+
+#[test]
+fn gen_model_input_wraps_with_error_div() {
+    let ctx = make_ctx_with_field_types();
+    let code = compile(RML_SOURCE_WITH_MODEL, &ctx).expect("compile failed");
+
+    // 应检查 __rml_field_errors 并条件包裹 div
+    assert!(
+        code.contains("__rml_field_errors.get("),
+        "应检查 __rml_field_errors 获取错误状态"
+    );
+    assert!(
+        code.contains("border_1()"),
+        "校验失败时应添加 border_1()"
+    );
+    assert!(
+        code.contains("border_color(gpui::rgb(0xff0000))"),
+        "校验失败时应设置红色边框"
+    );
+    assert!(
+        code.contains("rml_input_err:"),
+        "包裹 div 应有 id（rml_input_err:<field>）"
+    );
+}
+
+#[test]
+fn gen_model_input_includes_tooltip_closure() {
+    let ctx = make_ctx_with_field_types();
+    let code = compile(RML_SOURCE_WITH_MODEL, &ctx).expect("compile failed");
+
+    // 应包含 tooltip 闭包 + Tooltip::new + build + into_any_element
+    assert!(
+        code.contains(".tooltip(move |window, cx|"),
+        "应使用 .tooltip() 闭包"
+    );
+    assert!(
+        code.contains("rml_ui::Tooltip::new("),
+        "闭包内应创建 Tooltip::new()"
+    );
+    assert!(
+        code.contains(".build(window, cx)"),
+        "应调用 .build(window, cx) 构建 tooltip"
+    );
+    assert!(
+        code.contains(".into_any_element()"),
+        "应使用 into_any_element() 统一返回类型"
+    );
+}
+
+#[test]
+fn gen_input_state_impl_clears_error_on_forward_sync() {
+    let ctx = make_ctx_with_field_types();
+    let code = compile(RML_SOURCE_WITH_MODEL, &ctx).expect("compile failed");
+
+    // 正向同步部分（set_value 后）应清除错误状态
+    let forward_section = code.split("state.set_value(value, window, cx)").nth(1).unwrap_or("");
+    assert!(
+        forward_section.contains("__rml_field_errors.insert(field.to_string(), None)"),
+        "正向同步 set_value 后应清除错误状态，实际：\n{}",
+        forward_section
     );
 }

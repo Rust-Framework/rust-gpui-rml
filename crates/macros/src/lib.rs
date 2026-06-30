@@ -16,6 +16,7 @@ mod component;
 mod computed;
 mod derive_model;
 mod lifecycle;
+mod validate;
 mod window;
 
 use proc_macro::TokenStream;
@@ -23,8 +24,8 @@ use proc_macro::TokenStream;
 /// 派生 `IModel` trait，使结构体成为 RML 响应式 Model/ViewModel。
 ///
 /// 所有 `pub` 字段自动成为可绑定字段。
-/// 声明 `element` 为 helper attribute，允许在字段上使用 `#[element]`。
-#[proc_macro_derive(IModel, attributes(element))]
+/// 声明 `element` 与 `validate` 为 helper attribute，允许在字段上使用 `#[element]` 与 `#[validate]`。
+#[proc_macro_derive(IModel, attributes(element, validate))]
 pub fn derive_i_model(input: TokenStream) -> TokenStream {
     derive_model::derive(input.into()).into()
 }

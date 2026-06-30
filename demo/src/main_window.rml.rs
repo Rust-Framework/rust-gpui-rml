@@ -6,6 +6,7 @@ use rml_ui::{IconName, MenuItem, StatusBarItem};
 pub struct MainWindow {
     pub count: i32,
     pub name: String,
+    #[validate(range(min = 0, max = 150))]
     pub age: i32,
 }
 

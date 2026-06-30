@@ -84,15 +84,15 @@ cx.subscribe 的闭包被调用：
 
 codegen 根据 `#[component]` 宏扫描的字段类型自动生成转换代码：
 
-| 字段类型 | 正向转换（VM→UI） | 反向转换（UI→VM） |
-|---|---|---|
-| `i32` / `u32` / `i64` / `u64` / `isize` / `usize` | `self.field.to_string().into()` | `value.parse::<T>().unwrap_or(0)` |
-| `f32` | `self.field.to_string().into()` | `value.parse::<f32>().unwrap_or(0.0)` |
-| `f64` | `self.field.to_string().into()` | `value.parse::<f64>().unwrap_or(0.0)` |
-| `bool` | `self.field.to_string().into()` | `!value.is_empty()`（非空为 true） |
-| `String` / `SharedString` | `self.field.clone().into()` | `value.to_string()` |
+| 字段类型 | 正向转换（VM→UI） | 反向转换（UI→VM） | 校验失败行为 |
+|---|---|---|---|
+| `i32` / `u32` / `i64` / `u64` / `isize` / `usize` | `self.field.to_string().into()` | `match value.parse::<T>() { Ok(v) => 赋值, Err(_) => 设置错误 }` | 保留原值 + 红色边框 + tooltip"请输入有效的整数" |
+| `f32` | `self.field.to_string().into()` | `match value.parse::<f32>() { ... }` | 保留原值 + 红色边框 + tooltip"请输入有效的数字" |
+| `f64` | `self.field.to_string().into()` | `match value.parse::<f64>() { ... }` | 保留原值 + 红色边框 + tooltip"请输入有效的数字" |
+| `bool` | `self.field.to_string().into()` | `!value.is_empty()` | 总是成功（无校验失败场景） |
+| `String` / `SharedString` | `self.field.clone().into()` | `value.to_string()` | 总是成功（无校验失败场景） |
 
-> 注：数字类型在输入非法字符时（如 `"abc"`）会兜底为 `0` / `0.0`，不会 panic。
+> 注：数字类型 parse 失败时（类型不匹配如 `"abc"`、类型溢出如 `"99999999999999999999"` 给 i32）**不覆盖原值**，仅设置校验错误状态，UI 显示红色边框 + tooltip。
 
 ## 3.3.4 基础用法
 
@@ -128,7 +128,7 @@ pub struct Settings {
 <input model={score} placeholder="分数" />
 ```
 
-用户输入 `"25"` 时，codegen 生成的反向闭包执行 `this.age = "25".parse::<i32>().unwrap_or(0)`，结果为 `25`。输入 `"abc"` 时兜底为 `0`。
+用户输入 `"25"` 时，codegen 生成的反向闭包执行 `match "25".parse::<i32>() { Ok(v) => this.age = v, Err(_) => 设置错误状态 }`，结果为 `25`。输入 `"abc"` 时 parse 失败，**保留原值**，仅设置 `__rml_field_errors["age"] = Some("请输入有效的整数")`，UI 显示红色边框 + tooltip。
 
 ### 完整示例（来自 demo）
 
@@ -319,7 +319,194 @@ pub fn uppercase_name(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
 
 此时 `current_version > last_synced`，render 时触发 `set_value` 将输入框值更新为大写。这是预期行为（用户主动修改），循环防护仍有效（`set_value` 不触发 Change）。
 
-## 3.3.9 双向绑定的性能
+### 校验失败时的循环防护
+
+当用户输入非法值（如 `"abc"` 给 `i32` 字段）时：
+- 反向闭包内 `parse` 失败，进入 `Err(_)` 分支
+- **不调用** `__rml_bump_version`（字段值未变）
+- **不调用** `cx.notify()`（但闭包末尾仍有 notify，触发一次重绘以显示错误 UI）
+- 设置 `__rml_field_errors[field] = Some("请输入有效的整数")`
+- 下一次 render：版本号未变（`current_version == last_synced`），跳过 `set_value`
+- render 时检查 `__rml_field_errors`，发现 `Some`，包裹红色边框 + tooltip
+
+## 3.3.9 校验失败 UI
+
+当用户输入非法值时，RML 自动显示校验失败的视觉反馈：
+
+### UI 表现
+
+- **红色边框**：Input 被包裹在 `div().border_1().border_color(red)` 中
+- **tooltip 气泡**：hover 时显示错误提示（如"请输入有效的整数"），不占用布局空间
+
+### 错误状态生命周期
+
+```
+用户输入 "abc"（i32 字段）
+    ↓
+反向闭包 parse 失败 → __rml_field_errors["age"] = Some("请输入有效的整数")
+    ↓
+cx.notify() → render → 检查 __rml_field_errors → 显示红色边框 + tooltip
+    ↓
+用户输入 "25"（有效值）
+    ↓
+反向闭包 parse 成功 → __rml_field_errors["age"] = None + bump_version + cx.notify()
+    ↓
+render → 检查 __rml_field_errors → None → 直接返回 Input（无边框）
+    ↓
+正向同步（版本号变化）→ set_value("25") → __rml_field_errors["age"] = None（冗余清除）
+```
+
+### 正向同步清除错误
+
+当 `#[command]` 修改 `model` 绑定的字段后，正向同步 `set_value` 会自动清除错误状态：
+
+```rust
+#[command]
+pub fn reset_age(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+    self.age = 0;  // 代码设置的值视为有效
+    // 宏自动注入：bump_version("age") + cx.notify()
+}
+```
+
+render 时版本号变化 → `set_value("0")` → `__rml_field_errors["age"] = None` → 红色边框消失。
+
+### 默认错误消息
+
+| 字段类型 | 错误消息 |
+|---|---|
+| 整数（i32/u32/i64/u64/isize/usize） | `请输入有效的整数` |
+| 浮点（f32/f64） | `请输入有效的数字` |
+
+> ✅ **已实现**：业务范围校验通过 `#[validate]` 宏（C# Attribute 风格）实现，不污染 RML 声明语法。详见 [3.3.10 自定义校验规则](#3310-自定义校验规则)。
+
+## 3.3.10 自定义校验规则
+
+`#[validate]` 属性为双向绑定字段声明校验规则，在 parse 成功后、赋值前执行校验链。任一规则失败 → 设置错误状态（不赋值、不 `bump_version`），全部通过 → 赋值 + 清除错误 + `bump_version`。
+
+### 声明方式
+
+`#[validate]` 是字段级属性，放在 `pub` 字段上：
+
+```rust
+#[window]
+#[derive(Default)]
+pub struct Form {
+    #[validate(range(min = 0, max = 150))]
+    pub age: i32,
+
+    #[validate(required, length(min = 3, max = 20))]
+    pub name: String,
+
+    #[validate(regex = r"^\w+@\w+\.\w+$", message = "邮箱格式错误")]
+    pub email: String,
+}
+```
+
+### 规则与字段类型匹配
+
+| 规则 | 适用类型 | 生成代码 | 默认消息 |
+|---|---|---|---|
+| `required` | `String` | `__rml_value.is_empty()` | 此项为必填 |
+| `length(min, max)` | `String` | `__rml_value.len() < min \|\| .len() > max` | 长度必须在 min-max 之间 |
+| `range(min, max)` | 数字类型 | `v < min \|\| v > max` | 值必须在 min-max 之间 |
+| `regex = "..."` | `String` | `rml::regex::Regex::new(...).is_match(...)` | 格式不正确 |
+| `custom = "fn"` | 数字/String | `Self::fn(&value)` → `Option<SharedString>` | 由函数返回 |
+
+- `min`/`max` 任一可省略（仅校验单边）
+- `bool` 类型忽略所有校验规则
+- 数字类型忽略 `required`/`length`/`regex`；String 类型忽略 `range`
+
+### 自定义校验函数
+
+`custom = "fn_name"` 引用 `impl ViewName` 块内的函数，签名为 `fn(&str) -> Option<SharedString>`：
+
+```rust
+impl Form {
+    fn validate_phone(value: &str) -> Option<SharedString> {
+        if value.len() != 11 || !value.chars().all(|c| c.is_ascii_digit()) {
+            Some("手机号必须为 11 位数字".into())
+        } else {
+            None
+        }
+    }
+}
+
+#[derive(Default)]
+#[window]
+pub struct Form {
+    #[validate(custom = "validate_phone")]
+    pub phone: String,
+}
+```
+
+返回 `Some(消息)` 表示校验失败，`None` 表示通过。数字类型的 `custom` 函数接收原始字符串（`value.as_ref()`），而非解析后的数字。
+
+### 错误消息覆盖
+
+`message = "..."` 全局覆盖所有失败分支的默认消息：
+
+```rust
+// 各规则使用默认消息
+#[validate(range(min = 0, max = 150))]
+pub age: i32,  // 失败显示 "值必须在 0-150 之间"
+
+// 统一覆盖
+#[validate(range(min = 0, max = 150), message = "年龄不合法")]
+pub age: i32,  // 失败显示 "年龄不合法"
+```
+
+### 校验链执行顺序
+
+多个规则按声明顺序执行，形成 if-else if 链：
+
+```rust
+#[validate(required, length(min = 3, max = 20))]
+pub name: String,
+```
+
+生成代码（简化）：
+
+```rust
+let __rml_value = value.to_string();
+if __rml_value.is_empty() {
+    this.__rml_field_errors.insert("name", Some("此项为必填".into()));      // required 先执行
+} else if __rml_value.len() < 3 || __rml_value.len() > 20 {
+    this.__rml_field_errors.insert("name", Some("长度必须在 3-20 之间".into())); // length 后执行
+} else {
+    this.name = __rml_value;
+    this.__rml_field_errors.insert("name", None);  // 清除错误
+    this.__rml_bump_version("name");
+}
+```
+
+### 完整示例
+
+```rust
+#[window]
+#[derive(Default)]
+pub struct RegistrationForm {
+    #[validate(required, length(min = 2, max = 30))]
+    pub username: String,
+
+    #[validate(range(min = 18, max = 150))]
+    pub age: i32,
+
+    #[validate(regex = r"^\w+@\w+\.\w+$")]
+    pub email: String,
+
+    #[validate(custom = "validate_phone", message = "手机号格式错误")]
+    pub phone: String,
+}
+```
+
+```html
+<input model={username} placeholder="用户名（2-30 字符）" />
+<input model={age} placeholder="年龄（18-150）" />
+<input model={email} placeholder="邮箱" />
+<input model={phone} placeholder="手机号" />
+```
+
+## 3.3.11 双向绑定的性能
 
 双向绑定比单向绑定多以下开销：
 
@@ -336,7 +523,7 @@ pub fn uppercase_name(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
 - 反向同步的 `cx.notify()` 会批量合并，多次输入只触发一次 render
 - `Subscription.detach()` 不占用结构体字段，避免 `Vec<Subscription>` 的内存开销
 
-## 3.3.10 常见陷阱
+## 3.3.12 常见陷阱
 
 ### 陷阱一：忘记 `pub`
 
@@ -393,7 +580,7 @@ pub struct MyView {
 
 若字段类型不在支持列表中（见 3.3.3），codegen 仍会生成代码（编译通过），但运行时行为未定义。请仅使用支持的字段类型。
 
-## 3.3.11 小结
+## 3.3.12 小结
 
 双向绑定是表单输入的核心机制：
 

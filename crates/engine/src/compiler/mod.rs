@@ -13,6 +13,36 @@ use crate::parser;
 use std::collections::HashMap;
 use std::fmt;
 
+/// 字段校验规则（Phase B-3.2：`#[validate]` 宏）
+///
+/// 由 `crates/engine/src/build/scanner.rs` 从 `.rml.rs` 的 `#[validate(...)]` 属性提取，
+/// 经 `CodegenCtx.field_validations` 传递给 codegen，生成校验代码写入 `__rml_field_errors`。
+#[derive(Debug, Clone)]
+pub enum ValidationRule {
+    /// 非空校验（String 非空、数字非零）
+    Required,
+    /// 字符串长度范围（min/max 任一可省略）
+    Length { min: Option<i64>, max: Option<i64> },
+    /// 数值范围（min/max 任一可省略）
+    Range { min: Option<f64>, max: Option<f64> },
+    /// 正则匹配（pattern 为正则表达式字符串）
+    Regex(String),
+    /// 自定义校验函数（函数名，签名 `fn(&str) -> Option<SharedString>`）
+    Custom(String),
+}
+
+/// 字段校验规则集
+///
+/// 一个字段可声明多个规则，按声明顺序执行。任一失败则写入错误状态，不赋值、不 bump_version。
+/// `custom_message` 为 `Some` 时覆盖所有失败分支的默认错误消息。
+#[derive(Debug, Clone, Default)]
+pub struct ValidationRuleSet {
+    /// 规则列表（按声明顺序）
+    pub rules: Vec<ValidationRule>,
+    /// 自定义错误消息（覆盖默认消息）
+    pub custom_message: Option<String>,
+}
+
 /// 代码生成上下文
 #[derive(Debug, Clone, Default)]
 pub struct CodegenCtx {
@@ -54,6 +84,12 @@ pub struct CodegenCtx {
     /// `i32`/`u32` 等 → `state.value().parse::<T>().unwrap_or(0)`，
     /// `String`/`SharedString` → `state.value().into()`。
     pub field_types: HashMap<String, String>,
+    /// 每个 pub 字段 → 校验规则集（Phase B-3.2：`#[validate]` 宏）
+    ///
+    /// 由 scanner 从 `.rml.rs` 的 `#[validate(...)]` 属性提取。
+    /// codegen 的 `gen_field_assign_expr` 据此在 parse 成功后、赋值前
+    /// 生成规则校验链（range/length/required/regex/custom）。
+    pub field_validations: HashMap<String, ValidationRuleSet>,
 }
 
 /// 代码生成错误

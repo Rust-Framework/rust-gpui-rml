@@ -1,6 +1,6 @@
 # 4.2 宏属性详解
 
-> **本节目标**：完整掌握 RML 的全部宏属性——`#[window]`、`#[component]`、`#[command]`、`#[computed]`、`#[element]`、`#[on_loaded]`、`#[on_unloaded]`。
+> **本节目标**：完整掌握 RML 的全部宏属性——`#[window]`、`#[component]`、`#[command]`、`#[computed]`、`#[element]`、`#[validate]`、`#[on_loaded]`、`#[on_unloaded]`。
 
 ## 4.2.1 宏属性总览
 
@@ -13,6 +13,7 @@
 | `#[on_loaded]`   | 视图加载完成后的回调                 | 方法    |
 | `#[on_unloaded]` | 视图卸载前的清理回调                 | 方法    |
 | `#[element]`     | 标记字段为 `ref` 引用的 UI 元素      | 字段    |
+| `#[validate]`    | 声明字段的校验规则（range/length/required/regex/custom） | 字段 |
 
 ## 4.2.2 `#[window]`：标记窗口
 
@@ -87,6 +88,7 @@ pub struct PrimaryButton {
 | `__rml_computed_cache: ComputedCache` | 每结构体一个 | `#[computed]` 方法结果缓存，按方法名索引 |
 | `__rml_input_states: HashMap<String, Entity<InputState>>` | 每结构体一个 | 双向绑定的 `InputState` entity 存储（按字段名索引） |
 | `__rml_input_state_versions: HashMap<String, u64>` | 每结构体一个 | 双向绑定正向同步的版本号追踪 |
+| `__rml_field_errors: HashMap<String, Option<SharedString>>` | 每结构体一个 | Phase B-3.1 校验状态：`None`=通过，`Some(msg)`=失败（UI 显示红色边框 + tooltip） |
 
 这些字段均为私有，不会进入 `IModel::rml_fields()`（其只收集 `pub` 字段）。所有注入字段均实现 `Default`，与 `#[derive(Default)]` 兼容。
 
@@ -395,7 +397,114 @@ pub struct MyView {
 
 详见 [4.3 元素引用](./element-ref.md)。
 
-## 4.2.9 宏属性的组合
+## 4.2.9 `#[validate]`：声明字段校验规则
+
+`#[validate]` 是字段级属性（类似 C# Attribute），声明双向绑定字段的校验规则。宏展开时仅剥离属性，规则参数由 `build.rs` 的 scanner 重新提取，经 `CodegenCtx.field_validations` 传递给 codegen，在 parse 成功后、赋值前生成校验链。
+
+### 语法
+
+```rust
+#[validate(
+    required,                      // 非空校验（仅 String）
+    length(min = 3, max = 20),     // 字符串长度范围（仅 String）
+    range(min = 0, max = 150),     // 数值范围（仅数字类型）
+    regex = r"^\w+@\w+\.\w+$",     // 正则匹配（仅 String）
+    custom = "validate_phone",     // 自定义校验函数
+    message = "自定义错误消息"        // 覆盖所有失败分支的默认消息
+)]
+```
+
+规则可组合使用，按声明顺序执行。任一规则失败 → 设置错误状态（不赋值、不 `bump_version`），全部通过 → 赋值 + 清除错误 + `bump_version`。
+
+### 规则与字段类型匹配
+
+| 规则 | 适用类型 | 生成代码 | 默认消息 |
+|---|---|---|---|
+| `required` | `String` | `__rml_value.is_empty()` | 此项为必填 |
+| `length(min, max)` | `String` | `__rml_value.len() < min \|\| __rml_value.len() > max` | 长度必须在 min-max 之间 |
+| `range(min, max)` | `i32`/`u32`/`i64`/`u64`/`isize`/`usize`/`f32`/`f64` | `v < min \|\| v > max` | 值必须在 min-max 之间 |
+| `regex = "..."` | `String` | `rml::regex::Regex::new(...).unwrap().is_match(&__rml_value)` | 格式不正确 |
+| `custom = "fn"` | 数字/String | `Self::fn(&value)` 返回 `Option<SharedString>` | 无（由函数返回） |
+
+> `bool` 类型忽略所有校验规则（语义不明确）。数字类型忽略 `required`/`length`/`regex`，String 类型忽略 `range`。
+
+### 自定义校验函数
+
+`custom` 规则引用 `impl ViewName` 块内的函数，签名为 `fn(&str) -> Option<SharedString>`：
+
+```rust
+impl MainForm {
+    /// 返回 Some(错误消息) 表示校验失败，None 表示通过
+    fn validate_phone(value: &str) -> Option<SharedString> {
+        if value.len() != 11 || !value.chars().all(|c| c.is_ascii_digit()) {
+            Some("手机号必须为 11 位数字".into())
+        } else {
+            None
+        }
+    }
+}
+```
+
+数字类型的 `custom` 函数接收 `value.as_ref()`（原始字符串），而非解析后的数字。
+
+### 错误消息覆盖
+
+`message = "..."` 全局覆盖所有失败分支的默认消息：
+
+```rust
+// 不指定 message：各规则使用自己的默认消息
+#[validate(range(min = 0, max = 150))]
+pub age: i32,  // 失败时显示 "值必须在 0-150 之间"
+
+// 指定 message：所有失败分支统一显示
+#[validate(range(min = 0, max = 150), message = "年龄不合法")]
+pub age: i32,  // 失败时显示 "年龄不合法"
+```
+
+### 完整示例
+
+```rust
+#[window]
+#[derive(Default)]
+pub struct Form {
+    #[validate(required, length(min = 3, max = 20))]
+    pub name: String,
+
+    #[validate(range(min = 0, max = 150))]
+    pub age: i32,
+
+    #[validate(regex = r"^\w+@\w+\.\w+$", message = "邮箱格式错误")]
+    pub email: String,
+
+    #[validate(custom = "validate_phone")]
+    pub phone: String,
+}
+```
+
+### codegen 行为
+
+以 `age: i32` + `#[validate(range(min = 0, max = 150))]` 为例，生成的反向赋值代码：
+
+```rust
+match value.parse::<i32>() {
+    Ok(v) => {
+        if v < 0 || v > 150 {
+            this.__rml_field_errors.insert("age".to_string(), Some("值必须在 0-150 之间".into()));
+        } else {
+            this.age = v;
+            this.__rml_field_errors.insert("age".to_string(), None);  // 清除错误
+            this.__rml_bump_version("age");
+        }
+    }
+    Err(_) => {
+        this.__rml_field_errors.insert("age".to_string(), Some("请输入有效的整数".into()));
+    }
+}
+```
+
+> ⚠️ `#[validate]` 仅对 `<input model={field}>` 双向绑定生效。单向绑定的 `value={field}` 不触发校验（仅展示，不回写）。
+
+## 4.2.10 宏属性的组合
 
 多个宏属性可以组合使用：
 
@@ -445,7 +554,7 @@ impl MyView {
 }
 ```
 
-## 4.2.10 宏属性的常见错误
+## 4.2.11 宏属性的常见错误
 
 ### 错误一：忘记 `#[derive(IModel)]`
 
@@ -504,13 +613,13 @@ pub username_input: Input,
 pub username_input: ElementRef<Input>,
 ```
 
-## 4.2.11 小结
+## 4.2.12 小结
 
-RML 的 7 个宏属性是 `.rml.rs` 的核心工具：
+RML 的 8 个宏属性是 `.rml.rs` 的核心工具：
 
 - **结构体级**：`#[window]`、`#[component]`
 - **方法级**：`#[command]`、`#[computed]`、`#[on_loaded]`、`#[on_unloaded]`
-- **字段级**：`#[element]`
+- **字段级**：`#[element]`、`#[validate]`
 
 记住每个宏的作用和签名要求，你就能写出规范的 ViewModel。
 

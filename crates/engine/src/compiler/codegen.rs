@@ -512,7 +512,7 @@ fn gen_model_input(
     };
 
     // 构造 Input 组件，传引用给 Input::new（内部 clone Entity）
-    let mut code = format!(
+    let mut input_code = format!(
         "rml_ui::Input::new(&self.__rml_get_or_init_input_state({:?}, {}, _window, cx))",
         field, placeholder_arg
     );
@@ -526,10 +526,35 @@ fn gen_model_input(
                 } else {
                     "false"
                 };
-                code.push_str(&format!(".disabled({})", disabled_val));
+                input_code.push_str(&format!(".disabled({})", disabled_val));
             }
         }
     }
+
+    // 校验失败 UI 表现：检查 __rml_field_errors，若 Some(msg) 则包裹红色边框 + tooltip
+    // .id() 使 div 成为 StatefulInteractiveElement，从而可调用 .tooltip()
+    // .into_any_element() 统一 if/else 分支返回类型为 AnyElement
+    let wrapper_id = format!("rml_input_err:{}", field);
+    let code = format!(
+        r#"{{
+            let __rml_input = {input_code};
+            let __rml_err: Option<gpui::SharedString> = self.__rml_field_errors.get({field:?}).and_then(|e| e.clone());
+            if let Some(__rml_err_msg) = __rml_err {{
+                gpui::div()
+                    .id({wrapper_id:?})
+                    .border_1()
+                    .border_color(gpui::rgb(0xff0000))
+                    .child(__rml_input)
+                    .tooltip(move |window, cx| rml_ui::Tooltip::new(__rml_err_msg.clone()).build(window, cx))
+                    .into_any_element()
+            }} else {{
+                __rml_input.into_any_element()
+            }}
+        }}"#,
+        input_code = input_code,
+        field = field,
+        wrapper_id = wrapper_id
+    );
 
     Ok(code)
 }
@@ -547,22 +572,299 @@ fn gen_field_value_expr(field: &str, ty: &str) -> String {
     }
 }
 
-/// 生成反向赋值表达式：`value: SharedString` → `this.field = ...`
+/// 生成反向赋值代码块：`value: SharedString` → `this.field = ...`
 ///
-/// 数字类型：`parse::<T>().unwrap_or(0)`，输入非法字符时兜底为 0
-/// 浮点类型：同上，兜底为 0.0
-/// bool 类型：`!value.is_empty()`（非空字符串视为 true）
-/// 其他（String/SharedString）：`value.to_string()`
-fn gen_field_assign_expr(field: &str, ty: &str) -> String {
+/// 返回完整代码块（含 parse + 赋值 + 错误处理 + bump_version），调用方不再追加 bump_version。
+///
+/// **整数类型**（i32/u32/i64/u64/isize/usize）：
+///   `match value.parse::<T>() { Ok(v) => { 赋值 + 清除错误 + bump }, Err(_) => { 设置错误 } }`
+///   parse 失败时（类型不匹配 + 类型溢出）**不覆盖原值**，仅设置错误状态
+/// **浮点类型**（f32/f64）：同上，错误消息为"请输入有效的数字"
+/// **bool 类型**：`!value.is_empty()`（非空字符串视为 true），总是成功
+/// **String/其他**：`value.to_string()`，总是成功
+///
+/// Phase B-3.2：当 `validation` 为 `Some` 且规则非空时，在 parse 成功后、赋值前生成规则校验链。
+/// 任一规则失败 → 设置错误状态，不赋值、不 bump_version；全部通过 → 赋值 + 清除错误 + bump_version。
+fn gen_field_assign_expr(
+    field: &str,
+    ty: &str,
+    validation: Option<&crate::compiler::ValidationRuleSet>,
+) -> String {
+    let rules = match validation {
+        Some(v) if !v.rules.is_empty() => &v.rules,
+        _ => return gen_field_assign_expr_default(field, ty),
+    };
+    let custom_msg = validation.and_then(|v| v.custom_message.as_deref());
+
     match ty {
-        "i32" | "u32" | "i64" | "u64" | "isize" | "usize" => {
-            format!("this.{} = value.parse::<{}>().unwrap_or(0)", field, ty)
+        "i32" | "u32" | "i64" | "u64" | "isize" | "usize" | "f32" | "f64" => {
+            gen_numeric_field_assign_with_validation(field, ty, rules, custom_msg)
         }
-        "f32" => format!("this.{} = value.parse::<f32>().unwrap_or(0.0)", field),
-        "f64" => format!("this.{} = value.parse::<f64>().unwrap_or(0.0)", field),
-        "bool" => format!("this.{} = !value.is_empty()", field),
-        _ => format!("this.{} = value.to_string()", field),
+        // bool 类型忽略校验规则（语义不明确）
+        "bool" => gen_field_assign_expr_default(field, ty),
+        _ => gen_string_field_assign_with_validation(field, rules, custom_msg),
     }
+}
+
+/// 无校验规则时的默认反向赋值逻辑（Phase B-3.1 实现，向后兼容）
+fn gen_field_assign_expr_default(field: &str, ty: &str) -> String {
+    match ty {
+        "i32" | "u32" | "i64" | "u64" | "isize" | "usize" => format!(
+            r#"match value.parse::<{ty}>() {{
+                Ok(v) => {{
+                    this.{field} = v;
+                    this.__rml_field_errors.insert({field:?}.to_string(), None);
+                    this.__rml_bump_version({field:?});
+                }}
+                Err(_) => {{
+                    this.__rml_field_errors.insert({field:?}.to_string(), Some("请输入有效的整数".into()));
+                }}
+            }}"#,
+            field = field,
+            ty = ty
+        ),
+        "f32" | "f64" => format!(
+            r#"match value.parse::<{ty}>() {{
+                Ok(v) => {{
+                    this.{field} = v;
+                    this.__rml_field_errors.insert({field:?}.to_string(), None);
+                    this.__rml_bump_version({field:?});
+                }}
+                Err(_) => {{
+                    this.__rml_field_errors.insert({field:?}.to_string(), Some("请输入有效的数字".into()));
+                }}
+            }}"#,
+            field = field,
+            ty = ty
+        ),
+        "bool" => format!(
+            r#"this.{field} = !value.is_empty();
+            this.__rml_field_errors.insert({field:?}.to_string(), None);
+            this.__rml_bump_version({field:?});"#,
+            field = field
+        ),
+        _ => format!(
+            r#"this.{field} = value.to_string();
+            this.__rml_field_errors.insert({field:?}.to_string(), None);
+            this.__rml_bump_version({field:?});"#,
+            field = field
+        ),
+    }
+}
+
+/// 数字类型字段 + 校验规则：生成 parse + range/custom 校验链
+///
+/// 生成代码结构：
+/// ```text
+/// match value.parse::<T>() {
+///     Ok(v) => {
+///         if <range_check> {
+///             this.<field>.__rml_field_errors.insert(<field>, Some("<msg>".into()));
+///         } else if let Some(__rml_err) = Self::<custom>(&value) {
+///             this.<field>.__rml_field_errors.insert(<field>, __rml_err);
+///         } else {
+///             this.<field> = v;
+///             this.__rml_field_errors.insert(<field>, None);
+///             this.__rml_bump_version(<field>);
+///         }
+///     }
+///     Err(_) => {
+///         this.__rml_field_errors.insert(<field>, Some("<type_err>".into()));
+///     }
+/// }
+/// ```
+fn gen_numeric_field_assign_with_validation(
+    field: &str,
+    ty: &str,
+    rules: &[crate::compiler::ValidationRule],
+    custom_msg: Option<&str>,
+) -> String {
+    let is_integer = matches!(ty, "i32" | "u32" | "i64" | "u64" | "isize" | "usize");
+    let type_err = if is_integer { "请输入有效的整数" } else { "请输入有效的数字" };
+
+    // 生成校验分支（if-else if 链）
+    let mut branches = String::new();
+    for rule in rules {
+        match rule {
+            crate::compiler::ValidationRule::Range { min, max } => {
+                let condition = match (min, max) {
+                    (Some(min), Some(max)) => format!("v < {min} || v > {max}"),
+                    (Some(min), None) => format!("v < {min}"),
+                    (None, Some(max)) => format!("v > {max}"),
+                    (None, None) => continue, // 无约束，跳过
+                };
+                let msg = custom_msg
+                    .unwrap_or("值不在有效范围内")
+                    .replace("{min}", &min.map(|v| v.to_string()).unwrap_or_default())
+                    .replace("{max}", &max.map(|v| v.to_string()).unwrap_or_default());
+                // 简单消息：若 custom_msg 不含 {min}/{max} 占位符，用默认格式
+                let final_msg = if custom_msg.is_some() {
+                    msg
+                } else {
+                    match (min, max) {
+                        (Some(min), Some(max)) => format!("值必须在 {}-{} 之间", *min as i64, *max as i64),
+                        (Some(min), None) => format!("值必须 >= {}", *min as i64),
+                        (None, Some(max)) => format!("值必须 <= {}", *max as i64),
+                        (None, None) => "值不在有效范围内".to_string(),
+                    }
+                };
+                branches.push_str(&format!(
+                    r#"        if {condition} {{
+            this.__rml_field_errors.insert({field:?}.to_string(), Some({msg:?}.into()));
+        }} else "#,
+                    condition = condition,
+                    field = field,
+                    msg = final_msg
+                ));
+            }
+            crate::compiler::ValidationRule::Custom(fn_name) => {
+                branches.push_str(&format!(
+                    r#"if let Some(__rml_err) = Self::{fn_name}(value.as_ref()) {{
+            this.__rml_field_errors.insert({field:?}.to_string(), __rml_err);
+        }} else "#,
+                    fn_name = fn_name,
+                    field = field
+                ));
+            }
+            // required/length/regex 对数字类型不适用，忽略
+            _ => continue,
+        }
+    }
+
+    // 校验全部分支后的成功路径
+    branches.push_str(&format!(
+        r#"{{
+            this.{field} = v;
+            this.__rml_field_errors.insert({field:?}.to_string(), None);
+            this.__rml_bump_version({field:?});
+        }}"#,
+        field = field
+    ));
+
+    format!(
+        r#"match value.parse::<{ty}>() {{
+            Ok(v) => {{
+        {branches}
+            }}
+            Err(_) => {{
+                this.__rml_field_errors.insert({field:?}.to_string(), Some({type_err:?}.into()));
+            }}
+        }}"#,
+        ty = ty,
+        branches = branches,
+        field = field,
+        type_err = type_err
+    )
+}
+
+/// String 类型字段 + 校验规则：生成 required/length/regex/custom 校验链
+///
+/// 生成代码结构：
+/// ```text
+/// {
+///     let __rml_value = value.to_string();
+///     if __rml_value.is_empty() {
+///         this.__rml_field_errors.insert(<field>, Some("<msg>".into()));
+///     } else if __rml_value.len() < N || __rml_value.len() > M {
+///         this.__rml_field_errors.insert(<field>, Some("<msg>".into()));
+///     } else if !<regex>.is_match(&__rml_value) {
+///         this.__rml_field_errors.insert(<field>, Some("<msg>".into()));
+///     } else if let Some(__rml_err) = Self::<custom>(&__rml_value) {
+///         this.__rml_field_errors.insert(<field>, __rml_err);
+///     } else {
+///         this.<field> = __rml_value;
+///         this.__rml_field_errors.insert(<field>, None);
+///         this.__rml_bump_version(<field>);
+///     }
+/// }
+/// ```
+fn gen_string_field_assign_with_validation(
+    field: &str,
+    rules: &[crate::compiler::ValidationRule],
+    custom_msg: Option<&str>,
+) -> String {
+    let mut branches = String::new();
+
+    for rule in rules {
+        match rule {
+            crate::compiler::ValidationRule::Required => {
+                let msg = custom_msg.unwrap_or("此项为必填");
+                branches.push_str(&format!(
+                    r#"        if __rml_value.is_empty() {{
+            this.__rml_field_errors.insert({field:?}.to_string(), Some({msg:?}.into()));
+        }} else "#,
+                    field = field,
+                    msg = msg
+                ));
+            }
+            crate::compiler::ValidationRule::Length { min, max } => {
+                let condition = match (min, max) {
+                    (Some(min), Some(max)) => format!("__rml_value.len() < {min} || __rml_value.len() > {max}"),
+                    (Some(min), None) => format!("__rml_value.len() < {min}"),
+                    (None, Some(max)) => format!("__rml_value.len() > {max}"),
+                    (None, None) => continue,
+                };
+                let final_msg = if custom_msg.is_some() {
+                    custom_msg.unwrap_or("长度不合法").to_string()
+                } else {
+                    match (min, max) {
+                        (Some(min), Some(max)) => format!("长度必须在 {}-{} 之间", min, max),
+                        (Some(min), None) => format!("长度必须 >= {}", min),
+                        (None, Some(max)) => format!("长度必须 <= {}", max),
+                        (None, None) => "长度不合法".to_string(),
+                    }
+                };
+                branches.push_str(&format!(
+                    r#"if {condition} {{
+            this.__rml_field_errors.insert({field:?}.to_string(), Some({msg:?}.into()));
+        }} else "#,
+                    condition = condition,
+                    field = field,
+                    msg = final_msg
+                ));
+            }
+            crate::compiler::ValidationRule::Regex(pattern) => {
+                let msg = custom_msg.unwrap_or("格式不正确");
+                branches.push_str(&format!(
+                    r#"if !rml::regex::Regex::new({pattern:?}).unwrap().is_match(&__rml_value) {{
+            this.__rml_field_errors.insert({field:?}.to_string(), Some({msg:?}.into()));
+        }} else "#,
+                    pattern = pattern,
+                    field = field,
+                    msg = msg
+                ));
+            }
+            crate::compiler::ValidationRule::Custom(fn_name) => {
+                branches.push_str(&format!(
+                    r#"if let Some(__rml_err) = Self::{fn_name}(&__rml_value) {{
+            this.__rml_field_errors.insert({field:?}.to_string(), __rml_err);
+        }} else "#,
+                    fn_name = fn_name,
+                    field = field
+                ));
+            }
+            // range 对 String 类型不适用，忽略
+            _ => continue,
+        }
+    }
+
+    // 校验全部分支后的成功路径
+    branches.push_str(&format!(
+        r#"{{
+            this.{field} = __rml_value;
+            this.__rml_field_errors.insert({field:?}.to_string(), None);
+            this.__rml_bump_version({field:?});
+        }}"#,
+        field = field
+    ));
+
+    format!(
+        r#"{{
+            let __rml_value = value.to_string();
+        {branches}
+        }}"#,
+        branches = branches
+    )
 }
 
 fn apply_static_attr(name: &str, value: &str) -> String {
@@ -859,14 +1161,13 @@ fn gen_input_state_impl(ctx: &CodegenCtx) -> String {
     }
 
     // 生成反向赋值 match arms
+    // 注意：gen_field_assign_expr 返回完整代码块（含 bump_version），不再追加 bump_version
     let mut reverse_arms = String::new();
     for field in &ctx.observable_fields {
         let ty = ctx.field_types.get(field).cloned().unwrap_or_default();
-        let assign = gen_field_assign_expr(field, &ty);
-        reverse_arms.push_str(&format!(
-            "                \"{}\" => {{ {}; this.__rml_bump_version({:?}); }}\n",
-            field, assign, field
-        ));
+        let validation = ctx.field_validations.get(field);
+        let assign = gen_field_assign_expr(field, &ty, validation);
+        reverse_arms.push_str(&format!("                \"{}\" => {{ {} }}\n", field, assign));
     }
 
     let mut out = String::new();
@@ -924,6 +1225,7 @@ fn gen_input_state_impl(ctx: &CodegenCtx) -> String {
     out.push_str("                _ => gpui::SharedString::default(),\n");
     out.push_str("            };\n");
     out.push_str("            entity.update(cx, |state, cx| state.set_value(value, window, cx));\n");
+    out.push_str("            self.__rml_field_errors.insert(field.to_string(), None);\n");
     out.push_str("            self.__rml_input_state_versions.insert(field.to_string(), current_version);\n");
     out.push_str("        }\n");
     out.push_str("        entity\n");

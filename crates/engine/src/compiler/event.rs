@@ -181,6 +181,7 @@ mod tests {
             computed_deps: std::collections::HashMap::new(),
             computed_returns: std::collections::HashMap::new(),
             field_types: std::collections::HashMap::new(),
+            field_validations: std::collections::HashMap::new(),
         }
     }
 

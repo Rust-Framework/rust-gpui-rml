@@ -130,6 +130,15 @@ pub fn inject_tracking_fields(fields: &mut Fields) {
         __rml_input_state_versions: std::collections::HashMap<String, u64>
     };
     named.named.push(input_versions_field);
+
+    // Phase B-3.1：注入字段校验错误状态（记录每个字段的校验失败信息）
+    // None = 校验通过，Some(msg) = 校验失败（红色边框 + tooltip 显示 msg）
+    // 反向闭包 parse 失败时设置 Some，成功时清除为 None；正向同步 set_value 后清除为 None
+    let field_errors_field: Field = parse_quote! {
+        #[allow(dead_code)]
+        __rml_field_errors: std::collections::HashMap<String, Option<gpui::SharedString>>
+    };
+    named.named.push(field_errors_field);
 }
 
 /// 生成组件所需的全部 trait 实现（IModel + ILifecycle + IViewModel + IComponent）
@@ -218,11 +227,9 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
         include!(concat!(env!("OUT_DIR"), "/rml_generated/", #generated_file));
     };
 
-    // 重新构造 struct（移除 #[element] 等内部属性以免告警）
+    // 重新构造 struct（移除 #[element]/#[validate] 等内部属性以免告警）
     let mut item_clean = item.clone();
-    for f in item_clean.fields.iter_mut() {
-        f.attrs.retain(|a| !a.path().is_ident("element"));
-    }
+    crate::validate::strip_internal_attributes(&mut item_clean.fields);
 
     let expanded = quote! {
         #item_clean

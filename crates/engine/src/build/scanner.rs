@@ -12,8 +12,10 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use quote::quote;
 use syn::visit::Visit;
-use syn::{Expr, ExprField, File, ImplItem, Item, ReturnType, Type, Visibility};
+use syn::{Expr, ExprField, File, Ident, ImplItem, Item, Lit, LitStr, ReturnType, Token, Type, Visibility};
 use walkdir::WalkDir;
+
+use crate::compiler::{ValidationRule, ValidationRuleSet};
 
 /// 递归扫描给定目录列表中的所有 `.rml` 文件，返回排序后的路径列表。
 ///
@@ -54,6 +56,11 @@ pub struct StructMetadata {
     /// Phase B-3：codegen 的 `gen_model_input` 据此生成类型转换代码
     /// （`i32` → `parse::<i32>()`、`String` → `into()`）。
     pub field_types: HashMap<String, String>,
+    /// 每个 pub 字段 → 校验规则集（Phase B-3.2：`#[validate]` 宏）
+    ///
+    /// scanner 从字段属性 `#[validate(...)]` 提取规则，codegen 据此在 parse 成功后、
+    /// 赋值前生成规则校验链。
+    pub field_validations: HashMap<String, ValidationRuleSet>,
 }
 
 /// 扫描 `.rml.rs` code-behind 文件，提取所有 `#[window]`/`#[component]` 标注 struct 的元信息。
@@ -100,7 +107,26 @@ pub fn scan_struct_metadata(rml_rs_path: &Path) -> HashMap<String, StructMetadat
                         let ty = &f.ty;
                         let ty_str = quote!(#ty).to_string();
                         let cleaned = ty_str.split_whitespace().collect::<String>();
-                        meta.field_types.insert(name_str, cleaned);
+                        meta.field_types.insert(name_str.clone(), cleaned);
+
+                        // Phase B-3.2：解析 #[validate(...)] 属性
+                        for attr in &f.attrs {
+                            if attr.path().is_ident("validate") {
+                                match attr.parse_args::<ValidateArgs>() {
+                                    Ok(args) => {
+                                        let rule_set: ValidationRuleSet = args.into();
+                                        meta.field_validations.insert(name_str.clone(), rule_set);
+                                    }
+                                    Err(e) => {
+                                        // 解析失败：警告但不阻塞编译
+                                        println!(
+                                            "cargo:warning=RML: failed to parse #[validate] on field {}: {}",
+                                            name_str, e
+                                        );
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -283,6 +309,101 @@ fn scan_self_field_accesses(s: &str, deps: &mut Vec<String>) {
 
 fn is_ident_char(c: char) -> bool {
     c.is_ascii_alphanumeric() || c == '_'
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+//  Phase B-3.2：#[validate(...)] 属性解析器
+// ──────────────────────────────────────────────────────────────────────────
+
+/// `#[validate(...)]` 属性参数解析器
+///
+/// 解析逗号分隔的规则列表，如 `required, length(min = 3, max = 20), message = "..."`。
+/// 由 scanner 调用 `attr.parse_args::<ValidateArgs>()` 解析属性参数。
+struct ValidateArgs {
+    rules: Vec<ValidationRule>,
+    custom_message: Option<String>,
+}
+
+impl syn::parse::Parse for ValidateArgs {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let mut rules = Vec::new();
+        let mut custom_message = None;
+
+        while !input.is_empty() {
+            let ident: Ident = input.parse()?;
+            match ident.to_string().as_str() {
+                "required" => {
+                    rules.push(ValidationRule::Required);
+                }
+                "length" | "range" => {
+                    // 解析 (min = N, max = M)，min/max 任一可省略
+                    let content;
+                    syn::parenthesized!(content in input);
+                    let mut min: Option<f64> = None;
+                    let mut max: Option<f64> = None;
+                    while !content.is_empty() {
+                        let key: Ident = content.parse()?;
+                        let _: Token![=] = content.parse()?;
+                        let val: Lit = content.parse()?;
+                        let num = match &val {
+                            Lit::Int(i) => i.base10_parse::<f64>().ok(),
+                            Lit::Float(f) => f.base10_parse::<f64>().ok(),
+                            _ => None,
+                        };
+                        match key.to_string().as_str() {
+                            "min" => min = num,
+                            "max" => max = num,
+                            _ => {}
+                        }
+                        if content.peek(Token![,]) {
+                            let _: Token![,] = content.parse()?;
+                        }
+                    }
+                    if ident.to_string() == "length" {
+                        // length 的 min/max 转为 i64（字符串长度）
+                        rules.push(ValidationRule::Length {
+                            min: min.map(|v| v as i64),
+                            max: max.map(|v| v as i64),
+                        });
+                    } else {
+                        // range 的 min/max 保持 f64
+                        rules.push(ValidationRule::Range { min, max });
+                    }
+                }
+                "regex" | "custom" | "message" => {
+                    let _: Token![=] = input.parse()?;
+                    let val: LitStr = input.parse()?;
+                    let s = val.value();
+                    match ident.to_string().as_str() {
+                        "regex" => rules.push(ValidationRule::Regex(s)),
+                        "custom" => rules.push(ValidationRule::Custom(s)),
+                        "message" => custom_message = Some(s),
+                        _ => {}
+                    }
+                }
+                other => {
+                    return Err(syn::Error::new(
+                        ident.span(),
+                        format!("unknown #[validate] rule: {}", other),
+                    ));
+                }
+            }
+            if input.peek(Token![,]) {
+                let _: Token![,] = input.parse()?;
+            }
+        }
+
+        Ok(ValidateArgs { rules, custom_message })
+    }
+}
+
+impl From<ValidateArgs> for ValidationRuleSet {
+    fn from(args: ValidateArgs) -> Self {
+        ValidationRuleSet {
+            rules: args.rules,
+            custom_message: args.custom_message,
+        }
+    }
 }
 
 // ──────────────────────────────────────────────────────────────────────────
