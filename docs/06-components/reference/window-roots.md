@@ -60,6 +60,28 @@ RML 文件必须有且仅有一个根标签。根节点决定 codegen 输出：�
 
 Demo 主窗口使用的根类型，包裹 `TabWindowShell`。
 
+### 布局结构
+
+单行标题栏（`TitleBar` + `TabBar`）：
+
+```text
+| 图标切换 | 主窗口菜单 | Title | Tab1 | Tab2 | … | 可扩展区 | 窗口操作 |
+```
+
+- **图标切换**：`icon` + `on_chrome_toggle`；`show_chrome=true` 时显示 `ChevronLeft`，折叠后仅保留图标与 `ChevronRight`，菜单与标题隐藏。
+- **主窗口菜单**：`slot_menu` 内容嵌入 TabBar `prefix`（非独立菜单行）。
+- **Tab 溢出**：宽度不足时启用 TabBar `.menu()` 下拉，避免横向滚动条（依赖 gpui-component TabBar 行为）。
+- **可扩展区**：`slot_title` → `title_ext_slot` → TabBar `suffix`。
+
+主体区域（`h_resizable` + `v_resizable`）：
+
+```text
+| 插槽1 (slot_left)  |  Tab Body + 插槽3 (slot_bottom)  | 插槽2 (slot_right) |
+| 空则隐藏，右缘拖拽  |  主内容 + 底栏上缘拖拽高度          | 空则隐藏，左缘拖拽  |
+```
+
+底部 **插槽4**：`slot_footer` → `status_slot`（状态栏，空则隐藏，不可拖拽）。
+
 ### 属性
 
 | 属性 | 类型 | 绑定 | 说明 |
@@ -70,7 +92,7 @@ Demo 主窗口使用的根类型，包裹 `TabWindowShell`。
 | `icon` | IconName | `{expr}` | 窗口图标 |
 | `tabs` | `Vec<TabItem>` | `{tab_bar_items}` | 标签页数据 |
 | `selected_tab` | `usize` | `{selected_tab}` | 当前选中索引 |
-| `show_chrome` | `bool` | `{show_chrome}` | 是否显示标题栏 chrome |
+| `show_chrome` | `bool` | `{show_chrome}` | 是否显示菜单与标题（图标切换按钮始终可见） |
 | `menu` / `footer` | 元素 | `{expr}` | 备用绑定（优先用插槽） |
 
 ### 事件
@@ -84,12 +106,12 @@ Demo 主窗口使用的根类型，包裹 `TabWindowShell`。
 
 | 插槽标签 | 说明 |
 |----------|------|
-| `slot_menu` | 顶部菜单 |
-| `slot_title` | 标题扩展 |
-| `slot_footer` | 底部状态栏等 |
-| `slot_left` | 左侧栏（如 ActivityBar） |
-| `slot_right` | 右侧栏 |
-| `slot_bottom` | 底部栏 |
+| `slot_menu` | 标题栏内菜单（TabBar prefix） |
+| `slot_title` | 标题栏右侧扩展区（TabBar suffix） |
+| `slot_footer` | 底部状态栏 |
+| `slot_left` | 左侧栏（如 ActivityBar），右缘可拖拽调宽 |
+| `slot_right` | 右侧栏，左缘可拖拽调宽 |
+| `slot_bottom` | 主内容区下方栏（如输出面板），上缘可拖拽调高 |
 
 非插槽子节点为主内容区。
 
@@ -121,6 +143,14 @@ Demo 主窗口使用的根类型，包裹 `TabWindowShell`。
     <slot_menu>
         <menu items={menu_items} />
     </slot_menu>
+
+    <slot_title>
+        <Button label="Docs" ghost="" />
+    </slot_title>
+
+    <slot_bottom>
+        <div class="shell-output">Output panel</div>
+    </slot_bottom>
 
     <slot_footer>
         <status_bar items={status_items} />

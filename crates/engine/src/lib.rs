@@ -74,6 +74,22 @@ macro_rules! embed_assets {
     };
 }
 
+/// 嵌入 build.rs 生成的贡献点自动注册表。
+///
+/// 与 [`embed_assets!`] 一样由 [`main`] 属性宏注入。生成 `register_rml_contributions(cx)`，
+/// 在 `on_launch` 中调用一次即可注册所有带 `#[contribute]` 的组件。
+///
+/// ```rust,ignore
+/// // app.rs — IAppLifecycle::on_launch
+/// crate::register_rml_contributions(cx);
+/// ```
+#[macro_export]
+macro_rules! embed_contributions {
+    () => {
+        include!(concat!(env!("OUT_DIR"), "/rml_generated/rml_contributions.rs"));
+    };
+}
+
 /// 当前 engine crate 源码的 sha256 哈希（编译期嵌入）。
 ///
 /// 当 engine 任何 `src/**/*.rs` 文件变化时，engine 的 build.rs 会重算哈希并写入 OUT_DIR，

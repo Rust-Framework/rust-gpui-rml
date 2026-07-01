@@ -24,10 +24,11 @@ pub fn expand(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let item_fn = parse_macro_input!(item as ItemFn);
 
     let expanded = quote! {
-        // 在 fn main 之前注入资源嵌入：
-        // - 嵌入模式：include_bytes! + #[ctor::ctor] 自动 init
-        // - 文件系统模式：仅 #[ctor::ctor] 自动 init（路径根）
+        // 在 fn main 之前注入 build.rs 生成代码：
+        // - embed_assets!：资源 #[ctor::ctor] 自动 init
+        // - embed_contributions!：register_rml_contributions(cx) 供 on_launch 调用
         rml::embed_assets!();
+        rml::embed_contributions!();
 
         #item_fn
     };

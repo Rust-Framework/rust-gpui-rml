@@ -8,7 +8,7 @@
 use std::rc::Rc;
 
 use gpui::{
-    App, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, px,
+    AnyElement, App, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px,
 };
 use gpui_component::{
     Icon, IconName, Sizable as _,
@@ -17,17 +17,19 @@ use gpui_component::{
     tree::{Tree, TreeItem, TreeState},
 };
 
-/// 带默认项渲染的 Tree 视图（Stateful：`Entity<TreeState>`）
+/// 带默认项渲染的 Tree 视图（Stateful：`Option<Entity<TreeState>>`）
+///
+/// 接受 `Option<&Entity<TreeState>>` 以支持 `on_loaded` 前首次渲染不 panic。
 #[derive(IntoElement)]
 pub struct TreeView {
-    state: Entity<TreeState>,
+    state: Option<Entity<TreeState>>,
     on_activate: Option<Rc<dyn Fn(TreeItem, &mut Window, &mut App) + 'static>>,
 }
 
 impl TreeView {
-    pub fn new(state: &Entity<TreeState>) -> Self {
+    pub fn new(state: Option<&Entity<TreeState>>) -> Self {
         Self {
-            state: state.clone(),
+            state: state.cloned(),
             on_activate: None,
         }
     }
@@ -52,10 +54,14 @@ impl TreeView {
 
 impl RenderOnce for TreeView {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
-        let on_activate = self.on_activate.clone();
-        let state = self.state.clone();
+        let Some(state) = self.state else {
+            return div().into_any_element();
+        };
 
-        Tree::new(&self.state, move |ix, entry, selected, _window, _cx| {
+        let on_activate = self.on_activate.clone();
+        let state_clone = state.clone();
+
+        Tree::new(&state, move |ix, entry, selected, _window, _cx| {
             let icon = if !entry.is_folder() {
                 IconName::File
             } else if entry.is_expanded() {
@@ -77,7 +83,7 @@ impl RenderOnce for TreeView {
             if !entry.is_folder() && !entry.is_disabled() {
                 if let Some(handler) = on_activate.clone() {
                     let tree_item = entry.item().clone();
-                    let state = state.clone();
+                    let state = state_clone.clone();
                     item = item.on_click(move |_, window, cx| {
                         state.update(cx, |s, cx| {
                             s.set_selected_index(Some(ix), cx);
@@ -89,5 +95,6 @@ impl RenderOnce for TreeView {
 
             item
         })
+        .into_any_element()
     }
 }

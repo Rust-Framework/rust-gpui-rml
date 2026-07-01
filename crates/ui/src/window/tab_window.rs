@@ -1,7 +1,10 @@
 //! TabWindowShell —— TabBar 标题栏 + 可调整插槽的高级窗口壳
 //!
-//! 菜单 / 状态栏通过**插槽扩展**（`slot_menu` / `slot_status_bar`）传入，
-//! 不再接受 `Vec<MenuItem>` / `Vec<StatusBarItem>` 数据结构绑定。
+//! 布局（单行标题栏）：
+//! `[图标切换] [菜单] [标题] [Tab…] [扩展区 suffix] [窗口操作]`
+//!
+//! 主体插槽：`slot_left` / `slot_right` / `slot_bottom`（可 resize，空则隐藏）、
+//! `slot_footer` → `status_slot`（状态栏，空则隐藏）。
 
 use std::rc::Rc;
 
@@ -41,13 +44,50 @@ impl TabItem {
     }
 }
 
-/// 估算 Tab 是否溢出可用宽度（约 96px / tab）
-fn tabs_overflow(tab_count: usize, available_width: gpui::Pixels) -> bool {
-    if tab_count == 0 {
+/// 按标签文案粗算 Tab 总宽度（约 8px/字符 + 48px 内边距与图标余量）
+fn estimated_tabs_width(tabs: &[TabItem]) -> gpui::Pixels {
+    let total: f32 = tabs
+        .iter()
+        .map(|tab| tab.label.len() as f32 * 8. + 48.)
+        .sum();
+    px(total)
+}
+
+/// 估算非 Tab 区域占用宽度（prefix、suffix、窗口控件）
+fn reserved_title_width(
+    show_chrome: bool,
+    has_icon: bool,
+    has_menu: bool,
+    title: Option<&SharedString>,
+    has_suffix: bool,
+) -> gpui::Pixels {
+    let mut reserved = px(140.); // 窗口控件 + TabBar 内边距
+
+    if has_icon {
+        reserved += px(56.);
+    }
+    if has_suffix {
+        reserved += px(80.);
+    }
+
+    if show_chrome {
+        if has_menu {
+            reserved += px(200.);
+        }
+        if let Some(title) = title {
+            reserved += px(title.len() as f32 * 7. + 24.);
+        }
+    }
+
+    reserved
+}
+
+/// 估算 Tab 是否溢出可用宽度
+fn tabs_overflow(tabs: &[TabItem], available_width: gpui::Pixels) -> bool {
+    if tabs.is_empty() {
         return false;
     }
-    let estimated = px(tab_count as f32 * 96.);
-    estimated > available_width
+    estimated_tabs_width(tabs) > available_width
 }
 
 /// TabWindow 高级窗口壳
@@ -161,8 +201,8 @@ impl TabWindowShell {
         self
     }
 
-    pub fn status_slot(mut self, element: impl IntoElement) -> Self {
-        self.status_slot = Some(element.into_any_element());
+    pub fn status_slot(mut self, element: Option<impl IntoElement>) -> Self {
+        self.status_slot = element.map(|e| e.into_any_element());
         self
     }
 
@@ -193,10 +233,16 @@ impl ParentElement for TabWindowShell {
 
 impl RenderOnce for TabWindowShell {
     fn render(self, window: &mut Window, _cx: &mut App) -> impl IntoElement {
-        let tab_count = self.tabs.len();
         let viewport = window.viewport_size();
-        let tabs_area = (viewport.width - px(420.)).max(px(160.));
-        let tab_overflow = tabs_overflow(tab_count, tabs_area);
+        let reserved = reserved_title_width(
+            self.show_chrome,
+            self.icon.is_some(),
+            self.menu_slot.is_some(),
+            self.title.as_ref(),
+            self.title_ext_slot.is_some(),
+        );
+        let tabs_area = (viewport.width - reserved).max(px(160.));
+        let tab_overflow = tabs_overflow(&self.tabs, tabs_area);
 
         let on_chrome_toggle = self.on_chrome_toggle.clone();
         let chevron = if self.show_chrome {
@@ -209,6 +255,7 @@ impl RenderOnce for TabWindowShell {
             Button::new("tab-window-chrome-toggle")
                 .ghost()
                 .h_full()
+                .flex_shrink_0()
                 .on_click(move |_, window, cx| {
                     if let Some(f) = &on_chrome_toggle {
                         f(window, cx);
@@ -234,14 +281,33 @@ impl RenderOnce for TabWindowShell {
         }
         if self.show_chrome {
             if let Some(menu) = self.menu_slot {
-                prefix_parts.push(menu);
+                prefix_parts.push(
+                    div()
+                        .h_full()
+                        .flex_shrink_0()
+                        .child(menu)
+                        .into_any_element(),
+                );
             }
             if let Some(title) = self.title {
-                prefix_parts.push(div().px_2().child(title).into_any_element());
+                prefix_parts.push(
+                    div()
+                        .px_2()
+                        .flex_shrink_0()
+                        .child(title)
+                        .into_any_element(),
+                );
             }
         }
         if !prefix_parts.is_empty() {
-            tab_bar = tab_bar.prefix(h_flex().children(prefix_parts));
+            tab_bar = tab_bar.prefix(
+                h_flex()
+                    .h_full()
+                    .items_center()
+                    .flex_shrink_0()
+                    .gap_1()
+                    .children(prefix_parts),
+            );
         }
 
         for tab in &self.tabs {
@@ -282,6 +348,8 @@ impl RenderOnce for TabWindowShell {
                 col = col.child(
                     resizable_panel()
                         .size(self.bottom_height)
+                        .flex_none()
+                        .size_range(px(80.)..px(500.))
                         .child(bottom),
                 );
             }
@@ -293,6 +361,8 @@ impl RenderOnce for TabWindowShell {
             main_row = main_row.child(
                 resizable_panel()
                     .size(self.left_width)
+                    .flex_none()
+                    .size_range(px(48.)..px(600.))
                     .child(left),
             );
         }
@@ -301,6 +371,8 @@ impl RenderOnce for TabWindowShell {
             main_row = main_row.child(
                 resizable_panel()
                     .size(self.right_width)
+                    .flex_none()
+                    .size_range(px(160.)..px(800.))
                     .child(right),
             );
         }

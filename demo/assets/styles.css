@@ -47,6 +47,19 @@
     background: var(--bg-color);
 }
 
+.shell-output {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    height: 100%;
+    width: 100%;
+    box-sizing: border-box;
+    font-size: 12px;
+    color: #666;
+    background: #f3f3f3;
+    border-top: 1px solid #e0e0e0;
+}
+
 .case-pane {
     display: flex;
     flex-direction: column;

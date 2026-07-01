@@ -5,6 +5,7 @@
 
 pub mod assets_processor;
 pub mod cache;
+pub mod contribution_generator;
 pub mod i18n_extractor;
 pub mod scanner;
 
@@ -351,6 +352,12 @@ impl Builder {
         }
         let processor = AssetsProcessor::new(&assets_dir, self.assets_mode);
         if let Err(e) = processor.generate(&output_dir) {
+            return Err(e);
+        }
+
+        // 6. 扫描 `#[contribute]` 并生成统一注册函数
+        let registrars = contribution_generator::scan_contribution_registrars(&self.scan_dirs);
+        if let Err(e) = contribution_generator::generate(&registrars, &output_dir) {
             return Err(e);
         }
 

@@ -22,6 +22,14 @@
         <menu items={menu_items} />
     </slot_menu>
 
+    <slot_title>
+        <Button label="Docs" ghost="" />
+    </slot_title>
+
+    <slot_bottom>
+        <div class="shell-output">Output panel — drag the top edge to resize</div>
+    </slot_bottom>
+
     <slot_footer>
         <status_bar items={status_items} />
     </slot_footer>

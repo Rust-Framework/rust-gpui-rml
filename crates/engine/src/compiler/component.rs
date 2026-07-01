@@ -76,7 +76,7 @@ pub fn gen_component(
             format!("{}::new()", component.ctor_path)
         }
         tags::ComponentKind::Stateful { state_field } if tag == "Tree" => format!(
-            "{}::new(self.{}.as_ref().expect(\"init TreeState in on_loaded\"))",
+            "{}::new(self.{}.as_ref())",
             component.ctor_path, state_field
         ),
         tags::ComponentKind::Stateful { state_field } => format!(

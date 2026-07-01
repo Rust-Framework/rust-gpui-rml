@@ -251,7 +251,7 @@ pub(super) fn gen_tab_window_wrapper(
         code.push_str(&format!(".title_ext_slot({title})"));
     }
     if let Some(status) = slot_status {
-        code.push_str(&format!(".status_slot({status})"));
+        code.push_str(&format!(".status_slot(Some({status}))"));
     }
     if let Some(left) = slot_left {
         code.push_str(&format!(".slot_left(Some({left}))"));

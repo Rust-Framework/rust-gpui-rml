@@ -6,8 +6,6 @@ use rml_app::contribution::ContributionRegistryGlobal;
 use rml_core::i18n::I18nExt;
 use rml_core::theme::ThemeExt;
 
-use crate::cases::{button_case, counter_case, i18n_case, two_way_case};
-use crate::shell::case_activity_panel;
 use crate::shell::contributions;
 
 #[derive(Default)]
@@ -23,18 +21,13 @@ impl IAppLifecycle for Startup {
             global.0.ensure_host(contributions::SHELL_HOST);
         });
 
+        // 应用级纯元数据（分类节点、菜单/状态栏无 struct 的条目）
         contributions::register_case_categories(cx);
-
-        counter_case::__rml_register_countercase(cx);
-        two_way_case::__rml_register_twowaycase(cx);
-        button_case::__rml_register_buttoncase(cx);
-        i18n_case::__rml_register_i18ncase(cx);
-
-        case_activity_panel::__rml_register_caseactivitypanel(cx);
-
         contributions::register_menu_entry(cx, "menu.theme_toggle", "menu.theme_toggle", 0);
         contributions::register_menu_entry(cx, "menu.lang_en", "menu.lang_en", 10);
-
         contributions::register_status_entry(cx, "status.ready", "shell.status_ready", 0);
+
+        // 自动注册所有 `#[contribute]` 案例/面板组件（build.rs 扫描生成）
+        crate::register_rml_contributions(cx);
     }
 }

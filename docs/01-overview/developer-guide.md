@@ -218,7 +218,7 @@ pub struct MenuContextCase {
 }
 ```
 
-启动时 `features::register_all` 调用宏生成的 `menu_context_case::__rml_register_menucontextcase(cx)`。完整注册清单见 [贡献点架构 §案例注册流程](../09-architecture/contribution-system.md)。
+启动时在 `on_launch` 调用 **`crate::register_rml_contributions(cx)`** 即可（由 `build.rs` 扫描所有 `#[contribute]` 并生成，无需手写 `__rml_register_*` 列表）。详见 [贡献点架构 §案例注册流程](../09-architecture/contribution-system.md)。
 
 菜单相关 Demo 案例：
 

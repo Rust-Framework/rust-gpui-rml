@@ -1,4 +1,4 @@
-//! `#[contribute]` —— 为类型生成 `IContribution` 与注册函数（数据贡献，MVVM 绑定）
+//! `#[contribute]` —— 为类型生成 `IContribution`、注册函数，并由 build.rs 扫描汇总为 `register_rml_contributions`
 
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, ToTokens};
@@ -237,7 +237,7 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
             }
         }
 
-        /// 由功能模块在启动时调用，向贡献注册表注册本条目
+        /// 由 build.rs 生成的 `register_rml_contributions` 统一调用；用户无需手写清单。
         pub fn #register_fn(cx: &mut gpui::App) {
             use std::sync::Arc;
             use gpui::BorrowAppContext;

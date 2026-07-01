@@ -49,7 +49,30 @@ flowchart LR
 
 ## `#[contribute]` 宏
 
-`#[contribute]` 为结构体生成 `IContribution` 实现及 `__rml_register_<lowercasename>` 注册函数。常与 `#[component]` 叠加在同一 struct 上：
+`#[contribute]` 做两件事：
+
+1. **编译期**：为 struct 生成 `IContribution` + `Registerable` 实现
+2. **编译期**：生成 `__rml_register_<lowercasename>(cx)` 函数（真正写入注册表）
+
+它**不会**在运行时自动调用注册函数——注册需要 `gpui::App` 上下文，只能在 `on_launch` 阶段执行。
+
+### 自动收集（无需手写 `__rml_register_*` 列表）
+
+`build.rs` 扫描 `src/**/*.rs` 中所有带 `#[contribute]` 的 struct，生成 `OUT_DIR/rml_generated/rml_contributions.rs`，提供统一入口：
+
+```rust
+pub fn register_rml_contributions(cx: &mut gpui::App) { /* 调用各 __rml_register_* */ }
+```
+
+`#[rml::main]` 自动注入 `rml::embed_contributions!()`（与 `embed_assets!` 同级）。应用只需在 `on_launch` 写**一行**：
+
+```rust
+crate::register_rml_contributions(cx);
+```
+
+无需记忆 `CounterCase` → `__rml_register_countercase` 的命名规则，也无需维护 `features::register_all` 式的手工清单。
+
+常与 `#[component]` 叠加在同一 struct 上：
 
 ```rust
 #[contribute(
@@ -81,7 +104,7 @@ pub struct MenuContextCase { /* ... */ }
 | `kind` | 字符串 | 否 | 消费方筛选键：`case` / `activity` / `menu` / `status` |
 | `parent_id` | 字符串 | 否 | 树形贡献的父节点 id（案例分类 / 子案例） |
 
-宏生成函数命名规则：`CounterCase` → `counter_case::__rml_register_countercase`。
+宏生成函数命名规则：`CounterCase` → `counter_case::__rml_register_countercase`（由 build.rs 自动调用，用户无需手写）。
 
 ## 案例注册流程（Demo）
 
@@ -89,34 +112,25 @@ pub struct MenuContextCase { /* ... */ }
 flowchart TD
     Launch[app.rs on_launch] --> Ensure[ensure_host demo.shell]
     Ensure --> Cats[register_case_categories]
-    Cats --> Cases[各 case __rml_register_*]
-    Cases --> Other[activity / menu / status 元数据]
+    Cats --> Auto[register_rml_contributions]
+    Auto --> Other[menu / status 程序化元数据]
     Other --> MW[MainWindow on_loaded]
     MW --> Wire[wire_contribution_sync]
-    Wire --> Build[build_case_tree_items → TreeState]
+    Wire --> Build[CaseActivityPanel build_case_tree_items]
 ```
 
-1. **`ensure_host`** — 预创建 `demo.shell`（`demo/src/features/mod.rs::ensure_hosts`）
-2. **分类根节点** — `contributions::register_case_categories` 注册 `cat.binding` / `cat.components` / `cat.menu` / `cat.i18n`
-3. **案例组件** — 各 `*.rml.rs` 上 `#[contribute]` 生成 `__rml_register_*`，在 `features::register_all`（由 `app.rs::on_launch` 调用）中注册：
+1. **`ensure_host`** — 预创建 `demo.shell`（`on_launch` 内 `ContributionRegistryGlobal::ensure_host`）
+2. **分类根节点** — `contributions::register_case_categories` 注册 `cat.binding` / `cat.components` / `cat.menu` / `cat.i18n`（无对应 struct 的纯元数据）
+3. **案例/面板组件** — 各 `*.rml.rs` 标注 `#[contribute]`；`build.rs` 扫描后生成 `register_rml_contributions`，`on_launch` 调用一次即可
+4. **应用级元数据** — 菜单/状态栏等无 struct 的条目仍用 `register_menu_entry` / `register_status_entry`（需挂接 `ICommand` 等运行时对象时保留程序化注册）
+5. **ViewModel 消费** — `CaseActivityPanel` 调用 `contributions::build_case_tree_items`；`MainWindow` 监听 `demo.shell` 的 `on_changed` 刷新绑定
 
 ```rust
-pub fn register_all(cx: &mut App) {
-    contributions::register_case_categories(cx);
-
-    counter_case::__rml_register_countercase(cx);
-    two_way_case::__rml_register_twowaycase(cx);
-    button_case::__rml_register_buttoncase(cx);
-    i18n_case::__rml_register_i18ncase(cx);
-    menu_context_case::__rml_register_menucontextcase(cx);
-    menu_dropdown_case::__rml_register_menudropdowncase(cx);
-    // ... 其余 menu_*_case
-
-    case_activity_panel::__rml_register_caseactivitypanel(cx);
-}
+// demo/src/app.rs — 用户只需关心这两类注册
+contributions::register_case_categories(cx);
+contributions::register_menu_entry(cx, "menu.theme_toggle", "menu.theme_toggle", 0);
+crate::register_rml_contributions(cx);  // 自动：所有 #[contribute] 案例
 ```
-
-4. **ViewModel 消费** — `CaseActivityPanel` 调用 `contributions::build_case_tree_items`；`MainWindow` 监听 `demo.shell` 的 `on_changed` 刷新菜单/状态/活动栏绑定。
 
 案例 `name` 使用 `case.*.title` i18n key（如 `case.menu.context.title`），分类节点使用 `tree.cat.*` key。
 
