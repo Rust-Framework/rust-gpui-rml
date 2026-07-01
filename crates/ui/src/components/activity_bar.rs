@@ -164,6 +164,8 @@ pub struct ActivityBar {
     active_panel_id: Option<Option<SharedString>>,
     active_state: ActiveState,
     on_panel_change: Option<Arc<dyn Fn(&SharedString, &mut Window, &mut App) + 'static>>,
+    /// 由 Host `Render::render` 解析的面板内容（优先于 `IActivityPanel::panel`）
+    panel_body: Option<AnyElement>,
     #[allow(dead_code)]
     panel_children: SmallVec<[AnyElement; 2]>,
 }
@@ -179,6 +181,7 @@ impl ActivityBar {
             actions: Vec::new(),
             active_panel_id: None,
             on_panel_change: None,
+            panel_body: None,
             panel_children: SmallVec::new(),
         }
     }
@@ -209,6 +212,12 @@ impl ActivityBar {
         f: impl Fn(&SharedString, &mut Window, &mut App) + 'static,
     ) -> Self {
         self.on_panel_change = Some(Arc::new(f));
+        self
+    }
+
+    /// 由 Host 在 `Render::render` 中解析当前激活面板内容并传入
+    pub fn panel_body(mut self, body: Option<AnyElement>) -> Self {
+        self.panel_body = body;
         self
     }
 }
@@ -305,18 +314,34 @@ impl RenderOnce for ActivityBar {
 
         if any_active {
             if let Some(aid) = active_id.as_ref() {
-                if let Some(panel) = self.panels.iter().find(|p| &p.id() == aid) {
-                    if let Some(body) = panel.panel(window, cx) {
-                        row = row.child(
+                let body = self.panel_body.or_else(|| {
+                    self.panels
+                        .iter()
+                        .find(|p| &p.id() == aid)
+                        .and_then(|panel| panel.panel(window, cx))
+                }).or_else(|| {
+                    if self.panel_children.is_empty() {
+                        None
+                    } else {
+                        Some(
                             gpui::div()
-                                .flex_1()
-                                .h_full()
-                                .min_w_0()
-                                .overflow_hidden()
-                                .bg(cx.theme().sidebar)
-                                .child(body),
-                        );
+                                .size_full()
+                                .children(self.panel_children)
+                                .into_any_element(),
+                        )
                     }
+                });
+
+                if let Some(body) = body {
+                    row = row.child(
+                        gpui::div()
+                            .flex_1()
+                            .h_full()
+                            .min_w_0()
+                            .overflow_hidden()
+                            .bg(cx.theme().sidebar)
+                            .child(body),
+                    );
                 }
             }
         }

@@ -414,69 +414,37 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
         TokenStream::new()
     };
 
-    let registerable_impl = if args.visual {
+    let has_component = items.iter().any(|item| {
+        matches!(
+            item,
+            Item::Struct(s) if s.attrs.iter().any(|a| a.path().is_ident("component"))
+        )
+    });
+    let use_component_visual = args.visual || has_component;
 
+    let registerable_impl = if use_component_visual {
         quote! {
-
-            impl rml_core::contribution::IVisualContribution for #struct_name {
-
-                type View = #struct_name;
-
-
-
-                fn render(&self) -> Self {
-
-                    #struct_name::default()
-
-                }
-
-            }
-
-
-
             impl rml_app::contribution::Registerable for #struct_name {
-
                 fn into_entry(
-
                     contribution: std::sync::Arc<Self>,
-
                     options: rml_core::contribution::ContributionOptions,
-
                 ) -> rml_core::contribution::ContributedEntry {
-
-                    rml_app::contribution::visual_registerable(contribution, options)
-
+                    rml_app::contribution::component_registerable(contribution, options)
                 }
-
             }
-
         }
-
     } else {
-
         quote! {
-
             impl rml_app::contribution::Registerable for #struct_name {
-
                 fn into_entry(
-
                     contribution: std::sync::Arc<Self>,
-
                     options: rml_core::contribution::ContributionOptions,
-
                 ) -> rml_core::contribution::ContributedEntry {
-
                     rml_app::contribution::data_registerable(contribution, options)
-
                 }
-
             }
-
         }
-
     };
-
-
 
     quote! {
 

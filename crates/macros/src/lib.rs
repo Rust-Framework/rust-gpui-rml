@@ -35,7 +35,8 @@ pub fn derive_i_model(input: TokenStream) -> TokenStream {
 
 /// 标记结构体为可视化贡献点（配合 `#[component]` 使用）。
 ///
-/// 生成 `IContribution` + `IVisualContribution` 实现及 `__rml_register_<Type>` 注册函数。
+/// 生成 `IContribution` 实现及 `__rml_register_<Type>` 注册函数。
+/// 若同 struct 带 `#[component]`，自动走组件 visual 注册路径。
 #[proc_macro_attribute]
 pub fn contribute(args: TokenStream, input: TokenStream) -> TokenStream {
     contribute::expand(args.into(), input.into()).into()

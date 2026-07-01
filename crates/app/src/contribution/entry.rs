@@ -1,4 +1,4 @@
-//! `ContributedEntry` 构建：数据贡献 vs 视图贡献
+//! `ContributedEntry` 构建：数据贡献 vs 组件 visual 贡献
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -6,8 +6,7 @@ use std::sync::Arc;
 use gpui::{App, Render};
 use rml_core::component::IComponent;
 use rml_core::contribution::{
-    ComponentEntityCache, ContributedEntry, ContributionOptions, IContribution,
-    IVisualContribution, VisualRenderer,
+    ComponentEntityCache, ContributedEntry, ContributionOptions, IContribution, VisualRenderer,
 };
 
 use rml_core::contribution_cache::ComponentEntityCacheImpl;
@@ -26,17 +25,14 @@ pub fn data_entry<T: IContribution + 'static>(
     }
 }
 
-/// 视图贡献条目（`render() -> View` 擦除为 `VisualRenderer`）
-pub fn visual_entry<T>(contribution: Arc<T>, options: ContributionOptions) -> ContributedEntry
+/// 组件贡献条目：`#[contribute]` + `#[component]` 时组件本身即面板 UI
+pub fn component_entry<T>(contribution: Arc<T>, options: ContributionOptions) -> ContributedEntry
 where
-    T: IVisualContribution + 'static,
-    T::View: IComponent + Default + Render + Send + Sync + 'static,
+    T: IContribution + IComponent + Render + Default + Send + Sync + 'static,
 {
     let id = contribution.id().to_string();
-    let render_contribution = contribution.clone();
     let renderer: VisualRenderer = Arc::new(move |ctx, cache: &mut ComponentEntityCacheImpl| {
-        let view = render_contribution.render();
-        cache.render_view(&id, view, ctx)
+        cache.render_view(&id, T::default(), ctx)
     });
     ContributedEntry {
         contribution: contribution as Arc<dyn IContribution>,

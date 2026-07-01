@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use gpui::Window;
+use gpui::{Global, WeakEntity, Window};
 use rml::prelude::*;
-use crate::shell::case_activity_panel::CaseActivityPanel;
 use crate::shell::shell_chrome::{map_shell_chrome, ShellChromeBindings};
 use rml_core::i18n::I18nExt;
 use rml_core::theme::ThemeExt;
@@ -11,6 +10,11 @@ use rml_ui::{ActivityPanels, MenuItems, StatusBarItems, TabItem};
 
 use crate::cases::{self, OpenTab};
 use crate::shell::case_host::CaseHost;
+
+/// Demo：Activity 视觉贡献面板回调 Host 开 Tab（由 MainWindow 在 `on_loaded` 注册）。
+pub struct DemoShellHost(pub WeakEntity<MainWindow>);
+
+impl Global for DemoShellHost {}
 
 #[contributehost(id = "demo.shell", bindings = "refresh_bindings")]
 #[window]
@@ -25,7 +29,6 @@ pub struct MainWindow {
     status_items: StatusBarItems,
     i18n_version: u32,
     case_host: Option<gpui::Entity<CaseHost>>,
-    samples_panel: Option<gpui::Entity<CaseActivityPanel>>,
     menu_items: MenuItems,
     menu_commands: HashMap<String, Arc<dyn ICommand>>,
 }
@@ -43,6 +46,9 @@ impl ILifecycle for MainWindow {
         self.show_chrome = true;
         self.i18n_version = self.i18n_version.wrapping_add(1);
 
+        let shell_weak = cx.weak_entity();
+        cx.set_global(DemoShellHost(shell_weak));
+
         self.case_host.get_or_insert_with(|| {
             let id = self.active_case_id.clone();
             cx.new(move |_| {
@@ -51,13 +57,6 @@ impl ILifecycle for MainWindow {
                 host
             })
         });
-
-        let shell_weak = cx.weak_entity();
-        self.samples_panel
-            .get_or_insert_with(|| cx.new(|_| CaseActivityPanel::default()));
-        if let Some(panel) = self.samples_panel.as_ref() {
-            panel.update(cx, |p, _| p.set_shell(shell_weak));
-        }
 
         self.menu_commands.insert(
             "menu.file.new".to_string(),
@@ -110,16 +109,11 @@ impl ILifecycle for MainWindow {
 
 impl MainWindow {
     fn refresh_bindings(&mut self, cx: &mut Context<Self>) {
-        let mut panel_entities = HashMap::new();
-        if let Some(panel) = self.samples_panel.as_ref() {
-            panel_entities.insert("samples".to_string(), panel.clone());
-        }
-
         let ShellChromeBindings {
             activity_panels,
             status_items,
             menu_items,
-        } = map_shell_chrome(Self::ID, cx, &self.menu_commands, &panel_entities);
+        } = map_shell_chrome(Self::ID, cx, &self.menu_commands);
         self.activity_panels = activity_panels;
         self.status_items = status_items;
         self.menu_items = menu_items;

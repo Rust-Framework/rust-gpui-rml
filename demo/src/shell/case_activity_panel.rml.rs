@@ -4,7 +4,7 @@ use crate::shell::shell_chrome::map_case_tree_items;
 use rml_core::i18n::I18nState;
 use rml_ui::TreeState;
 
-use crate::shell::MainWindow;
+use crate::shell::{DemoShellHost, MainWindow};
 
 #[contribute(
     host = MainWindow,
@@ -18,7 +18,6 @@ use crate::shell::MainWindow;
 #[derive(Default)]
 pub struct CaseActivityPanel {
     tree_state: Option<gpui::Entity<TreeState>>,
-    shell: Option<gpui::WeakEntity<MainWindow>>,
 }
 
 impl ILifecycle for CaseActivityPanel {
@@ -38,10 +37,6 @@ impl ILifecycle for CaseActivityPanel {
 }
 
 impl CaseActivityPanel {
-    pub fn set_shell(&mut self, shell: gpui::WeakEntity<MainWindow>) {
-        self.shell = Some(shell);
-    }
-
     fn refresh_tree(&mut self, cx: &mut Context<Self>) {
         let items = map_case_tree_items(MainWindow::ID, cx);
         if let Some(state) = self.tree_state.as_ref() {
@@ -57,8 +52,11 @@ impl CaseActivityPanel {
 
     #[command]
     pub fn on_case_activate(&mut self, item_id: &gpui::SharedString, cx: &mut Context<Self>) {
-        if let Some(shell) = self.shell.as_ref().and_then(|w| w.upgrade()) {
-            shell.update(cx, |main, cx| {
+        if let Some(host) = cx
+            .try_global::<DemoShellHost>()
+            .and_then(|h| h.0.upgrade())
+        {
+            host.update(cx, |main, cx| {
                 main.open_case(item_id.to_string(), cx);
             });
         }

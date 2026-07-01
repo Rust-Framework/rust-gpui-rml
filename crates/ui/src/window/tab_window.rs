@@ -278,6 +278,7 @@ impl RenderOnce for TabWindowShell {
 
         let mut tab_bar = TabBar::new("tab-window-tabs")
             .menu(tab_overflow)
+            .border_b_0()
             .selected_index(self.selected_tab);
 
         // 菜单与标题随 show_chrome 展开/收起；切换按钮独立贴左，不在 prefix 内

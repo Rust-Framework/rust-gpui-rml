@@ -10,4 +10,4 @@ pub mod login_dialog;
 #[path = "main_window.rml.rs"]
 pub mod main_window;
 
-pub use main_window::MainWindow;
+pub use main_window::{DemoShellHost, MainWindow};

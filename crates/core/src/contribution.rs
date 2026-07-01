@@ -76,14 +76,6 @@ pub trait IContribution: Send + Sync {
     fn icon(&self) -> Option<SharedString>;
 }
 
-/// 可视化贡献：显式关联 RML `#[component]` 类型
-pub trait IVisualContribution: IContribution {
-    type View: crate::component::IComponent + Default + Send + Sync + 'static;
-
-    /// 返回组件实例；UI 在 `View` 的 `.rml` 中声明式定义
-    fn render(&self) -> Self::View;
-}
-
 /// 贡献点主机标识（扩展点命名空间）。
 ///
 /// 由 `#[contributehost(id = "...")]` 实现。运行时条目存在 `ContributionRegistry` 中；
@@ -99,7 +91,7 @@ pub struct ContributedEntry {
     pub options: ContributionOptions,
 }
 
-/// 贡献渲染上下文（`IVisualContribution` 路径使用）
+/// 贡献渲染上下文（组件 visual 路径使用）
 pub struct ContributionRenderContext<'a> {
     pub window: &'a mut gpui::Window,
     pub cx: &'a mut gpui::App,

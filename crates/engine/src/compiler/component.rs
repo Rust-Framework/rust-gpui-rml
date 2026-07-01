@@ -155,6 +155,28 @@ pub fn gen_component(
         }
     }
 
+    // ActivityBar：在 Host Render 阶段解析面板内容，避免在 RenderOnce 内调用 panel()
+    if resolved == "ActivityBar" {
+        let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
+        let panels_expr = elem.attributes.iter().find_map(|a| match a {
+            Attribute::Bind { name, expr } if name == "panels" => {
+                Some(component_bind_rust_expr(expr, &lv, &computed))
+            }
+            _ => None,
+        });
+        let active_expr = elem.attributes.iter().find_map(|a| match a {
+            Attribute::Bind { name, expr } if name == "active_panel_id" => {
+                Some(component_bind_rust_expr(expr, &lv, &computed))
+            }
+            _ => None,
+        });
+        if let (Some(panels), Some(active)) = (panels_expr, active_expr) {
+            code.push_str(&format!(
+                "\n            .panel_body(rml_app::contribution::resolve_active_panel_body(&({panels}), {active}.as_ref(), _window, cx))"
+            ));
+        }
+    }
+
     Ok(code)
 }
 
@@ -241,28 +263,16 @@ pub fn component_static_setter(name: &str, value: &str, tag: &str) -> Option<Str
     }
 }
 
-/// 绑定属性 → builder 方法映射
-///
-/// 利用表达式解析器支持复杂表达式：
-/// - `value={count}` → `.value(self.count.clone())`
-/// - `value={count + 1}` → `.value((self.count + 1).clone())`
-/// - `label={user.name}` → `.label(self.user.name.clone())`
-///
-/// 对于无法解析的表达式，回退到简单的 `self.<expr>` 引用。
-///
-/// `tag` 参数保留用于未来组件专用 setter 扩展，当前无组件特定分支
-/// （ModernWindowShell 的 menu/status_bar/title setter 已移至 codegen 根元素处理路径）。
-pub fn component_bind_setter(
-    name: &str,
+/// 绑定表达式 → Rust 代码（供 setter 与 ActivityBar panel_body 复用）
+pub fn component_bind_rust_expr(
     expr_str: &str,
     loop_vars: &[&str],
     computed: &[&str],
-    tag: &str,
-) -> Option<String> {
-    let rust_expr = if let Some(code) = crate::compiler::codegen::try_gen_i18n_call(expr_str, loop_vars, computed) {
-        code
-    } else {
-        match expr::parse(expr_str) {
+) -> String {
+    if let Some(code) = crate::compiler::codegen::try_gen_i18n_call(expr_str, loop_vars, computed) {
+        return code;
+    }
+    match expr::parse(expr_str) {
         Ok(expr::Expr::Field(name)) if computed.iter().any(|c| *c == name.as_str()) => {
             if loop_vars.iter().any(|v| *v == name) {
                 format!("{}()", name)
@@ -281,8 +291,28 @@ pub fn component_bind_setter(
                 format!("self.{}", trimmed)
             }
         }
-        }
-    };
+    }
+}
+
+/// 绑定属性 → builder 方法映射
+///
+/// 利用表达式解析器支持复杂表达式：
+/// - `value={count}` → `.value(self.count.clone())`
+/// - `value={count + 1}` → `.value((self.count + 1).clone())`
+/// - `label={user.name}` → `.label(self.user.name.clone())`
+///
+/// 对于无法解析的表达式，回退到简单的 `self.<expr>` 引用。
+///
+/// `tag` 参数保留用于未来组件专用 setter 扩展，当前无组件特定分支
+/// （ModernWindowShell 的 menu/status_bar/title setter 已移至 codegen 根元素处理路径）。
+pub fn component_bind_setter(
+    name: &str,
+    expr_str: &str,
+    loop_vars: &[&str],
+    computed: &[&str],
+    tag: &str,
+) -> Option<String> {
+    let rust_expr = component_bind_rust_expr(expr_str, loop_vars, computed);
     let _tag = tag;
     match name {
         "value" => Some(format!(".value({}.clone())", rust_expr)),
