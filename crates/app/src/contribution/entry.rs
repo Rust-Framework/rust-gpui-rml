@@ -7,7 +7,7 @@ use gpui::{App, Render};
 use rml_core::component::IComponent;
 use rml_core::contribution::{
     ComponentEntityCache, ContributedEntry, ContributionOptions, IContribution,
-    IContributionHost, IVisualContribution, VisualRenderer,
+    IVisualContribution, VisualRenderer,
 };
 
 use rml_core::contribution_cache::ComponentEntityCacheImpl;

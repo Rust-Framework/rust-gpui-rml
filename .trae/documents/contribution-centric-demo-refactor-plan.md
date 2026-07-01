@@ -1,5 +1,7 @@
 # Demo 单 Host 贡献架构重构计划
 
+> **Status: Superseded** — 已完成。请参阅 [docs/09-architecture/contribution-system.md](../../docs/09-architecture/contribution-system.md)。本文档保留作历史参考，请勿按此文实现 `wire_host_changed` / 手动 `on_launch` 注册等已废弃 API。
+
 ## 概述
 
 将 demo 从 3 个独立 host（`ACTIVITY_BAR`/`STATUS`/`CASE_TREE`）重构为**单 host + kind 分类**架构。MainWindow 作为 host 管理者，通过 `properties["kind"]`（`menu`/`activity`/`status`/`case`）分类贡献并维护 UI 绑定字段。`CaseActivityPanel` 封装案例树，cases 通过 `#[contribute]` 自注册。

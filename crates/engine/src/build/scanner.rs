@@ -68,8 +68,10 @@ pub struct StructMetadata {
     /// build.rs 据此收集 `user_components` 注册表，供 codegen 在
     /// `component_lookup` 未命中时生成 `self.<field>.as_ref().expect(...).clone()`。
     pub is_component: bool,
-    /// 是否标注 `#[contributehost]`（codegen 自动绑定贡献注册表变更）
+    /// 是否标注 `#[contributehost]`（注册 host slot）
     pub is_contributehost: bool,
+    /// `#[contributehost(bindings = "...")]` — 首次 render 调用宏生成的 attach 方法
+    pub contribution_bindings: bool,
 }
 
 /// 扫描 `.rml.rs` code-behind 文件，提取所有 `#[window]`/`#[component]` 标注 struct 的元信息。
@@ -101,6 +103,15 @@ pub fn scan_struct_metadata(rml_rs_path: &Path) -> HashMap<String, StructMetadat
             let has_window = s.attrs.iter().any(|a| a.path().is_ident("window"));
             let has_component = s.attrs.iter().any(|a| a.path().is_ident("component"));
             let is_contributehost = s.attrs.iter().any(|a| a.path().is_ident("contributehost"));
+            let contribution_bindings = s.attrs.iter().any(|a| {
+                if !a.path().is_ident("contributehost") {
+                    return false;
+                }
+                let syn::Meta::List(list) = &a.meta else {
+                    return false;
+                };
+                list.tokens.to_string().contains("bindings")
+            });
             if !has_window && !has_component {
                 continue;
             }
@@ -108,6 +119,7 @@ pub fn scan_struct_metadata(rml_rs_path: &Path) -> HashMap<String, StructMetadat
             let mut meta = StructMetadata::default();
             meta.is_component = has_component;
             meta.is_contributehost = is_contributehost;
+            meta.contribution_bindings = contribution_bindings;
             for f in &s.fields {
                 if let Some(name) = &f.ident {
                     let name_str = name.to_string();
@@ -168,8 +180,15 @@ pub fn scan_struct_metadata(rml_rs_path: &Path) -> HashMap<String, StructMetadat
                     // 收集方法体的 self.<ident> 依赖
                     let mut visitor = ComputedDepVisitor::default();
                     visitor.visit_block(&method.block);
+                    let mut deps = visitor.deps;
+                    if visitor.uses_i18n && meta.observable_fields.contains(&"i18n_version".to_string())
+                    {
+                        if !deps.contains(&"i18n_version".to_string()) {
+                            deps.push("i18n_version".to_string());
+                        }
+                    }
                     meta.computed_methods.push(method_name.clone());
-                    meta.computed_deps.insert(method_name.clone(), visitor.deps);
+                    meta.computed_deps.insert(method_name.clone(), deps);
                     meta.computed_returns.insert(method_name, return_type);
                 }
             }
@@ -218,6 +237,7 @@ fn type_name(ty: &Type) -> String {
 #[derive(Default)]
 struct ComputedDepVisitor {
     deps: Vec<String>,
+    uses_i18n: bool,
 }
 
 impl<'ast> Visit<'ast> for ComputedDepVisitor {
@@ -235,6 +255,13 @@ impl<'ast> Visit<'ast> for ComputedDepVisitor {
         }
         // 递归遍历子表达式（捕获 `self.a.b`、`self.f()` 等中的其他 self 访问）
         syn::visit::visit_expr_field(self, node);
+    }
+
+    fn visit_expr_method_call(&mut self, node: &'ast syn::ExprMethodCall) {
+        if node.method == "t" {
+            self.uses_i18n = true;
+        }
+        syn::visit::visit_expr_method_call(self, node);
     }
 
     fn visit_expr_macro(&mut self, node: &'ast syn::ExprMacro) {

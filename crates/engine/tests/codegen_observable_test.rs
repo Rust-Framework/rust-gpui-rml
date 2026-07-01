@@ -29,6 +29,7 @@ fn make_ctx() -> CodegenCtx {
         model_fields: Vec::new(),
         user_components: HashMap::new(),
         is_contributehost: false,
+        contribution_bindings: false,
     }
 }
 
@@ -89,6 +90,19 @@ fn computed_deps_sums_count_version() {
     assert!(
         code.contains("self.__rml_get_version(\"count\")"),
         "missing computed deps sum expression\n{}",
+        code
+    );
+}
+
+#[test]
+fn contributehost_emits_attach_contribution_bindings() {
+    let mut ctx = make_ctx();
+    ctx.view_struct_name = "Shell".to_string();
+    ctx.contribution_bindings = true;
+    let code = compile(RML_SOURCE, &ctx).expect("compile");
+    assert!(
+        code.contains("__rml_attach_contribution_bindings"),
+        "missing __rml_attach_contribution_bindings for contributehost with bindings\n{}",
         code
     );
 }

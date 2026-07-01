@@ -301,6 +301,7 @@ impl Builder {
                 model_fields: Vec::new(),
                 user_components: user_components.clone(),
                 is_contributehost: struct_meta.is_contributehost,
+                contribution_bindings: struct_meta.contribution_bindings,
             };
 
             match compile(&source, &ctx) {

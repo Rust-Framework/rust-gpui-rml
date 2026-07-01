@@ -46,6 +46,7 @@ fn make_ctx_with_range_validation() -> CodegenCtx {
         model_fields: Vec::new(),
         user_components: HashMap::new(),
         is_contributehost: false,
+        contribution_bindings: false,
     }
 }
 
@@ -128,6 +129,7 @@ fn length_validation_generates_len_check() {
         model_fields: Vec::new(),
         user_components: HashMap::new(),
         is_contributehost: false,
+        contribution_bindings: false,
     };
     let source = r#"
 <component>
@@ -181,6 +183,7 @@ fn required_validation_generates_empty_check() {
         model_fields: Vec::new(),
         user_components: HashMap::new(),
         is_contributehost: false,
+        contribution_bindings: false,
     };
     let source = r#"
 <component>
@@ -236,6 +239,7 @@ fn regex_validation_generates_pattern_match() {
         model_fields: Vec::new(),
         user_components: HashMap::new(),
         is_contributehost: false,
+        contribution_bindings: false,
     };
     let source = r#"
 <component>
@@ -294,6 +298,7 @@ fn custom_validation_generates_function_call() {
         model_fields: Vec::new(),
         user_components: HashMap::new(),
         is_contributehost: false,
+        contribution_bindings: false,
     };
     let source = r#"
 <component>
@@ -353,6 +358,7 @@ fn multiple_rules_executed_in_order() {
         model_fields: Vec::new(),
         user_components: HashMap::new(),
         is_contributehost: false,
+        contribution_bindings: false,
     };
     let source = r#"
 <component>
@@ -453,6 +459,7 @@ fn no_validation_falls_back_to_default() {
         model_fields: Vec::new(),
         user_components: HashMap::new(),
         is_contributehost: false,
+        contribution_bindings: false,
     };
     let code = compile(RML_SOURCE_WITH_AGE, &ctx).expect("compile failed");
 

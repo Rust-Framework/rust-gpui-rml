@@ -28,8 +28,8 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::visit::Visit;
 use syn::{
-    parse_quote, BinOp, Expr, ExprAssign, ExprBinary, ExprField, ExprPath, FnArg, Ident, ItemFn,
-    LitStr, Member, Pat, ReturnType, Stmt, Token,
+    parse_quote, BinOp, Expr, ExprAssign, ExprBinary, ExprField, ExprMethodCall, ExprPath, FnArg,
+    Ident, ItemFn, LitStr, Member, Pat, ReturnType, Stmt, Token,
 };
 
 /// `#[command]` 参数
@@ -167,6 +167,19 @@ impl<'ast> Visit<'ast> for FieldMutationVisitor {
             }
         }
         syn::visit::visit_expr_binary(self, node);
+    }
+
+    fn visit_expr_method_call(&mut self, node: &'ast ExprMethodCall) {
+        let method = node.method.to_string();
+        if matches!(method.as_str(), "push" | "pop" | "clear" | "extend" | "retain" | "truncate")
+        {
+            if let Some(name) = self_field_name(&node.receiver) {
+                if !self.mutated_fields.contains(&name) {
+                    self.mutated_fields.push(name);
+                }
+            }
+        }
+        syn::visit::visit_expr_method_call(self, node);
     }
 }
 

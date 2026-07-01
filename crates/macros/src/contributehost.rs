@@ -70,19 +70,22 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
 
     let struct_name = items.iter_mut().find_map(|item| {
         if let Item::Struct(s) = item {
-            let has_field = match &s.fields {
-                Fields::Named(fields) => fields
-                    .named
-                    .iter()
-                    .any(|f| f.ident.as_ref().is_some_and(|i| i == "__rml_contribution_attached")),
-                _ => false,
-            };
-            if !has_field {
-                if let Fields::Named(fields) = &mut s.fields {
-                    fields.named.push(syn::parse_quote! {
-                        #[doc(hidden)]
-                        __rml_contribution_attached: bool
-                    });
+            if args.bindings.is_some() {
+                let has_field = match &s.fields {
+                    Fields::Named(fields) => fields.named.iter().any(|f| {
+                        f.ident
+                            .as_ref()
+                            .is_some_and(|i| i == "__rml_contribution_bindings_attached")
+                    }),
+                    _ => false,
+                };
+                if !has_field {
+                    if let Fields::Named(fields) = &mut s.fields {
+                        fields.named.push(syn::parse_quote! {
+                            #[doc(hidden)]
+                            __rml_contribution_bindings_attached: bool
+                        });
+                    }
                 }
             }
             Some(s.ident.clone())
@@ -109,11 +112,24 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
 
     let id = &args.id;
 
-    let on_changed_body = if let Some(method) = &args.bindings {
+    let attach_bindings = if let Some(method) = &args.bindings {
         let method = format_ident!("{}", method.value());
         quote! {
-            fn on_contributions_changed(&mut self, cx: &mut gpui::Context<Self>) {
-                self.#method(cx);
+            impl #struct_name {
+                #[doc(hidden)]
+                fn __rml_attach_contribution_bindings(&mut self, cx: &mut gpui::Context<Self>) {
+                    if self.__rml_contribution_bindings_attached {
+                        return;
+                    }
+                    self.__rml_contribution_bindings_attached = true;
+                    use rml_app::contribution::subscribe_host_changes;
+                    subscribe_host_changes(Self::ID, cx, |this, cx| {
+                        this.#method(cx);
+                        cx.notify();
+                    });
+                    self.#method(cx);
+                    cx.notify();
+                }
             }
         }
     } else {
@@ -127,30 +143,20 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
             pub const ID: &'static str = #id;
         }
 
-        impl rml_core::contribution::IContributionHostId for #struct_name {
+        impl rml_core::contribution::IContributionHost for #struct_name {
             const ID: &'static str = #id;
         }
 
-        impl rml_app::contribution::ContributionHostView for #struct_name {
-            #on_changed_body
-
-            fn __rml_contribution_attached(&self) -> bool {
-                self.__rml_contribution_attached
-            }
-
-            fn __rml_set_contribution_attached(&mut self, attached: bool) {
-                self.__rml_contribution_attached = attached;
-            }
-        }
+        #attach_bindings
 
         #[doc(hidden)]
         mod #hidden_mod {
             use super::#struct_name;
 
             pub(super) fn register(cx: &mut gpui::App) {
-                use rml_app::contribution::{box_host, ContributionExt, ensure_contribution_registry};
+                use rml_app::contribution::{ContributionExt, ensure_contribution_registry};
                 ensure_contribution_registry(cx);
-                cx.add(box_host(#struct_name::ID));
+                cx.add(#struct_name::ID);
             }
         }
 

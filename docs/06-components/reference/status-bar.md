@@ -28,7 +28,7 @@
 
 ### 从贡献点映射
 
-`demo/src/shell/bindings.rs`：
+使用 `rml_app::contribution::map_status_items(host_id, cx)`。
 
 ```rust
 pub fn status_items_from_host<C>(cx: &gpui::Context<C>, host_id: &str) -> StatusBarItems {

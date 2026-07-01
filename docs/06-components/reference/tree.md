@@ -56,27 +56,17 @@
 
 
 
-树数据不通过 RML 属性绑定，而是在 code-behind 中操作 `TreeState`。Demo 从 `demo.shell` host 构建：
-
-
+树数据不通过 RML 属性绑定，而是在 code-behind 中操作 `TreeState`。Demo 通过框架 `map_case_tree_items` 从 `MainWindow::ID` host 构建：
 
 ```rust
-
 // case_activity_panel.rml.rs
-
 fn refresh_tree(&mut self, cx: &mut Context<Self>) {
-
-    let items = contributions::build_case_tree_items(cx);
-
+    let items = map_case_tree_items(MainWindow::ID, cx);
     // state.set_items(items, cx)
-
 }
-
 ```
 
-
-
-贡献注册：`features::register_all` 调用各案例 `__rml_register_*` + `register_case_categories`（含 `cat.menu`）。
+贡献注册：`#[contribute]` 宏 + `ctor` 自动 bootstrap；案例树条目 `kind = "case"` 由 `HostChromeMapper` 聚合，无需 demo 侧 `register_all`。
 
 
 
@@ -112,7 +102,7 @@ fn refresh_tree(&mut self, cx: &mut Context<Self>) {
 
 
 
-`CaseActivityPanel::on_case_activate` 经 `main_window::activate_case` 打开案例 Tab。
+`CaseActivityPanel::on_case_activate` 经 demo 的 `case_activation::activate_case` 打开案例 Tab。
 
 
 
@@ -122,7 +112,7 @@ fn refresh_tree(&mut self, cx: &mut Context<Self>) {
 
 1. **未在 `on_loaded` 初始化 TreeState** — `CaseActivityPanel` 在 `refresh_tree` 中懒创建；父窗口须 `cx.new` CaseActivityPanel Entity。
 
-2. **字段名不是 `case_tree_state`** — 在 `CaseActivityPanel` 内路由表硬编码该字段名。
+2. **字段名不是 `tree_state`** — codegen 在 `CaseActivityPanel` 内路由表硬编码该字段名。
 
 3. **期望文件夹节点触发 `on_activate`** — 仅叶子节点（非 folder）触发回调。
 

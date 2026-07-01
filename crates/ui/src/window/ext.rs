@@ -41,7 +41,8 @@ pub trait IWindowExt: IWindow {
     ///    并用 `Root::new()` 包裹以启用通知路由
     /// 4. `set_handle()` 存储窗口句柄
     fn open_rooted(&mut self, cx: &mut App) {
-        crate::init(cx);
+        // gpui-component 由 RmlApplication::bootstrap_runtime 初始化；此处仅确保 i18n catalog 可用
+        rml_core::i18n::ensure_i18n(cx);
         let options = self.window_options_for(cx);
         let handle = cx
             .open_window(options, |window, cx| {

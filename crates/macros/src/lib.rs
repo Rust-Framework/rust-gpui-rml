@@ -43,9 +43,9 @@ pub fn contribute(args: TokenStream, input: TokenStream) -> TokenStream {
 
 /// 声明贡献点主机标记类型（通常标注主窗口 ViewModel）。
 ///
-/// - 自动实现 [`IContributionHostId`] 并在启动时 `App::add` 注册 host
-/// - 首次 render 时自动订阅注册表变更（无需在 `on_loaded` 中手动 wire / notify）
-/// - `bindings`：贡献变更时调用的 ViewModel 方法名（如 `"refresh_bindings"`）
+/// - 自动实现 [`IContributionHost`] 并在启动时 `App::add` 注册 host slot
+/// - 若指定 `bindings = "method"`：宏生成 `__rml_attach_contribution_bindings`，
+///   在首次 render 时 `subscribe_host_changes` 并调用该方法（应用自行决定如何刷新 UI）
 ///
 /// ```rust,ignore
 /// #[contributehost(id = "my.app", bindings = "refresh_bindings")]

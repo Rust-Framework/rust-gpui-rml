@@ -9,12 +9,10 @@
 ## 基本用法
 
 ```html
-<ActivityBar panels={activity_panels} on_panel_change="on_panel_change">
-    <div if={active_panel_id == "samples"} class="nav-tree">
-        <Tree on_activate="on_case_activate" />
-    </div>
-</ActivityBar>
+<ActivityBar panels={activity_panels} />
 ```
+
+面板内容由各 `IActivityPanel::panel()` 提供（`#[contribute(..., mode = Panel)]` + `render_contribution_visual`）。
 
 ## 属性
 
@@ -40,38 +38,20 @@ activity_panels: ActivityPanels,
 active_panel_id: String,
 ```
 
-### 从贡献点映射（Demo 模式）
+### 从贡献点映射
 
-`demo/src/shell/bindings.rs`：
-
-```rust
-pub fn activity_panels_from_host<C>(
-    cx: &gpui::Context<C>,
-    host_id: &str,
-    active_id: &str,
-) -> ActivityPanels {
-    // 读取 ContributionRegistry → ActivityPanel::new(id, icon, title).active(...)
-}
-```
-
-ViewModel 在 `refresh_shell_bindings` 中更新 `activity_panels`，并监听 Host `on_changed`。
+Demo 使用 `shell_chrome::map_activity_panels`。带 `bindings` 的 `#[contributehost]` 在贡献变更时自动刷新。
 
 ### `IActivityPanel` 接口
 
 | 方法 | 说明 |
 |------|------|
-| `id()` | 面板 ID，与 `active_panel_id` 对应 |
+| `id()` | 面板 ID |
 | `icon()` | `IconName` |
 | `title()` | 工具提示文字 |
-| `is_activated()` | 是否高亮 |
+| `panel()` | 面板内容（视觉贡献渲染） |
 
-面板**内容**不由 trait 提供，而是在 RML 子节点中按 `active_panel_id` 条件渲染。
-
-## 子节点 / 插槽
-
-子节点渲染到活动栏右侧内容区。仅当**至少一个面板处于激活态**且子节点非空时显示。
-
-推荐用 `if={active_panel_id == "..."}` 切换不同面板内容。
+面板内容由 `panel()` 提供，不在 RML 子节点中声明。
 
 ## 完整示例
 

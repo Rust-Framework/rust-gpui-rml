@@ -1,0 +1,32 @@
+<component class="case-host">
+    <div if={active_case_id == "welcome" || active_case_id == ""}>
+        <WelcomeCase />
+    </div>
+    <div if={active_case_id == "binding.counter"}>
+        <CounterCase />
+    </div>
+    <div if={active_case_id == "binding.two-way"}>
+        <TwoWayCase />
+    </div>
+    <div if={active_case_id == "components.button"}>
+        <ButtonCase />
+    </div>
+    <div if={active_case_id == "components.menu.context"}>
+        <MenuContextCase />
+    </div>
+    <div if={active_case_id == "components.menu.dropdown"}>
+        <MenuDropdownCase />
+    </div>
+    <div if={active_case_id == "components.menu.editor"}>
+        <MenuEditorCase />
+    </div>
+    <div if={active_case_id == "components.menu.features"}>
+        <MenuFeaturesCase />
+    </div>
+    <div if={active_case_id == "components.menu.custom"}>
+        <MenuCustomCase />
+    </div>
+    <div if={active_case_id == "i18n.basic"}>
+        <I18nCase />
+    </div>
+</component>

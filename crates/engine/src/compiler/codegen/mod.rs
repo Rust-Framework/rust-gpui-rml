@@ -153,8 +153,8 @@ fn gen_render_impl_from_children(
     out.push_str("        if !self.__rml_loaded {\n");
     out.push_str("            self.__rml_loaded = true;\n");
     out.push_str("            rml_core::lifecycle::ILifecycle::on_loaded(self, _window, cx);\n");
-    if ctx.is_contributehost {
-        out.push_str("            rml_app::contribution::attach_host_view(self, cx);\n");
+    if ctx.contribution_bindings {
+        out.push_str("            self.__rml_attach_contribution_bindings(cx);\n");
     }
     out.push_str("        }\n");
     out.push_str("        use gpui::{ParentElement, InteractiveElement, StatefulInteractiveElement, IntoElement, Styled};\n");

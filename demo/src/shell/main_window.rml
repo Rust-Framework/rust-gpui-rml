@@ -15,22 +15,7 @@
     </slot_left>
 
     <slot_menu>
-        <menu-bar>
-            <menu-item label={t("menu.file")}>
-                <menu-item label={t("menu.file_new")} disabled="" />
-                <menu-separator />
-                <menu-item label={t("menu.file_open")} disabled="" />
-                <menu-separator />
-                <menu-item label={t("menu.file_exit")} disabled="" />
-            </menu-item>
-            <menu-item label={t("menu.view")}>
-                <menu-item label={t("menu.theme_toggle")} onclick="on_menu_theme_toggle" />
-                <menu-item label={t("menu.lang_en")} onclick="on_menu_lang_en" />
-            </menu-item>
-            <menu-item label={t("menu.help")}>
-                <menu-item label={t("menu.help_about")} disabled="" />
-            </menu-item>
-        </menu-bar>
+        <menu-bar items={menu_items} />
     </slot_menu>
 
     <slot_title>
@@ -45,37 +30,6 @@
         <status_bar items={status_items} />
     </slot_footer>
 
-    <div class="case-host">
-        <div if={active_case_id == "welcome" || active_case_id == ""}>
-            <WelcomeCase />
-        </div>
-        <div if={active_case_id == "binding.counter"}>
-            <CounterCase />
-        </div>
-        <div if={active_case_id == "binding.two-way"}>
-            <TwoWayCase />
-        </div>
-        <div if={active_case_id == "components.button"}>
-            <ButtonCase />
-        </div>
-        <div if={active_case_id == "components.menu.context"}>
-            <MenuContextCase />
-        </div>
-        <div if={active_case_id == "components.menu.dropdown"}>
-            <MenuDropdownCase />
-        </div>
-        <div if={active_case_id == "components.menu.editor"}>
-            <MenuEditorCase />
-        </div>
-        <div if={active_case_id == "components.menu.features"}>
-            <MenuFeaturesCase />
-        </div>
-        <div if={active_case_id == "components.menu.custom"}>
-            <MenuCustomCase />
-        </div>
-        <div if={active_case_id == "i18n.basic"}>
-            <I18nCase />
-        </div>
-    </div>
+    <CaseHost active_case_id={active_case_id} />
 
 </tab_window>

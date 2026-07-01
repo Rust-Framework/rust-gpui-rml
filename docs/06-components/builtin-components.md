@@ -119,6 +119,6 @@ RML 组件来自两个互不混淆的层次：
 
 - 内置组件 ≠ gpui-component 全量导出；以路由表为准。
 - 逐组件 API 请查阅 [reference/INDEX.md](./reference/INDEX.md)。
-- Shell 类控件（ActivityBar、menu、status_bar、Tree）配合 [贡献点架构](../09-architecture/contribution-system.md) 与 Demo `bindings.rs` 使用。
+- Shell 类控件配合 [贡献点架构](../09-architecture/contribution-system.md) 与 demo 的 `map_shell_chrome` 使用。
 
 下一节 → [6.2 自定义组件](./custom-components.md)

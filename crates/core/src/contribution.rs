@@ -1,11 +1,11 @@
-//! 贡献点契约 —— `IContribution` / `IVisualContribution` / Host / Registry
+//! 贡献点契约 —— 扩展点标识 + 条目元数据
 //!
-//! 面向应用开发者的插件化扩展 API。
+//! 运行时注册表由 `rml_app::ContributionExt` 提供。框架不包含 Shell/UI 映射或业务桥接。
 
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use gpui::{App, SharedString};
+use gpui::SharedString;
 
 use crate::contribution_cache::ComponentEntityCacheImpl;
 
@@ -16,38 +16,16 @@ pub type VisualRenderer = Arc<
         + Sync,
 >;
 
-/// 贡献在 UI 中的呈现角色（元数据，供 ViewModel 映射到控件数据）
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum VisualMode {
-    /// 图标/紧凑控件（侧栏图标栏等）
-    #[default]
-    Chrome,
-    /// 可切换的面板内容
-    Panel,
-    /// 内联条带（状态栏、工具条等）
-    Inline,
-    /// 预留：浮动层
-    Overlay,
-}
-
-/// 内联条带内左右放置
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum VisualPlacement {
-    #[default]
-    Left,
-    Right,
-}
-
 /// 贡献注册选项
 #[derive(Debug, Clone, Default)]
 pub struct ContributionOptions {
     pub order: i32,
-    /// 父贡献 id（层级 host 用 `parent_id` 挂载子节点）
+    /// 父贡献 id（树形菜单、案例分类等）
     pub parent_id: Option<SharedString>,
     pub group: Option<SharedString>,
-    /// 呈现角色元数据（如活动栏面板、状态栏内联项）；由 ViewModel 读取后绑定到 UI 控件
-    pub visual_mode: Option<VisualMode>,
-    pub placement: Option<VisualPlacement>,
+    /// Shell 挂载点（开放字符串，语义由应用定义）
+    pub slot: Option<SharedString>,
+    /// 扩展元数据（如 `align=right`）
     pub properties: HashMap<SharedString, SharedString>,
 }
 
@@ -71,13 +49,8 @@ impl ContributionOptions {
         self
     }
 
-    pub fn visual_mode(mut self, mode: VisualMode) -> Self {
-        self.visual_mode = Some(mode);
-        self
-    }
-
-    pub fn placement(mut self, placement: VisualPlacement) -> Self {
-        self.placement = Some(placement);
+    pub fn slot(mut self, slot: impl Into<SharedString>) -> Self {
+        self.slot = Some(slot.into());
         self
     }
 
@@ -85,18 +58,22 @@ impl ContributionOptions {
         self.properties.insert(key.into(), value.into());
         self
     }
+
+    /// 有效挂载点：`slot` 优先，兼容旧 `properties["kind"]`
+    pub fn effective_slot(&self) -> Option<&str> {
+        self.slot
+            .as_deref()
+            .or_else(|| self.properties.get("kind").map(|s| s.as_ref()))
+    }
 }
 
-/// 所有贡献的公共契约：元数据 + 可选能力钩子
+/// 所有贡献的公共契约：元数据
 pub trait IContribution: Send + Sync {
     fn id(&self) -> &str;
     fn name(&self) -> SharedString;
     fn description(&self) -> SharedString;
     /// 图标名（如 gpui-component `IconName` 的 Debug 字符串），无图标返回 None
     fn icon(&self) -> Option<SharedString>;
-
-    fn on_register(&self, _host_id: &str, _cx: &mut App) {}
-    fn on_unregister(&self, _host_id: &str, _cx: &mut App) {}
 }
 
 /// 可视化贡献：显式关联 RML `#[component]` 类型
@@ -107,39 +84,26 @@ pub trait IVisualContribution: IContribution {
     fn render(&self) -> Self::View;
 }
 
-/// 贡献点主机标识（零大小标记类型）。
+/// 贡献点主机标识（扩展点命名空间）。
 ///
-/// 由 `#[contributehost]` 自动实现。`#[contribute(host = MyHost)]` 可引用该类型，
-/// 框架内部擦除为 `Box<dyn IContributionHost>` 注册。
-pub trait IContributionHostId {
+/// 由 `#[contributehost(id = "...")]` 实现。运行时条目存在 `ContributionRegistry` 中；
+/// 消费者通过 `contribution_entries` / `subscribe_host_changes` 读取，自行决定如何消费。
+pub trait IContributionHost {
     const ID: &'static str;
-}
-
-/// 贡献点主机：管理某 host id 下的贡献集合（内部存储，非 UI）。
-///
-/// 读取条目请通过 `App` 贡献扩展（`rml_app::ContributionExt::contribution_registry`）；
-/// UI 同步由框架在 `#[contributehost]` 窗口上自动订阅。
-pub trait IContributionHost: Send + Sync {
-    fn id(&self) -> &str;
-    fn add(&mut self, entry: ContributedEntry, cx: &mut App);
-    fn remove(&mut self, contribution_id: &str, cx: &mut App) -> bool;
 }
 
 /// 已注册贡献条目
 pub struct ContributedEntry {
     pub contribution: Arc<dyn IContribution>,
-    /// 保留扩展点；标准 MVVM 路径下为 `None`，由 ViewModel 消费元数据
     pub visual: Option<VisualRenderer>,
     pub options: ContributionOptions,
 }
 
-/// 贡献渲染上下文（`IVisualContribution` 高级路径使用）
+/// 贡献渲染上下文（`IVisualContribution` 路径使用）
 pub struct ContributionRenderContext<'a> {
     pub window: &'a mut gpui::Window,
-    pub cx: &'a mut App,
+    pub cx: &'a mut gpui::App,
     pub active: bool,
-    pub mode: VisualMode,
-    pub placement: VisualPlacement,
 }
 
 /// 组件 Entity 缓存

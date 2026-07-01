@@ -2,8 +2,8 @@
 
 use std::sync::{Arc, Mutex};
 
-use gpui::{App, BorrowAppContext, Global};
-use rml_core::contribution::{ContributedEntry, ContributionOptions, IContribution, IContributionHost};
+use gpui::{App, BorrowAppContext, Context, Global, Render};
+use rml_core::contribution::{ContributedEntry, ContributionOptions, IContribution};
 
 use super::registerable::Registerable;
 use super::registry::ContributionRegistry;
@@ -22,7 +22,8 @@ pub fn bootstrap_contributions(cx: &mut App) {
     }
 }
 
-/// GPUI 全局贡献注册表
+/// GPUI 全局贡献注册表（框架内部）
+#[doc(hidden)]
 pub struct ContributionRegistryGlobal(pub ContributionRegistry);
 
 impl Global for ContributionRegistryGlobal {}
@@ -36,10 +37,10 @@ pub fn ensure_contribution_registry(cx: &mut App) {
     cx.set_global(ContributionRegistryGlobal(registry));
 }
 
-/// 统一贡献注册器：扩展 `App`，替代独立 `IContributionRegistry` trait。
+/// 统一贡献注册器：扩展 `App`。
 pub trait ContributionExt {
-    /// 注册贡献点主机（`#[contributehost]` 生成代码调用）。
-    fn add(&mut self, host: Box<dyn IContributionHost>);
+    /// 注册贡献点主机 slot（`#[contributehost]` 生成代码调用）。
+    fn add(&mut self, host_id: &str);
 
     /// 移除 host 及其全部贡献条目。
     fn remove(&mut self, host_id: &str);
@@ -60,10 +61,10 @@ pub trait ContributionExt {
 }
 
 impl ContributionExt for App {
-    fn add(&mut self, host: Box<dyn IContributionHost>) {
+    fn add(&mut self, host_id: &str) {
         ensure_contribution_registry(self);
         self.update_global::<ContributionRegistryGlobal, _>(|global, _| {
-            global.0.insert_host(host);
+            global.0.ensure_host(host_id);
         });
     }
 
@@ -118,9 +119,40 @@ pub fn register_contribution<T>(
 }
 
 /// 读取 host 条目（`Context` 侧便捷函数）。
-pub fn contribution_entries<'a, C>(host_id: &str, cx: &'a gpui::Context<C>) -> &'a [ContributedEntry] {
+pub fn contribution_entries<'a, C>(host_id: &str, cx: &'a Context<C>) -> &'a [ContributedEntry] {
     if !cx.has_global::<ContributionRegistryGlobal>() {
         return &[];
     }
     cx.global::<ContributionRegistryGlobal>().0.entries(host_id)
+}
+
+/// 读取 host 条目版本（供 `#[computed]` 或缓存键）。
+pub fn contribution_revision<C>(host_id: &str, cx: &Context<C>) -> u64 {
+    if !cx.has_global::<ContributionRegistryGlobal>() {
+        return 0;
+    }
+    cx.global::<ContributionRegistryGlobal>()
+        .0
+        .revision(host_id)
+}
+
+/// 订阅 host 贡献变更（统一通知通道；`CaseActivityPanel` 等组件使用）。
+pub fn subscribe_host_changes<C, F>(host_id: &str, cx: &mut Context<C>, listener: F)
+where
+    C: Render + 'static,
+    F: Fn(&mut C, &mut Context<C>) + Send + Sync + 'static,
+{
+    let weak = cx.weak_entity();
+    cx.update_global::<ContributionRegistryGlobal, _>(|global, _| {
+        global.0.subscribe_host(
+            host_id,
+            Box::new(move |app| {
+                if let Some(entity) = weak.upgrade() {
+                    entity.update(app, |this, cx| {
+                        listener(this, cx);
+                    });
+                }
+            }),
+        );
+    });
 }

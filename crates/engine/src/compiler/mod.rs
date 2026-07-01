@@ -122,8 +122,10 @@ pub struct CodegenCtx {
     /// codegen 在 `gen_component` 中 `component_lookup` 未命中时查此表，
     /// 生成 `self.<entity_field>.as_ref().expect(...).clone()` 嵌入用户组件。
     pub user_components: HashMap<String, UserComponentInfo>,
-    /// 是否标注 `#[contributehost]`（首次 render 自动 attach 贡献订阅）
+    /// 是否标注 `#[contributehost]`（注册 host slot）
     pub is_contributehost: bool,
+    /// `#[contributehost(bindings = "...")]` — 首次 render 自动 attach Shell 订阅
+    pub contribution_bindings: bool,
 }
 
 /// 代码生成错误

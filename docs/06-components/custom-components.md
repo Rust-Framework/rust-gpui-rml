@@ -127,12 +127,11 @@ pub struct ButtonCase {
 }
 ```
 
-`#[contribute]` 生成 `IContribution` + 每组件的 `__rml_register_*`；`build.rs` 扫描后生成统一 `register_rml_contributions(cx)`，在 `on_launch` 调用一次即可。`#[component]` 生成 RML 模板绑定与 codegen。两者互不冲突。
+`#[contribute]` 由 `build.rs` 扫描并随 `RmlApplication` 自动注册；`#[component]` 生成 RML 模板绑定。
 
 应用启动（`#[rml::main]` 已注入 `embed_contributions!`）：
 
 ```rust
-crate::register_rml_contributions(cx);
 ```
 
 纯元数据（无 struct、如分类节点）仍用 `contributions::register_case_categories` 等程序化 API。详见 [贡献点架构](../09-architecture/contribution-system.md)。

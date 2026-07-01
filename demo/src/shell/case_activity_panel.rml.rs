@@ -1,9 +1,10 @@
 use rml::prelude::*;
-use rml_app::contribution::ContributionRegistryGlobal;
+use crate::shell::case_activation::activate_case;
+use rml_app::contribution::subscribe_host_changes;
+use crate::shell::shell_chrome::map_case_tree_items;
 use rml_core::i18n::I18nState;
 use rml_ui::TreeState;
 
-use crate::shell::contributions;
 use crate::shell::MainWindow;
 
 #[contribute(
@@ -11,7 +12,7 @@ use crate::shell::MainWindow;
     id = "samples",
     name = "shell.samples",
     icon = IconName::BookOpen,
-    mode = Panel,
+    visual,
     kind = "activity",
     order = 0,
 )]
@@ -24,11 +25,10 @@ pub struct CaseActivityPanel {
 impl ILifecycle for CaseActivityPanel {
     fn on_loaded(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
         self.refresh_tree(cx);
-        cx.observe_global::<ContributionRegistryGlobal>(|this, cx| {
+        subscribe_host_changes(MainWindow::ID, cx, |this, cx| {
             this.refresh_tree(cx);
             cx.notify();
-        })
-        .detach();
+        });
         cx.observe_global::<I18nState>(|this, cx| {
             this.refresh_tree(cx);
             cx.notify();
@@ -39,7 +39,7 @@ impl ILifecycle for CaseActivityPanel {
 
 impl CaseActivityPanel {
     fn refresh_tree(&mut self, cx: &mut Context<Self>) {
-        let items = contributions::build_case_tree_items(cx);
+        let items = map_case_tree_items(MainWindow::ID, cx);
         if let Some(state) = self.tree_state.as_ref() {
             state.update(cx, |s, cx| {
                 s.set_items(items, cx);
@@ -53,6 +53,6 @@ impl CaseActivityPanel {
 
     #[command]
     pub fn on_case_activate(&mut self, item_id: &gpui::SharedString, cx: &mut Context<Self>) {
-        crate::shell::main_window::activate_case(item_id.to_string(), cx);
+        activate_case(item_id.to_string(), cx);
     }
 }

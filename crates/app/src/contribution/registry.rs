@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use gpui::App;
 use rml_core::contribution::{
-    ComponentEntityCache, ContributedEntry, ContributionOptions, IContribution, IContributionHost,
+    ComponentEntityCache, ContributedEntry, ContributionOptions, IContribution,
 };
 
 use super::entry::{add_entry, data_entry_dyn};
@@ -34,11 +34,11 @@ impl ContributionRegistry {
         &mut self.entity_cache
     }
 
-    pub fn insert_host(&mut self, host: Box<dyn IContributionHost>) {
-        let id = host.id().to_string();
+    pub fn ensure_host(&mut self, host_id: impl Into<String>) {
+        let id = host_id.into();
         self.hosts
-            .entry(id)
-            .or_insert_with(|| ContributionHost::new(host.id()));
+            .entry(id.clone())
+            .or_insert_with(|| ContributionHost::new(id));
     }
 
     pub fn remove_host(&mut self, host_id: &str) {
@@ -69,13 +69,6 @@ impl ContributionRegistry {
             .entry(host_id.to_string())
             .or_default()
             .push(listener);
-    }
-
-    fn ensure_host(&mut self, host_id: impl Into<String>) {
-        let id = host_id.into();
-        self.hosts
-            .entry(id.clone())
-            .or_insert_with(|| ContributionHost::new(id));
     }
 
     fn notify_host(&self, host_id: &str, cx: &mut App) {
@@ -133,5 +126,26 @@ impl ContributionRegistry {
 impl Default for ContributionRegistry {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ContributionRegistry;
+
+    #[test]
+    fn ensure_host_creates_empty_slot() {
+        let mut registry = ContributionRegistry::new();
+        registry.ensure_host("test.host");
+        assert!(registry.entries("test.host").is_empty());
+        assert_eq!(registry.revision("test.host"), 0);
+    }
+
+    #[test]
+    fn remove_host_clears_entries() {
+        let mut registry = ContributionRegistry::new();
+        registry.ensure_host("h");
+        registry.remove_host("h");
+        assert!(registry.entries("h").is_empty());
     }
 }

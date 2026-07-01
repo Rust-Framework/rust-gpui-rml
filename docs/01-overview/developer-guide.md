@@ -148,53 +148,34 @@ pub fn profile_summary(&self) -> String {
 
 ## 4. 贡献点 → MVVM 绑定
 
-框架提供贡献点**数据契约**，UI 由应用层映射到 MVVM 控件。详见 [贡献点架构](../09-architecture/contribution-system.md)。
+Demo 通过 `shell_chrome::map_shell_chrome` 将贡献条目映射为 Shell 控件数据。详见 [贡献点架构](../09-architecture/contribution-system.md)。
 
 ### 4.1 数据流
 
 ```
-功能模块 register → Host.entries() → ViewModel 映射函数 → RML 控件绑定
+#[contribute] register → ContributionRegistry → map_shell_chrome（demo）→ RML 绑定
 ```
 
-### 4.2 ActivityBar
+### 4.2 ActivityBar / StatusBar / Menu
 
-`demo/src/shell/bindings.rs`：
+MainWindow 在 `refresh_bindings` 中调用 `crate::shell::shell_chrome::map_shell_chrome`：
 
 ```rust
-pub fn activity_panels_from_host<C>(cx: &gpui::Context<C>, host_id: &str, active_id: &str) -> ActivityPanels
+let bindings = map_shell_chrome(MainWindow::ID, cx, &self.menu_commands);
+self.activity_panels = bindings.activity_panels;
+self.status_items = bindings.status_items;
+self.menu_items = bindings.menu_items;
 ```
 
-ViewModel 监听 Host `on_changed`，调用 `refresh_shell_bindings`。
+RML：`<ActivityBar panels={activity_panels} />`、`<status_bar items={status_items} />`、`<menu-bar items={menu_items} />`。
 
-### 4.3 status_bar
+### 4.3 Tree（案例树）
 
-```rust
-pub fn status_items_from_host<C>(cx: &gpui::Context<C>, host_id: &str) -> StatusBarItems
-```
+`CaseActivityPanel` 使用 `map_case_tree_items(MainWindow::ID, cx)`，并通过 `subscribe_host_changes` 自动刷新（非 `observe_global`）。
 
-### 4.4 Tree（案例树）
+### 4.4 案例激活
 
-案例树由 `CaseActivityPanel` 组件自管：在 `on_loaded` 中调用 `contributions::build_case_tree_items`，并监听 `demo.shell` host 与 i18n 变更自动刷新。
-
-```rust
-// case_activity_panel.rml.rs
-fn refresh_tree(&mut self, cx: &mut Context<Self>) {
-    let items = contributions::build_case_tree_items(cx);
-    // TreeState::set_items(items, cx)
-}
-```
-
-`main_window.rml` 在 ActivityBar 面板槽内嵌入 `<CaseActivityPanel />`；点击叶子节点经 `activate_case` 桥接到 `MainWindow::open_case`。
-
-### 4.5 menu
-
-在 `on_loaded` 中构建 `MenuItems`，绑定命令：
-
-```rust
-self.menu_items = vec![
-    MenuItem::new(cx.t("menu.theme_toggle")).command(theme_cmd).into_arc(),
-];
-```
+`register_case_activation` + `activate_case`（`demo/shell/case_activation.rs`）；案例内容路由由 `CaseHost` 承担。
 
 ## 5. 自定义 `#[component]` 工作流
 
@@ -218,7 +199,7 @@ pub struct MenuContextCase {
 }
 ```
 
-启动时在 `on_launch` 调用 **`crate::register_rml_contributions(cx)`** 即可（由 `build.rs` 扫描所有 `#[contribute]` 并生成，无需手写 `__rml_register_*` 列表）。详见 [贡献点架构 §案例注册流程](../09-architecture/contribution-system.md)。
+贡献由 `RmlApplication::bootstrap_runtime` 自动注册，**无需**在 `on_launch` 手动调用。详见 [贡献点架构](../09-architecture/contribution-system.md)。
 
 菜单相关 Demo 案例：
 
@@ -250,11 +231,9 @@ pub struct MenuContextCase {
 ```rust
 impl ILifecycle for MainWindow {
     fn on_loaded(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.case_activity_panel
-            .get_or_insert_with(|| cx.new(|_| CaseActivityPanel::default()));
-        self.welcome_case.get_or_insert_with(|| cx.new(|_| WelcomeCase::default()));
-        Self::wire_host_changed(cx);
-        self.refresh_bindings(cx);
+        // Shell 绑定：首次 render 时 __rml_attach_contribution_bindings（需 bindings =）
+        self.case_host.get_or_insert_with(|| cx.new(|_| CaseHost::default()));
+        register_case_activation(/* demo/shell/case_activation */);
     }
 }
 ```
@@ -263,12 +242,10 @@ impl ILifecycle for MainWindow {
 
 | 问题 | 原因 | 解决 |
 |------|------|------|
-| CaseActivityPanel panic | 未 `cx.new` 子 Entity | `on_loaded` 中 `get_or_insert_with` |
-| 子组件 panic | 未 `cx.new` 子 Entity | `get_or_insert_with` 模式 |
-| ActivityBar 高亮不对 | 切换面板后未重建 `ActivityPanels` | `refresh_bindings` |
+| CaseHost / 子组件 panic | 未 `cx.new` 子 Entity | `on_loaded` 中 `get_or_insert_with` |
+| Shell 数据不刷新 | 未使用 `#[contributehost]` | 标注 host 窗口；框架自动 subscribe |
 | `<Input model>` 编译失败 | `model` 只能用于小写 `input` | 改用 `<input model={...}>` |
 | 用了未注册标签 | 如 `<Modal>` | 查 [reference/INDEX.md](../06-components/reference/INDEX.md) |
-| Shell 数据不刷新 | 未订阅 Host `on_changed` | 参考 `wire_host_changed` |
 
 完整清单见 [避坑清单](../11-cookbook/pitfall-checklist.md)。
 

@@ -1,5 +1,7 @@
 # 单 Host 贡献中心化 Demo 重构 — 续接计划
 
+> **Status: Superseded** — 请参阅 [docs/09-architecture/contribution-system.md](../../docs/09-architecture/contribution-system.md)。
+
 ## Summary
 
 续接上一会话中断的重构：将 demo 从 3-host 架构（`demo.shell.activity-bar` / `demo.shell.status` / `demo.shell.case-tree`）收敛为单一 `demo.shell` host，按 `properties["kind"]` 分类（menu/activity/status/case）。MainWindow 作为 host 管理者，通过 `on_changed` 回调驱动 UI 绑定刷新；CaseActivityPanel 封装案例树并自注册为 activity；案例组件通过 `#[contribute]` 自注册为 case。
