@@ -103,7 +103,6 @@ impl MainWindow {
     #[command]
     pub fn on_chrome_toggle(&mut self, cx: &mut Context<Self>) {
         self.show_chrome = !self.show_chrome;
-        cx.notify();
     }
 
     #[command]
@@ -148,7 +147,6 @@ impl MainWindow {
         if let Some(tab) = self.open_tabs.get(index) {
             self.selected_tab = index;
             self.active_case_id = tab.id.clone();
-            cx.notify();
         }
     }
 
@@ -172,7 +170,6 @@ impl MainWindow {
         self.open_tabs.iter_mut().for_each(|tab| {
             tab.title = cx.t(cases::case_title_key(&tab.id)).to_string();
         });
-        cx.notify();
     }
 
     #[command]
@@ -184,6 +181,5 @@ impl MainWindow {
         };
         cx.set_theme(next);
         self.i18n_version = self.i18n_version.wrapping_add(1);
-        cx.notify();
     }
 }

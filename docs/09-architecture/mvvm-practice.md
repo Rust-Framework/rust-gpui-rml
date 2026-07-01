@@ -108,9 +108,10 @@ impl TodoListViewModel {
 
     // ✅ 命令：唯一允许修改状态的地方
     #[command]
-    pub fn toggle(&mut self, id: u64, cx: &mut ViewContext<Self>) {
+    pub fn toggle(&mut self, id: u64, cx: &mut Context<Self>) {
         if let Some(item) = self.items.iter_mut().find(|i| i.id == id) {
             item.completed = !item.completed;
+            // ⚠️ 局部借用修改，宏的 AST 模式不识别，需手动 notify
             cx.notify();
         }
     }
@@ -121,9 +122,9 @@ impl TodoListViewModel {
 
 `#[command]` 方法必须遵守：
 
-1. **签名固定**：`fn(&mut self, ev: &Event, cx: &mut ViewContext<Self>)` 或 `fn(&mut self, cx: &mut ViewContext<Self>)`
+1. **签名固定**：`fn(&mut self, ev: &Event, cx: &mut Context<Self>)` 或 `fn(&mut self, cx: &mut Context<Self>)`
 2. **只改状态**：不返回值、不直接操作 DOM、不调用其他视图的命令
-3. **必须 notify**：任何状态变化后调用 `cx.notify()`，否则 View 不刷新
+3. **数据驱动 notify**：宏自动追踪 `self.<field>` 的赋值/复合赋值操作，自动注入 `bump_version` + `cx.notify()`。**方法体内一般无需手写 notify**——这是 RML MVVM 数据驱动的核心。例外：① 间接修改（如 `let p = &mut self.x; *p = 1;` 或方法调用 `self.items.retain()`）宏无法识别，需手动 notify；② 异步闭包（`cx.spawn` / `this.update`）内的修改不在方法体范围内，需手动 notify；③ 想精确控制 notify 时机时用 `#[command(no_notify)]`。
 4. **可重入**：同一命令可能被快速连续触发，状态机要能正确处理
 
 ### 异步命令的模式
@@ -132,16 +133,16 @@ impl TodoListViewModel {
 
 ```rust
 #[command]
-pub fn refresh(&mut self, _ev: &ClickEvent, cx: &mut ViewContext<Self>) {
+pub fn refresh(&mut self, _ev: &ClickEvent, cx: &mut Context<Self>) {
     // 1. 立即改状态：给用户即时反馈
     self.is_loading = true;
     self.error = None;
-    cx.notify();
+    // 宏自动注入：bump_version("is_loading") + bump_version("error") + cx.notify()
 
     // 2. spawn 异步任务
     cx.spawn(|this, mut cx| async move {
         let result = todo_service::fetch_all(&cx).await;
-        // 3. 完成后回写
+        // 3. 完成后回写（异步闭包内宏不注入，需手动 notify）
         let _ = this.update(&mut cx, |this, cx| {
             this.is_loading = false;
             match result {
@@ -220,16 +221,17 @@ impl SearchViewModel {
     }
 
     #[command]
-    pub fn on_input(&mut self, ev: &ChangeEvent, cx: &mut ViewContext<Self>) {
+    pub fn on_input(&mut self, ev: &ChangeEvent, cx: &mut Context<Self>) {
         self.query = ev.value.clone();
         self.is_searching = true;
-        cx.notify();
+        // 宏自动注入：bump_version("query") + bump_version("is_searching") + cx.notify()
         // 防抖：每次输入取消上一次任务
         if let Some(t) = self.debounce_task.take() { t.abort(); }
         let query = self.query.clone();
         self.debounce_task = Some(cx.spawn(|this, mut cx| async move {
             cx.background_executor().timer(Duration::from_millis(300)).await;
             let result = search_service::search(&query, &mut cx).await;
+            // 异步闭包内宏不注入，需手动 notify
             let _ = this.update(&mut cx, |this, cx| {
                 this.is_searching = false;
                 match result {
@@ -242,7 +244,7 @@ impl SearchViewModel {
     }
 
     #[on_loaded]
-    pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
         self.input.focus(cx);
     }
 }

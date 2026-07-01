@@ -7,9 +7,10 @@
 `rust-rml-core` 是整个 RML 框架的契约层，定义所有公开 trait 与基础数据类型，不包含任何编译逻辑或运行时实现。所有上层 crate（macros / engine / app / ui）均依赖此 crate。
 
 **核心约束**：
-- `#![forbid(unsafe_code)]` 全 crate 启用
+- `#![deny(unsafe_code)]` 全 crate 启用（用 `deny` 而非 `forbid`，以允许 `ComputedCache` 的 `unsafe impl Send + Sync` 局部 `#[allow(unsafe_code)]`——`Mutex` 提供同步保证，`#[computed]` 仅在 render 线程调用）
 - 仅依赖 `gpui` 基础类型（`App` / `Context` / `Entity` / `SharedString` / `Pixels` 等），不依赖 `gpui` 渲染层
 - 所有 trait 以 `I` 开头（`IModel` / `IViewModel` / `IComponent` / `IWindow` / `ICommand` / `IConverter` / `ITwoWayBinding` / `ILifecycle` / `IBindingContext` / `IEvent`）
+- 重导出 `ctor` crate（`pub use ctor;`），供 build.rs 生成的 `#[rml_core::ctor::ctor]` 函数引用
 
 ## 模块结构
 
@@ -27,6 +28,11 @@
 | `event` | `IEvent` | 事件基础契约，`prevent_default` / `stop_propagation` |
 | `events` | `ClickEvent`, `MouseEvent`, ... | RML 事件对象类型（11 个） |
 | `element_ref` | `ElementRef<T>` | 元素引用包装，`ref="name"` 关联 `#[element]` 字段 |
+| `validate` | `IValidate`, `ValidResult` | 接口式校验契约，`#[validate(MyValidator)]` 引用，支持跨字段校验（`valid_with_view` 通过 `view.downcast_ref::<MyView>()` 访问视图其他字段） |
+| `assets` | `AssetSource`, `init`, `load`, `load_str` | 资源加载运行时：`Embedded { entries }` 嵌入模式 + `Filesystem { root }` 文件系统模式（`Box::leak` 缓存），由 build.rs 生成的 `#[ctor::ctor]` 函数自动注册 |
+| `i18n` | `I18nExt`, `t_static` | 国际化扩展，`load_catalog_embedded` → `load_catalog_from_dir` fallback 链 |
+| `theme` | `ThemeExt`, `set_theme` | 主题切换扩展，`load_str` 加载 CSS 主题文件 |
+| `computed` | `ComputedCache` | 计算属性缓存运行时（`Mutex<HashMap<String, (u64, Box<dyn Any>)>>` + `unsafe impl Send + Sync`） |
 | `prelude` | — | 重导出所有常用 trait/类型，`use rml_core::prelude::*;` |
 
 ## 设计规范
@@ -37,3 +43,4 @@
 4. **事件对象独立**：RML 事件对象（`ClickEvent` 等）与 GPUI 事件类型解耦，通过 `event_flow::convert` 桥接
 5. **Default + Clone**：所有事件对象实现 `Default`，允许跨 crate 用 `default()` + 字段赋值构造
 6. **WPF 风格窗口**：`IWindow` trait 提供窗口操作的默认实现（close/show/hide/activate/state），基于 `handle()` 自管理，类比 WPF `Window` 类
+7. **资源双模式**：`AssetSource` 枚举统一嵌入与文件系统两种模式的运行时 API，注册由 build.rs 在编译期生成的 `#[ctor::ctor]` 函数自动完成（main 之前），用户代码通过 `rml_core::assets::load("themes/dark.css")` 查询

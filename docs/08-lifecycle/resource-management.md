@@ -2,6 +2,13 @@
 
 > **本节目标**：掌握 RML 应用中各类资源的管理——文件、网络、订阅、缓存的生命周期管理。
 
+> **MVVM 数据驱动模式说明**：本章示例遵循 RML 的 MVVM 数据驱动模式。在 `#[command]` 方法中，对于直接字段赋值（如 `self.is_loading = true;`），`#[command]` 宏会自动注入 `bump_version("<field>")` 与 `cx.notify()`，因此通常无需手动调用 `cx.notify()`。以下三种例外情况仍需手动调用 `cx.notify()`：
+> 1. **间接修改**：通过局部借用的修改（如 `let p = &mut self.x; *p = 1;`），宏的 AST 模式匹配无法识别；
+> 2. **方法调用修改字段**：如 `self.items.push(...)`、`self.items.retain(...)`、`self.cache.update(...)` 等，宏不识别方法调用导致的字段变更；
+> 3. **嵌套异步闭包**：`cx.spawn(|this, mut cx| ...)` 与 `this.update(&mut cx, |this, cx| ...)` 等闭包内部，宏仅注入命令方法体本身，不进入嵌套闭包。
+>
+> 详见 [命令系统](../04-code-behind/command-system.md) §4.4.0。
+
 ## 8.5.1 资源的类型
 
 RML 应用中需要管理的资源：
@@ -29,12 +36,12 @@ pub struct DataView {
 
 impl DataView {
     #[on_loaded]
-    pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
         self.file_handle = Some(FileHandle::open("data.txt"));
     }
 
     #[on_unloaded]
-    pub fn on_unloaded(&mut self, _cx: &mut ViewContext<Self>) {
+    pub fn on_unloaded(&mut self, _cx: &mut Context<Self>) {
         if let Some(handle) = self.file_handle.take() {
             handle.close();  // 我释放
         }
@@ -46,7 +53,7 @@ impl DataView {
 
 ```rust
 // ✅ 用完立即释放
-pub fn process_file(&mut self, cx: &mut ViewContext<Self>) {
+pub fn process_file(&mut self, cx: &mut Context<Self>) {
     let handle = FileHandle::open("data.txt");
     let data = handle.read_all();
     handle.close();  // 用完立即关闭
@@ -56,7 +63,7 @@ pub fn process_file(&mut self, cx: &mut ViewContext<Self>) {
 }
 
 // ❌ 持有不释放
-pub fn process_file(&mut self, cx: &mut ViewContext<Self>) {
+pub fn process_file(&mut self, cx: &mut Context<Self>) {
     self.file_handle = Some(FileHandle::open("data.txt"));
     // 一直持有，直到视图卸载才释放
 }
@@ -65,7 +72,7 @@ pub fn process_file(&mut self, cx: &mut ViewContext<Self>) {
 ### 3. 错误时释放
 
 ```rust
-pub fn load_data(&mut self, cx: &mut ViewContext<Self>) {
+pub fn load_data(&mut self, cx: &mut Context<Self>) {
     let handle = FileHandle::open("data.txt")
         .expect("无法打开文件");
 
@@ -104,11 +111,11 @@ pub struct FileView {
 
 impl FileView {
     #[command]
-    pub fn open_file(&mut self, ev: &ChangeEvent, cx: &mut ViewContext<Self>) {
+    pub fn open_file(&mut self, ev: &ChangeEvent, cx: &mut Context<Self>) {
         let path = ev.value.clone();
 
         self.is_loading = true;
-        cx.notify();
+        // 宏自动注入：bump_version("is_loading") + cx.notify()
 
         cx.spawn(|this, mut cx| async move {
             match tokio::fs::read_to_string(&path).await {
@@ -117,6 +124,7 @@ impl FileView {
                         this.content = content.into();
                         this.is_loading = false;
                         this.error = None;
+                        // 异步闭包内，宏不注入，需手动 notify
                         cx.notify();
                     });
                 }
@@ -124,6 +132,7 @@ impl FileView {
                     let _ = this.update(&mut cx, |this, cx| {
                         this.error = Some(e.to_string().into());
                         this.is_loading = false;
+                        // 异步闭包内，宏不注入，需手动 notify
                         cx.notify();
                     });
                 }
@@ -137,7 +146,7 @@ impl FileView {
 
 ```rust
 #[command]
-pub fn save_file(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+pub fn save_file(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
     let path = self.file_path.clone();
     let content = self.content.clone();
 
@@ -146,12 +155,14 @@ pub fn save_file(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
             Ok(_) => {
                 let _ = this.update(&mut cx, |this, cx| {
                     this.is_saved = true;
+                    // 异步闭包内，宏不注入，需手动 notify
                     cx.notify();
                 });
             }
             Err(e) => {
                 let _ = this.update(&mut cx, |this, cx| {
                     this.error = Some(e.to_string().into());
+                    // 异步闭包内，宏不注入，需手动 notify
                     cx.notify();
                 });
             }
@@ -175,10 +186,10 @@ pub struct ApiView {
 
 impl ApiView {
     #[command]
-    pub fn fetch_data(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn fetch_data(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.is_loading = true;
         self.error = None;
-        cx.notify();
+        // 宏自动注入：bump_version("is_loading") + bump_version("error") + cx.notify()
 
         cx.spawn(|this, mut cx| async move {
             match reqwest::get("https://api.example.com/data").await {
@@ -188,6 +199,7 @@ impl ApiView {
                             let _ = this.update(&mut cx, |this, cx| {
                                 this.data = Some(data);
                                 this.is_loading = false;
+                                // 异步闭包内，宏不注入，需手动 notify
                                 cx.notify();
                             });
                         }
@@ -195,6 +207,7 @@ impl ApiView {
                             let _ = this.update(&mut cx, |this, cx| {
                                 this.error = Some(format!("解析失败: {}", e).into());
                                 this.is_loading = false;
+                                // 异步闭包内，宏不注入，需手动 notify
                                 cx.notify();
                             });
                         }
@@ -204,6 +217,7 @@ impl ApiView {
                     let _ = this.update(&mut cx, |this, cx| {
                         this.error = Some(format!("请求失败: {}", e).into());
                         this.is_loading = false;
+                        // 异步闭包内，宏不注入，需手动 notify
                         cx.notify();
                     });
                 }
@@ -226,31 +240,33 @@ pub struct ChatView {
 
 impl ChatView {
     #[on_loaded]
-    pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
         self.connect_websocket(cx);
     }
 
     #[on_unloaded]
-    pub fn on_unloaded(&mut self, _cx: &mut ViewContext<Self>) {
+    pub fn on_unloaded(&mut self, _cx: &mut Context<Self>) {
         // 关闭 WebSocket 连接
         if let Some(ws) = self.websocket.take() {
             ws.close();
         }
     }
 
-    fn connect_websocket(&mut self, cx: &mut ViewContext<Self>) {
+    fn connect_websocket(&mut self, cx: &mut Context<Self>) {
         cx.spawn(|this, mut cx| async move {
             match WebSocketConnection::connect("wss://chat.example.com").await {
                 Ok(ws) => {
                     let _ = this.update(&mut cx, |this, cx| {
                         this.websocket = Some(ws);
                         this.is_connected = true;
+                        // 异步闭包内，宏不注入，需手动 notify
                         cx.notify();
                     });
                 }
                 Err(_) => {
                     let _ = this.update(&mut cx, |this, cx| {
                         this.is_connected = false;
+                        // 异步闭包内，宏不注入，需手动 notify
                         cx.notify();
                     });
                 }
@@ -275,12 +291,13 @@ impl DatabaseManager {
         }
     }
 
-    pub fn connect(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn connect(&mut self, cx: &mut Context<Self>) {
         cx.spawn(|this, mut cx| async move {
             match DbConnection::connect("database.url").await {
                 Ok(conn) => {
                     let _ = this.update(&mut cx, |this, cx| {
                         this.connection = Some(conn);
+                        // 异步闭包内，宏不注入，需手动 notify
                         cx.notify();
                     });
                 }
@@ -291,7 +308,7 @@ impl DatabaseManager {
         }).detach();
     }
 
-    pub fn disconnect(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn disconnect(&mut self, cx: &mut Context<Self>) {
         if let Some(conn) = self.connection.take() {
             conn.close();
             cx.notify();
@@ -299,7 +316,7 @@ impl DatabaseManager {
     }
 
     #[on_unloaded]
-    pub fn on_unloaded(&mut self, _cx: &mut ViewContext<Self>) {
+    pub fn on_unloaded(&mut self, _cx: &mut Context<Self>) {
         if let Some(conn) = self.connection.take() {
             conn.close();
         }
@@ -321,7 +338,7 @@ pub struct NotificationView {
 
 impl NotificationView {
     #[on_loaded]
-    pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
         let service = cx.global::<Entity<NotificationService>>();
 
         self.subscription = Some(cx.subscribe(
@@ -333,14 +350,15 @@ impl NotificationView {
     }
 
     #[on_unloaded]
-    pub fn on_unloaded(&mut self, _cx: &mut ViewContext<Self>) {
+    pub fn on_unloaded(&mut self, _cx: &mut Context<Self>) {
         if let Some(sub) = self.subscription.take() {
             sub.unsubscribe();
         }
     }
 
-    fn handle_notification(&mut self, event: &NotificationEvent, cx: &mut ViewContext<Self>) {
+    fn handle_notification(&mut self, event: &NotificationEvent, cx: &mut Context<Self>) {
         self.notifications.push(event.notification.clone());
+        // 订阅回调内，宏不注入，需手动 notify
         cx.notify();
     }
 }
@@ -360,7 +378,7 @@ pub struct DashboardView {
 
 impl DashboardView {
     #[on_loaded]
-    pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
         let user_service = cx.global::<Entity<UserService>>();
         let system_service = cx.global::<Entity<SystemService>>();
 
@@ -368,6 +386,7 @@ impl DashboardView {
             &user_service,
             |this, _, event, cx| {
                 this.user_updates.push(event.clone());
+                // 订阅回调内，宏不注入，需手动 notify
                 cx.notify();
             },
         ));
@@ -376,13 +395,14 @@ impl DashboardView {
             &system_service,
             |this, _, event, cx| {
                 this.system_alerts.push(event.clone());
+                // 订阅回调内，宏不注入，需手动 notify
                 cx.notify();
             },
         ));
     }
 
     #[on_unloaded]
-    pub fn on_unloaded(&mut self, _cx: &mut ViewContext<Self>) {
+    pub fn on_unloaded(&mut self, _cx: &mut Context<Self>) {
         if let Some(sub) = self.user_subscription.take() {
             sub.unsubscribe();
         }
@@ -479,20 +499,20 @@ impl CachedDataView {
     }
 
     #[command]
-    pub fn load_data(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn load_data(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         let cache_key = "data_key".to_string();
 
         // 先查缓存
         let cached = self.cache.read(cx).get(&cache_key);
         if let Some(data) = cached {
             self.data = Some(data);
-            cx.notify();
+            // 宏自动注入：bump_version("data") + cx.notify()
             return;
         }
 
         // 缓存未命中，从服务器加载
         self.is_loading = true;
-        cx.notify();
+        // 宏自动注入：bump_version("is_loading") + cx.notify()
 
         let cache = self.cache.clone();
         cx.spawn(|this, mut cx| async move {
@@ -501,18 +521,21 @@ impl CachedDataView {
                     // 写入缓存
                     cache.update(&mut cx, |cache, cx| {
                         cache.set(cache_key, data.clone());
+                        // 异步闭包内，宏不注入，需手动 notify
                         cx.notify();
                     });
 
                     let _ = this.update(&mut cx, |this, cx| {
                         this.data = Some(data);
                         this.is_loading = false;
+                        // 异步闭包内，宏不注入，需手动 notify
                         cx.notify();
                     });
                 }
                 Err(e) => {
                     let _ = this.update(&mut cx, |this, cx| {
                         this.is_loading = false;
+                        // 异步闭包内，宏不注入，需手动 notify
                         cx.notify();
                     });
                 }
@@ -724,20 +747,20 @@ impl ImageViewer {
     }
 
     #[on_loaded]
-    pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
         if !self.image_url.is_empty() {
             self.load_image(cx);
         }
     }
 
     #[on_unloaded]
-    pub fn on_unloaded(&mut self, _cx: &mut ViewContext<Self>) {
+    pub fn on_unloaded(&mut self, _cx: &mut Context<Self>) {
         if let Some(task) = self.load_task.take() {
             task.abort();
         }
     }
 
-    fn load_image(&mut self, cx: &mut ViewContext<Self>) {
+    fn load_image(&mut self, cx: &mut Context<Self>) {
         // 取消之前的加载任务
         if let Some(task) = self.load_task.take() {
             task.abort();
@@ -769,6 +792,7 @@ impl ImageViewer {
                     // 写入缓存
                     cache.update(&mut cx, |cache, cx| {
                         cache.set(url.clone(), image.clone());
+                        // 异步闭包内，宏不注入，需手动 notify
                         cx.notify();
                     });
 
@@ -776,6 +800,7 @@ impl ImageViewer {
                         this.current_image = Some(image);
                         this.is_loading = false;
                         this.error = None;
+                        // 异步闭包内，宏不注入，需手动 notify
                         cx.notify();
                     });
                 }
@@ -783,6 +808,7 @@ impl ImageViewer {
                     let _ = this.update(&mut cx, |this, cx| {
                         this.is_loading = false;
                         this.error = Some(e.to_string().into());
+                        // 异步闭包内，宏不注入，需手动 notify
                         cx.notify();
                     });
                 }
@@ -791,20 +817,21 @@ impl ImageViewer {
     }
 
     #[command]
-    pub fn change_image(&mut self, ev: &ChangeEvent, cx: &mut ViewContext<Self>) {
+    pub fn change_image(&mut self, ev: &ChangeEvent, cx: &mut Context<Self>) {
         self.image_url = ev.value.clone();
         self.load_image(cx);
     }
 
     #[command]
-    pub fn reload(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn reload(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.load_image(cx);
     }
 
     #[command]
-    pub fn clear_cache(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn clear_cache(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.cache.update(cx, |cache, cx| {
             cache.clear();
+            // 异步闭包内，宏不注入，需手动 notify
             cx.notify();
         });
     }

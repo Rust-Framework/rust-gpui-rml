@@ -441,7 +441,7 @@ impl TodoViewModel {
 
     // 命令方法：UI 可直接调用
     #[command]
-    pub fn add_todo(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn add_todo(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         if self.new_todo_text.is_empty() {
             return;
         }
@@ -452,25 +452,28 @@ impl TodoViewModel {
         });
         self.next_id += 1;
         self.new_todo_text = SharedString::default();
-        cx.notify();  // 触发 UI 重绘
+        // 宏自动注入：bump_version("next_id") + bump_version("new_todo_text") + cx.notify()
+        // 注：self.todos.push() 是方法调用，宏不识别，但 next_id/new_todo_text 的修改已触发重绘
     }
 
     #[command]
-    pub fn toggle_todo(&mut self, id: u64, _: &ChangeEvent, cx: &mut ViewContext<Self>) {
+    pub fn toggle_todo(&mut self, id: u64, _: &ChangeEvent, cx: &mut Context<Self>) {
         if let Some(todo) = self.todos.iter_mut().find(|t| t.id == id) {
             todo.done = !todo.done;
+            // ⚠️ 局部借用修改，宏的 AST 模式不识别，需手动 notify
             cx.notify();
         }
     }
 
     #[command]
-    pub fn delete_todo(&mut self, id: u64, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn delete_todo(&mut self, id: u64, _: &ClickEvent, cx: &mut Context<Self>) {
         self.todos.retain(|t| t.id != id);
+        // ⚠️ 方法调用，宏不识别为字段修改，需手动 notify
         cx.notify();
     }
 
     // 键盘事件处理方法
-    pub fn on_enter_key(&mut self, ev: &KeyDownEvent, cx: &mut ViewContext<Self>) {
+    pub fn on_enter_key(&mut self, ev: &KeyDownEvent, cx: &mut Context<Self>) {
         if ev.key == Key::Enter {
             self.add_todo(&ClickEvent::default(), cx);
         }
@@ -482,13 +485,15 @@ impl TodoViewModel {
 
 | 宏属性              | 用途                         |
 | ---------------- | -------------------------- |
-| `#[view]`        | 标记结构体为 RML 视图的 Code-Behind |
+| `#[window]`      | 标记结构体为 RML 窗口的 Code-Behind（顶层入口） |
 | `#[component]`   | 标记结构体为自定义组件                |
-| `#[command]`     | 标记方法为 UI 可调用的命令            |
-| `#[computed]`    | 标记为计算属性（依赖其他字段自动更新）        |
+| `#[command]`     | 标记方法为 UI 可调用的命令（自动注入 `bump_version` + `cx.notify()`） |
+| `#[computed]`    | 标记为计算属性（依赖追踪 + 缓存）        |
 | `#[on_loaded]`   | 视图加载完成后的回调                 |
 | `#[on_unloaded]` | 视图卸载前的清理回调                 |
 | `#[element]`     | 标记字段为 `ref` 引用的 UI 元素      |
+| `#[validate]`    | 声明字段校验规则（range/length/required/regex/custom/IValidate） |
+| `#[rml::main]`   | main.rs 入口属性宏（自动注入资源注册代码） |
 
 ### 4.3 元素引用（`ref`）
 
@@ -511,7 +516,7 @@ pub struct MyView {
 
 impl MyView {
     #[on_loaded]
-    pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
         // 自动聚焦输入框
         self.username_input.focus(cx);
     }
@@ -524,13 +529,13 @@ impl MyView {
 impl MyView {
     /// 视图加载完成时调用
     #[on_loaded]
-    pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
+    pub fn on_loaded(&mut self, cx: &mut Context<Self>) {
         self.load_initial_data(cx);
     }
 
     /// 视图即将卸载时调用
     #[on_unloaded]
-    pub fn on_unloaded(&mut self, _cx: &mut ViewContext<Self>) {
+    pub fn on_unloaded(&mut self, _cx: &mut Context<Self>) {
         // 清理资源、取消订阅等
     }
 }
@@ -632,21 +637,20 @@ RML 支持 WPF 风格的样式系统：
 
 ```rust
 // demo/build.rs
-use rml_compiler::RmlBuild;
+extern crate rust_rml_engine as rml;
 
 fn main() {
-    RmlBuild::new()
-        .input_dir("src/views")
-        .input_dir("src/components")
-        .output_dir(std::env::var("OUT_DIR").unwrap())
-        .with_watch(true)   // 开发时监听变化
-        .compile()
-        .unwrap();
-
-    println!("cargo:rerun-if-changed=src/views");
-    println!("cargo:rerun-if-changed=src/components");
+    rml::build()
+        .scan_dir("src")                          // 扫描 .rml 与 .rml.rs
+        .assets("assets", true)                    // 嵌入模式（true）/ 文件系统模式（false）
+        .output_dir(std::env::var("OUT_DIR")
+        .expect("OUT_DIR not set"))
+        .build()
+        .expect("RML build failed");
 }
 ```
+
+**资源双模式**：`.assets(path, embed)` 决定资源是编译期嵌入二进制（`true`，无泄露，二进制大）还是运行期按需从磁盘读取并 `Box::leak` 缓存（`false`，二进制小，不关心泄露）。两种模式运行时 API 一致（`rml_core::assets::load(path)`）。资源注册由 build.rs 生成的 `#[ctor::ctor]` 函数在 `main` 之前自动完成，**main.rs 中无需任何资源初始化代码**。
 
 ### 7.2 编译流程
 
@@ -681,7 +685,7 @@ impl RmlView for TodoViewModel {
 }
 
 impl Render for TodoViewModel {
-    fn render(&mut self, cx: &mut ViewContext<Self>) -> impl IntoElement {
+    fn render(&mut self, cx: &mut Context<Self>) -> impl IntoElement {
         // 从 .rml 生成的 GPUI 渲染代码
         gpui::div()
             .class("todo-app")
@@ -740,17 +744,24 @@ impl Render for TodoViewModel {
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### 8.2 启用热重载
+### 8.2 单点入口与资源自动注册
+
+`main.rs` 标注 `#[rml::main]` 后，宏自动注入 `rml::embed_assets!()`（include build.rs 生成的 `rml_assets.rs`）。生成文件内的 `#[ctor::ctor]` 函数在 `main` 之前自动调用 `rml_core::assets::init(...)` 完成资源注册：
 
 ```rust
 // main.rs
+extern crate rust_rml_engine as rml;
+extern crate rust_rml_app as rml_app;
+
+#[rml::main]   // 自动注入：rml::embed_assets!();
 fn main() {
-    RmlApplication::new()
-        .with_hot_reload(vec!["src/views".into(), "src/components".into()])
-        .run::<TodoViewModel>()
-        .unwrap();
+    rml_app::RmlApplication::new()
+        .main_window::<MyWindow>()
+        .run();
 }
 ```
+
+> 注：热重载属于 Phase 4 路线图能力，当前版本未实现。
 
 ## 九、与 GPUI 核心概念的映射
 
@@ -765,7 +776,8 @@ pub struct MyView {
     pub count: u32,  // 自动成为响应式状态
 }
 
-// 状态变更时调用 cx.notify() 触发重绘
+// #[command] 方法内修改 self.count 后，宏自动注入 bump_version + cx.notify() 触发重绘
+// （MVVM 数据驱动：用户无需手写 cx.notify()）
 ```
 
 ### 9.2 Render Trait
@@ -775,7 +787,7 @@ GPUI 的 `Render` trait 是 UI 渲染的核心。RML 编译器自动生成 `Rend
 ```rust
 // 开发者无需手写 —— RML 编译器自动生成
 impl Render for MyView {
-    fn render(&mut self, cx: &mut ViewContext<Self>) -> impl IntoElement {
+    fn render(&mut self, cx: &mut Context<Self>) -> impl IntoElement {
         // 从 .rml 生成的代码
     }
 }
@@ -816,16 +828,16 @@ impl Counter {
     }
 
     #[command]
-    pub fn increment(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn increment(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.count += 1;
-        cx.notify();
+        // 宏自动注入：bump_version("count") + cx.notify()
     }
 
     #[command]
-    pub fn decrement(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn decrement(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         if self.count > 0 {
             self.count -= 1;
-            cx.notify();
+            // 宏自动注入：bump_version("count") + cx.notify()
         }
     }
 }
@@ -834,18 +846,20 @@ impl Counter {
 **步骤 3：启动应用（`main.rs`）**
 
 ```rust
-use rml::app::RmlApplication;
+extern crate rust_rml_engine as rml;
+extern crate rust_rml_app as rml_app;
 
 mod views;
 
+#[rml::main]   // 自动注入资源注册代码（rml::embed_assets!()）
 fn main() {
-    RmlApplication::new()
-        .run::<views::counter::Counter>()
-        .unwrap();
+    rml_app::RmlApplication::new()
+        .main_window::<views::counter::Counter>()
+        .run();
 }
 ```
 
-**就这么简单。** 无需手写任何 GPUI 链式调用，UI 与逻辑完美分离。
+**就这么简单。** 无需手写任何 GPUI 链式调用，UI 与逻辑完美分离，状态变更由宏自动驱动 UI 重绘。
 
 ### 10.2 代码量对比
 

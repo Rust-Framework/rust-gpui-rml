@@ -2,15 +2,27 @@
 
 > **本节目标**：完整掌握 RML 的命令系统——ICommand trait、`#[command]` 宏、命令参数、命令的启用条件。
 
+## 4.4.0 MVVM 数据驱动：无需手动 notify
+
+RML 实现了完整的 MVVM 数据驱动模式：`#[command]` 宏在编译期自动追踪方法体内对 `self.<field>` 的赋值/复合赋值操作，自动注入两件事——
+
+1. **字段版本号 bump**：`self.__rml_bump_version("<field>")`，触发依赖该字段的 `#[computed]` 缓存失效与双向绑定正向同步。
+2. **视图重绘 notify**：`cx.notify()`（仅当方法返回 `()` 且存在 `&mut Context<Self>` 参数时）。
+
+**因此 `#[command]` 方法体内一般无需手写 `cx.notify()`**——只管改字段，框架自动驱动 UI 更新。本章所有示例遵循此约定。
+
+> 例外场景：批量更新后想控制 notify 时机、或方法返回非 `()` 类型——使用 `#[command(no_notify)]` 显式禁用自动 notify，详见 4.4.3.2。
+> 异步任务（`cx.spawn`）闭包内的 `cx.notify()` 仍需手写，因为宏只注入命令方法体本身，不递归进入闭包。
+
 ## 4.4.1 命令的定义
 
 命令（Command）是 ViewModel 中可被 UI 直接调用的方法。命令是 RML 事件处理的核心抽象：
 
 ```rust
 #[command]
-pub fn increment(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+pub fn increment(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
     self.count += 1;
-    cx.notify();
+    // 宏自动注入：self.__rml_bump_version("count"); cx.notify();
 }
 ```
 
@@ -28,7 +40,7 @@ pub trait ICommand: Send + Sync {
     fn can_execute(&self) -> bool;
 
     /// 执行命令
-    fn execute(&mut self, cx: &mut ViewContext<Self>);
+    fn execute(&mut self, cx: &mut Context<Self>);
 
     /// 命令可执行性变化时通知
     fn can_execute_changed(&self) -> Option<Subscription>;
@@ -49,9 +61,8 @@ pub trait ICommand: Send + Sync {
 
 ```rust
 #[command]
-pub fn submit(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
-    // 业务逻辑
-    cx.notify();
+pub fn submit(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+    // 业务逻辑：修改 self 字段，宏自动注入 bump_version + cx.notify()
 }
 ```
 
@@ -62,15 +73,15 @@ pub fn submit(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
 ```rust
 // 无参数命令
 #[command]
-pub fn method_name(&mut self, event: &EventType, cx: &mut ViewContext<Self>)
+pub fn method_name(&mut self, event: &EventType, cx: &mut Context<Self>)
 
 // 带参数命令
 #[command]
-pub fn method_name(&mut self, param: T, event: &EventType, cx: &mut ViewContext<Self>)
+pub fn method_name(&mut self, param: T, event: &EventType, cx: &mut Context<Self>)
 
 // 多参数命令
 #[command]
-pub fn method_name(&mut self, p1: T1, p2: T2, event: &EventType, cx: &mut ViewContext<Self>)
+pub fn method_name(&mut self, p1: T1, p2: T2, event: &EventType, cx: &mut Context<Self>)
 ```
 
 其中 `EventType` 是事件对象类型，如 `ClickEvent`、`ChangeEvent`、`KeyDownEvent` 等。
@@ -81,9 +92,9 @@ pub fn method_name(&mut self, p1: T1, p2: T2, event: &EventType, cx: &mut ViewCo
 
 ```rust
 #[command]
-pub fn increment(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+pub fn increment(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
     self.count += 1;
-    cx.notify();
+    // 宏自动注入：bump_version("count") + cx.notify()
 }
 ```
 
@@ -95,9 +106,9 @@ pub fn increment(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
 
 ```rust
 #[command]
-pub fn delete_item(&mut self, id: u64, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+pub fn delete_item(&mut self, id: u64, _: &ClickEvent, cx: &mut Context<Self>) {
     self.items.retain(|i| i.id != id);
-    cx.notify();
+    // 宏自动注入：bump_version("items") + cx.notify()
 }
 ```
 
@@ -114,11 +125,11 @@ pub fn update_status(
     id: u64,
     status: SharedString,
     _: &ClickEvent,
-    cx: &mut ViewContext<Self>,
+    cx: &mut Context<Self>,
 ) {
     if let Some(item) = self.items.iter_mut().find(|i| i.id == id) {
         item.status = status;
-        cx.notify();
+        // 宏自动注入：bump_version("items") + cx.notify()
     }
 }
 ```
@@ -144,9 +155,9 @@ pub fn update_status(
 
 ```rust
 #[command(can_execute = "can_increment")]
-pub fn increment(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+pub fn increment(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
     self.count += 1;
-    cx.notify();
+    // 宏自动注入：bump_version("count") + cx.notify()
 }
 
 pub fn can_increment(&self) -> bool {
@@ -189,14 +200,14 @@ pub fn can_submit(&self) -> bool {
 
 ```rust
 #[command]
-pub fn on_click(&mut self, ev: &ClickEvent, cx: &mut ViewContext<Self>) {
+pub fn on_click(&mut self, ev: &ClickEvent, cx: &mut Context<Self>) {
     println!("点击位置: {:?}", ev.position);
     self.count += 1;
-    cx.notify();
+    // 宏自动注入：bump_version("count") + cx.notify()
 }
 
 #[command]
-pub fn on_key_down(&mut self, ev: &KeyDownEvent, cx: &mut ViewContext<Self>) {
+pub fn on_key_down(&mut self, ev: &KeyDownEvent, cx: &mut Context<Self>) {
     match ev.key {
         Key::Enter => self.submit(cx),
         Key::Escape => self.cancel(cx),
@@ -264,12 +275,12 @@ pub fn handle_click(&mut self, ...) { ... }  // 应为 submit
 
 ```rust
 #[command]
-pub fn submit(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+pub fn submit(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
     // 提交逻辑
 }
 
 #[command]
-pub fn submit_on_enter(&mut self, ev: &KeyDownEvent, cx: &mut ViewContext<Self>) {
+pub fn submit_on_enter(&mut self, ev: &KeyDownEvent, cx: &mut Context<Self>) {
     if ev.key == Key::Enter {
         self.submit(&ClickEvent::default(), cx);
     }
@@ -278,17 +289,18 @@ pub fn submit_on_enter(&mut self, ev: &KeyDownEvent, cx: &mut ViewContext<Self>)
 
 ## 4.4.9 命令与异步操作
 
-命令可以启动异步任务：
+命令可以启动异步任务。注意：宏只会自动注入命令方法体本身的 `bump_version` + `cx.notify()`，**异步闭包内（`cx.spawn` / `this.update`）的修改不会自动注入**，需要手写 `cx.notify()`：
 
 ```rust
 #[command]
-pub fn load_data(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+pub fn load_data(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
     self.is_loading = true;
-    cx.notify();
+    // 宏自动注入：bump_version("is_loading") + cx.notify()
 
     cx.spawn(|this, mut cx| async move {
         let data = fetch_data_from_server().await;
 
+        // 异步闭包内：宏不注入，需手动 notify
         let _ = this.update(&mut cx, |this, cx| {
             this.data = data;
             this.is_loading = false;
@@ -379,7 +391,7 @@ impl CartView {
     }
 
     #[command]
-    pub fn add_item(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn add_item(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.items.push(CartItem {
             id: self.next_id,
             name: format!("商品 {}", self.next_id).into(),
@@ -387,19 +399,22 @@ impl CartView {
             quantity: 1,
         });
         self.next_id += 1;
-        cx.notify();
+        // 宏检测到 self.next_id += 1，自动注入 bump_version("next_id") + cx.notify()
+        // 注：self.items.push() 是方法调用，宏无法识别，但 next_id 的修改已触发重绘
     }
 
     #[command]
-    pub fn increase_quantity(&mut self, id: u64, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn increase_quantity(&mut self, id: u64, _: &ClickEvent, cx: &mut Context<Self>) {
         if let Some(item) = self.items.iter_mut().find(|i| i.id == id) {
             item.quantity += 1;
+            // ⚠️ item.quantity 是局部借用变量，宏的 AST 模式匹配只识别 self.<field>，
+            // 不会检测到 items 内部数据已变。此场景需手动 notify。
             cx.notify();
         }
     }
 
     #[command]
-    pub fn decrease_quantity(&mut self, id: u64, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn decrease_quantity(&mut self, id: u64, _: &ClickEvent, cx: &mut Context<Self>) {
         if let Some(item) = self.items.iter_mut().find(|i| i.id == id) {
             if item.quantity > 1 {
                 item.quantity -= 1;
@@ -407,30 +422,33 @@ impl CartView {
                 // 数量为 0 时移除
                 self.items.retain(|i| i.id != id);
             }
+            // 同上：局部借用修改，宏不注入，需手动 notify
             cx.notify();
         }
     }
 
     #[command]
-    pub fn remove_item(&mut self, id: u64, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn remove_item(&mut self, id: u64, _: &ClickEvent, cx: &mut Context<Self>) {
         self.items.retain(|i| i.id != id);
+        // ⚠️ self.items.retain() 是方法调用，宏不识别为字段修改，需手动 notify
         cx.notify();
     }
 
     #[command]
-    pub fn checkout(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn checkout(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         if !self.can_checkout() {
             return;
         }
 
         self.is_checking_out = true;
-        cx.notify();
+        // 宏自动注入：bump_version("is_checking_out") + cx.notify()
 
         let total = self.total_price();
 
         cx.spawn(|this, mut cx| async move {
             let result = process_payment(total).await;
 
+            // 异步闭包内：宏不注入，需手动 notify
             let _ = this.update(&mut cx, |this, cx| {
                 this.is_checking_out = false;
                 match result {

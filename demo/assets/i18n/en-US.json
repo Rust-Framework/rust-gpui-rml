@@ -1,39 +1,73 @@
-{
-  "login.title": "Sign in to RML Demo",
-  "login.hint": "Enter any username to open the showcase",
-  "login.username": "Username",
-  "login.submit": "Continue",
+{
+
+  "login.title": "Sign in to RML Demo",
+
+  "login.hint": "Enter any username to open the showcase",
+
+  "login.username": "Username",
+
+  "login.submit": "Continue",
+
   "shell.pick_case": "Welcome to RML Showcase",
   "shell.pick_case_hint": "Pick a sample in the tree on the left — it opens in a tab",
   "shell.samples": "Samples",
-  "shell.welcome": "Welcome",
-  "shell.status_ready": "Ready — pick a sample from the tree",
-  "shell.status_case": "Current case",
-  "shell.case_default": "Case",
-  "tree.cat.binding": "Binding",
-  "tree.cat.components": "Components",
-  "tree.cat.i18n": "Internationalization",
-  "tree.case.counter": "Counter",
-  "tree.case.two_way": "Two-way binding",
-  "tree.case.button": "Button variants",
-  "tree.case.i18n": "t() interpolation",
-  "case.counter.title": "Counter binding",
-  "case.two_way.title": "Two-way binding",
-  "case.button.title": "Button variants",
-  "case.button.primary": "Primary",
-  "case.button.ghost": "Ghost",
-  "case.button.danger": "Danger",
-  "case.i18n.title": "i18n with t()",
-  "demo.hello": "Hello, RML!",
-  "demo.click_btn": "Click me",
-  "demo.name_placeholder": "Name",
-  "demo.age_placeholder": "Age",
-  "menu.file": "File",
-  "menu.file_new": "New",
-  "menu.file_open": "Open",
-  "menu.file_exit": "Exit",
-  "menu.help": "Help",
-  "menu.help_about": "About RML Showcase",
+  "shell.welcome": "Welcome",
+
+  "shell.status_ready": "Ready — pick a sample from the tree",
+
+  "shell.status_case": "Current case",
+
+  "shell.case_default": "Case",
+
+  "tree.cat.binding": "Binding",
+
+  "tree.cat.components": "Components",
+
+  "tree.cat.i18n": "Internationalization",
+
+  "tree.case.counter": "Counter",
+
+  "tree.case.two_way": "Two-way binding",
+
+  "tree.case.button": "Button variants",
+
+  "tree.case.i18n": "t() interpolation",
+
+  "case.counter.title": "Counter binding",
+
+  "case.two_way.title": "Two-way binding",
+
+  "case.button.title": "Button variants",
+
+  "case.button.primary": "Primary",
+
+  "case.button.ghost": "Ghost",
+
+  "case.button.danger": "Danger",
+
+  "case.i18n.title": "i18n with t()",
+
+  "demo.hello": "Hello, RML!",
+
+  "demo.click_btn": "Click me",
+
+  "demo.name_placeholder": "Name",
+
+  "demo.age_placeholder": "Age",
+
+  "menu.file": "File",
+
+  "menu.file_new": "New",
+
+  "menu.file_open": "Open",
+
+  "menu.file_exit": "Exit",
+
+  "menu.help": "Help",
+
+  "menu.help_about": "About RML Showcase",
+
   "menu.lang_en": "English",
   "menu.theme_toggle": "Toggle Theme"
-}
+}
+
