@@ -38,14 +38,24 @@ pub fn gen_menu_bar(
     }
 
     let mut btn_codes = Vec::new();
+    let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
+    let lv: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
     for (ix, item) in top_items.iter().enumerate() {
         let label = item
             .attributes
             .iter()
             .find_map(|a| match a {
-                Attribute::Static { name, value } if name == "label" => Some(value.clone()),
+                Attribute::Static { name, value } if name == "label" => {
+                    Some(format!("{value:?}"))
+                }
                 Attribute::Bind { name, expr } if name == "label" => {
-                    Some(format!("self.{}.clone()", expr))
+                    if let Some(code) =
+                        crate::compiler::codegen::try_gen_i18n_call(expr, &lv, &computed)
+                    {
+                        Some(code)
+                    } else {
+                        Some(crate::compiler::codegen::gen_expr_code(expr, &lv, &computed))
+                    }
                 }
                 _ => None,
             })

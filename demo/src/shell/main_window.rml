@@ -11,7 +11,10 @@
     on_chrome_toggle="on_chrome_toggle">
 
     <slot_left>
-        <ActivityBar panels={activity_panels} on_panel_change="on_panel_change">
+        <ActivityBar
+            panels={activity_panels}
+            active_panel_id={active_panel_id}
+            on_panel_change="on_panel_change">
             <div if={active_panel_id == "samples"} class="nav-tree">
                 <CaseActivityPanel />
             </div>
@@ -19,7 +22,22 @@
     </slot_left>
 
     <slot_menu>
-        <menu items={menu_items} />
+        <menu-bar>
+            <menu-item label={t("menu.file")}>
+                <menu-item label={t("menu.file_new")} disabled="" />
+                <menu-separator />
+                <menu-item label={t("menu.file_open")} disabled="" />
+                <menu-separator />
+                <menu-item label={t("menu.file_exit")} disabled="" />
+            </menu-item>
+            <menu-item label={t("menu.view")}>
+                <menu-item label={t("menu.theme_toggle")} onclick="on_menu_theme_toggle" />
+                <menu-item label={t("menu.lang_en")} onclick="on_menu_lang_en" />
+            </menu-item>
+            <menu-item label={t("menu.help")}>
+                <menu-item label={t("menu.help_about")} disabled="" />
+            </menu-item>
+        </menu-bar>
     </slot_menu>
 
     <slot_title>

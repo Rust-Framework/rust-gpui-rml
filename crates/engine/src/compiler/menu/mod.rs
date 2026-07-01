@@ -22,7 +22,7 @@ pub use item::is_menu_item_tag;
 pub fn is_menu_container(tag: &str) -> bool {
     matches!(
         tags::normalize_component_tag(tag).as_str(),
-        "ContextMenu" | "DropdownMenu" | "MenuBar" | "AppMenuBar"
+        "ContextMenu" | "DropdownMenu" | "MenuBar" | "AppMenuBar" | "menu"
     )
 }
 
@@ -43,7 +43,7 @@ pub fn gen_menu_element(
     match canonical.as_str() {
         "ContextMenu" => context::gen_context_menu(elem, ctx, depth, id_counter, loop_vars),
         "DropdownMenu" => dropdown::gen_dropdown_menu(elem, ctx, depth, id_counter, loop_vars),
-        "MenuBar" => menu_bar::gen_menu_bar(elem, ctx, depth, id_counter, loop_vars),
+        "MenuBar" | "menu" => menu_bar::gen_menu_bar(elem, ctx, depth, id_counter, loop_vars),
         "AppMenuBar" => app_menu_bar::gen_app_menu_bar(elem, ctx),
         tag if is_menu_item_tag(tag) => Err(CodegenError {
             message: format!(

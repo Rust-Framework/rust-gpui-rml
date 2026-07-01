@@ -141,7 +141,11 @@ Demo 主窗口使用的根类型，包裹 `TabWindowShell`。
     </slot_left>
 
     <slot_menu>
-        <menu items={menu_items} />
+        <menu-bar>
+            <menu-item label={t("menu.view")}>
+                <menu-item label={t("menu.theme_toggle")} onclick="on_menu_theme_toggle" />
+            </menu-item>
+        </menu-bar>
     </slot_menu>
 
     <slot_title>

@@ -25,10 +25,12 @@ impl ILifecycle for CaseActivityPanel {
         self.refresh_tree(cx);
         cx.observe_global::<ContributionRegistryGlobal>(|this, cx| {
             this.refresh_tree(cx);
+            cx.notify();
         })
         .detach();
         cx.observe_global::<I18nState>(|this, cx| {
             this.refresh_tree(cx);
+            cx.notify();
         })
         .detach();
     }
@@ -45,6 +47,7 @@ impl CaseActivityPanel {
             let state = cx.new(|cx| TreeState::new(cx).items(items));
             self.case_tree_state = Some(state);
         }
+        cx.notify();
     }
 
     #[command]

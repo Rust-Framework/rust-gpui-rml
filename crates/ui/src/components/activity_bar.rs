@@ -139,6 +139,8 @@ pub struct ActivityBar {
     bar_width: gpui::Pixels,
     panels: ActivityPanels,
     actions: ActivityActs,
+    /// 当前激活面板 ID（空字符串表示全部折叠）。优先于 `panels[].is_activated()` 判定侧栏显隐。
+    active_panel_id: Option<SharedString>,
     on_panel_change: Option<Rc<dyn Fn(&SharedString, &mut Window, &mut App) + 'static>>,
     panel_children: SmallVec<[AnyElement; 2]>,
 }
@@ -150,6 +152,7 @@ impl ActivityBar {
             bar_width: px(48.),
             panels: Vec::new(),
             actions: Vec::new(),
+            active_panel_id: None,
             on_panel_change: None,
             panel_children: SmallVec::new(),
         }
@@ -167,6 +170,11 @@ impl ActivityBar {
 
     pub fn actions(mut self, actions: ActivityActs) -> Self {
         self.actions = actions;
+        self
+    }
+
+    pub fn active_panel_id(mut self, id: impl Into<SharedString>) -> Self {
+        self.active_panel_id = Some(id.into());
         self
     }
 
@@ -188,8 +196,12 @@ impl ParentElement for ActivityBar {
 impl RenderOnce for ActivityBar {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let on_panel_change = self.on_panel_change.clone();
-        // 仅在有面板激活时显示面板内容（点击已激活面板可折叠）
-        let any_active = self.panels.iter().any(|p| p.is_activated());
+        // 侧栏显隐：优先看 active_panel_id，其次看 panels 元数据中的 is_activated
+        let any_active = self
+            .active_panel_id
+            .as_ref()
+            .map(|id| !id.is_empty())
+            .unwrap_or_else(|| self.panels.iter().any(|p| p.is_activated()));
         let panel_content = (any_active && !self.panel_children.is_empty()).then(|| {
             gpui::div()
                 .size_full()
@@ -203,10 +215,11 @@ impl RenderOnce for ActivityBar {
             let id = panel.id();
             let icon = panel.icon();
             let title = panel.title();
-            let active = panel.is_activated();
-            // 活动面板内容：优先用 panel_children（RML children），其次用 panel.panel()（自定义）
-            // 注意：panel.panel() 默认返回 None，仅在显式调用 .panel(element) 时有值
-            let _ = active; // active 状态仅影响按钮高亮，不影响内容选择
+            let active = self
+                .active_panel_id
+                .as_ref()
+                .map(|active_id| active_id == &id)
+                .unwrap_or_else(|| panel.is_activated());
             let on_change = on_panel_change.clone();
 
             panel_buttons.push(

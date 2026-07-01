@@ -162,7 +162,17 @@ impl MainWindow {
         } else {
             self.active_panel_id = new_id;
         }
-        self.refresh_bindings(cx);
+        self.activity_panels = contributions::build_activity_panels(cx, &self.active_panel_id);
+    }
+
+    #[command]
+    pub fn on_menu_theme_toggle(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+        self.apply_toggle_theme(cx);
+    }
+
+    #[command]
+    pub fn on_menu_lang_en(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+        self.apply_switch_en(cx);
     }
 
     #[command]
