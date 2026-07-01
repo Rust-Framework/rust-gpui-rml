@@ -1,16 +1,17 @@
-//! Demo Shell：把 registry 条目映射为 ActivityBar / Menu / StatusBar / Tree 数据。
+//! 贡献 registry → Shell 控件数据的**应用层映射**（框架只存元数据，不做 UI 组装）。
 //!
-//! 这是**应用层参考实现**，不是框架契约。无 UI 的 host（如数据库提供程序）只需
-//! `contribution_entries(host_id, cx)` 读取能力扩展，无需此类映射。
+//! 各扩展模块 `#[contribute]` 注册条目后，Host 在 `refresh_bindings` 里调用
+//! `map_shell_chrome` 按 `slot`/`parent_id` 拼出 `MenuItems`、`ActivityPanels` 等。
+//! 这是预期的一步胶水，不是框架缺陷；若 Shell 完全静态，可删掉本文件改手写 VM 字段。
 
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use gpui::{Context, SharedString};
+use gpui::{Context, Entity, IntoElement, ParentElement, Render, SharedString, Styled};
 use gpui_component::IconName;
-use rml_app::contribution::{contribution_entries, render_contribution_visual};
+use rml_app::contribution::contribution_entries;
 use rml_core::command::ICommand;
-use rml_core::contribution::{ContributedEntry, VisualRenderer};
+use rml_core::contribution::ContributedEntry;
 use rml_ui::{
     ActivityPanels, IActivityPanel, MenuItem, MenuItems, StatusBarAlign, StatusBarItem,
     StatusBarItems, TreeItem,
@@ -36,15 +37,15 @@ fn entries_in_slot<'a, C>(
         .collect()
 }
 
-/// ActivityBar 面板适配：把 `visual` 贡献条目包装为 `IActivityPanel`。
-struct ActivityPanelFromContribution {
+/// Activity 面板：直接挂载 GPUI Entity（可靠路径，避免 visual 缓存时序问题）
+struct EntityActivityPanel<E: Render + 'static> {
     id: SharedString,
     icon: IconName,
     title: SharedString,
-    visual: Option<VisualRenderer>,
+    entity: Entity<E>,
 }
 
-impl IActivityPanel for ActivityPanelFromContribution {
+impl<E: Render + 'static> IActivityPanel for EntityActivityPanel<E> {
     fn id(&self) -> SharedString {
         self.id.clone()
     }
@@ -63,33 +64,47 @@ impl IActivityPanel for ActivityPanelFromContribution {
 
     fn panel(
         &self,
-        window: &mut gpui::Window,
-        cx: &mut gpui::App,
+        _window: &mut gpui::Window,
+        _cx: &mut gpui::App,
     ) -> Option<gpui::AnyElement> {
-        self.visual
-            .as_ref()
-            .and_then(|v| render_contribution_visual(v, window, cx))
+        Some(
+            gpui::div()
+                .size_full()
+                .child(self.entity.clone())
+                .into_any_element(),
+        )
     }
 }
 
-pub fn map_activity_panels<C>(host_id: &str, cx: &Context<C>) -> ActivityPanels {
+/// 将 activity slot 元数据与 ViewModel 持有的 Entity 合并为 ActivityPanels
+pub fn map_activity_panels<E, C>(
+    host_id: &str,
+    cx: &Context<C>,
+    panel_entities: &HashMap<String, Entity<E>>,
+) -> ActivityPanels
+where
+    E: Render + 'static,
+{
     let mut entries = entries_in_slot(cx, host_id, "activity");
     entries.sort_by_key(|e| e.options.order);
     entries
         .into_iter()
-        .map(|e| {
+        .filter_map(|e| {
             let id = e.contribution.id();
+            let entity = panel_entities.get(id)?;
             let icon = e
                 .contribution
                 .icon()
                 .map(|s| icon_from_contribution(s.as_ref()))
                 .unwrap_or(IconName::Frame);
-            Arc::new(ActivityPanelFromContribution {
-                id: id.into(),
-                icon,
-                title: e.contribution.name(),
-                visual: e.visual.clone(),
-            }) as Arc<dyn IActivityPanel>
+            Some(
+                Arc::new(EntityActivityPanel {
+                    id: id.into(),
+                    icon,
+                    title: e.contribution.name(),
+                    entity: entity.clone(),
+                }) as Arc<dyn IActivityPanel>,
+            )
         })
         .collect()
 }
@@ -201,13 +216,17 @@ pub struct ShellChromeBindings {
     pub menu_items: MenuItems,
 }
 
-pub fn map_shell_chrome<C>(
+pub fn map_shell_chrome<E, C>(
     host_id: &str,
     cx: &Context<C>,
     menu_commands: &HashMap<String, Arc<dyn ICommand>>,
-) -> ShellChromeBindings {
+    panel_entities: &HashMap<String, Entity<E>>,
+) -> ShellChromeBindings
+where
+    E: Render + 'static,
+{
     ShellChromeBindings {
-        activity_panels: map_activity_panels(host_id, cx),
+        activity_panels: map_activity_panels(host_id, cx, panel_entities),
         status_items: map_status_items(host_id, cx),
         menu_items: map_menu_items(host_id, cx, menu_commands),
     }

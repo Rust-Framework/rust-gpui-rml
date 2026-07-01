@@ -40,7 +40,14 @@ pub trait IActivityAct: Send + Sync + 'static {
 pub type ActivityPanels = Vec<Arc<dyn IActivityPanel>>;
 pub type ActivityActs = Vec<Arc<dyn IActivityAct>>;
 
-type ActiveState = Arc<Mutex<Option<SharedString>>>;
+type ActiveState = Arc<Mutex<BarState>>;
+
+#[derive(Default)]
+struct BarState {
+    active: Option<SharedString>,
+    /// 是否已在首次渲染时默认选中首项（避免用户收起后又被自动打开）
+    seeded: bool,
+}
 
 fn active_state_for_bar(bar_id: &ElementId) -> ActiveState {
     static STATES: OnceLock<Mutex<HashMap<String, ActiveState>>> = OnceLock::new();
@@ -50,7 +57,7 @@ fn active_state_for_bar(bar_id: &ElementId) -> ActiveState {
         .lock()
         .expect("activity bar state lock")
         .entry(key)
-        .or_insert_with(|| Arc::new(Mutex::new(None)))
+        .or_insert_with(|| Arc::new(Mutex::new(BarState::default())))
         .clone()
 }
 
@@ -153,6 +160,8 @@ pub struct ActivityBar {
     bar_width: gpui::Pixels,
     panels: ActivityPanels,
     actions: ActivityActs,
+    /// MVVM 受控激活 id；`Some(None)` 表示显式无选中
+    active_panel_id: Option<Option<SharedString>>,
     active_state: ActiveState,
     on_panel_change: Option<Arc<dyn Fn(&SharedString, &mut Window, &mut App) + 'static>>,
     #[allow(dead_code)]
@@ -168,6 +177,7 @@ impl ActivityBar {
             bar_width: px(48.),
             panels: Vec::new(),
             actions: Vec::new(),
+            active_panel_id: None,
             on_panel_change: None,
             panel_children: SmallVec::new(),
         }
@@ -185,6 +195,12 @@ impl ActivityBar {
 
     pub fn actions(mut self, actions: ActivityActs) -> Self {
         self.actions = actions;
+        self
+    }
+
+    /// 受控模式：由 ViewModel 持有当前激活面板 id（`None` 表示全部收起）
+    pub fn active_panel_id(mut self, id: Option<SharedString>) -> Self {
+        self.active_panel_id = Some(id);
         self
     }
 
@@ -207,15 +223,19 @@ impl RenderOnce for ActivityBar {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let on_panel_change = self.on_panel_change.clone();
         let active_state = self.active_state.clone();
+        let controlled = self.active_panel_id.is_some();
 
-        {
-            let mut active = active_state.lock().expect("activity bar active lock");
-            if active.is_none() {
-                *active = self.panels.first().map(|p| p.id());
+        let active_id = if let Some(controlled_id) = self.active_panel_id {
+            controlled_id
+        } else {
+            let mut state = active_state.lock().expect("activity bar active lock");
+            if !state.seeded && !self.panels.is_empty() {
+                state.active = self.panels.first().map(|p| p.id());
+                state.seeded = true;
             }
-        }
+            state.active.clone()
+        };
 
-        let active_id = active_state.lock().expect("activity bar active lock").clone();
         let any_active = active_id.as_ref().is_some_and(|id| !id.is_empty());
 
         let mut panel_buttons: SmallVec<[AnyElement; 4]> = SmallVec::new();
@@ -237,12 +257,12 @@ impl RenderOnce for ActivityBar {
                     .my(px(2.))
                     .when(active, |btn| btn.bg(cx.theme().sidebar_accent))
                     .on_click(move |_, window, cx| {
-                        {
+                        if !controlled {
                             let mut current = state.lock().expect("activity bar active lock");
-                            if current.as_ref() == Some(&id) {
-                                *current = None;
+                            if current.active.as_ref() == Some(&id) {
+                                current.active = None;
                             } else {
-                                *current = Some(id.clone());
+                                current.active = Some(id.clone());
                             }
                         }
                         if let Some(f) = &on_change {

@@ -291,6 +291,9 @@ pub fn component_bind_setter(
         "checked" => Some(format!(".selected({})", rust_expr)),
         "label" => Some(format!(".label({}.clone())", rust_expr)),
         "panels" if tag == "ActivityBar" => Some(format!(".panels({}.clone())", rust_expr)),
+        "active_panel_id" if tag == "ActivityBar" => {
+            Some(format!(".active_panel_id({}.clone())", rust_expr))
+        }
         "actions" if tag == "ActivityBar" => Some(format!(".actions({}.clone())", rust_expr)),
         "items" if tag == "menu" || tag == "MenuBar" || tag == "status_bar" => {
             Some(format!(".items({}.clone())", rust_expr))

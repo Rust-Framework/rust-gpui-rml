@@ -1,4 +1,4 @@
-//! Shell metadata contributions (categories, menu/status entries) ? auto-registered by build.rs
+//! Shell metadata：案例树分类 + 状态栏（菜单项由各 case 模块自行 `#[contribute]` 注册）
 
 use super::MainWindow;
 use rml::contribute;
@@ -18,14 +18,6 @@ pub struct CatMenu;
 #[contribute(host = MainWindow, id = "cat.i18n", name = "tree.cat.i18n", kind = "case", order = 20)]
 #[derive(Default)]
 pub struct CatI18n;
-
-#[contribute(host = MainWindow, id = "menu.theme_toggle", name = "menu.theme_toggle", kind = "menu", order = 0)]
-#[derive(Default)]
-pub struct MenuThemeToggle;
-
-#[contribute(host = MainWindow, id = "menu.lang_en", name = "menu.lang_en", kind = "menu", order = 10)]
-#[derive(Default)]
-pub struct MenuLangEn;
 
 #[contribute(host = MainWindow, id = "status.ready", name = "shell.status_ready", kind = "status", order = 0)]
 #[derive(Default)]

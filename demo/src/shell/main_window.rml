@@ -11,7 +11,7 @@
     on_chrome_toggle="on_chrome_toggle">
 
     <slot_left>
-        <ActivityBar panels={activity_panels} />
+        <ActivityBar ref="activity-bar" panels={activity_panels} active_panel_id={active_panel_id} on_panel_change="on_panel_change" />
     </slot_left>
 
     <slot_menu>

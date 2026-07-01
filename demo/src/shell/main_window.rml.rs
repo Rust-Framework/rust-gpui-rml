@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use gpui::Window;
 use rml::prelude::*;
-use crate::shell::case_activation::register_case_activation;
+use crate::shell::case_activity_panel::CaseActivityPanel;
 use crate::shell::shell_chrome::{map_shell_chrome, ShellChromeBindings};
 use rml_core::i18n::I18nExt;
 use rml_core::theme::ThemeExt;
@@ -21,13 +21,14 @@ pub struct MainWindow {
     active_case_id: String,
     show_chrome: bool,
     activity_panels: ActivityPanels,
+    active_panel_id: Option<gpui::SharedString>,
     status_items: StatusBarItems,
     i18n_version: u32,
     case_host: Option<gpui::Entity<CaseHost>>,
+    samples_panel: Option<gpui::Entity<CaseActivityPanel>>,
     menu_items: MenuItems,
     menu_commands: HashMap<String, Arc<dyn ICommand>>,
 }
-
 
 impl ILifecycle for MainWindow {
     fn on_loaded(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
@@ -51,6 +52,31 @@ impl ILifecycle for MainWindow {
             })
         });
 
+        let shell_weak = cx.weak_entity();
+        self.samples_panel
+            .get_or_insert_with(|| cx.new(|_| CaseActivityPanel::default()));
+        if let Some(panel) = self.samples_panel.as_ref() {
+            panel.update(cx, |p, _| p.set_shell(shell_weak));
+        }
+
+        self.menu_commands.insert(
+            "menu.file.new".to_string(),
+            Arc::new(RelayCommand::new(cx, |this, cx| {
+                this.open_case("welcome".to_string(), cx);
+            })),
+        );
+        self.menu_commands.insert(
+            "menu.file.open".to_string(),
+            Arc::new(RelayCommand::new(cx, |this, cx| {
+                this.open_case("components.button".to_string(), cx);
+            })),
+        );
+        self.menu_commands.insert(
+            "menu.file.exit".to_string(),
+            Arc::new(RelayCommand::action(|cx| {
+                cx.quit();
+            })),
+        );
         self.menu_commands.insert(
             "menu.theme_toggle".to_string(),
             Arc::new(RelayCommand::new(cx, |this, cx| this.apply_toggle_theme(cx))),
@@ -59,28 +85,48 @@ impl ILifecycle for MainWindow {
             "menu.lang_en".to_string(),
             Arc::new(RelayCommand::new(cx, |this, cx| this.apply_switch_en(cx))),
         );
+        self.menu_commands.insert(
+            "menu.help.guide".to_string(),
+            Arc::new(RelayCommand::new(cx, |this, cx| {
+                this.open_case("components.menu.dropdown".to_string(), cx);
+            })),
+        );
+        self.menu_commands.insert(
+            "menu.help.about".to_string(),
+            Arc::new(RelayCommand::new(cx, |this, cx| {
+                this.open_case("welcome".to_string(), cx);
+            })),
+        );
+        self.menu_commands.insert(
+            "menu.open_features".to_string(),
+            Arc::new(RelayCommand::new(cx, |this, cx| {
+                this.open_case("components.menu.features".to_string(), cx);
+            })),
+        );
 
-        let weak = cx.weak_entity();
-        register_case_activation(Box::new(move |case_id, app| {
-            if let Some(entity) = weak.upgrade() {
-                entity.update(app, |main, cx| {
-                    main.open_case(case_id, cx);
-                });
-            }
-        }));
+        self.refresh_bindings(cx);
     }
 }
 
 impl MainWindow {
     fn refresh_bindings(&mut self, cx: &mut Context<Self>) {
+        let mut panel_entities = HashMap::new();
+        if let Some(panel) = self.samples_panel.as_ref() {
+            panel_entities.insert("samples".to_string(), panel.clone());
+        }
+
         let ShellChromeBindings {
             activity_panels,
             status_items,
             menu_items,
-        } = map_shell_chrome(Self::ID, cx, &self.menu_commands);
+        } = map_shell_chrome(Self::ID, cx, &self.menu_commands, &panel_entities);
         self.activity_panels = activity_panels;
         self.status_items = status_items;
         self.menu_items = menu_items;
+
+        if self.active_panel_id.is_none() {
+            self.active_panel_id = self.activity_panels.first().map(|p| p.id());
+        }
     }
 
     #[computed]
@@ -95,6 +141,16 @@ impl MainWindow {
     #[command]
     pub fn on_chrome_toggle(&mut self, cx: &mut Context<Self>) {
         self.show_chrome = !self.show_chrome;
+    }
+
+    #[command]
+    pub fn on_panel_change(&mut self, panel_id: &gpui::SharedString, cx: &mut Context<Self>) {
+        if self.active_panel_id.as_ref() == Some(panel_id) {
+            self.active_panel_id = None;
+        } else {
+            self.active_panel_id = Some(panel_id.clone());
+        }
+        cx.notify();
     }
 
     #[command]

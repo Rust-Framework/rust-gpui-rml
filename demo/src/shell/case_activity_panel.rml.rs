@@ -1,5 +1,4 @@
 use rml::prelude::*;
-use crate::shell::case_activation::activate_case;
 use rml_app::contribution::subscribe_host_changes;
 use crate::shell::shell_chrome::map_case_tree_items;
 use rml_core::i18n::I18nState;
@@ -12,7 +11,6 @@ use crate::shell::MainWindow;
     id = "samples",
     name = "shell.samples",
     icon = IconName::BookOpen,
-    visual,
     kind = "activity",
     order = 0,
 )]
@@ -20,11 +18,13 @@ use crate::shell::MainWindow;
 #[derive(Default)]
 pub struct CaseActivityPanel {
     tree_state: Option<gpui::Entity<TreeState>>,
+    shell: Option<gpui::WeakEntity<MainWindow>>,
 }
 
 impl ILifecycle for CaseActivityPanel {
-    fn on_loaded(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
+    fn on_loaded(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.refresh_tree(cx);
+        window.refresh();
         subscribe_host_changes(MainWindow::ID, cx, |this, cx| {
             this.refresh_tree(cx);
             cx.notify();
@@ -38,6 +38,10 @@ impl ILifecycle for CaseActivityPanel {
 }
 
 impl CaseActivityPanel {
+    pub fn set_shell(&mut self, shell: gpui::WeakEntity<MainWindow>) {
+        self.shell = Some(shell);
+    }
+
     fn refresh_tree(&mut self, cx: &mut Context<Self>) {
         let items = map_case_tree_items(MainWindow::ID, cx);
         if let Some(state) = self.tree_state.as_ref() {
@@ -53,6 +57,10 @@ impl CaseActivityPanel {
 
     #[command]
     pub fn on_case_activate(&mut self, item_id: &gpui::SharedString, cx: &mut Context<Self>) {
-        activate_case(item_id.to_string(), cx);
+        if let Some(shell) = self.shell.as_ref().and_then(|w| w.upgrade()) {
+            shell.update(cx, |main, cx| {
+                main.open_case(item_id.to_string(), cx);
+            });
+        }
     }
 }
