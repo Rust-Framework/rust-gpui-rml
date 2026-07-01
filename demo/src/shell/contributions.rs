@@ -93,27 +93,53 @@ pub fn build_status_items<C>(cx: &gpui::Context<C>) -> StatusBarItems {
 }
 
 /// host → MenuItems（kind=menu），命令从 `commands` 侧表按 id 查找挂接
+///
+/// 支持按 `parent_id` 组装子菜单层级：顶层菜单项（parent_id=None）作为菜单栏入口，
+/// 其子项（parent_id=父菜单 id）作为下拉菜单内容。
 pub fn build_menu_items<C>(
     cx: &gpui::Context<C>,
     commands: &HashMap<String, Arc<dyn ICommand>>,
 ) -> MenuItems {
-    let mut entries: Vec<&ContributedEntry> = host_entries(cx, SHELL_HOST)
+    let entries: Vec<&ContributedEntry> = host_entries(cx, SHELL_HOST)
         .into_iter()
         .filter(|e| kind_of(e) == Some(KIND_MENU))
         .collect();
-    entries.sort_by_key(|e| e.options.order);
 
-    entries
-        .into_iter()
-        .map(|e| {
-            let id = e.contribution.id();
-            let mut item = MenuItem::new(e.contribution.name());
-            if let Some(cmd) = commands.get(id) {
-                item = item.command(cmd.clone());
-            }
-            item.into_arc()
-        })
-        .collect()
+    let mut by_parent: HashMap<Option<String>, Vec<&ContributedEntry>> = HashMap::new();
+    for e in &entries {
+        by_parent
+            .entry(e.options.parent_id.as_ref().map(|s| s.to_string()))
+            .or_default()
+            .push(e);
+    }
+
+    fn build_children(
+        parent_id: Option<&str>,
+        by_parent: &HashMap<Option<String>, Vec<&ContributedEntry>>,
+        commands: &HashMap<String, Arc<dyn ICommand>>,
+    ) -> MenuItems {
+        let key = parent_id.map(|s| s.to_string());
+        let mut siblings = by_parent.get(&key).cloned().unwrap_or_default();
+        siblings.sort_by_key(|e| e.options.order);
+
+        siblings
+            .into_iter()
+            .map(|e| {
+                let id = e.contribution.id();
+                let mut item = MenuItem::new(e.contribution.name());
+                if let Some(cmd) = commands.get(id) {
+                    item = item.command(cmd.clone());
+                }
+                let children = build_children(Some(id), by_parent, commands);
+                if !children.is_empty() {
+                    item = item.children(children);
+                }
+                item.into_arc()
+            })
+            .collect()
+    }
+
+    build_children(None, &by_parent, commands)
 }
 
 /// host → TreeItem 树（kind=case，按 `parent_id` 层级组装）
@@ -217,6 +243,27 @@ fn register_text(cx: &mut App, id: &'static str, name_key: &'static str, kind: &
 /// 注册菜单元数据贡献（kind=menu）。命令由 MainWindow 在 `menu_commands` 侧表维护。
 pub fn register_menu_entry(cx: &mut App, id: &'static str, name_key: &'static str, order: i32) {
     register_text(cx, id, name_key, KIND_MENU, order);
+}
+
+/// 注册带父菜单的菜单元数据贡献（kind=menu + parent_id）。
+/// 顶层菜单用 `parent_id=None`，子菜单项用 `parent_id=Some(父菜单 id)`。
+pub fn register_menu_entry_with_parent(
+    cx: &mut App,
+    id: &'static str,
+    name_key: &'static str,
+    parent_id: Option<&'static str>,
+    order: i32,
+) {
+    let contribution = Arc::new(TextContribution { id, name_key });
+    let mut options = ContributionOptions::new()
+        .property("kind", KIND_MENU)
+        .order(order);
+    if let Some(p) = parent_id {
+        options = options.parent_id(p);
+    }
+    cx.update_global::<ContributionRegistryGlobal, _>(|global, cx| {
+        global.0.register(SHELL_HOST, contribution, options, cx);
+    });
 }
 
 /// 注册状态栏文本贡献（kind=status）

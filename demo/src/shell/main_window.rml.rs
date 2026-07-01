@@ -57,7 +57,7 @@ pub struct MainWindow {
 
 
 impl ILifecycle for MainWindow {
-    fn on_loaded(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    fn on_loaded(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
         if self.open_tabs.is_empty() {
             self.open_tabs.push(OpenTab {
                 id: "welcome".to_string(),
@@ -110,10 +110,7 @@ impl ILifecycle for MainWindow {
 
         Self::wire_host_changed(cx);
         self.refresh_bindings(cx);
-
-        window.defer(cx, |window, cx| {
-            super::LoginDialog::default().open(window, cx);
-        });
+        cx.notify();
     }
 }
 

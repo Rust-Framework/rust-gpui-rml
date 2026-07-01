@@ -19,6 +19,7 @@ fn make_ctx_with_field_types() -> CodegenCtx {
         stylesheet: None,
         computed_methods: Vec::new(),
         observable_fields: vec!["count".to_string(), "name".to_string()],
+        version_fields: vec!["count".to_string(), "name".to_string()],
         computed_deps: HashMap::new(),
         computed_returns: HashMap::new(),
         field_types: {
@@ -192,6 +193,7 @@ fn gen_model_input_floating_point_types() {
         stylesheet: None,
         computed_methods: Vec::new(),
         observable_fields: vec!["score".to_string()],
+        version_fields: vec!["score".to_string()],
         computed_deps: HashMap::new(),
         computed_returns: HashMap::new(),
         field_types: {

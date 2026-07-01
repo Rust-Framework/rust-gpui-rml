@@ -213,6 +213,7 @@ fn gen_render_impl_from_children(
             elem,
             ctx,
             &body,
+            slot_menu_code.as_deref(),
             slot_title_code.as_deref(),
             slot_footer_code.as_deref(),
         )?,

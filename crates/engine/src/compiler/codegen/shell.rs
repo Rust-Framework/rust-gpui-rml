@@ -16,6 +16,7 @@ pub(super) fn gen_modern_window_wrapper(
     elem: &Element,
     ctx: &CodegenCtx,
     children_body: &str,
+    slot_menu: Option<&str>,
     slot_title: Option<&str>,
     slot_footer: Option<&str>,
 ) -> Result<String, CodegenError> {
@@ -48,7 +49,7 @@ pub(super) fn gen_modern_window_wrapper(
                     match name.as_str() {
                         "menu" => code.push_str(&format!(".menu_slot({})", rust_expr)),
                         "footer" => {
-                            code.push_str(&format!(".footer_slot({})", rust_expr))
+                            code.push_str(&format!(".status_slot({})", rust_expr))
                         }
                         _ => {}
                     }
@@ -70,11 +71,14 @@ pub(super) fn gen_modern_window_wrapper(
         }
     }
 
+    if let Some(menu) = slot_menu {
+        code.push_str(&format!(".menu_slot({menu})"));
+    }
     if let Some(title) = slot_title {
         code.push_str(&format!(".title_ext_slot({title})"));
     }
     if let Some(footer) = slot_footer {
-        code.push_str(&format!(".footer_slot({footer})"));
+        code.push_str(&format!(".status_slot({footer})"));
     }
 
     code.push_str(&format!(".child({})", children_body));
@@ -203,7 +207,7 @@ pub(super) fn gen_tab_window_wrapper(
                 let rust_expr = shell_bind_expr(expr, &computed, &empty);
                 match name.as_str() {
                     "menu" => code.push_str(&format!(".menu_slot({})", rust_expr)),
-                    "footer" => code.push_str(&format!(".footer_slot({})", rust_expr)),
+                    "footer" => code.push_str(&format!(".status_slot(Some({}))", rust_expr)),
                     "tabs" => code.push_str(&format!(".tabs({}.clone())", rust_expr)),
                     "selected_tab" => code.push_str(&format!(".selected_tab({})", rust_expr)),
                     "show_chrome" => code.push_str(&format!(".show_chrome({})", rust_expr)),

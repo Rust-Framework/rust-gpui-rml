@@ -13,6 +13,7 @@ fn make_ctx() -> CodegenCtx {
         stylesheet: None,
         computed_methods: vec!["doubled".to_string()],
         observable_fields: vec!["count".to_string()],
+        version_fields: vec!["count".to_string()],
         computed_deps: {
             let mut m = HashMap::new();
             m.insert("doubled".to_string(), vec!["count".to_string()]);

@@ -295,7 +295,7 @@ pub fn component_bind_setter(
         "active_panel_id" if tag == "ActivityBar" => {
             Some(format!(".active_panel_id({}.clone())", rust_expr))
         }
-        "items" if tag == "menu" || tag == "status_bar" => {
+        "items" if tag == "menu" || tag == "MenuBar" || tag == "status_bar" => {
             Some(format!(".items({}.clone())", rust_expr))
         }
         _ => None,
@@ -362,9 +362,15 @@ pub fn component_event_setter(name: &str, handler: &EventHandler, tag: &str) -> 
                 EventHandler::Ident(m) | EventHandler::MethodName(m) => m,
                 EventHandler::WithArgs(m, _) => m,
             };
+            // ActivityBar 将回调存入 Rc 并在 Button::on_click 中以 App 上下文调用，
+            // 与 TabWindowShell / Tree 一致，使用 weak_entity + entity.update 而非 cx.listener。
             Some(format!(
-                ".on_panel_change(cx.listener(move |this, panel_id: &gpui::SharedString, _window, cx| {{\n                    \
-                 this.{}(panel_id, cx);\n                }}))",
+                ".on_panel_change({{\n                    \
+                 let weak = cx.weak_entity();\n                    \
+                 move |panel_id: &gpui::SharedString, _window: &mut gpui::Window, app: &mut gpui::App| {{\n                        \
+                 if let Some(entity) = weak.upgrade() {{\n                            \
+                 entity.update(app, |this, cx| {{ this.{}(panel_id, cx); }});\n                        \
+                 }}\n                    }}\n                }})",
                 method
             ))
         }
@@ -1042,11 +1048,11 @@ mod tests {
 
     #[test]
     fn gen_component_statusbar_minimal() {
-        // <StatusBar /> → rml_ui::StatusBar::new()
+        // <StatusBar /> → rml_ui::NativeStatusBar::new()
         let elem = make_element("StatusBar", vec![], vec![]);
         let mut id = 0;
         let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
-        assert!(code.contains("rml_ui::StatusBar::new()"));
+        assert!(code.contains("rml_ui::NativeStatusBar::new()"));
     }
 
     #[test]

@@ -9,17 +9,17 @@
 use std::rc::Rc;
 
 use gpui::{
-    AnyElement, App, IntoElement, ParentElement, RenderOnce, SharedString, Styled, Window,
-    div, px, prelude::FluentBuilder as _,
+    AnyElement, App, IntoElement, ParentElement, RenderOnce, SharedString,
+    Styled, Window, div, px, prelude::FluentBuilder as _,
 };
 use gpui_component::{
     Icon, IconName, Sizable as _,
     TitleBar,
-    button::{Button, ButtonVariants as _},
+    button::{Button, ButtonRounded, ButtonVariants as _},
     tab::{Tab, TabBar},
     h_flex,
     resizable::{h_resizable, resizable_panel, v_resizable},
-    v_flex,
+    v_flex, TITLE_BAR_HEIGHT,
 };
 use smallvec::SmallVec;
 
@@ -64,7 +64,7 @@ fn reserved_title_width(
     let mut reserved = px(140.); // 窗口控件 + TabBar 内边距
 
     if has_icon {
-        reserved += px(56.);
+        reserved += TITLE_BAR_HEIGHT;
     }
     if has_suffix {
         reserved += px(80.);
@@ -234,8 +234,9 @@ impl ParentElement for TabWindowShell {
 impl RenderOnce for TabWindowShell {
     fn render(self, window: &mut Window, _cx: &mut App) -> impl IntoElement {
         let viewport = window.viewport_size();
+        let show_chrome = self.show_chrome;
         let reserved = reserved_title_width(
-            self.show_chrome,
+            show_chrome,
             self.icon.is_some(),
             self.menu_slot.is_some(),
             self.title.as_ref(),
@@ -245,7 +246,7 @@ impl RenderOnce for TabWindowShell {
         let tab_overflow = tabs_overflow(&self.tabs, tabs_area);
 
         let on_chrome_toggle = self.on_chrome_toggle.clone();
-        let chevron = if self.show_chrome {
+        let chevron = if show_chrome {
             IconName::ChevronLeft
         } else {
             IconName::ChevronRight
@@ -253,9 +254,11 @@ impl RenderOnce for TabWindowShell {
 
         let chrome_toggle = self.icon.map(|app_icon| {
             Button::new("tab-window-chrome-toggle")
-                .ghost()
-                .h_full()
+                .text()
+                .h(TITLE_BAR_HEIGHT)
+                .w(TITLE_BAR_HEIGHT)
                 .flex_shrink_0()
+                .rounded(ButtonRounded::None)
                 .on_click(move |_, window, cx| {
                     if let Some(f) = &on_chrome_toggle {
                         f(window, cx);
@@ -263,7 +266,9 @@ impl RenderOnce for TabWindowShell {
                 })
                 .child(
                     h_flex()
+                        .size_full()
                         .items_center()
+                        .justify_center()
                         .gap_0p5()
                         .child(Icon::new(app_icon).small())
                         .child(Icon::new(chevron).small()),
@@ -275,11 +280,9 @@ impl RenderOnce for TabWindowShell {
             .menu(tab_overflow)
             .selected_index(self.selected_tab);
 
-        let mut prefix_parts: SmallVec<[AnyElement; 3]> = SmallVec::new();
-        if let Some(toggle) = chrome_toggle {
-            prefix_parts.push(toggle);
-        }
-        if self.show_chrome {
+        // 菜单与标题随 show_chrome 展开/收起；切换按钮独立贴左，不在 prefix 内
+        if show_chrome {
+            let mut prefix_parts: SmallVec<[AnyElement; 2]> = SmallVec::new();
             if let Some(menu) = self.menu_slot {
                 prefix_parts.push(
                     div()
@@ -298,16 +301,16 @@ impl RenderOnce for TabWindowShell {
                         .into_any_element(),
                 );
             }
-        }
-        if !prefix_parts.is_empty() {
-            tab_bar = tab_bar.prefix(
-                h_flex()
-                    .h_full()
-                    .items_center()
-                    .flex_shrink_0()
-                    .gap_1()
-                    .children(prefix_parts),
-            );
+            if !prefix_parts.is_empty() {
+                tab_bar = tab_bar.prefix(
+                    h_flex()
+                        .h_full()
+                        .items_center()
+                        .flex_shrink_0()
+                        .gap_1()
+                        .children(prefix_parts),
+                );
+            }
         }
 
         for tab in &self.tabs {
@@ -326,17 +329,25 @@ impl RenderOnce for TabWindowShell {
             tab_bar = tab_bar.on_click(move |ix, window, cx| on_click(*ix, window, cx));
         }
 
-        let title_bar = TitleBar::new()
-            // 覆盖 gpui-component TitleBar 默认的 border_b_1，
-            // 避免在 TabBar 下方出现一条分隔线（与 TabBar 自身的视觉重叠）
-            .border_b_0()
-            .child(
-                div()
-                    .flex_1()
-                    .min_w_0()
-                    .h_full()
-                    .child(tab_bar),
-            );
+        let mut title_row = h_flex().h_full().w_full().min_w_0().items_center();
+        if let Some(toggle) = chrome_toggle {
+            title_row = title_row.child(toggle);
+        }
+        title_row = title_row.child(
+            div()
+                .flex_1()
+                .min_w_0()
+                .h_full()
+                .child(tab_bar),
+        );
+
+        let mut title_bar = TitleBar::new().border_b_0();
+        // 非 macOS：取消 TitleBar 默认左内边距，使切换按钮与窗口左上角贴合
+        #[cfg(not(target_os = "macos"))]
+        {
+            title_bar = title_bar.pl(px(0.));
+        }
+        let title_bar = title_bar.child(title_row);
 
         let body = resizable_panel()
             .flex_1()

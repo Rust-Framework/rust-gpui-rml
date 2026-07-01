@@ -321,15 +321,16 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             },
         }),
         // 窗口外壳组件（RenderOnce，无 ElementId 参数）
-        // TitleBar / StatusBar 来自 gpui-component，供用户手动组装标题栏/状态栏
+        // TitleBar / NativeStatusBar 来自 gpui-component，供用户手动组装标题栏/状态栏
         // 注：ModernWindowShell 不在此路由表中——它是 `<modern_window>` 根元素的内部实现，
         // 由 codegen 直接生成包裹代码，不作为用户可用的 `<ModernWindowShell>` 标签
         "TitleBar" => Some(ComponentTag {
             ctor_path: "rml_ui::TitleBar",
             kind: ComponentKind::StatelessNoId,
         }),
-        "StatusBar" => Some(ComponentTag {
-            ctor_path: "rml_ui::StatusBar",
+        // gpui-component 原生状态栏容器（手动 .left() / .right() 组装）
+        "NativeStatusBar" | "StatusBar" => Some(ComponentTag {
+            ctor_path: "rml_ui::NativeStatusBar",
             kind: ComponentKind::StatelessNoId,
         }),
         "ActivityBar" => Some(ComponentTag {
@@ -337,19 +338,22 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             kind: ComponentKind::Stateless,
         }),
         "Tree" => Some(ComponentTag {
-            ctor_path: "rml_ui::TreeView",
+            ctor_path: "rml_ui::Tree",
             kind: ComponentKind::Stateful {
-                state_field: "case_tree_state",
+                state_field: "tree_state",
             },
         }),
-        // MVVM 数据绑定组件（lowercase 标签，通过 items={...} 绑定数据）
-        "menu" => Some(ComponentTag {
-            ctor_path: "rml_ui::Menu",
+        // MVVM / 声明式菜单栏（ui crate MenuBar；声明式由 compiler/menu/ 生成 children）
+        "MenuBar" => Some(ComponentTag {
+            ctor_path: "rml_ui::MenuBar",
             kind: ComponentKind::Stateless,
         }),
-        // MenuBar 由 compiler/menu/ 直译，不在此注册
+        "menu" => Some(ComponentTag {
+            ctor_path: "rml_ui::MenuBar",
+            kind: ComponentKind::Stateless,
+        }),
         "status_bar" => Some(ComponentTag {
-            ctor_path: "rml_ui::RmlStatusBar",
+            ctor_path: "rml_ui::StatusBar",
             kind: ComponentKind::StatelessNoId,
         }),
         _ => None,
@@ -378,8 +382,12 @@ mod normalize_tests {
     }
 
     #[test]
-    fn menu_bar_routed_by_menu_codegen_not_lookup() {
-        assert!(component_lookup_resolved("menu-bar").is_none());
-        assert!(component_lookup_resolved("MenuBar").is_none());
+    fn menu_bar_registered_but_menu_codegen_takes_priority() {
+        assert!(component_lookup_resolved("MenuBar").is_some());
+        assert_eq!(
+            component_lookup_resolved("MenuBar").unwrap().ctor_path,
+            "rml_ui::MenuBar"
+        );
+        // gen_element 仍优先走 is_menu_container → compiler/menu/（处理 menu-item 子节点）
     }
 }

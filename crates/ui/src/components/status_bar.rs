@@ -1,15 +1,13 @@
-//! RmlStatusBar —— MVVM 数据绑定的状态栏包装组件
+//! `StatusBar` —— RML MVVM 状态栏（gpui-component 无 items 绑定，由本 crate 定义）
 //!
-//! 包装 gpui-component `StatusBar`，提供 `IStatusBarItem` trait + `StatusBarItem`
-//! 默认实现 + `StatusBarItems = Vec<Arc<dyn IStatusBarItem>>` 类型别名。
-//!
-//! ViewModel 通过 `#[computed]` 返回 `StatusBarItems`，
-//! 在 RML 中 `<status_bar items={status_items} />` 绑定。
+//! 包装 gpui-component [`NativeStatusBar`]，提供 `IStatusBarItem` + `items={...}` 绑定。
+//! 手动 `.left()` / `.right()` 组装请使用 [`NativeStatusBar`]（RML 标签 `<NativeStatusBar>`）。
 
 use std::sync::Arc;
 
 use gpui::{App, IntoElement, ParentElement, RenderOnce, SharedString, Window};
-use gpui_component::status_bar::StatusBar;
+
+pub use gpui_component::status_bar::StatusBar as NativeStatusBar;
 
 /// 状态栏项对齐方式
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -64,15 +62,13 @@ impl IStatusBarItem for StatusBarItem {
     }
 }
 
-/// RML 状态栏包装组件
-///
-/// StatelessNoId 构造：`RmlStatusBar::new().items(items)`
+/// RML 状态栏（`<status_bar items={...}>`）
 #[derive(IntoElement)]
-pub struct RmlStatusBar {
+pub struct StatusBar {
     items: StatusBarItems,
 }
 
-impl RmlStatusBar {
+impl StatusBar {
     pub fn new() -> Self {
         Self { items: Vec::new() }
     }
@@ -83,13 +79,13 @@ impl RmlStatusBar {
     }
 }
 
-impl Default for RmlStatusBar {
+impl Default for StatusBar {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl RenderOnce for RmlStatusBar {
+impl RenderOnce for StatusBar {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
         let mut left_items: Vec<SharedString> = Vec::new();
         let mut center_items: Vec<SharedString> = Vec::new();
@@ -103,7 +99,7 @@ impl RenderOnce for RmlStatusBar {
             }
         }
 
-        let mut bar = StatusBar::new();
+        let mut bar = NativeStatusBar::new();
         for content in left_items {
             bar = bar.left(content);
         }

@@ -13,9 +13,14 @@ use super::binding::{gen_field_assign_expr, gen_field_value_expr};
 pub(super) fn gen_observable_impl(ctx: &CodegenCtx) -> String {
     let view_name = &ctx.view_struct_name;
 
+    let version_fields = if ctx.version_fields.is_empty() {
+        &ctx.observable_fields
+    } else {
+        &ctx.version_fields
+    };
     let mut bump_arms = String::new();
     let mut get_arms = String::new();
-    for field in &ctx.observable_fields {
+    for field in version_fields {
         bump_arms.push_str(&format!(
             "            \"{}\" => {{ self.__rml_{}_version.fetch_add(1, std::sync::atomic::Ordering::Relaxed); }}\n",
             field, field

@@ -40,8 +40,10 @@ pub fn scan(dirs: &[PathBuf]) -> Vec<PathBuf> {
 /// 单个 struct 的元信息（由 build.rs 扫描 `.rml.rs` 提取）
 #[derive(Debug, Default, Clone)]
 pub struct StructMetadata {
-    /// 所有 pub 字段名（与 IModel::rml_fields 一致），供 codegen 生成 `__rml_bump_version` match 臂
+    /// 所有 pub 字段名（与 IModel::rml_fields 一致），供双向绑定与 computed 依赖扫描
     pub observable_fields: Vec<String>,
+    /// 全部用户字段名（pub + private），与 #[component] 注入的版本计数器对齐
+    pub version_fields: Vec<String>,
     /// 所有 `#[computed]` 方法名，供 codegen 生成 `__rml_computed_deps_version` match 臂
     pub computed_methods: Vec<String>,
     /// 每个 `#[computed]` 方法 → 依赖的 pub 字段列表（通过 `self.<field>` 访问检测）
@@ -91,7 +93,7 @@ pub fn scan_struct_metadata(rml_rs_path: &Path) -> HashMap<String, StructMetadat
         Err(_) => return result,
     };
 
-    // 第一遍：收集所有 #[window]/#[component] 标注的 struct 的 pub 字段名
+    // 第一遍：收集所有 #[window]/#[component] 标注 struct 的用户字段名
     for item in &file.items {
         if let Item::Struct(s) = item {
             let has_window = s.attrs.iter().any(|a| a.path().is_ident("window"));
@@ -105,6 +107,9 @@ pub fn scan_struct_metadata(rml_rs_path: &Path) -> HashMap<String, StructMetadat
             for f in &s.fields {
                 if let Some(name) = &f.ident {
                     let name_str = name.to_string();
+                    if !name_str.starts_with("__rml_") {
+                        meta.version_fields.push(name_str.clone());
+                    }
                     let is_public = matches!(f.vis, syn::Visibility::Public(_));
                     if is_public {
                         meta.observable_fields.push(name_str.clone());
@@ -658,9 +663,10 @@ pub struct MainWindow {
         assert_eq!(m.field_types.get("name"), Some(&"String".to_string()));
         assert_eq!(m.field_types.get("age"), Some(&"u32".to_string()));
         assert_eq!(m.field_types.get("score"), Some(&"f64".to_string()));
-        // 私有字段仍记录类型，但不参与 observable 绑定
+        // 私有字段仍记录类型与版本追踪，但不参与 pub observable 绑定
         assert_eq!(m.field_types.get("_private"), Some(&"bool".to_string()));
         assert!(!m.observable_fields.contains(&"_private".to_string()));
+        assert!(m.version_fields.contains(&"_private".to_string()));
     }
 
     #[test]

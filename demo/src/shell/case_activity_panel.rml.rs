@@ -17,7 +17,7 @@ use crate::shell::contributions;
 #[component]
 #[derive(Default)]
 pub struct CaseActivityPanel {
-    case_tree_state: Option<gpui::Entity<TreeState>>,
+    tree_state: Option<gpui::Entity<TreeState>>,
 }
 
 impl ILifecycle for CaseActivityPanel {
@@ -39,13 +39,13 @@ impl ILifecycle for CaseActivityPanel {
 impl CaseActivityPanel {
     fn refresh_tree(&mut self, cx: &mut Context<Self>) {
         let items = contributions::build_case_tree_items(cx);
-        if let Some(state) = self.case_tree_state.as_ref() {
+        if let Some(state) = self.tree_state.as_ref() {
             state.update(cx, |s, cx| {
                 s.set_items(items, cx);
             });
         } else {
             let state = cx.new(|cx| TreeState::new(cx).items(items));
-            self.case_tree_state = Some(state);
+            self.tree_state = Some(state);
         }
         cx.notify();
     }

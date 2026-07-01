@@ -59,7 +59,6 @@ pub use gpui_component::{
     select::Select,
     separator::Separator,
     slider::Slider,
-    status_bar::StatusBar,
     switch::Switch,
     tab::{Tab, TabBar},
     table::Table,
@@ -83,6 +82,7 @@ pub use window::{
 pub use components::{
     ActivityAct, ActivityActs, ActivityBar, ActivityPanel, ActivityPanels,
     DialogDragState, DialogTitleBar, IActivityAct, IActivityPanel, IMenuItem, IStatusBarItem,
-    Menu, MenuItem, MenuItems, RmlStatusBar, render_menu_bar_from_items,
-    StatusBarAlign, StatusBarItem, StatusBarItems, TreeView,
+    Menu, MenuBar, MenuItem, MenuItems, NativeStatusBar, StatusBar, StatusBarAlign,
+    StatusBarItem, StatusBarItems, Tree, configure_menu_bar_popup, menu_bar_button,
+    render_menu_bar_from_items,
 };

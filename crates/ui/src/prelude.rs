@@ -7,8 +7,8 @@ pub use crate::{
     Checkbox, Dialog, Disableable, Form, IActivityAct, IActivityPanel, IMenuItem,
     IStatusBarItem, Input, InputState, IWindowActions, Kbd, Label, List, Menu, MenuItem,
     MenuItems, ModernWindow, ModernWindowShell, Notification, NotificationKind,
-    NotificationList, NotificationType, Popover, Progress, ProgressCircle, Radio, RmlStatusBar,
+    NotificationList, NotificationType, Popover, Progress, ProgressCircle, Radio,
     Root, Select, Selectable, Separator, Sizable, Slider, StatusBar, StatusBarAlign,
     StatusBarItem, StatusBarItems, StyledExt, Switch, Tab, TabBar, Table, Tag, TitleBar,
-    Tooltip, Window, WindowExt,
+    Tooltip, Tree, NativeStatusBar, Window, WindowExt,
 };

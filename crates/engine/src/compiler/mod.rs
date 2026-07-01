@@ -88,6 +88,8 @@ pub struct CodegenCtx {
     /// 由 build.rs 通过 syn 扫描 `.rml.rs` 提取，与 `IModel::rml_fields` 一致。
     /// codegen 据此生成 `__rml_bump_version`/`__rml_get_version` 的 match 臂。
     pub observable_fields: Vec<String>,
+    /// 全部用户字段名（pub + private），供版本计数 match 臂生成
+    pub version_fields: Vec<String>,
     /// 每个 `#[computed]` 方法 → 依赖的 pub 字段列表（Phase B-2：缓存依赖追踪）
     ///
     /// 由 build.rs 通过 `syn::visit::Visit` 扫描 `#[computed]` 方法体中的

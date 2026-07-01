@@ -1,32 +1,30 @@
-//! TreeView —— `<Tree>` 的 RML 集成默认渲染器
+//! `Tree` —— RML 树视图集成（gpui-component `Tree` 需自定义项渲染，由本 crate 提供默认实现）
 //!
-//! gpui-component `Tree` 要求调用方提供项渲染闭包；本组件提供案例树场景的默认
-//! 文件夹/文件图标与 `on_activate` 事件接线。树数据由 ViewModel 在 Rust 侧写入
-//! `TreeState`（非声明式 `<TreeNode>` codegen）。未来若增加声明式树节点，codegen
-//! 应直译 `Tree::new`，本组件仅保留 MVVM/Stateful 绑定路径。
+//! 树数据由 ViewModel 写入 `TreeState`；声明式 `<TreeNode>` 若将来落地，应由 engine
+//! codegen 直译 gpui-component `NativeTree`，本组件仅保留 Stateful / `on_activate` 绑定路径。
 
 use std::rc::Rc;
 
 use gpui::{
-    AnyElement, App, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px,
+    App, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px,
 };
 use gpui_component::{
     Icon, IconName, Sizable as _,
     h_flex,
     list::ListItem,
-    tree::{Tree, TreeItem, TreeState},
+    tree::{Tree as NativeTree, TreeItem, TreeState},
 };
 
-/// 带默认项渲染的 Tree 视图（Stateful：`Option<Entity<TreeState>>`）
+/// RML 树视图（`<Tree on_activate="..." />`，状态字段 `tree_state`）
 ///
-/// 接受 `Option<&Entity<TreeState>>` 以支持 `on_loaded` 前首次渲染不 panic。
+/// 接受 `Option<&Entity<TreeState>>`，支持 `on_loaded` 前首次渲染不 panic。
 #[derive(IntoElement)]
-pub struct TreeView {
+pub struct Tree {
     state: Option<Entity<TreeState>>,
     on_activate: Option<Rc<dyn Fn(TreeItem, &mut Window, &mut App) + 'static>>,
 }
 
-impl TreeView {
+impl Tree {
     pub fn new(state: Option<&Entity<TreeState>>) -> Self {
         Self {
             state: state.cloned(),
@@ -52,7 +50,7 @@ impl TreeView {
     }
 }
 
-impl RenderOnce for TreeView {
+impl RenderOnce for Tree {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
         let Some(state) = self.state else {
             return div().into_any_element();
@@ -61,7 +59,7 @@ impl RenderOnce for TreeView {
         let on_activate = self.on_activate.clone();
         let state_clone = state.clone();
 
-        Tree::new(&state, move |ix, entry, selected, _window, _cx| {
+        NativeTree::new(&state, move |ix, entry, selected, _window, _cx| {
             let icon = if !entry.is_folder() {
                 IconName::File
             } else if entry.is_expanded() {

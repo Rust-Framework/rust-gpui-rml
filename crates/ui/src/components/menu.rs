@@ -1,21 +1,49 @@
-//! MVVM 菜单数据契约 + `items={...}` 运行时渲染
+//! `MenuBar` —— RML 水平菜单栏（gpui-component 无此组件，由本 crate 定义）
 //!
-//! - **声明式菜单**（`<menu-bar>` / `<context-menu>` / `<dropdown-menu>` + `<menu-item>`）
-//!   由 engine `compiler/menu/` 直译 gpui-component `PopupMenu` API，不经过本模块。
-//! - **数据绑定**（`<menu items={menu_items} />`）由 ViewModel 提供 `MenuItems`，
-//!   本模块在运行时把 `IMenuItem` 树渲染为水平菜单栏。
+//! - **`<menu-bar>` / `<menu items={...}>`**：顶层入口由 `MenuBar` 渲染；声明式子节点
+//!   由 engine `compiler/menu/menu_bar.rs` 编译为 `menu_bar_button` + `PopupMenu` 后作为
+//!   `MenuBar` 的 children 传入。
+//! - **`<context-menu>` / `<dropdown-menu>`**：弹层菜单容器，仍由 engine `compiler/menu/`
+//!   直译 gpui-component `PopupMenu` API（非菜单栏）。
+//! - **MVVM**：ViewModel 提供 `MenuItems`，`MenuBar::items(...)` 在运行时翻译为按钮树。
 
 use std::sync::Arc;
 
-use gpui::{App, Context, ElementId, IntoElement, ParentElement, RenderOnce, SharedString, Styled, Window};
+use gpui::{
+    px, AnyElement, App, Context, ElementId, InteractiveElement, IntoElement, ParentElement,
+    RenderOnce, SharedString, Styled, Window,
+};
 use gpui_component::{
     IconName,
     button::{Button, ButtonVariants as _},
     h_flex,
     menu::{DropdownMenu as _, PopupMenu, PopupMenuItem},
     separator::Separator,
-    Disableable as _,
+    Disableable as _, StyledExt as _,
 };
+use smallvec::SmallVec;
+
+/// 菜单栏顶层按钮默认外边距（px）
+pub const MENU_BAR_BUTTON_MARGIN_PX: f32 = 2.;
+/// 菜单栏顶层按钮默认左右内边距（px）
+pub const MENU_BAR_BUTTON_PAD_X_PX: f32 = 4.;
+/// 菜单栏下拉菜单默认最小宽度（px）
+pub const MENU_BAR_POPUP_MIN_W_PX: f32 = 250.;
+
+/// 声明式 codegen 与 MVVM 共用的菜单栏顶层按钮样式
+pub fn menu_bar_button(id: impl Into<ElementId>, label: impl Into<SharedString>) -> Button {
+    Button::new(id)
+        .label(label)
+        .ghost()
+        .margins(px(MENU_BAR_BUTTON_MARGIN_PX))
+        .pl(px(MENU_BAR_BUTTON_PAD_X_PX))
+        .pr(px(MENU_BAR_BUTTON_PAD_X_PX))
+}
+
+/// 菜单栏下拉弹层默认配置（声明式 codegen 与 MVVM 共用）
+pub fn configure_menu_bar_popup(menu: PopupMenu) -> PopupMenu {
+    menu.min_w(px(MENU_BAR_POPUP_MIN_W_PX))
+}
 
 /// 菜单项接口（object-safe）
 pub trait IMenuItem: Send + Sync + 'static {
@@ -164,19 +192,23 @@ impl IMenuItem for MenuItem {
     }
 }
 
-/// Menu 容器（兼容小写 `<menu items={...}>`）
+/// `<menu items={...}>` 兼容别名
+pub type Menu = MenuBar;
+
+/// 水平菜单栏（声明式 children 或 MVVM `items` 二选一）
 #[derive(IntoElement)]
-pub struct Menu {
-    #[allow(dead_code)]
+pub struct MenuBar {
     id: ElementId,
     items: MenuItems,
+    entry_children: SmallVec<[AnyElement; 4]>,
 }
 
-impl Menu {
+impl MenuBar {
     pub fn new(id: impl Into<ElementId>) -> Self {
         Self {
             id: id.into(),
             items: Vec::new(),
+            entry_children: SmallVec::new(),
         }
     }
 
@@ -186,60 +218,72 @@ impl Menu {
     }
 }
 
-impl RenderOnce for Menu {
-    fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
-        render_menu_bar_from_items(self.items)
+impl ParentElement for MenuBar {
+    fn extend(&mut self, elements: impl IntoIterator<Item = AnyElement>) {
+        self.entry_children.extend(elements);
     }
 }
 
-/// 从 `MenuItems` 渲染水平菜单栏（供 Menu 与 codegen 复用）
-pub fn render_menu_bar_from_items(items: MenuItems) -> impl IntoElement {
-    let mut bar = h_flex().h_full().items_center();
+impl RenderOnce for MenuBar {
+    fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
+        let mut bar = h_flex()
+            .id(self.id)
+            .h_full()
+            .items_center();
 
-    for (ix, item) in items.iter().enumerate() {
-        if item.separator() {
-            bar = bar.child(Separator::vertical().h_full());
-            continue;
-        }
+        if !self.items.is_empty() {
+            for (ix, item) in self.items.iter().enumerate() {
+                if item.separator() {
+                    bar = bar.child(Separator::vertical().h_full());
+                    continue;
+                }
 
-        let label = item.label();
-        let disabled = item.disabled();
-        let icon = item.icon();
-        let children = item.children();
-        let command = item.command();
+                let label = item.label();
+                let disabled = item.disabled();
+                let icon = item.icon();
+                let children = item.children();
+                let command = item.command();
 
-        if let Some(children) = children {
-            let mut btn = Button::new(("rml-menu", ix))
-                .label(label)
-                .ghost()
-                .disabled(disabled);
+                if let Some(children) = children {
+                    let mut btn = menu_bar_button(("rml-menu", ix), label).disabled(disabled);
 
-            if let Some(icon) = icon {
-                btn = btn.icon(icon);
+                    if let Some(icon) = icon {
+                        btn = btn.icon(icon);
+                    }
+
+                    let btn = btn.dropdown_menu(move |menu, window, cx| {
+                        build_popup_menu_from_items(
+                            configure_menu_bar_popup(menu),
+                            &children,
+                            window,
+                            cx,
+                        )
+                    });
+                    bar = bar.child(btn);
+                } else {
+                    let mut btn = menu_bar_button(("rml-menu", ix), label).disabled(disabled);
+
+                    if let Some(icon) = icon {
+                        btn = btn.icon(icon);
+                    }
+
+                    if let Some(cmd) = command {
+                        btn = btn.on_click(move |_, _window, cx| cmd.execute(&(), cx));
+                    }
+                    bar = bar.child(btn);
+                }
             }
-
-            let btn = btn.dropdown_menu(move |menu, window, cx| {
-                build_popup_menu_from_items(menu, &children, window, cx)
-            });
-            bar = bar.child(btn);
         } else {
-            let mut btn = Button::new(("rml-menu", ix))
-                .label(label)
-                .ghost()
-                .disabled(disabled);
-
-            if let Some(icon) = icon {
-                btn = btn.icon(icon);
-            }
-
-            if let Some(cmd) = command {
-                btn = btn.on_click(move |_, _window, cx| cmd.execute(&(), cx));
-            }
-            bar = bar.child(btn);
+            bar = bar.children(self.entry_children);
         }
-    }
 
-    bar
+        bar
+    }
+}
+
+/// 从 `MenuItems` 渲染水平菜单栏（MVVM 与 `MenuBar::items` 共用）
+pub fn render_menu_bar_from_items(items: MenuItems) -> impl IntoElement {
+    MenuBar::new("rml-menu-bar").items(items)
 }
 
 /// 从 `IMenuItem` 树递归构建 gpui-component `PopupMenu`（MVVM 子菜单路径专用）。

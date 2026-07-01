@@ -202,14 +202,6 @@ impl RenderOnce for ActivityBar {
             .as_ref()
             .map(|id| !id.is_empty())
             .unwrap_or_else(|| self.panels.iter().any(|p| p.is_activated()));
-        let panel_content = (any_active && !self.panel_children.is_empty()).then(|| {
-            gpui::div()
-                .size_full()
-                .children(self.panel_children)
-                .into_any_element()
-        });
-        let mut panel_content = panel_content;
-
         let mut panel_buttons: SmallVec<[AnyElement; 4]> = SmallVec::new();
         for (ix, panel) in self.panels.iter().enumerate() {
             let id = panel.id();
@@ -257,28 +249,30 @@ impl RenderOnce for ActivityBar {
             })
             .collect();
 
-        h_flex()
-            .id(self.id)
+        let icon_bar = v_flex()
+            .w(self.bar_width)
             .h_full()
-            .child(
-                v_flex()
-                    .w(self.bar_width)
-                    .h_full()
-                    .flex_shrink_0()
-                    .justify_between()
-                    .bg(cx.theme().sidebar)
-                    .border_r_1()
-                    .border_color(cx.theme().border)
-                    .child(v_flex().w_full().items_center().children(panel_buttons))
-                    .child(v_flex().w_full().items_center().children(action_buttons)),
-            )
-            .child(
+            .flex_shrink_0()
+            .justify_between()
+            .bg(cx.theme().sidebar)
+            .border_r_1()
+            .border_color(cx.theme().border)
+            .child(v_flex().w_full().items_center().children(panel_buttons))
+            .child(v_flex().w_full().items_center().children(action_buttons));
+
+        let mut row = h_flex().id(self.id).h_full().child(icon_bar);
+
+        if any_active && !self.panel_children.is_empty() {
+            row = row.child(
                 gpui::div()
                     .flex_1()
                     .h_full()
                     .min_w_0()
                     .overflow_hidden()
-                    .when_some(panel_content.take(), |this, panel| this.child(panel)),
-            )
+                    .children(self.panel_children),
+            );
+        }
+
+        row
     }
 }

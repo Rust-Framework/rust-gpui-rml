@@ -20,6 +20,7 @@ fn make_ctx_with_range_validation() -> CodegenCtx {
         stylesheet: None,
         computed_methods: Vec::new(),
         observable_fields: vec!["age".to_string()],
+        version_fields: vec!["age".to_string()],
         computed_deps: HashMap::new(),
         computed_returns: HashMap::new(),
         field_types: {
@@ -100,6 +101,7 @@ fn length_validation_generates_len_check() {
         stylesheet: None,
         computed_methods: Vec::new(),
         observable_fields: vec!["name".to_string()],
+        version_fields: vec!["name".to_string()],
         computed_deps: HashMap::new(),
         computed_returns: HashMap::new(),
         field_types: {
@@ -154,6 +156,7 @@ fn required_validation_generates_empty_check() {
         stylesheet: None,
         computed_methods: Vec::new(),
         observable_fields: vec!["name".to_string()],
+        version_fields: vec!["name".to_string()],
         computed_deps: HashMap::new(),
         computed_returns: HashMap::new(),
         field_types: {
@@ -205,6 +208,7 @@ fn regex_validation_generates_pattern_match() {
         stylesheet: None,
         computed_methods: Vec::new(),
         observable_fields: vec!["email".to_string()],
+        version_fields: vec!["email".to_string()],
         computed_deps: HashMap::new(),
         computed_returns: HashMap::new(),
         field_types: {
@@ -263,6 +267,7 @@ fn custom_validation_generates_function_call() {
         stylesheet: None,
         computed_methods: Vec::new(),
         observable_fields: vec!["phone".to_string()],
+        version_fields: vec!["phone".to_string()],
         computed_deps: HashMap::new(),
         computed_returns: HashMap::new(),
         field_types: {
@@ -314,6 +319,7 @@ fn multiple_rules_executed_in_order() {
         stylesheet: None,
         computed_methods: Vec::new(),
         observable_fields: vec!["name".to_string()],
+        version_fields: vec!["name".to_string()],
         computed_deps: HashMap::new(),
         computed_returns: HashMap::new(),
         field_types: {
@@ -429,6 +435,7 @@ fn no_validation_falls_back_to_default() {
         stylesheet: None,
         computed_methods: Vec::new(),
         observable_fields: vec!["age".to_string()],
+        version_fields: vec!["age".to_string()],
         computed_deps: HashMap::new(),
         computed_returns: HashMap::new(),
         field_types: {

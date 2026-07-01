@@ -112,6 +112,7 @@ fn make_ctx_with_validator(field: &str, ty: &str, validator_type: &str) -> Codeg
         stylesheet: None,
         computed_methods: Vec::new(),
         observable_fields: vec![field.to_string()],
+        version_fields: vec![field.to_string()],
         computed_deps: HashMap::new(),
         computed_returns: HashMap::new(),
         field_types: {

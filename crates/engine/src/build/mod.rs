@@ -293,6 +293,7 @@ impl Builder {
                 stylesheet: stylesheet.clone(),
                 computed_methods: struct_meta.computed_methods.clone(),
                 observable_fields: struct_meta.observable_fields.clone(),
+                version_fields: struct_meta.version_fields.clone(),
                 computed_deps: struct_meta.computed_deps.clone(),
                 computed_returns: struct_meta.computed_returns.clone(),
                 field_types: struct_meta.field_types.clone(),
