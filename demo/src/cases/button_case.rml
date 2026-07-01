@@ -1,0 +1,11 @@
+<component>
+    <div class="case-pane">
+        <h2 class="case-title">{t("case.button.title")}</h2>
+        <p class="count">{button_demo_text}</p>
+        <div class="button-row">
+            <Button label={t("case.button.primary")} primary="" onclick={on_button_demo_click} />
+            <Button label={t("case.button.ghost")} ghost="" onclick={on_button_demo_click} />
+            <Button label={t("case.button.danger")} danger="" onclick={on_button_demo_click} />
+        </div>
+    </div>
+</component>

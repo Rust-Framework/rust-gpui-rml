@@ -28,7 +28,7 @@ use gpui::{App, Context};
 ///
 /// - `#[command]` 方法：codegen 生成的事件绑定直接调用强类型方法（绕过 trait，保留类型安全）
 /// - `ICommand` trait：用于声明式 `command={field}` 绑定、快捷键、命令面板等动态调度场景
-pub trait ICommand: 'static {
+pub trait ICommand: Send + Sync + 'static {
     /// 执行命令（WPF: `Execute`）
     ///
     /// `parameter` 类型擦除，实现方按需 `downcast_ref`/`downcast_mut`。
@@ -74,8 +74,8 @@ pub trait ICommand: 'static {
 /// <MenuItem label="Save" command={save_command} />
 /// ```
 pub struct RelayCommand {
-    action: Box<dyn Fn(&mut App) + 'static>,
-    can_run: Option<Box<dyn Fn() -> bool + 'static>>,
+    action: Box<dyn Fn(&mut App) + Send + Sync + 'static>,
+    can_run: Option<Box<dyn Fn() -> bool + Send + Sync + 'static>>,
 }
 
 impl RelayCommand {
@@ -85,8 +85,8 @@ impl RelayCommand {
     /// 闭包签名为 `Fn(&mut T, &mut Context<T>)`，与 `#[command]` 方法体一致。
     pub fn new<T, F>(cx: &Context<T>, f: F) -> Self
     where
-        T: 'static,
-        F: Fn(&mut T, &mut Context<T>) + 'static,
+        T: Send + Sync + 'static,
+        F: Fn(&mut T, &mut Context<T>) + Send + Sync + 'static,
     {
         let weak = cx.weak_entity();
         Self {
@@ -102,7 +102,7 @@ impl RelayCommand {
     /// 不绑定任何 ViewModel，适用于纯 App 级操作（如 `cx.quit()`）。
     pub fn action<F>(f: F) -> Self
     where
-        F: Fn(&mut App) + 'static,
+        F: Fn(&mut App) + Send + Sync + 'static,
     {
         Self {
             action: Box::new(f),
@@ -116,7 +116,7 @@ impl RelayCommand {
     /// 可在闭包中捕获 `Arc<Mutex<...>>` 或使用 `Rc<RefCell<...>>`。
     pub fn can_when<F>(mut self, f: F) -> Self
     where
-        F: Fn() -> bool + 'static,
+        F: Fn() -> bool + Send + Sync + 'static,
     {
         self.can_run = Some(Box::new(f));
         self

@@ -11,7 +11,7 @@ pub mod scanner;
 pub use assets_processor::{AssetMode, AssetsProcessor};
 pub use i18n_extractor::I18nExtractor;
 
-use crate::compiler::{compile, CodegenCtx};
+use crate::compiler::{compile, CodegenCtx, UserComponentInfo};
 use crate::css;
 use sha2::{Digest, Sha256};
 use std::fmt;
@@ -191,6 +191,22 @@ impl Builder {
         // 元信息按 struct_name 索引，供每个 .rml 文件按 view_struct_name 查询
         let struct_metas = self.scan_struct_metas(&rml_files);
 
+        // 收集用户自定义组件注册表（所有 #[component] 标注的 struct）
+        // 供 codegen 在 component_lookup 未命中时生成 self.<field>.as_ref().expect(...).clone()
+        let user_components: std::collections::HashMap<String, UserComponentInfo> = struct_metas
+            .iter()
+            .filter(|(_, m)| m.is_component)
+            .map(|(name, _)| {
+                (
+                    name.clone(),
+                    UserComponentInfo {
+                        struct_name: name.clone(),
+                        entity_field: to_snake_case(name),
+                    },
+                )
+            })
+            .collect();
+
         // 现在可以移动 output_dir
         let output_dir = self.output_dir.ok_or_else(|| BuildError {
             message: "output_dir not set (use .output_dir(std::env::var(\"OUT_DIR\").unwrap()))".into(),
@@ -281,6 +297,7 @@ impl Builder {
                 field_types: struct_meta.field_types.clone(),
                 field_validations: struct_meta.field_validations.clone(),
                 model_fields: Vec::new(),
+                user_components: user_components.clone(),
             };
 
             match compile(&source, &ctx) {

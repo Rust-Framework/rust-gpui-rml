@@ -61,6 +61,11 @@ pub struct StructMetadata {
     /// scanner 从字段属性 `#[validate(...)]` 提取规则，codegen 据此在 parse 成功后、
     /// 赋值前生成规则校验链。
     pub field_validations: HashMap<String, ValidationRuleSet>,
+    /// 是否为 `#[component]` 标注的 struct（用户自定义组件）
+    ///
+    /// build.rs 据此收集 `user_components` 注册表，供 codegen 在
+    /// `component_lookup` 未命中时生成 `self.<field>.as_ref().expect(...).clone()`。
+    pub is_component: bool,
 }
 
 /// 扫描 `.rml.rs` code-behind 文件，提取所有 `#[window]`/`#[component]` 标注 struct 的元信息。
@@ -89,15 +94,14 @@ pub fn scan_struct_metadata(rml_rs_path: &Path) -> HashMap<String, StructMetadat
     // 第一遍：收集所有 #[window]/#[component] 标注的 struct 的 pub 字段名
     for item in &file.items {
         if let Item::Struct(s) = item {
-            let is_component_struct = s
-                .attrs
-                .iter()
-                .any(|a| a.path().is_ident("window") || a.path().is_ident("component"));
-            if !is_component_struct {
+            let has_window = s.attrs.iter().any(|a| a.path().is_ident("window"));
+            let has_component = s.attrs.iter().any(|a| a.path().is_ident("component"));
+            if !has_window && !has_component {
                 continue;
             }
             let struct_name = s.ident.to_string();
             let mut meta = StructMetadata::default();
+            meta.is_component = has_component;
             for f in &s.fields {
                 if let Some(name) = &f.ident {
                     let name_str = name.to_string();

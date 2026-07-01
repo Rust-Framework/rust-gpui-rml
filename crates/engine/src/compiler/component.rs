@@ -14,7 +14,7 @@
 
 use crate::compiler::expr;
 use crate::compiler::codegen::gen_node;
-use crate::compiler::{CodegenCtx, CodegenError};
+use crate::compiler::{CodegenCtx, CodegenError, UserComponentInfo};
 use crate::parser::ast::{Attribute, Directive, Element, EventHandler, Node};
 use crate::tags;
 
@@ -34,12 +34,21 @@ pub fn gen_component(
     loop_vars: &[String],
 ) -> Result<String, CodegenError> {
     let tag = &elem.tag;
-    let component = tags::component_lookup(tag).ok_or_else(|| CodegenError {
-        message: format!(
-            "unknown extension component: <{}> (not in gpui-component routing table)",
-            tag
-        ),
-    })?;
+    let component = match tags::component_lookup(tag) {
+        Some(c) => c,
+        None => {
+            // 内置路由表未命中：检查用户组件注册表
+            if let Some(info) = ctx.user_components.get(tag) {
+                return Ok(gen_user_component(info));
+            }
+            return Err(CodegenError {
+                message: format!(
+                    "unknown component: <{}> (not in gpui-component routing table or user component registry)",
+                    tag
+                ),
+            });
+        }
+    };
 
     // 1. 构造器
     //    若元素有 ref="name" 指令，使用稳定 ID `("rml_ref", "name")`，
@@ -144,6 +153,19 @@ pub fn gen_component(
     }
 
     Ok(code)
+}
+
+/// 生成用户自定义组件嵌入代码
+///
+/// `<CounterCase />` → `self.counter_case.as_ref().expect("init CounterCase in on_loaded").clone()`
+///
+/// 返回 `Entity<CounterCase>`，因 `CounterCase: Render`（由 `#[component]` 生成），
+/// `Entity<T: Render>: IntoElement`，可直接作为子元素。
+fn gen_user_component(info: &UserComponentInfo) -> String {
+    format!(
+        "self.{}.as_ref().expect(\"init {} in on_loaded\").clone()",
+        info.entity_field, info.struct_name
+    )
 }
 
 /// 静态属性 → builder 方法映射
@@ -382,14 +404,7 @@ mod tests {
         CodegenCtx {
             view_struct_name: "TestView".into(),
             view_module_path: "test::view".into(),
-            stylesheet: None,
-            computed_methods: Vec::new(),
-            observable_fields: Vec::new(),
-            computed_deps: std::collections::HashMap::new(),
-            computed_returns: std::collections::HashMap::new(),
-            field_types: std::collections::HashMap::new(),
-            field_validations: std::collections::HashMap::new(),
-            model_fields: Vec::new(),
+            ..Default::default()
         }
     }
 
@@ -863,7 +878,7 @@ mod tests {
         assert!(result
             .unwrap_err()
             .message
-            .contains("unknown extension component"));
+            .contains("unknown component"));
     }
 
     #[test]

@@ -132,6 +132,7 @@ fn make_ctx_with_validator(field: &str, ty: &str, validator_type: &str) -> Codeg
             m
         },
         model_fields: Vec::new(),
+        user_components: HashMap::new(),
     }
 }
 

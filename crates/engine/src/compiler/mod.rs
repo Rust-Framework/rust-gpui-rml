@@ -51,6 +51,19 @@ pub struct ValidationRuleSet {
     pub validator_type: Option<String>,
 }
 
+/// 用户自定义组件信息（`#[component]` 标注的 struct）
+///
+/// 由 build.rs 从所有 `.rml.rs` 文件扫描收集，注入 `CodegenCtx.user_components`。
+/// codegen 在遇到 `<CounterCase />` 等用户组件标签时，生成
+/// `self.counter_case.as_ref().expect("init CounterCase in on_loaded").clone()`。
+#[derive(Debug, Clone, Default)]
+pub struct UserComponentInfo {
+    /// struct 名（如 "CounterCase"）
+    pub struct_name: String,
+    /// snake_case 字段名（如 "counter_case"，父视图中的 `Option<Entity<CounterCase>>` 字段名）
+    pub entity_field: String,
+}
+
 /// 代码生成上下文
 #[derive(Debug, Clone, Default)]
 pub struct CodegenCtx {
@@ -100,6 +113,12 @@ pub struct CodegenCtx {
     pub field_validations: HashMap<String, ValidationRuleSet>,
     /// RML 中声明 `model={field}` 的字段名（双向绑定 input 专用）
     pub model_fields: Vec<String>,
+    /// 用户自定义组件注册表（`#[component]` 标注的 struct）
+    ///
+    /// 由 build.rs 从所有 `.rml.rs` 文件扫描收集，key 为 struct 名（如 "CounterCase"）。
+    /// codegen 在 `gen_component` 中 `component_lookup` 未命中时查此表，
+    /// 生成 `self.<entity_field>.as_ref().expect(...).clone()` 嵌入用户组件。
+    pub user_components: HashMap<String, UserComponentInfo>,
 }
 
 /// 代码生成错误

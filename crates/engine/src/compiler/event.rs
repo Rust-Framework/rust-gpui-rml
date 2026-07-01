@@ -175,14 +175,7 @@ mod tests {
         CodegenCtx {
             view_struct_name: "TestView".into(),
             view_module_path: "test::view".into(),
-            stylesheet: None,
-            computed_methods: Vec::new(),
-            observable_fields: Vec::new(),
-            computed_deps: std::collections::HashMap::new(),
-            computed_returns: std::collections::HashMap::new(),
-            field_types: std::collections::HashMap::new(),
-            field_validations: std::collections::HashMap::new(),
-            model_fields: Vec::new(),
+            ..Default::default()
         }
     }
 
