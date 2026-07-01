@@ -1,15 +1,18 @@
 //! `ContributedEntry` 构建：数据贡献 vs 视图贡献
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use gpui::{App, Render};
 use rml_core::component::IComponent;
 use rml_core::contribution::{
     ComponentEntityCache, ContributedEntry, ContributionOptions, IContribution,
-    IVisualContribution, VisualRenderer,
+    IContributionHost, IVisualContribution, VisualRenderer,
 };
 
 use rml_core::contribution_cache::ComponentEntityCacheImpl;
+
+use super::host::ContributionHost;
 
 /// 纯数据贡献条目
 pub fn data_entry<T: IContribution + 'static>(
@@ -56,7 +59,7 @@ pub fn data_entry_dyn(
 
 /// 将条目加入 host（内部复用）
 pub fn add_entry(
-    hosts: &mut std::collections::HashMap<String, Box<dyn rml_core::contribution::IContributionHost>>,
+    hosts: &mut HashMap<String, ContributionHost>,
     host_id: &str,
     entry: ContributedEntry,
     cx: &mut App,

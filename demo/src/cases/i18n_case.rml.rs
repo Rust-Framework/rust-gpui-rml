@@ -1,9 +1,10 @@
 use rml::prelude::*;
 use rml_core::i18n::I18nState;
 use rml_core::theme::ThemeExt;
+use crate::shell::MainWindow;
 
 #[contribute(
-    host = "demo.shell",
+    host = MainWindow,
     id = "i18n.basic",
     name = "case.i18n.title",
     kind = "case",

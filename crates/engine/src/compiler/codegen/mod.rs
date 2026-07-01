@@ -153,6 +153,9 @@ fn gen_render_impl_from_children(
     out.push_str("        if !self.__rml_loaded {\n");
     out.push_str("            self.__rml_loaded = true;\n");
     out.push_str("            rml_core::lifecycle::ILifecycle::on_loaded(self, _window, cx);\n");
+    if ctx.is_contributehost {
+        out.push_str("            rml_app::contribution::attach_host_view(self, cx);\n");
+    }
     out.push_str("        }\n");
     out.push_str("        use gpui::{ParentElement, InteractiveElement, StatefulInteractiveElement, IntoElement, Styled};\n");
     out.push_str("        use rml_ui::{ContextMenuExt, DropdownMenu, PopupMenuItem, Side, h_flex};\n");

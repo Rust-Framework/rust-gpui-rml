@@ -11,6 +11,7 @@ rust-rml-app = { workspace = true }
 rust-rml-core = { workspace = true }
 rust-rml-ui = { workspace = true }
 gpui = { workspace = true }
+gpui-component = { workspace = true }
 
 [build-dependencies]
 rust-rml-engine = { workspace = true }

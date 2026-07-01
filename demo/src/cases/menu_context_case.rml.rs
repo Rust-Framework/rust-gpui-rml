@@ -1,7 +1,8 @@
 use rml::prelude::*;
+use crate::shell::MainWindow;
 
 #[contribute(
-    host = "demo.shell",
+    host = MainWindow,
     id = "components.menu.context",
     name = "case.menu.context.title",
     kind = "case",

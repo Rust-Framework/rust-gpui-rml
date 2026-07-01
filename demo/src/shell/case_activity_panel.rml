@@ -1,5 +1,3 @@
 <component>
-    <div class="nav-tree">
-        <Tree on_activate="on_case_activate" />
-    </div>
+    <Tree on_activate="on_case_activate" />
 </component>

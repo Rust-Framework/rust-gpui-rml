@@ -11,8 +11,8 @@ use crate::cases::{
     self, ButtonCase, CounterCase, I18nCase, MenuContextCase, MenuDropdownCase, MenuEditorCase,
     MenuFeaturesCase, MenuCustomCase, OpenTab, TwoWayCase, WelcomeCase,
 };
-use crate::shell::contributions::{self, SHELL_HOST};
-use crate::shell::CaseActivityPanel;
+use crate::shell::activity_panels;
+use crate::shell::contributions;
 
 static MAIN_WINDOW_WEAK: Mutex<Option<gpui::WeakEntity<MainWindow>>> = Mutex::new(None);
 
@@ -29,6 +29,7 @@ pub fn activate_case(case_id: String, app: &mut gpui::App) {
     }
 }
 
+#[contributehost(id = "demo.shell", bindings = "refresh_bindings")]
 #[window]
 #[derive(Default)]
 pub struct MainWindow {
@@ -36,11 +37,9 @@ pub struct MainWindow {
     selected_tab: usize,
     active_case_id: String,
     show_chrome: bool,
-    active_panel_id: String,
     activity_panels: ActivityPanels,
     status_items: StatusBarItems,
     i18n_version: u32,
-    case_activity_panel: Option<Entity<CaseActivityPanel>>,
     welcome_case: Option<Entity<WelcomeCase>>,
     counter_case: Option<Entity<CounterCase>>,
     two_way_case: Option<Entity<TwoWayCase>>,
@@ -67,13 +66,8 @@ impl ILifecycle for MainWindow {
             self.active_case_id = "welcome".to_string();
         }
         self.show_chrome = true;
-        if self.active_panel_id.is_empty() {
-            self.active_panel_id = "samples".to_string();
-        }
         self.i18n_version = self.i18n_version.wrapping_add(1);
 
-        self.case_activity_panel
-            .get_or_insert_with(|| cx.new(|_| CaseActivityPanel::default()));
         self.welcome_case
             .get_or_insert_with(|| cx.new(|_| WelcomeCase::default()));
         self.counter_case
@@ -107,32 +101,12 @@ impl ILifecycle for MainWindow {
         if let Ok(mut guard) = MAIN_WINDOW_WEAK.lock() {
             *guard = Some(cx.weak_entity());
         }
-
-        Self::wire_host_changed(cx);
-        self.refresh_bindings(cx);
-        cx.notify();
     }
 }
 
 impl MainWindow {
-    fn wire_host_changed(cx: &mut Context<Self>) {
-        let weak = cx.weak_entity();
-        cx.update_global::<rml_app::contribution::ContributionRegistryGlobal, _>(|global, _| {
-            global.0.set_host_on_changed(
-                SHELL_HOST,
-                Box::new(move |app| {
-                    if let Some(entity) = weak.upgrade() {
-                        entity.update(app, |main, cx| {
-                            main.refresh_bindings(cx);
-                        });
-                    }
-                }),
-            );
-        });
-    }
-
     fn refresh_bindings(&mut self, cx: &mut Context<Self>) {
-        self.activity_panels = contributions::build_activity_panels(cx, &self.active_panel_id);
+        self.activity_panels = activity_panels::build_activity_panels(cx);
         self.status_items = contributions::build_status_items(cx);
         self.menu_items = contributions::build_menu_items(cx, &self.menu_commands);
     }
@@ -149,17 +123,6 @@ impl MainWindow {
     #[command]
     pub fn on_chrome_toggle(&mut self, cx: &mut Context<Self>) {
         self.show_chrome = !self.show_chrome;
-    }
-
-    #[command]
-    pub fn on_panel_change(&mut self, id: &SharedString, cx: &mut Context<Self>) {
-        let new_id = id.to_string();
-        if self.active_panel_id == new_id {
-            self.active_panel_id = String::new();
-        } else {
-            self.active_panel_id = new_id;
-        }
-        self.activity_panels = contributions::build_activity_panels(cx, &self.active_panel_id);
     }
 
     #[command]

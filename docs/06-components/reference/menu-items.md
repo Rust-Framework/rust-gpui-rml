@@ -9,6 +9,15 @@
 | `menu-item` | `MenuItem` | 操作项、分组标题、链接、子菜单、自定义行 |
 | `menu-separator` | `MenuSeparator`、`separator` | 分隔线 |
 
+`<menu-bar>` 由 `rml_ui::MenuBar` 渲染，默认样式（无需 CSS）：
+
+| 默认项 | 值 | 定制 |
+|--------|-----|------|
+| 按钮间距 | 4px | `MenuBar::gap(6.)` |
+| 按钮高度 | 22px | `menu_bar_button` 常量 |
+| 按钮内边距 | 6×2 px | `MenuBar::button_pad_x()` / `button_pad_y()` |
+| 按钮外边距 | 上下 2px | `MenuBar::button_margin(4.)` |
+
 ## menu-item 属性
 
 | 属性 | 类型 | 绑定 | 说明 |
@@ -39,12 +48,7 @@
 <menu-item label="New">
     <menu-item label="File" onclick={on_new_file} />
 </menu-item>
-<menu-item onclick={on_toggle}>
-    <div class="h-flex gap-2">
-        <span>Dark Mode</span>
-        <span class="muted">{dark_label}</span>
-    </div>
-</menu-item>
+<menu-item label="Dark Mode" onclick={on_toggle} />
 ```
 
 ## Codegen 对照

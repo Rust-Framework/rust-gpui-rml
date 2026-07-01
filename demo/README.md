@@ -1,19 +1,22 @@
 # rust-rml-demo
 
-> RML 计数器 demo —— 验证 `.rml` + `.rml.rs` + `build.rs` 三件套闭环 + WPF 风格窗口 API。
+> RML Showcase demo —— 验证 `.rml` + `.rml.rs` + `build.rs` 三件套闭环 + TabWindow Shell + 贡献点架构。
 
 ## 职责
 
-端到端验证 RML 框架的核心开发流程：模板文件（`.rml`）、Code-Behind（`.rml.rs`）、构建脚本（`build.rs`）协同工作，从模板编译到 GPUI 渲染到事件处理的完整闭环。同时验证 `#[window]` 宏 + `RmlApplication::main_window` 声明式 API。
+端到端验证 RML 框架开发流程：模板（`.rml`）、Code-Behind（`.rml.rs`）、构建脚本（`build.rs`），以及 `RmlApplication::main_window` 声明式启动。
 
-## 文件结构
+## 样式策略（defaults-first）
 
-| 文件 | 职责 |
+默认外观由 **gpui-component Theme** + **rml_ui Shell 组件** + **语义 HTML 标签** 提供，无需大量 CSS。
+
+| 文件 | 角色 |
 |------|------|
-| `src/main.rs` | demo 入口，`RmlApplication::new().main_window::<Counter>().run()` |
-| `src/counter.rml` | Counter 模板（div > h1 + p{count} + 2 buttons） |
-| `src/counter.rml.rs` | Counter ViewModel：`#[window]` 标记 + `count: i32` + `#[command]` increment/decrement |
-| `build.rs` | 构建脚本：`rml::build().scan_dir("src").output_dir(OUT_DIR).build()` |
+| `src/app.rs` | 启动时 `Theme.font_size = 14px` |
+| `assets/themes/{light,dark}.css` | 颜色变量（含 `--text-muted`） |
+| `assets/styles.css` | **可选覆盖层**：demo 布局 utility（`.case-pane` 等），非必需 |
+
+需要定制时再通过 CSS class 或组件 builder（如 `MenuBar::gap()`）覆盖。
 
 ## 运行
 
@@ -21,17 +24,10 @@
 cargo run -p rust-rml-demo
 ```
 
-## 开发流程（三件套）
+## 主要目录
 
-1. **编写 `.rml` 模板**：声明式描述 UI 结构（HTML 语法 + RML 指令 + `{插值}`）
-2. **编写 `.rml.rs` Code-Behind**：`#[window]` 标记 ViewModel 结构体，`#[command]` 标记事件方法
-3. **配置 `build.rs`**：调用 `rml::build()` 扫描 `.rml` 文件，编译为 `OUT_DIR/rml_generated/<name>.rs`
-4. **`#[window]` 宏**：自动生成 `IComponent` + `IWindow` impl，`include!` 注入 `Render` impl
-
-## 验证要点
-
-- 点击 `-` / `+` 按钮，`count` 字段增减，UI 实时更新
-- `#[command]` 方法签名：`fn(&mut self, &ClickEvent, &mut Context<Self>)`
-- `cx.notify()` 触发重渲染
-- 事件对象通过 `event_flow::convert::from_gpui_click` 从 GPUI ClickEvent 转换
-- `RmlApplication::new().main_window::<Counter>().run()` 声明式 API 启动窗口
+| 路径 | 说明 |
+|------|------|
+| `src/shell/` | MainWindow、LoginDialog、ActivityBar 树 |
+| `src/cases/` | 各功能案例 RML 组件 |
+| `src/app.rs` | 全局 init：style / i18n / theme / 贡献点注册 |

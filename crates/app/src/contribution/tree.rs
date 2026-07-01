@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use gpui::SharedString;
-use rml_core::contribution::{ContributedEntry, IContributionRegistry};
+use rml_core::contribution::ContributedEntry;
 
 use super::registry::ContributionRegistry;
 
@@ -29,11 +29,11 @@ pub fn build_contribution_tree(
     registry: &ContributionRegistry,
     host_id: &str,
 ) -> Vec<ContributionTreeNode> {
-    let Some(host) = registry.host(host_id) else {
-        return Vec::new();
-    };
-
-    let flats: Vec<FlatNode> = host.entries().iter().map(flat_from_entry).collect();
+    let flats: Vec<FlatNode> = registry
+        .entries(host_id)
+        .iter()
+        .map(flat_from_entry)
+        .collect();
     let mut by_parent: HashMap<Option<String>, Vec<&FlatNode>> = HashMap::new();
     for node in &flats {
         let key = node.parent_id.as_ref().map(|p| p.to_string());

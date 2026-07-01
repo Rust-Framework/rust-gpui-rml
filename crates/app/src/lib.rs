@@ -22,8 +22,8 @@ pub mod resources;
 
 pub use application::{NoWindow, RmlApplication};
 pub use contribution::{
-    build_contribution_tree, data_registerable, ensure_contribution_registry, visual_entry,
-    ContributionExt, ContributionHost, ContributionRegistry, ContributionRegistryGlobal,
+    build_contribution_tree, data_registerable, ensure_contribution_registry, register_contribution,
+    visual_entry, ContributionExt, ContributionHost, ContributionRegistry, ContributionRegistryGlobal,
     ContributionTreeNode, Registerable,
 };
 pub use lifecycle::IAppLifecycle;

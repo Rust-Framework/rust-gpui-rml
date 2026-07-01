@@ -1,7 +1,7 @@
-//! ActivityBar —— VS Code 风格左侧活动栏控件
+//! ActivityBar —— VS Code 风格左侧活动栏（自治理：激活态 + 面板内容）
 
-use std::rc::Rc;
-use std::sync::Arc;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex, OnceLock};
 
 use gpui::{
     AnyElement, App, ElementId, InteractiveElement, IntoElement, ParentElement, RenderOnce,
@@ -16,33 +16,47 @@ use smallvec::SmallVec;
 
 // ── Trait 定义 ──
 
-/// 活动栏面板项接口（S1–S3）
+/// 活动栏面板项接口
 pub trait IActivityPanel: Send + Sync + 'static {
     fn id(&self) -> SharedString;
     fn icon(&self) -> IconName;
     fn title(&self) -> SharedString;
+    /// 是否激活（仅元数据面板；ActivityBar 内部状态优先）
     fn is_activated(&self) -> bool;
-    /// 面板内容元素。默认返回 `None`，面板内容通常通过 ActivityBar 的子元素提供。
-    fn panel(&self) -> Option<AnyElement> {
+    /// 面板内容。ActivityBar 在渲染时调用当前激活面板的 `panel`。
+    fn panel(&self, window: &mut Window, cx: &mut App) -> Option<AnyElement> {
+        let _ = (window, cx);
         None
     }
 }
 
-/// 活动栏底部动作项接口（B1–B2）
+/// 活动栏底部动作项接口
 pub trait IActivityAct: Send + Sync + 'static {
     fn icon(&self) -> IconName;
     fn title(&self) -> SharedString;
     fn on_click(&self, window: &mut Window, cx: &mut App);
 }
 
-// ── 类型别名（用于 #[computed] 返回类型） ──
-
 pub type ActivityPanels = Vec<Arc<dyn IActivityPanel>>;
 pub type ActivityActs = Vec<Arc<dyn IActivityAct>>;
 
+type ActiveState = Arc<Mutex<Option<SharedString>>>;
+
+fn active_state_for_bar(bar_id: &ElementId) -> ActiveState {
+    static STATES: OnceLock<Mutex<HashMap<String, ActiveState>>> = OnceLock::new();
+    let key = format!("{bar_id:?}");
+    STATES
+        .get_or_init(|| Mutex::new(HashMap::new()))
+        .lock()
+        .expect("activity bar state lock")
+        .entry(key)
+        .or_insert_with(|| Arc::new(Mutex::new(None)))
+        .clone()
+}
+
 // ── 默认实现 ──
 
-/// 活动栏面板项默认实现（元数据；面板内容由 ActivityBar RML 子节点承载）
+/// 活动栏面板项（纯元数据，无 `panel` 内容）
 pub struct ActivityPanel {
     id: SharedString,
     icon: IconName,
@@ -88,7 +102,7 @@ impl IActivityPanel for ActivityPanel {
     }
 }
 
-/// 活动栏底部动作项默认实现
+/// 活动栏底部动作项
 pub struct ActivityAct {
     icon: IconName,
     title: SharedString,
@@ -132,27 +146,28 @@ impl IActivityAct for ActivityAct {
 
 // ── ActivityBar 组件 ──
 
-/// ActivityBar 活动栏控件
+/// ActivityBar：图标栏 + 激活面板内容（内容来自 `IActivityPanel::panel`）
 #[derive(IntoElement)]
 pub struct ActivityBar {
     id: ElementId,
     bar_width: gpui::Pixels,
     panels: ActivityPanels,
     actions: ActivityActs,
-    /// 当前激活面板 ID（空字符串表示全部折叠）。优先于 `panels[].is_activated()` 判定侧栏显隐。
-    active_panel_id: Option<SharedString>,
-    on_panel_change: Option<Rc<dyn Fn(&SharedString, &mut Window, &mut App) + 'static>>,
+    active_state: ActiveState,
+    on_panel_change: Option<Arc<dyn Fn(&SharedString, &mut Window, &mut App) + 'static>>,
+    #[allow(dead_code)]
     panel_children: SmallVec<[AnyElement; 2]>,
 }
 
 impl ActivityBar {
     pub fn new(id: impl Into<ElementId>) -> Self {
+        let id = id.into();
         Self {
-            id: id.into(),
+            active_state: active_state_for_bar(&id),
+            id,
             bar_width: px(48.),
             panels: Vec::new(),
             actions: Vec::new(),
-            active_panel_id: None,
             on_panel_change: None,
             panel_children: SmallVec::new(),
         }
@@ -173,16 +188,11 @@ impl ActivityBar {
         self
     }
 
-    pub fn active_panel_id(mut self, id: impl Into<SharedString>) -> Self {
-        self.active_panel_id = Some(id.into());
-        self
-    }
-
     pub fn on_panel_change(
         mut self,
         f: impl Fn(&SharedString, &mut Window, &mut App) + 'static,
     ) -> Self {
-        self.on_panel_change = Some(Rc::new(f));
+        self.on_panel_change = Some(Arc::new(f));
         self
     }
 }
@@ -194,25 +204,28 @@ impl ParentElement for ActivityBar {
 }
 
 impl RenderOnce for ActivityBar {
-    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let on_panel_change = self.on_panel_change.clone();
-        // 侧栏显隐：优先看 active_panel_id，其次看 panels 元数据中的 is_activated
-        let any_active = self
-            .active_panel_id
-            .as_ref()
-            .map(|id| !id.is_empty())
-            .unwrap_or_else(|| self.panels.iter().any(|p| p.is_activated()));
+        let active_state = self.active_state.clone();
+
+        {
+            let mut active = active_state.lock().expect("activity bar active lock");
+            if active.is_none() {
+                *active = self.panels.first().map(|p| p.id());
+            }
+        }
+
+        let active_id = active_state.lock().expect("activity bar active lock").clone();
+        let any_active = active_id.as_ref().is_some_and(|id| !id.is_empty());
+
         let mut panel_buttons: SmallVec<[AnyElement; 4]> = SmallVec::new();
         for (ix, panel) in self.panels.iter().enumerate() {
             let id = panel.id();
             let icon = panel.icon();
             let title = panel.title();
-            let active = self
-                .active_panel_id
-                .as_ref()
-                .map(|active_id| active_id == &id)
-                .unwrap_or_else(|| panel.is_activated());
+            let active = active_id.as_ref() == Some(&id);
             let on_change = on_panel_change.clone();
+            let state = active_state.clone();
 
             panel_buttons.push(
                 Button::new(("activity-panel", ix))
@@ -224,9 +237,18 @@ impl RenderOnce for ActivityBar {
                     .my(px(2.))
                     .when(active, |btn| btn.bg(cx.theme().sidebar_accent))
                     .on_click(move |_, window, cx| {
+                        {
+                            let mut current = state.lock().expect("activity bar active lock");
+                            if current.as_ref() == Some(&id) {
+                                *current = None;
+                            } else {
+                                *current = Some(id.clone());
+                            }
+                        }
                         if let Some(f) = &on_change {
                             f(&id, window, cx);
                         }
+                        window.refresh();
                     })
                     .into_any_element(),
             );
@@ -242,8 +264,9 @@ impl RenderOnce for ActivityBar {
                     .ghost()
                     .icon(action.icon())
                     .tooltip(action.title())
-                    .w(self.bar_width)
-                    .h(px(48.))
+                    .h(px(36.))
+                    .w(px(36.))
+                    .my(px(2.))
                     .on_click(move |_, window, cx| action.on_click(window, cx))
                     .into_any_element()
             })
@@ -255,22 +278,27 @@ impl RenderOnce for ActivityBar {
             .flex_shrink_0()
             .justify_between()
             .bg(cx.theme().sidebar)
-            .border_r_1()
-            .border_color(cx.theme().border)
             .child(v_flex().w_full().items_center().children(panel_buttons))
             .child(v_flex().w_full().items_center().children(action_buttons));
 
         let mut row = h_flex().id(self.id).h_full().child(icon_bar);
 
-        if any_active && !self.panel_children.is_empty() {
-            row = row.child(
-                gpui::div()
-                    .flex_1()
-                    .h_full()
-                    .min_w_0()
-                    .overflow_hidden()
-                    .children(self.panel_children),
-            );
+        if any_active {
+            if let Some(aid) = active_id.as_ref() {
+                if let Some(panel) = self.panels.iter().find(|p| &p.id() == aid) {
+                    if let Some(body) = panel.panel(window, cx) {
+                        row = row.child(
+                            gpui::div()
+                                .flex_1()
+                                .h_full()
+                                .min_w_0()
+                                .overflow_hidden()
+                                .bg(cx.theme().sidebar)
+                                .child(body),
+                        );
+                    }
+                }
+            }
         }
 
         row

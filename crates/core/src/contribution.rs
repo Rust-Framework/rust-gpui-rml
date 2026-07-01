@@ -107,17 +107,22 @@ pub trait IVisualContribution: IContribution {
     fn render(&self) -> Self::View;
 }
 
-/// 贡献点主机：管理某 `host_id` 下的贡献集合与变更通知。
+/// 贡献点主机标识（零大小标记类型）。
 ///
-/// **不是 UI 组件。** Host 维护贡献元数据列表；应用通过 ViewModel 将 `entries()`
-/// 映射为控件数据（如 `ActivityPanels`、`StatusBarItems`），在 RML 中声明式绑定。
+/// 由 `#[contributehost]` 自动实现。`#[contribute(host = MyHost)]` 可引用该类型，
+/// 框架内部擦除为 `Box<dyn IContributionHost>` 注册。
+pub trait IContributionHostId {
+    const ID: &'static str;
+}
+
+/// 贡献点主机：管理某 host id 下的贡献集合（内部存储，非 UI）。
+///
+/// 读取条目请通过 `App` 贡献扩展（`rml_app::ContributionExt::contribution_registry`）；
+/// UI 同步由框架在 `#[contributehost]` 窗口上自动订阅。
 pub trait IContributionHost: Send + Sync {
-    fn host_id(&self) -> &str;
+    fn id(&self) -> &str;
     fn add(&mut self, entry: ContributedEntry, cx: &mut App);
     fn remove(&mut self, contribution_id: &str, cx: &mut App) -> bool;
-    fn entries(&self) -> &[ContributedEntry];
-    fn version(&self) -> u64;
-    fn set_on_changed(&mut self, callback: Box<dyn Fn(&mut App) + Send + Sync>);
 }
 
 /// 已注册贡献条目
@@ -150,20 +155,4 @@ pub trait ComponentEntityCache {
 
     fn clear(&mut self, contribution_id: &str);
     fn clear_all(&mut self);
-}
-
-/// 统一注册器契约
-pub trait IContributionRegistry {
-    fn add_host(&mut self, host: Box<dyn IContributionHost>);
-    fn host(&self, host_id: &str) -> Option<&dyn IContributionHost>;
-
-    fn register(
-        &mut self,
-        host_id: &str,
-        contribution: Arc<dyn IContribution>,
-        options: ContributionOptions,
-        cx: &mut App,
-    );
-
-    fn unregister(&mut self, host_id: &str, contribution_id: &str, cx: &mut App) -> bool;
 }

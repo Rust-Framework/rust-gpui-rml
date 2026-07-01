@@ -18,12 +18,21 @@
 
 use std::marker::PhantomData;
 
-use gpui::App;
+use gpui::{px, App};
 use rml_core::i18n::ensure_i18n;
 use rml_core::theme::ensure_theme;
 use rml_core::window::IWindow;
 
 use crate::lifecycle::IAppLifecycle;
+
+fn bootstrap_runtime(cx: &mut App) {
+    ensure_i18n(cx);
+    ensure_theme(cx);
+    gpui_component::init(cx);
+    gpui_component::Theme::global_mut(cx).font_size = px(14.);
+    crate::contribution::ensure_contribution_registry(cx);
+    crate::contribution::bootstrap_contributions(cx);
+}
 
 /// 标记：未设置主窗口
 pub struct NoWindow;
@@ -58,9 +67,7 @@ impl RmlApplication<NoWindow> {
         gpui_platform::application()
             .with_assets(gpui_component_assets::Assets)
             .run(move |cx: &mut App| {
-                ensure_i18n(cx);
-                ensure_theme(cx);
-                crate::contribution::ensure_contribution_registry(cx);
+                bootstrap_runtime(cx);
                 A::default().on_launch(cx);
             });
     }
@@ -75,9 +82,7 @@ impl<W: IWindow + Default + 'static> RmlApplication<W> {
         gpui_platform::application()
             .with_assets(gpui_component_assets::Assets)
             .run(move |cx: &mut App| {
-                ensure_i18n(cx);
-                ensure_theme(cx);
-                crate::contribution::ensure_contribution_registry(cx);
+                bootstrap_runtime(cx);
                 L::default().on_launch(cx);
                 W::default().open(cx);
             });

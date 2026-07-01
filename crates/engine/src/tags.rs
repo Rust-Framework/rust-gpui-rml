@@ -39,11 +39,11 @@ impl BuiltinTag {
             // 容器类
             BuiltinTag::Div => "gpui::div()",
             BuiltinTag::Span => "gpui::div()",
-            BuiltinTag::P => "gpui::div()",
-            // 标题：直接 text_size 设置 px 大小（参考 tailwind 默认值）
-            // h1=32px / h2=28px / h3=24px / h4=20px / h5=18px / h6=16px
+            BuiltinTag::P => "gpui::div().text_sm().text_color(rml_core::theme::color(\"--text-muted\"))",
+            // 标题：直接 text_size 设置 px 大小（紧凑现代默认值）
+            // h1=32px / h2=18px / h3=24px / h4=20px / h5=18px / h6=16px
             BuiltinTag::H1 => "gpui::div().text_size(gpui::px(32.))",
-            BuiltinTag::H2 => "gpui::div().text_size(gpui::px(28.))",
+            BuiltinTag::H2 => "gpui::div().text_size(gpui::px(18.))",
             BuiltinTag::H3 => "gpui::div().text_size(gpui::px(24.))",
             BuiltinTag::H4 => "gpui::div().text_size(gpui::px(20.))",
             BuiltinTag::H5 => "gpui::div().text_size(gpui::px(18.))",
@@ -74,7 +74,7 @@ impl BuiltinTag {
     pub fn text_size(self) -> f32 {
         match self {
             BuiltinTag::H1 => 32.0,
-            BuiltinTag::H2 => 28.0,
+            BuiltinTag::H2 => 18.0,
             BuiltinTag::H3 => 24.0,
             BuiltinTag::H4 => 20.0,
             BuiltinTag::H5 => 18.0,

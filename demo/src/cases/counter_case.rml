@@ -1,7 +1,6 @@
 <component>
-    <div class="case-pane">
-        <h2 class="case-title">{t("case.counter.title")}</h2>
-        <p class="count">{counter_text}</p>
-        <Button label={t("demo.click_btn")} primary="" onclick={on_click} />
+    <div v_flex="" class="case-pane">
+        <h2>{t("case.counter.title")}</h2>
+        <p>{counter_text}</p>
     </div>
 </component>

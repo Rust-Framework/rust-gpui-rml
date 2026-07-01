@@ -1,23 +1,18 @@
-//! 单 Host 贡献映射 —— 将 `demo.shell` host 中的贡献按 `properties["kind"]`
-//! 分类，映射为 UI 绑定数据（ActivityPanels / StatusBarItems / MenuItems / TreeItem）。
-//!
-//! 同时提供程序化注册辅助：菜单/状态/案例分类节点（纯元数据贡献）。
+//! Single-host contribution mapping: `demo.shell` entries by `properties["kind"]`
+//! to UI binding data (ActivityPanels / StatusBarItems / MenuItems / TreeItem).
 
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use gpui::{App, BorrowAppContext, SharedString};
-use rml_app::contribution::{data_registerable, ContributionRegistryGlobal, Registerable};
+use gpui::SharedString;
+use rml_app::contribution::contribution_entries;
 use rml_core::command::ICommand;
-use rml_core::contribution::{
-    ContributionOptions, ContributedEntry, IContribution, IContributionRegistry,
-};
+use rml_core::contribution::ContributedEntry;
 use rml_ui::{
-    ActivityPanel, ActivityPanels, IconName, MenuItem, MenuItems, StatusBarAlign, StatusBarItem,
-    StatusBarItems, TreeItem,
+    IconName, MenuItem, MenuItems, StatusBarAlign, StatusBarItem, StatusBarItems, TreeItem,
 };
 
-/// 单一 host_id —— MainWindow 管理的所有贡献
+/// Main window host id (same as `MainWindow::ID`; literal avoids module cycle).
 pub const SHELL_HOST: &str = "demo.shell";
 
 pub const KIND_MENU: &str = "menu";
@@ -25,11 +20,11 @@ pub const KIND_ACTIVITY: &str = "activity";
 pub const KIND_STATUS: &str = "status";
 pub const KIND_CASE: &str = "case";
 
-fn kind_of(entry: &ContributedEntry) -> Option<&str> {
+pub(super) fn kind_of(entry: &ContributedEntry) -> Option<&str> {
     entry.options.properties.get("kind").map(|s| s.as_ref())
 }
 
-fn icon_from_name(name: &str) -> IconName {
+pub(super) fn icon_from_name(name: &str) -> IconName {
     match name {
         "BookOpen" => IconName::BookOpen,
         "Settings" => IconName::Settings,
@@ -38,39 +33,11 @@ fn icon_from_name(name: &str) -> IconName {
     }
 }
 
-fn host_entries<'a, C>(cx: &'a gpui::Context<C>, host_id: &str) -> Vec<&'a ContributedEntry> {
-    let registry = &cx.global::<ContributionRegistryGlobal>().0;
-    match registry.host(host_id) {
-        Some(host) => host.entries().iter().collect(),
-        None => Vec::new(),
-    }
+pub(super) fn host_entries<'a, C>(cx: &'a gpui::Context<C>, host_id: &str) -> Vec<&'a ContributedEntry> {
+    contribution_entries(host_id, cx).iter().collect()
 }
 
-/// host → ActivityPanels（kind=activity）
-pub fn build_activity_panels<C>(cx: &gpui::Context<C>, active_id: &str) -> ActivityPanels {
-    let mut entries: Vec<&ContributedEntry> = host_entries(cx, SHELL_HOST)
-        .into_iter()
-        .filter(|e| kind_of(e) == Some(KIND_ACTIVITY))
-        .collect();
-    entries.sort_by_key(|e| e.options.order);
-
-    entries
-        .into_iter()
-        .map(|e| {
-            let id = e.contribution.id();
-            let icon = e
-                .contribution
-                .icon()
-                .map(|s| icon_from_name(s.as_ref()))
-                .unwrap_or(IconName::Frame);
-            ActivityPanel::new(id, icon, e.contribution.name())
-                .active(active_id == id)
-                .into_arc()
-        })
-        .collect()
-}
-
-/// host → StatusBarItems（kind=status）
+/// host -> StatusBarItems (kind=status)
 pub fn build_status_items<C>(cx: &gpui::Context<C>) -> StatusBarItems {
     let mut entries: Vec<&ContributedEntry> = host_entries(cx, SHELL_HOST)
         .into_iter()
@@ -92,10 +59,7 @@ pub fn build_status_items<C>(cx: &gpui::Context<C>) -> StatusBarItems {
         .collect()
 }
 
-/// host → MenuItems（kind=menu），命令从 `commands` 侧表按 id 查找挂接
-///
-/// 支持按 `parent_id` 组装子菜单层级：顶层菜单项（parent_id=None）作为菜单栏入口，
-/// 其子项（parent_id=父菜单 id）作为下拉菜单内容。
+/// host -> MenuItems (kind=menu); commands from side table by id
 pub fn build_menu_items<C>(
     cx: &gpui::Context<C>,
     commands: &HashMap<String, Arc<dyn ICommand>>,
@@ -142,7 +106,7 @@ pub fn build_menu_items<C>(
     build_children(None, &by_parent, commands)
 }
 
-/// host → TreeItem 树（kind=case，按 `parent_id` 层级组装）
+/// host -> TreeItem tree (kind=case, hierarchical via parent_id)
 pub fn build_case_tree_items<C>(cx: &gpui::Context<C>) -> Vec<TreeItem> {
     use std::collections::HashMap as Map;
 
@@ -196,102 +160,4 @@ pub fn build_case_tree_items<C>(cx: &gpui::Context<C>) -> Vec<TreeItem> {
     }
 
     build_children(None, &by_parent)
-}
-
-// ─── 纯元数据贡献结构（程序化注册） ───────────────────────────────
-
-#[derive(Clone)]
-struct TextContribution {
-    id: &'static str,
-    name_key: &'static str,
-}
-
-impl IContribution for TextContribution {
-    fn id(&self) -> &str {
-        self.id
-    }
-    fn name(&self) -> SharedString {
-        rml_core::i18n::t_static(self.name_key).into()
-    }
-    fn description(&self) -> SharedString {
-        SharedString::default()
-    }
-    fn icon(&self) -> Option<SharedString> {
-        None
-    }
-}
-
-impl Registerable for TextContribution {
-    fn into_entry(
-        contribution: Arc<Self>,
-        options: ContributionOptions,
-    ) -> ContributedEntry {
-        data_registerable(contribution, options)
-    }
-}
-
-fn register_text(cx: &mut App, id: &'static str, name_key: &'static str, kind: &str, order: i32) {
-    let contribution = Arc::new(TextContribution { id, name_key });
-    let options = ContributionOptions::new()
-        .property("kind", kind)
-        .order(order);
-    cx.update_global::<ContributionRegistryGlobal, _>(|global, cx| {
-        global.0.register(SHELL_HOST, contribution, options, cx);
-    });
-}
-
-/// 注册菜单元数据贡献（kind=menu）。命令由 MainWindow 在 `menu_commands` 侧表维护。
-pub fn register_menu_entry(cx: &mut App, id: &'static str, name_key: &'static str, order: i32) {
-    register_text(cx, id, name_key, KIND_MENU, order);
-}
-
-/// 注册带父菜单的菜单元数据贡献（kind=menu + parent_id）。
-/// 顶层菜单用 `parent_id=None`，子菜单项用 `parent_id=Some(父菜单 id)`。
-pub fn register_menu_entry_with_parent(
-    cx: &mut App,
-    id: &'static str,
-    name_key: &'static str,
-    parent_id: Option<&'static str>,
-    order: i32,
-) {
-    let contribution = Arc::new(TextContribution { id, name_key });
-    let mut options = ContributionOptions::new()
-        .property("kind", KIND_MENU)
-        .order(order);
-    if let Some(p) = parent_id {
-        options = options.parent_id(p);
-    }
-    cx.update_global::<ContributionRegistryGlobal, _>(|global, cx| {
-        global.0.register(SHELL_HOST, contribution, options, cx);
-    });
-}
-
-/// 注册状态栏文本贡献（kind=status）
-pub fn register_status_entry(cx: &mut App, id: &'static str, name_key: &'static str, order: i32) {
-    register_text(cx, id, name_key, KIND_STATUS, order);
-}
-
-/// 注册案例分类节点（kind=case，parent_id=None，树根）
-pub fn register_case_categories(cx: &mut App) {
-    register_case_node(cx, "cat.binding", "tree.cat.binding", None, 0);
-    register_case_node(cx, "cat.components", "tree.cat.components", None, 10);
-    register_case_node(cx, "cat.menu", "tree.cat.menu", None, 15);
-    register_case_node(cx, "cat.i18n", "tree.cat.i18n", None, 20);
-}
-
-fn register_case_node(
-    cx: &mut App,
-    id: &'static str,
-    name_key: &'static str,
-    parent_id: Option<&'static str>,
-    order: i32,
-) {
-    let contribution = Arc::new(TextContribution { id, name_key });
-    let mut options = ContributionOptions::new().property("kind", KIND_CASE).order(order);
-    if let Some(p) = parent_id {
-        options = options.parent_id(p);
-    }
-    cx.update_global::<ContributionRegistryGlobal, _>(|global, cx| {
-        global.0.register(SHELL_HOST, contribution, options, cx);
-    });
 }

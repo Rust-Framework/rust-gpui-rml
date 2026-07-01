@@ -4,9 +4,10 @@ use rml_core::i18n::I18nState;
 use rml_ui::TreeState;
 
 use crate::shell::contributions;
+use crate::shell::MainWindow;
 
 #[contribute(
-    host = "demo.shell",
+    host = MainWindow,
     id = "samples",
     name = "shell.samples",
     icon = IconName::BookOpen,

@@ -1,7 +1,8 @@
 use rml::prelude::*;
+use crate::shell::MainWindow;
 
 #[contribute(
-    host = "demo.shell",
+    host = MainWindow,
     id = "binding.counter",
     name = "case.counter.title",
     kind = "case",

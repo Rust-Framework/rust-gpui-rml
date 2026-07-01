@@ -3,8 +3,8 @@
     width="420"
     margin_top="120">
     <div class="login">
-        <h1 class="login-title">{t("login.title")}</h1>
-        <p class="login-hint">{t("login.hint")}</p>
+        <h1>{t("login.title")}</h1>
+        <p>{t("login.hint")}</p>
         <div class="login-form">
             <input model={username} placeholder={t("login.username")} />
             <Button label={t("login.submit")} primary="" onclick={on_login} />

@@ -15,6 +15,7 @@ mod command;
 mod component;
 mod computed;
 mod contribute;
+mod contributehost;
 mod derive_model;
 mod lifecycle;
 mod main_attr;
@@ -38,6 +39,22 @@ pub fn derive_i_model(input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn contribute(args: TokenStream, input: TokenStream) -> TokenStream {
     contribute::expand(args.into(), input.into()).into()
+}
+
+/// 声明贡献点主机标记类型（通常标注主窗口 ViewModel）。
+///
+/// - 自动实现 [`IContributionHostId`] 并在启动时 `App::add` 注册 host
+/// - 首次 render 时自动订阅注册表变更（无需在 `on_loaded` 中手动 wire / notify）
+/// - `bindings`：贡献变更时调用的 ViewModel 方法名（如 `"refresh_bindings"`）
+///
+/// ```rust,ignore
+/// #[contributehost(id = "my.app", bindings = "refresh_bindings")]
+/// #[window]
+/// pub struct MainWindow { ... }
+/// ```
+#[proc_macro_attribute]
+pub fn contributehost(args: TokenStream, input: TokenStream) -> TokenStream {
+    contributehost::expand(args.into(), input.into()).into()
 }
 
 /// 标记结构体为 RML 组件（Code-Behind ViewModel）。

@@ -68,6 +68,8 @@ pub struct StructMetadata {
     /// build.rs 据此收集 `user_components` 注册表，供 codegen 在
     /// `component_lookup` 未命中时生成 `self.<field>.as_ref().expect(...).clone()`。
     pub is_component: bool,
+    /// 是否标注 `#[contributehost]`（codegen 自动绑定贡献注册表变更）
+    pub is_contributehost: bool,
 }
 
 /// 扫描 `.rml.rs` code-behind 文件，提取所有 `#[window]`/`#[component]` 标注 struct 的元信息。
@@ -98,12 +100,14 @@ pub fn scan_struct_metadata(rml_rs_path: &Path) -> HashMap<String, StructMetadat
         if let Item::Struct(s) = item {
             let has_window = s.attrs.iter().any(|a| a.path().is_ident("window"));
             let has_component = s.attrs.iter().any(|a| a.path().is_ident("component"));
+            let is_contributehost = s.attrs.iter().any(|a| a.path().is_ident("contributehost"));
             if !has_window && !has_component {
                 continue;
             }
             let struct_name = s.ident.to_string();
             let mut meta = StructMetadata::default();
             meta.is_component = has_component;
+            meta.is_contributehost = is_contributehost;
             for f in &s.fields {
                 if let Some(name) = &f.ident {
                     let name_str = name.to_string();

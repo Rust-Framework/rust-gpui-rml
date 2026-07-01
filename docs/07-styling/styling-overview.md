@@ -2,7 +2,20 @@
 
 > **本节目标**：了解 RML 样式系统的全貌——样式来源、加载机制、作用域、与 GPUI 的关系。
 
-## 7.1.1 样式的来源
+## 7.1.1 默认样式层级（defaults-first）
+
+开箱 UI 按以下优先级叠加，**应用 CSS 位于最末，仅作可选覆盖**：
+
+| 层级 | 来源 | 示例 |
+|------|------|------|
+| L1 | gpui-component `Theme` | `font_size`（14px demo）、`rem`、颜色 token |
+| L2 | `rml_ui` Shell 组件 | `MenuBar` 按钮间距、`ActivityBar` 面板背景、`TabWindow` bottom slot |
+| L3 | engine 语义标签 | `h2` 18px、`p` 次要文字 + `--text-muted` |
+| L4 | 应用 CSS / 主题变量 | `assets/styles.css`、`assets/themes/*.css` |
+
+Demo 在 `Startup::on_launch` 中设置 `Theme.font_size = 14px`；Shell 控件（Menu、StatusBar、Tree）无需 CSS class 即可呈现简洁外观。
+
+## 7.1.2 样式的来源
 
 RML 的样式来自三个层次：
 
@@ -82,7 +95,7 @@ rml::compile_rml()
 }
 ```
 
-## 7.1.2 样式的加载机制
+## 7.1.3 样式的加载机制
 
 ### 编译时加载
 
@@ -119,7 +132,7 @@ fn main() {
 # 修改 styles/main.css 后，应用自动刷新
 ```
 
-## 7.1.3 样式的作用域
+## 7.1.4 样式的作用域
 
 ### 全局样式
 
@@ -160,7 +173,7 @@ fn main() {
 <div style="color: red;">红色文字</div>
 ```
 
-## 7.1.4 样式的优先级
+## 7.1.5 样式的优先级
 
 RML 样式优先级从低到高：
 
@@ -197,7 +210,7 @@ RML 样式优先级从低到高：
 <!-- 背景：red（内联样式覆盖一切） -->
 ```
 
-## 7.1.5 样式与 GPUI 的关系
+## 7.1.6 样式与 GPUI 的关系
 
 RML 的样式系统建立在 GPUI 之上：
 
@@ -230,7 +243,7 @@ div()
     )
 ```
 
-## 7.1.6 样式的限制
+## 7.1.7 样式的限制
 
 RML 的样式系统是 CSS 子集，有一些限制：
 
@@ -255,7 +268,7 @@ RML 的样式系统是 CSS 子集，有一些限制：
 | 动画               | GPUI 动画 API          |
 | CSS Grid         | Flexbox 嵌套            |
 
-## 7.1.7 样式的调试
+## 7.1.8 样式的调试
 
 ### 开发者工具
 
@@ -277,7 +290,7 @@ pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
 }
 ```
 
-## 7.1.8 样式系统的设计理念
+## 7.1.9 样式系统的设计理念
 
 RML 样式系统的设计理念：
 
@@ -322,7 +335,7 @@ RML 样式系统的设计理念：
 <div style="display: flex; flex-direction: column; gap: 16px; padding: 24px;">
 ```
 
-## 7.1.9 小结
+## 7.1.10 小结
 
 RML 的样式系统：
 

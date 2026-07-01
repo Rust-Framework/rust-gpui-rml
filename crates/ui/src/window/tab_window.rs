@@ -13,7 +13,7 @@ use gpui::{
     Styled, Window, div, px, prelude::FluentBuilder as _,
 };
 use gpui_component::{
-    Icon, IconName, Sizable as _,
+    ActiveTheme, Icon, IconName, Sizable as _,
     TitleBar,
     button::{Button, ButtonRounded, ButtonVariants as _},
     tab::{Tab, TabBar},
@@ -232,7 +232,7 @@ impl ParentElement for TabWindowShell {
 }
 
 impl RenderOnce for TabWindowShell {
-    fn render(self, window: &mut Window, _cx: &mut App) -> impl IntoElement {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let viewport = window.viewport_size();
         let show_chrome = self.show_chrome;
         let reserved = reserved_title_width(
@@ -356,12 +356,25 @@ impl RenderOnce for TabWindowShell {
         let center_col = {
             let mut col = v_resizable("tab-window-center-col").child(body);
             if let Some(bottom) = self.slot_bottom {
+                let panel = div()
+                    .flex()
+                    .items_center()
+                    .px(px(12.))
+                    .py(px(8.))
+                    .h_full()
+                    .w_full()
+                    .text_xs()
+                    .text_color(cx.theme().muted_foreground)
+                    .bg(cx.theme().muted)
+                    .border_t_1()
+                    .border_color(cx.theme().border)
+                    .child(bottom);
                 col = col.child(
                     resizable_panel()
                         .size(self.bottom_height)
                         .flex_none()
                         .size_range(px(80.)..px(500.))
-                        .child(bottom),
+                        .child(panel),
                 );
             }
             col

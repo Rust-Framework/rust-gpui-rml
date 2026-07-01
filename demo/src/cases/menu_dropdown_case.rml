@@ -1,7 +1,7 @@
 <component>
-    <div class="case-pane">
-        <h2 class="case-title">{t("case.menu.dropdown.title")}</h2>
-        <p class="case-hint">{dropdown_status}</p>
+    <div v_flex="" class="case-pane">
+        <h2>{t("case.menu.dropdown.title")}</h2>
+        <p>{dropdown_status}</p>
         <dropdown-menu anchor="TopRight">
             <Button label="Options" ghost="" />
             <menu-item label="Custom Action" icon="Star" onclick={on_custom} />

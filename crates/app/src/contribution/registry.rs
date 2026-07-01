@@ -1,22 +1,24 @@
-//! `IContributionRegistry` 实现 + 统一 `register`
+//! 贡献注册表内部实现（通过 [`ContributionExt`](super::global::ContributionExt) 访问）
 
 use std::collections::HashMap;
 use std::sync::Arc;
 
 use gpui::App;
 use rml_core::contribution::{
-    ComponentEntityCache, ContributedEntry, ContributionOptions, IContributionHost,
-    IContributionRegistry,
+    ComponentEntityCache, ContributedEntry, ContributionOptions, IContribution, IContributionHost,
 };
 
 use super::entry::{add_entry, data_entry_dyn};
 use super::host::ContributionHost;
 use super::registerable::Registerable;
 
-/// 全局贡献注册表
+type HostListener = Box<dyn Fn(&mut App) + Send + Sync>;
+
+/// 全局贡献注册表（框架内部；应用通过 `App` 扩展 trait 操作）
 pub struct ContributionRegistry {
-    hosts: HashMap<String, Box<dyn IContributionHost>>,
+    hosts: HashMap<String, ContributionHost>,
     entity_cache: rml_core::contribution_cache::ComponentEntityCacheImpl,
+    listeners: HashMap<String, Vec<HostListener>>,
 }
 
 impl ContributionRegistry {
@@ -24,6 +26,7 @@ impl ContributionRegistry {
         Self {
             hosts: HashMap::new(),
             entity_cache: rml_core::contribution_cache::ComponentEntityCacheImpl::new(),
+            listeners: HashMap::new(),
         }
     }
 
@@ -31,27 +34,59 @@ impl ContributionRegistry {
         &mut self.entity_cache
     }
 
-    /// 确保 host 存在（首次向某 `host_id` 注册时自动调用；应用也可提前创建以绑定 `on_changed`）
-    pub fn ensure_host(&mut self, host_id: impl Into<String>) {
+    pub fn insert_host(&mut self, host: Box<dyn IContributionHost>) {
+        let id = host.id().to_string();
+        self.hosts
+            .entry(id)
+            .or_insert_with(|| ContributionHost::new(host.id()));
+    }
+
+    pub fn remove_host(&mut self, host_id: &str) {
+        if let Some(host) = self.hosts.remove(host_id) {
+            for entry in host.entries() {
+                self.entity_cache.clear(entry.contribution.id());
+            }
+        }
+        self.listeners.remove(host_id);
+    }
+
+    pub fn entries(&self, host_id: &str) -> &[ContributedEntry] {
+        self.hosts
+            .get(host_id)
+            .map(ContributionHost::entries)
+            .unwrap_or(&[])
+    }
+
+    pub fn revision(&self, host_id: &str) -> u64 {
+        self.hosts
+            .get(host_id)
+            .map(ContributionHost::revision)
+            .unwrap_or(0)
+    }
+
+    pub fn subscribe_host(&mut self, host_id: &str, listener: HostListener) {
+        self.listeners
+            .entry(host_id.to_string())
+            .or_default()
+            .push(listener);
+    }
+
+    fn ensure_host(&mut self, host_id: impl Into<String>) {
         let id = host_id.into();
-        if !self.hosts.contains_key(&id) {
-            self.add_host(Box::new(ContributionHost::new(id)));
+        self.hosts
+            .entry(id.clone())
+            .or_insert_with(|| ContributionHost::new(id));
+    }
+
+    fn notify_host(&self, host_id: &str, cx: &mut App) {
+        if let Some(listeners) = self.listeners.get(host_id) {
+            for listener in listeners {
+                listener(cx);
+            }
         }
     }
 
-    /// 为指定 host 设置变更回调（供 Shell 驱动 UI 同步）
-    pub fn set_host_on_changed(
-        &mut self,
-        host_id: &str,
-        callback: Box<dyn Fn(&mut App) + Send + Sync>,
-    ) {
-        if let Some(host) = self.hosts.get_mut(host_id) {
-            host.set_on_changed(callback);
-        }
-    }
-
-    /// 统一注册入口：由 `Registerable::into_entry` 区分数据/视图贡献
-    pub fn register<T>(
+    pub fn register_typed<T>(
         &mut self,
         host_id: &str,
         contribution: Arc<T>,
@@ -64,28 +99,10 @@ impl ContributionRegistry {
         self.register_entry(host_id, entry, cx);
     }
 
-    /// 直接注册已构建条目（host 不存在时自动创建）
-    pub fn register_entry(&mut self, host_id: &str, entry: ContributedEntry, cx: &mut App) {
-        self.ensure_host(host_id);
-        add_entry(&mut self.hosts, host_id, entry, cx);
-    }
-}
-
-impl IContributionRegistry for ContributionRegistry {
-    fn add_host(&mut self, host: Box<dyn IContributionHost>) {
-        let id = host.host_id().to_string();
-        self.hosts.insert(id, host);
-    }
-
-    fn host(&self, host_id: &str) -> Option<&dyn IContributionHost> {
-        self.hosts.get(host_id).map(|h| h.as_ref())
-    }
-
-    /// 动态 trait 对象注册
-    fn register(
+    pub fn register_dyn(
         &mut self,
         host_id: &str,
-        contribution: Arc<dyn rml_core::contribution::IContribution>,
+        contribution: Arc<dyn IContribution>,
         options: ContributionOptions,
         cx: &mut App,
     ) {
@@ -93,7 +110,13 @@ impl IContributionRegistry for ContributionRegistry {
         self.register_entry(host_id, entry, cx);
     }
 
-    fn unregister(&mut self, host_id: &str, contribution_id: &str, cx: &mut App) -> bool {
+    pub fn register_entry(&mut self, host_id: &str, entry: ContributedEntry, cx: &mut App) {
+        self.ensure_host(host_id);
+        add_entry(&mut self.hosts, host_id, entry, cx);
+        self.notify_host(host_id, cx);
+    }
+
+    pub fn unregister(&mut self, host_id: &str, contribution_id: &str, cx: &mut App) -> bool {
         let removed = self
             .hosts
             .get_mut(host_id)
@@ -101,6 +124,7 @@ impl IContributionRegistry for ContributionRegistry {
             .unwrap_or(false);
         if removed {
             self.entity_cache.clear(contribution_id);
+            self.notify_host(host_id, cx);
         }
         removed
     }

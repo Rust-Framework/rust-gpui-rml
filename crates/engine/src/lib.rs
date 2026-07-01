@@ -17,6 +17,7 @@ pub use regex;
 ///
 /// 用户在 main.rs 中通过 `#[rml::main]` 调用,自动注入资源嵌入代码。
 pub use rml_macros::contribute;
+pub use rml_macros::contributehost;
 pub use rml_macros::main;
 
 pub mod build;
@@ -77,12 +78,7 @@ macro_rules! embed_assets {
 /// 嵌入 build.rs 生成的贡献点自动注册表。
 ///
 /// 与 [`embed_assets!`] 一样由 [`main`] 属性宏注入。生成 `register_rml_contributions(cx)`，
-/// 在 `on_launch` 中调用一次即可注册所有带 `#[contribute]` 的组件。
-///
-/// ```rust,ignore
-/// // app.rs — IAppLifecycle::on_launch
-/// crate::register_rml_contributions(cx);
-/// ```
+/// 由 `RmlApplication::run` 在启动时自动调用（通过 `#[ctor::ctor]` 安装 bootstrap）。
 #[macro_export]
 macro_rules! embed_contributions {
     () => {

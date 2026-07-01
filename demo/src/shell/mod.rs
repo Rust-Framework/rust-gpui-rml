@@ -1,4 +1,6 @@
+pub mod activity_panels;
 pub mod contributions;
+pub mod shell_meta;
 #[path = "case_activity_panel.rml.rs"]
 pub mod case_activity_panel;
 #[path = "login_dialog.rml.rs"]

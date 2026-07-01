@@ -9,7 +9,7 @@ use syn::{
 };
 
 struct ContributeArgs {
-    host: LitStr,
+    host: Expr,
     id: LitStr,
     name: LitStr,
     description: Option<LitStr>,
@@ -121,6 +121,20 @@ fn placement_tokens(placement: &Option<Ident>) -> TokenStream {
     }
 }
 
+/// `host = "id"` 或 `host = MyHost`（须实现 [`IContributionHostId`]）
+fn host_id_tokens(host: &Expr) -> TokenStream {
+    match host {
+        Expr::Lit(syn::ExprLit {
+            lit: syn::Lit::Str(s),
+            ..
+        }) => quote! { #s },
+        Expr::Path(_) => quote! { #host::ID },
+        _ => quote! {
+            compile_error!("host must be a string literal or a type implementing IContributionHostId")
+        },
+    }
+}
+
 pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
     let args = match syn::parse2::<ContributeArgs>(args) {
         Ok(a) => a,
@@ -162,7 +176,7 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
         struct_name.to_string().to_lowercase()
     );
 
-    let host = &args.host;
+    let host_id = host_id_tokens(&args.host);
     let id = &args.id;
     let name_key = &args.name;
     let description_impl = if let Some(desc) = &args.description {
@@ -184,8 +198,16 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
     } else {
         quote! { None }
     };
-    let visual_mode = visual_mode_tokens(&args.mode);
-    let placement = placement_tokens(&args.placement);
+    let visual_mode = args
+        .mode
+        .as_ref()
+        .map(|_| visual_mode_tokens(&args.mode))
+        .map(|t| quote! { .visual_mode(#t) });
+    let placement = args
+        .placement
+        .as_ref()
+        .map(|_| placement_tokens(&args.placement))
+        .map(|p| quote! { .placement(#p) });
     let order = args
         .order
         .as_ref()
@@ -206,6 +228,40 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
         .as_ref()
         .map(|p| quote! { .parent_id(#p) })
         .unwrap_or_default();
+
+    let is_visual_panel = args.mode.as_ref().is_some_and(|m| m == "Panel");
+
+    let registerable_impl = if is_visual_panel {
+        quote! {
+            impl rml_core::contribution::IVisualContribution for #struct_name {
+                type View = #struct_name;
+
+                fn render(&self) -> Self {
+                    #struct_name::default()
+                }
+            }
+
+            impl rml_app::contribution::Registerable for #struct_name {
+                fn into_entry(
+                    contribution: std::sync::Arc<Self>,
+                    options: rml_core::contribution::ContributionOptions,
+                ) -> rml_core::contribution::ContributedEntry {
+                    rml_app::contribution::visual_registerable(contribution, options)
+                }
+            }
+        }
+    } else {
+        quote! {
+            impl rml_app::contribution::Registerable for #struct_name {
+                fn into_entry(
+                    contribution: std::sync::Arc<Self>,
+                    options: rml_core::contribution::ContributionOptions,
+                ) -> rml_core::contribution::ContributedEntry {
+                    rml_app::contribution::data_registerable(contribution, options)
+                }
+            }
+        }
+    };
 
     quote! {
         #(#items)*
@@ -228,31 +284,21 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
             }
         }
 
-        impl rml_app::contribution::Registerable for #struct_name {
-            fn into_entry(
-                contribution: std::sync::Arc<Self>,
-                options: rml_core::contribution::ContributionOptions,
-            ) -> rml_core::contribution::ContributedEntry {
-                rml_app::contribution::data_registerable(contribution, options)
-            }
-        }
+        #registerable_impl
 
         /// 由 build.rs 生成的 `register_rml_contributions` 统一调用；用户无需手写清单。
         pub fn #register_fn(cx: &mut gpui::App) {
             use std::sync::Arc;
-            use gpui::BorrowAppContext;
-            use rml_app::contribution::ContributionRegistryGlobal;
+            use rml_app::contribution::register_contribution;
             let contribution = Arc::new(#struct_name::default());
             let options = rml_core::contribution::ContributionOptions::new()
-                .visual_mode(#visual_mode)
-                .placement(#placement)
+                #visual_mode
+                #placement
                 #kind
                 #parent_id
                 #order
                 #group;
-            cx.update_global::<ContributionRegistryGlobal, _>(|global, cx| {
-                global.0.register(#host, contribution, options, cx);
-            });
+            register_contribution::<#struct_name>(cx, #host_id, contribution, options);
         }
     }
 }

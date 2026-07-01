@@ -22,3 +22,17 @@ pub fn data_registerable<T: IContribution + 'static>(
 ) -> ContributedEntry {
     data_entry(contribution, options)
 }
+
+/// 视图贡献默认实现（`IVisualContribution` + `#[component]`）
+pub fn visual_registerable<T>(contribution: Arc<T>, options: ContributionOptions) -> ContributedEntry
+where
+    T: rml_core::contribution::IVisualContribution + 'static,
+    T::View: rml_core::component::IComponent
+        + gpui::Render
+        + Default
+        + Send
+        + Sync
+        + 'static,
+{
+    super::entry::visual_entry(contribution, options)
+}

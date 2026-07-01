@@ -1,6 +1,6 @@
 <component>
-    <div class="case-pane">
-        <h2 class="case-title">{t("case.i18n.title")}</h2>
+    <div v_flex="" class="case-pane">
+        <h2>{t("case.i18n.title")}</h2>
         <p>{t("demo.hello")}</p>
         <Button label={t("menu.lang_en")} onclick={on_switch_en} />
         <Button label={t("menu.theme_toggle")} onclick={on_toggle_theme} />
