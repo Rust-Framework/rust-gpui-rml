@@ -5,6 +5,10 @@
 
 #![deny(unsafe_code)]
 
+/// 重导出 `ctor` crate,供 build.rs 生成的资源自动注册代码使用
+/// （用户 crate 无需显式依赖 `ctor`）。
+pub use ctor;
+
 pub mod assets;
 pub mod binding;
 pub mod i18n;

@@ -13,6 +13,11 @@ pub extern crate rust_rml_macros as rml_macros;
 // Phase B-3.2：re-export regex crate，供 codegen 生成的校验代码使用（rml::regex::Regex::new(...)）
 pub use regex;
 
+/// 应用入口属性宏（re-export 自 rml_macros）
+///
+/// 用户在 main.rs 中通过 `#[rml::main]` 调用,自动注入资源嵌入代码。
+pub use rml_macros::main;
+
 pub mod build;
 pub mod compiler;
 pub mod css;
@@ -47,48 +52,24 @@ pub use build::build;
 
 /// 嵌入资源注册表宏
 ///
-/// 在用户 crate 根(通常是 `main.rs` 或 `lib.rs`)调用,注入 `RML_ASSETS` 常量。
-/// 配合 `rml::assets::init(RML_ASSETS)` 在启动时注册到运行时查询表。
+/// 在用户 crate 根(通常是 `main.rs` 或 `lib.rs`)调用,引入 build.rs 生成的
+/// `rml_assets.rs` 内容（包含 `static RML_ASSETS` 与 `#[ctor::ctor]` 自动注册函数）。
+///
+/// 通常无需手动调用,推荐使用 `#[rml::main]` 属性宏自动注入。
 ///
 /// ```rust,ignore
 /// // main.rs
 /// rml::embed_assets!();
 ///
 /// fn main() {
-///     rml::assets::init(RML_ASSETS);
-///     // ... 启动应用
+///     // 资源已由 ctor 自动 init,直接启动应用
+///     // ...
 /// }
 /// ```
 #[macro_export]
 macro_rules! embed_assets {
     () => {
         include!(concat!(env!("OUT_DIR"), "/rml_generated/rml_assets.rs"));
-    };
-}
-
-/// 一键启动宏:内部完成资源嵌入、资源注册、应用启动。
-///
-/// 在用户 crate 根调用,替代手写 `embed_assets!()` + `fn main()`。
-/// 宏内部生成 `fn main()`,调用者无需再写。
-///
-/// ```rust,ignore
-/// // main.rs
-/// extern crate rust_rml_engine as rml;
-/// extern crate rust_rml_app as rml_app;
-///
-/// mod app;
-///
-/// rml::main!(app::AppBootstrap);
-/// ```
-#[macro_export]
-macro_rules! main {
-    ($app:path) => {
-        $crate::embed_assets!();
-
-        fn main() {
-            $crate::assets::init(RML_ASSETS);
-            ::rml_app::RmlApplication::new().run::<$app>();
-        }
     };
 }
 

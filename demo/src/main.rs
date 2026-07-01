@@ -8,13 +8,13 @@ mod app;
 mod cases;
 mod shell;
 
-// 嵌入 assets/ 资源到二进制（由 build.rs 生成 RML_ASSETS 注册表）
-rml::embed_assets!();
-
+// `#[rml::main]` 自动注入 `rml::embed_assets!()`（include build.rs 生成的 rml_assets.rs）。
+// 生成文件内的 `#[ctor::ctor]` 函数在 main 之前自动调用 `rml_core::assets::init(...)`,
+// 因此此处无需手写资源初始化代码。模式（嵌入/文件系统）由 build.rs 的 `.assets(path, embed)` 决定。
+#[rml::main]
 fn main() {
     // Program.cs 风格：显式 builder 链，框架自动管理主窗口创建与生命周期
     rml_app::RmlApplication::new()
-        .assets(RML_ASSETS)
         .main_window::<shell::MainWindow>()
         .run::<app::Startup>();
 }

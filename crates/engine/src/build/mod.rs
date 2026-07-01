@@ -8,7 +8,7 @@ pub mod cache;
 pub mod i18n_extractor;
 pub mod scanner;
 
-pub use assets_processor::AssetsProcessor;
+pub use assets_processor::{AssetMode, AssetsProcessor};
 pub use i18n_extractor::I18nExtractor;
 
 use crate::compiler::{compile, CodegenCtx};
@@ -43,6 +43,7 @@ pub struct Builder {
     style_paths: Vec<PathBuf>,
     i18n_extract: Option<PathBuf>,
     assets_dir: Option<PathBuf>,
+    assets_mode: AssetMode,
 }
 
 /// 入口：创建一个新的 Builder。
@@ -73,6 +74,7 @@ impl Builder {
             style_paths: Vec::new(),
             i18n_extract: None,
             assets_dir: None,
+            assets_mode: AssetMode::Filesystem,
         }
     }
 
@@ -134,25 +136,40 @@ impl Builder {
         self
     }
 
-    /// 注册资源根目录,构建期扫描并嵌入所有文件到二进制
+    /// 注册资源根目录并指定是否嵌入二进制
     ///
-    /// 自动包含 `{assets_dir}/themes/` 主题文件、`{assets_dir}/i18n/` 国际化资源等。
-    /// 运行时通过 `rml_core::assets::load(path)` 查询,路径以相对 `assets/` 的正斜杠形式
-    /// (如 `"themes/dark.css"`、`"i18n/zh-CN.json"`)。
+    /// - `embed=true`：所有文件经 `include_bytes!` 编译期嵌入二进制（无资源泄露,
+    ///   二进制较大）
+    /// - `embed=false`：运行期按需从磁盘读取,首次读取后 `Box::leak` 缓存到 `'static`
+    ///   （二进制小,符合方案 2「不关心资源泄露」）
     ///
-    /// 用户 crate 使用 `rml::main!()` 宏一键完成资源嵌入、注册与应用启动,
-    /// 无需手动调用 `embed_assets!()` 和 `assets::init()`。
+    /// 两种模式运行时 API 一致,均通过 `rml_core::assets::load(path)` 查询,
+    /// 路径以相对 `assets/` 的正斜杠形式(如 `"themes/dark.css"`、`"i18n/zh-CN.json"`)。
+    /// 资源注册由 build.rs 生成的 `#[ctor::ctor]` 函数在 `main` 之前自动完成,
+    /// main.rs 中无需调用 `embed_assets!()` 或 `RmlApplication::assets()`。
     ///
     /// ```rust,ignore
-    /// // build.rs
+    /// // build.rs (嵌入模式)
     /// rml::build()
     ///     .scan_dir("src")
-    ///     .assets_dir("assets")
+    ///     .assets("assets", true)
+    ///     .output_dir(std::env::var("OUT_DIR").unwrap())
+    ///     .build()
+    ///
+    /// // build.rs (文件系统模式)
+    /// rml::build()
+    ///     .scan_dir("src")
+    ///     .assets("assets", false)
     ///     .output_dir(std::env::var("OUT_DIR").unwrap())
     ///     .build()
     /// ```
-    pub fn assets_dir(mut self, dir: impl Into<PathBuf>) -> Self {
+    pub fn assets(mut self, dir: impl Into<PathBuf>, embed: bool) -> Self {
         self.assets_dir = Some(dir.into());
+        self.assets_mode = if embed {
+            AssetMode::Embedded
+        } else {
+            AssetMode::Filesystem
+        };
         self
     }
 
@@ -307,7 +324,7 @@ impl Builder {
             println!("cargo:warning=RML: failed to write cache {}: {}", cache_path.display(), e);
         }
 
-        // 5. 嵌入 assets/ 资源(默认扫描 assets/ 目录,始终生成 rml_assets.rs)
+        // 5. 生成 assets 资源注册代码（按 mode 决定嵌入或文件系统模式）
         let assets_dir = self
             .assets_dir
             .clone()
@@ -315,7 +332,7 @@ impl Builder {
         if assets_dir.exists() {
             println!("cargo:rerun-if-changed={}", assets_dir.display());
         }
-        let processor = AssetsProcessor::new(&assets_dir);
+        let processor = AssetsProcessor::new(&assets_dir, self.assets_mode);
         if let Err(e) = processor.generate(&output_dir) {
             return Err(e);
         }

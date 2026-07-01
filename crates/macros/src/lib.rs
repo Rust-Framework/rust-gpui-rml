@@ -16,6 +16,7 @@ mod component;
 mod computed;
 mod derive_model;
 mod lifecycle;
+mod main_attr;
 mod validate;
 mod window;
 
@@ -142,4 +143,31 @@ pub fn on_loaded(_args: TokenStream, input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn on_unloaded(_args: TokenStream, input: TokenStream) -> TokenStream {
     lifecycle::expand_on_unloaded(input.into()).into()
+}
+
+/// 应用入口属性宏
+///
+/// 在 `fn main` 之前注入 `rml::embed_assets!()`,等价于
+/// `include!(concat!(env!("OUT_DIR"), "/rml_generated/rml_assets.rs"))`。
+///
+/// 生成文件内含 `#[ctor::ctor]` 自动注册函数,在 `main` 之前完成
+/// `rml_core::assets::init(...)` 调用,因此 main.rs 无需手写资源相关代码
+/// （无需 `rml::embed_assets!()` 或 `RmlApplication::assets()`）。
+///
+/// 模式（嵌入 vs 文件系统）由 `build.rs` 的 `.assets(path, embed)` 决定,
+/// main.rs 不感知差异。
+///
+/// # 示例
+///
+/// ```rust,ignore
+/// #[rml::main]
+/// fn main() {
+///     rml_app::RmlApplication::new()
+///         .main_window::<MainWindow>()
+///         .run::<Startup>();
+/// }
+/// ```
+#[proc_macro_attribute]
+pub fn main(attr: TokenStream, input: TokenStream) -> TokenStream {
+    main_attr::expand(attr, input)
 }
