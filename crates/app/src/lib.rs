@@ -16,10 +16,16 @@
 extern crate rust_rml_core as rml_core;
 
 pub mod application;
+pub mod contribution;
 pub mod lifecycle;
 pub mod resources;
 
 pub use application::{NoWindow, RmlApplication};
+pub use contribution::{
+    build_contribution_tree, data_registerable, ensure_contribution_registry, visual_entry,
+    ContributionExt, ContributionHost, ContributionRegistry, ContributionRegistryGlobal,
+    ContributionTreeNode, Registerable,
+};
 pub use lifecycle::IAppLifecycle;
 pub use resources::{
     load_i18n_catalog, load_i18n_from_json, load_theme_colors, load_theme_css,

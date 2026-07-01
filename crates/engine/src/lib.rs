@@ -16,6 +16,7 @@ pub use regex;
 /// 应用入口属性宏（re-export 自 rml_macros）
 ///
 /// 用户在 main.rs 中通过 `#[rml::main]` 调用,自动注入资源嵌入代码。
+pub use rml_macros::contribute;
 pub use rml_macros::main;
 
 pub mod build;

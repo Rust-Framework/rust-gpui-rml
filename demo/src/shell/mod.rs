@@ -1,3 +1,5 @@
+pub mod hosts;
+pub mod bindings;
 #[path = "login_dialog.rml.rs"]
 pub mod login_dialog;
 #[path = "main_window.rml.rs"]

@@ -128,6 +128,11 @@ pub fn is_component(tag: &str) -> bool {
         .unwrap_or(false)
 }
 
+/// 扩展组件中的 lowercase 标签（如 `menu`、`status_bar`），在 `component_lookup` 中注册
+pub fn is_special_lowercase_component(tag: &str) -> bool {
+    component_lookup(tag).is_some() && !is_component(tag)
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 //  根节点标记：`<window>` / `<modern_window>` / `<tab_window>` / `<dialog>` / `<component>`
 //
@@ -289,6 +294,15 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             kind: ComponentKind::Stateful {
                 state_field: "case_tree_state",
             },
+        }),
+        // MVVM 数据绑定组件（lowercase 标签，通过 items={...} 绑定数据）
+        "menu" => Some(ComponentTag {
+            ctor_path: "rml_ui::Menu",
+            kind: ComponentKind::Stateless,
+        }),
+        "status_bar" => Some(ComponentTag {
+            ctor_path: "rml_ui::RmlStatusBar",
+            kind: ComponentKind::StatelessNoId,
         }),
         _ => None,
     }

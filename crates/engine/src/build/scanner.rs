@@ -101,7 +101,10 @@ pub fn scan_struct_metadata(rml_rs_path: &Path) -> HashMap<String, StructMetadat
             for f in &s.fields {
                 if let Some(name) = &f.ident {
                     let name_str = name.to_string();
-                    meta.observable_fields.push(name_str.clone());
+                    let is_public = matches!(f.vis, syn::Visibility::Public(_));
+                    if is_public {
+                        meta.observable_fields.push(name_str.clone());
+                    }
                     // 提取字段类型字符串（清理 token 间空格：`Vec < TabItem >` → `Vec<TabItem>`)
                     let ty = &f.ty;
                     let ty_str = quote!(#ty).to_string();
@@ -471,8 +474,8 @@ pub struct MainWindow {
         );
         let meta = scan_struct_metadata(&path);
         let main_window = meta.get("MainWindow").unwrap();
-        // 所有具名字段（pub + private）都参与版本追踪
-        assert_eq!(main_window.observable_fields, vec!["count", "name", "_private"]);
+        // 仅 pub 字段参与 observable 版本追踪；私有字段仍可被 #[computed] 读取
+        assert_eq!(main_window.observable_fields, vec!["count", "name"]);
     }
 
     #[test]
@@ -651,9 +654,9 @@ pub struct MainWindow {
         assert_eq!(m.field_types.get("name"), Some(&"String".to_string()));
         assert_eq!(m.field_types.get("age"), Some(&"u32".to_string()));
         assert_eq!(m.field_types.get("score"), Some(&"f64".to_string()));
-        // 私有字段也参与版本追踪（#[computed] 可能依赖私有字段）
+        // 私有字段仍记录类型，但不参与 observable 绑定
         assert_eq!(m.field_types.get("_private"), Some(&"bool".to_string()));
-        assert!(m.observable_fields.contains(&"_private".to_string()));
+        assert!(!m.observable_fields.contains(&"_private".to_string()));
     }
 
     #[test]

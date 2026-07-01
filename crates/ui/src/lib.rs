@@ -28,6 +28,7 @@
 #![forbid(unsafe_code)]
 
 // 包名统一为 rust-rml-* 前缀，通过 extern crate 别名保留源码中的短名引用
+extern crate rust_rml_app as rml_app;
 extern crate rust_rml_core as rml_core;
 
 pub mod prelude;
@@ -84,5 +85,7 @@ pub use window::{
 
 pub use components::{
     ActivityAct, ActivityActs, ActivityBar, ActivityPanel, ActivityPanels,
-    DialogDragState, DialogTitleBar, IActivityAct, IActivityPanel, TreeView,
+    DialogDragState, DialogTitleBar, IActivityAct, IActivityPanel, IMenuItem, IStatusBarItem,
+    Menu, MenuItem, MenuItems, RmlStatusBar,
+    StatusBarAlign, StatusBarItem, StatusBarItems, TreeView,
 };

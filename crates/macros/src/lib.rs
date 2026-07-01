@@ -14,6 +14,7 @@ extern crate rust_rml_core as rml_core;
 mod command;
 mod component;
 mod computed;
+mod contribute;
 mod derive_model;
 mod lifecycle;
 mod main_attr;
@@ -29,6 +30,14 @@ use proc_macro::TokenStream;
 #[proc_macro_derive(IModel, attributes(element, validate))]
 pub fn derive_i_model(input: TokenStream) -> TokenStream {
     derive_model::derive(input.into()).into()
+}
+
+/// 标记结构体为可视化贡献点（配合 `#[component]` 使用）。
+///
+/// 生成 `IContribution` + `IVisualContribution` 实现及 `__rml_register_<Type>` 注册函数。
+#[proc_macro_attribute]
+pub fn contribute(args: TokenStream, input: TokenStream) -> TokenStream {
+    contribute::expand(args.into(), input.into()).into()
 }
 
 /// 标记结构体为 RML 组件（Code-Behind ViewModel）。

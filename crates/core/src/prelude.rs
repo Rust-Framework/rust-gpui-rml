@@ -6,6 +6,11 @@
 pub use crate::binding::{BindingPath, IBindingContext};
 pub use crate::command::{ICommand, RelayCommand};
 pub use crate::component::IComponent;
+pub use crate::contribution::{
+    ContributedEntry, ContributionOptions, ContributionRenderContext, IContribution,
+    IContributionHost, IContributionRegistry, IVisualContribution, VisualMode, VisualPlacement,
+};
+pub use crate::contribution_cache::ComponentEntityCacheImpl;
 pub use crate::converter::{BoolToYesNo, Currency, IConverter, LowerCase, Percent, Trim, UpperCase};
 pub use crate::element_ref::ElementRef;
 pub use crate::event::IEvent;

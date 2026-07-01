@@ -11,8 +11,8 @@
     on_chrome_toggle="on_chrome_toggle">
 
     <slot_left>
-        <ActivityBar panels={activity_icons} on_panel_change="on_panel_change">
-            <div class="nav-tree">
+        <ActivityBar panels={activity_panels} on_panel_change="on_panel_change">
+            <div if={active_panel_id == "samples"} class="nav-tree">
                 <Tree on_activate="on_case_activate" />
             </div>
         </ActivityBar>
@@ -25,9 +25,9 @@
         </div>
     </slot_menu>
 
-    <slot_status>
-        <div class="status-bar">{status_text}</div>
-    </slot_status>
+    <slot_footer>
+        <status_bar items={status_items} />
+    </slot_footer>
 
     <div class="case-host">
         <div if={active_case_id == "welcome" || active_case_id == ""} class="case-pane case-empty">
@@ -89,4 +89,3 @@
     </div>
 
 </tab_window>
-

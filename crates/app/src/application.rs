@@ -60,6 +60,7 @@ impl RmlApplication<NoWindow> {
             .run(move |cx: &mut App| {
                 ensure_i18n(cx);
                 ensure_theme(cx);
+                crate::contribution::ensure_contribution_registry(cx);
                 A::default().on_launch(cx);
             });
     }
@@ -76,6 +77,7 @@ impl<W: IWindow + Default + 'static> RmlApplication<W> {
             .run(move |cx: &mut App| {
                 ensure_i18n(cx);
                 ensure_theme(cx);
+                crate::contribution::ensure_contribution_registry(cx);
                 L::default().on_launch(cx);
                 W::default().open(cx);
             });

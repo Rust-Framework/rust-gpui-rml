@@ -1,6 +1,5 @@
 //! ActivityBar —— VS Code 风格左侧活动栏控件
 
-use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -18,7 +17,7 @@ use smallvec::SmallVec;
 // ── Trait 定义 ──
 
 /// 活动栏面板项接口（S1–S3）
-pub trait IActivityPanel: 'static {
+pub trait IActivityPanel: Send + Sync + 'static {
     fn id(&self) -> SharedString;
     fn icon(&self) -> IconName;
     fn title(&self) -> SharedString;
@@ -30,7 +29,7 @@ pub trait IActivityPanel: 'static {
 }
 
 /// 活动栏底部动作项接口（B1–B2）
-pub trait IActivityAct: 'static {
+pub trait IActivityAct: Send + Sync + 'static {
     fn icon(&self) -> IconName;
     fn title(&self) -> SharedString;
     fn on_click(&self, window: &mut Window, cx: &mut App);
@@ -43,12 +42,11 @@ pub type ActivityActs = Vec<Arc<dyn IActivityAct>>;
 
 // ── 默认实现 ──
 
-/// 活动栏面板项默认实现
+/// 活动栏面板项默认实现（元数据；面板内容由 ActivityBar RML 子节点承载）
 pub struct ActivityPanel {
     id: SharedString,
     icon: IconName,
     title: SharedString,
-    panel: RefCell<Option<AnyElement>>,
     active: bool,
 }
 
@@ -58,14 +56,8 @@ impl ActivityPanel {
             id: id.into(),
             icon,
             title: title.into(),
-            panel: RefCell::new(None),
             active: false,
         }
-    }
-
-    pub fn panel(self, element: impl IntoElement) -> Self {
-        *self.panel.borrow_mut() = Some(element.into_any_element());
-        self
     }
 
     pub fn active(mut self, active: bool) -> Self {
@@ -94,17 +86,13 @@ impl IActivityPanel for ActivityPanel {
     fn is_activated(&self) -> bool {
         self.active
     }
-
-    fn panel(&self) -> Option<AnyElement> {
-        self.panel.borrow_mut().take()
-    }
 }
 
 /// 活动栏底部动作项默认实现
 pub struct ActivityAct {
     icon: IconName,
     title: SharedString,
-    on_click: Option<Rc<dyn Fn(&mut Window, &mut App) + 'static>>,
+    on_click: Option<Arc<dyn Fn(&mut Window, &mut App) + Send + Sync>>,
 }
 
 impl ActivityAct {
@@ -116,8 +104,8 @@ impl ActivityAct {
         }
     }
 
-    pub fn on_click(mut self, f: impl Fn(&mut Window, &mut App) + 'static) -> Self {
-        self.on_click = Some(Rc::new(f));
+    pub fn on_click(mut self, f: impl Fn(&mut Window, &mut App) + Send + Sync + 'static) -> Self {
+        self.on_click = Some(Arc::new(f));
         self
     }
 

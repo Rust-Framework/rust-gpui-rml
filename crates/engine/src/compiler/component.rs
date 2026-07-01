@@ -113,8 +113,10 @@ pub fn gen_component(
     // 注：ModernWindowShell 不经此路径处理——它由 codegen 根元素处理路径
     // （gen_modern_window_wrapper）直接生成，不通过 component_lookup 路由表。
     // ActivityBar 作为容器，子节点渲染到活动面板区域。
-    let is_container =
-        matches!(component.kind, tags::ComponentKind::StatelessNoId) || tag == "ActivityBar";
+    let is_container = (matches!(component.kind, tags::ComponentKind::StatelessNoId)
+        || tag == "ActivityBar")
+        && tag != "menu"
+        && tag != "status_bar";
 
     if is_container {
         // 容器组件：所有 element/文本子节点作为 children
@@ -265,6 +267,9 @@ pub fn component_bind_setter(
         "label" => Some(format!(".label({}.clone())", rust_expr)),
         "panels" if tag == "ActivityBar" => Some(format!(".panels({}.clone())", rust_expr)),
         "actions" if tag == "ActivityBar" => Some(format!(".actions({}.clone())", rust_expr)),
+        "items" if tag == "menu" || tag == "status_bar" => {
+            Some(format!(".items({}.clone())", rust_expr))
+        }
         _ => None,
     }
 }

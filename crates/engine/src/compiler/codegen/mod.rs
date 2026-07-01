@@ -160,11 +160,11 @@ fn gen_render_impl_from_children(
     let mut id_counter: usize = 0;
     let empty: Vec<String> = Vec::new();
 
-    let (slot_menu, slot_status, slot_left, slot_right, slot_bottom, body_children) =
-        if matches!(shell, ShellWrap::Tab) {
-            shell::partition_tab_slot_children(&elem.children)
+    let (slot_menu, slot_title, slot_footer, slot_left, slot_right, slot_bottom, body_children) =
+        if matches!(shell, ShellWrap::Tab | ShellWrap::Modern) {
+            shell::partition_slot_children(&elem.children)
         } else {
-            (None, None, None, None, None, elem.children.clone())
+            (None, None, None, None, None, None, elem.children.clone())
         };
 
     let body = if body_children.is_empty() {
@@ -185,7 +185,11 @@ fn gen_render_impl_from_children(
         .as_ref()
         .map(|node| gen_node(node, ctx, 0, &mut id_counter, &empty).map(|(c, _)| c))
         .transpose()?;
-    let slot_status_code = slot_status
+    let slot_title_code = slot_title
+        .as_ref()
+        .map(|node| gen_node(node, ctx, 0, &mut id_counter, &empty).map(|(c, _)| c))
+        .transpose()?;
+    let slot_footer_code = slot_footer
         .as_ref()
         .map(|node| gen_node(node, ctx, 0, &mut id_counter, &empty).map(|(c, _)| c))
         .transpose()?;
@@ -203,13 +207,20 @@ fn gen_render_impl_from_children(
         .transpose()?;
 
     let final_body = match shell {
-        ShellWrap::Modern => shell::gen_modern_window_wrapper(elem, ctx, &body)?,
+        ShellWrap::Modern => shell::gen_modern_window_wrapper(
+            elem,
+            ctx,
+            &body,
+            slot_title_code.as_deref(),
+            slot_footer_code.as_deref(),
+        )?,
         ShellWrap::Tab => shell::gen_tab_window_wrapper(
             elem,
             ctx,
             &body,
             slot_menu_code.as_deref(),
-            slot_status_code.as_deref(),
+            slot_title_code.as_deref(),
+            slot_footer_code.as_deref(),
             slot_left_code.as_deref(),
             slot_right_code.as_deref(),
             slot_bottom_code.as_deref(),
@@ -290,8 +301,8 @@ fn gen_element(
 ) -> Result<GenResult, CodegenError> {
     let tag = &elem.tag;
 
-    // 扩展组件（PascalCase）：路由到 gpui-component 构造器
-    if tags::is_component(tag) {
+    // 扩展组件（PascalCase 或特殊小写标签 menu/status_bar）：路由到 gpui-component 构造器
+    if tags::is_component(tag) || tags::is_special_lowercase_component(tag) {
         let code = comp::gen_component(elem, ctx, depth, id_counter, loop_vars)?;
         return Ok((code, false));
     }

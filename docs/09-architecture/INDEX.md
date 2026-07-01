@@ -12,6 +12,7 @@
 | [9.4 项目结构规范](./project-structure.md)                              | views / components / styles / models 目录约定 | 12 分钟  |
 | [9.5 可测试性设计](./testability.md)                                    | ViewModel 单测、组件快照、集成测试       | 16 分钟  |
 | [9.6 反模式与代码异味](./anti-patterns.md)                                | 胖 ViewModel、上帝组件、绑定爆炸        | 18 分钟  |
+| [9.7 贡献点架构](./contribution-system.md)                                  | 功能模块自注册、MVVM 数据绑定、Host 消费模式 | 20 分钟  |
 
 ## 阅读建议
 
