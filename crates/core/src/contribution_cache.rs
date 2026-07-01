@@ -55,6 +55,17 @@ impl ComponentEntityCache for ComponentEntityCacheImpl {
             .into_any_element()
     }
 
+    fn pre_register<T: gpui::Render + Send + Sync + 'static>(
+        &mut self,
+        contribution_id: &str,
+        entity: gpui::Entity<T>,
+    ) {
+        self.entries.insert(
+            contribution_id.to_string(),
+            (TypeId::of::<T>(), Box::new(entity)),
+        );
+    }
+
     fn clear(&mut self, contribution_id: &str) {
         self.entries.remove(contribution_id);
     }

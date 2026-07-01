@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use gpui::{Global, WeakEntity, Window};
+use gpui::{BorrowAppContext, Global, WeakEntity, Window};
 use rml::prelude::*;
 use crate::shell::shell_chrome::{map_shell_chrome, ShellChromeBindings};
 use rml_core::i18n::I18nExt;
@@ -9,7 +9,10 @@ use rml_core::theme::ThemeExt;
 use rml_ui::{ActivityPanels, MenuItems, StatusBarItems, TabItem};
 
 use crate::cases::{self, OpenTab};
+use crate::shell::case_activity_panel::CaseActivityPanel;
 use crate::shell::case_host::CaseHost;
+use rml_app::contribution::ContributionRegistryGlobal;
+use rml_core::contribution::ComponentEntityCache;
 
 /// Demo：Activity 视觉贡献面板回调 Host 开 Tab（由 MainWindow 在 `on_loaded` 注册）。
 pub struct DemoShellHost(pub WeakEntity<MainWindow>);
@@ -25,7 +28,6 @@ pub struct MainWindow {
     active_case_id: String,
     show_chrome: bool,
     activity_panels: ActivityPanels,
-    active_panel_id: Option<gpui::SharedString>,
     status_items: StatusBarItems,
     i18n_version: u32,
     case_host: Option<gpui::Entity<CaseHost>>,
@@ -103,6 +105,11 @@ impl ILifecycle for MainWindow {
             })),
         );
 
+        let panel = cx.new(|_| CaseActivityPanel::default());
+        cx.update_global::<ContributionRegistryGlobal, _>(|global, _| {
+            global.0.entity_cache_mut().pre_register("samples", panel);
+        });
+
         self.refresh_bindings(cx);
     }
 }
@@ -117,10 +124,6 @@ impl MainWindow {
         self.activity_panels = activity_panels;
         self.status_items = status_items;
         self.menu_items = menu_items;
-
-        if self.active_panel_id.is_none() {
-            self.active_panel_id = self.activity_panels.first().map(|p| p.id());
-        }
     }
 
     #[computed]
@@ -138,12 +141,7 @@ impl MainWindow {
     }
 
     #[command]
-    pub fn on_panel_change(&mut self, panel_id: &gpui::SharedString, cx: &mut Context<Self>) {
-        if self.active_panel_id.as_ref() == Some(panel_id) {
-            self.active_panel_id = None;
-        } else {
-            self.active_panel_id = Some(panel_id.clone());
-        }
+    pub fn on_panel_change(&mut self, _panel_id: &gpui::SharedString, cx: &mut Context<Self>) {
         cx.notify();
     }
 

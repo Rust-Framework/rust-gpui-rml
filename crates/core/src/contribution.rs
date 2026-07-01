@@ -109,6 +109,14 @@ pub trait ComponentEntityCache {
     where
         V: gpui::Render + Send + Sync + 'static;
 
+    /// 预注册已创建的 Entity，使后续 `render_view` 直接返回该 Entity 而非延迟创建。
+    /// 用于需要 `Context::new()` 创建子 Entity（有父级链接）的场景。
+    fn pre_register<T: gpui::Render + Send + Sync + 'static>(
+        &mut self,
+        contribution_id: &str,
+        entity: gpui::Entity<T>,
+    );
+
     fn clear(&mut self, contribution_id: &str);
     fn clear_all(&mut self);
 }

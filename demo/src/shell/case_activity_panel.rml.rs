@@ -22,8 +22,8 @@ pub struct CaseActivityPanel {
 
 impl ILifecycle for CaseActivityPanel {
     fn on_loaded(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let _ = window;
         self.refresh_tree(cx);
-        window.refresh();
         subscribe_host_changes(MainWindow::ID, cx, |this, cx| {
             this.refresh_tree(cx);
             cx.notify();
@@ -43,11 +43,11 @@ impl CaseActivityPanel {
             state.update(cx, |s, cx| {
                 s.set_items(items, cx);
             });
+            cx.notify();
         } else {
             let state = cx.new(|cx| TreeState::new(cx).items(items));
             self.tree_state = Some(state);
         }
-        cx.notify();
     }
 
     #[command]
