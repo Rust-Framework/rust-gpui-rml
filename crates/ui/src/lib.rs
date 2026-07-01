@@ -1,13 +1,8 @@
 //! RML 扩展组件库
 //!
-//! 基于 `gpui-component` 提供的高级组件封装（Button / Input / Dialog / List / Form 等）。
-//! 通过 feature `ui-components`（默认开启）启用，关闭后退化为空实现。
-//!
-//! ## 设计目标
-//!
-//! - **零成本抽象**：直接 re-export `gpui-component` 类型，避免不必要的 wrapper struct
-//! - **RML 集成入口**：通过 [`init`] 完成 gpui-component 的全局初始化
-//! - **codegen 路由目标**：PascalCase 标签（`<Button>`/`<Input>`）在 codegen 时映射到本 crate 的构造器
+//! 基于 `gpui-component` 的 **re-export 轨** + **窗口壳** + **MVVM 绑定适配**。
+//! 声明式菜单（`ContextMenu`/`DropdownMenu`/`MenuBar` + `MenuItem`）由 engine
+//! `compiler/menu/` 直译 gpui-component API，不在此 crate 重复包装。
 //!
 //! ## 使用方式
 //!
@@ -56,6 +51,7 @@ pub use gpui_component::{
     kbd::Kbd,
     label::Label,
     list::List,
+    menu::{AppMenuBar, ContextMenuExt, DropdownMenu, PopupMenuItem},
     notification::{Notification, NotificationList, NotificationType},
     popover::Popover,
     progress::{Progress, ProgressCircle},
@@ -70,6 +66,7 @@ pub use gpui_component::{
     tag::Tag,
     tooltip::Tooltip,
     tree::{TreeEntry, TreeEvent, TreeItem, TreeState},
+    Side, h_flex, v_flex,
 };
 
 // 共享 trait 体系
@@ -86,6 +83,6 @@ pub use window::{
 pub use components::{
     ActivityAct, ActivityActs, ActivityBar, ActivityPanel, ActivityPanels,
     DialogDragState, DialogTitleBar, IActivityAct, IActivityPanel, IMenuItem, IStatusBarItem,
-    Menu, MenuItem, MenuItems, RmlStatusBar,
+    Menu, MenuItem, MenuItems, RmlStatusBar, render_menu_bar_from_items,
     StatusBarAlign, StatusBarItem, StatusBarItems, TreeView,
 };

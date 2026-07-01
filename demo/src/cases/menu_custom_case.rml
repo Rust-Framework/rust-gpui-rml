@@ -1,0 +1,19 @@
+<component>
+    <div class="case-pane">
+        <h2 class="case-title">{t("case.menu.custom.title")}</h2>
+        <p class="case-hint">{custom_status}</p>
+        <dropdown-menu>
+            <Button label="Settings" ghost="" />
+            <menu-item header="" label="Display" />
+            <menu-item onclick={on_toggle_dark}>
+                <div class="h-flex gap-2">
+                    <span>Dark Mode</span>
+                    <span class="muted">{dark_mode_label}</span>
+                </div>
+            </menu-item>
+            <menu-separator />
+            <menu-item label="Help Center" href="https://longbridge.github.io/gpui-component/" icon="Info" />
+            <menu-item label="Sign Out" onclick={on_sign_out} />
+        </dropdown-menu>
+    </div>
+</component>

@@ -1,5 +1,13 @@
 use rml::prelude::*;
 
+#[contribute(
+    host = "demo.shell",
+    id = "binding.two-way",
+    name = "case.two_way.title",
+    kind = "case",
+    parent_id = "cat.binding",
+    order = 2,
+)]
 #[component]
 #[derive(Default)]
 pub struct TwoWayCase {

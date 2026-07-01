@@ -107,6 +107,30 @@ pub struct Counter {
 }
 ```
 
+### 与 `#[contribute]` 叠加
+
+案例组件等需要向贡献点注册元数据时，**`#[contribute]` 写在 `#[component]` 之上**：
+
+```rust
+#[contribute(
+    host = "demo.shell",
+    id = "components.button",
+    name = "case.button.title",
+    kind = "case",
+    parent_id = "cat.components",
+    order = 11,
+)]
+#[component]
+#[derive(Default)]
+pub struct ButtonCase {
+    pub button_clicks: i32,
+}
+```
+
+`#[contribute]` 生成 `IContribution` + `__rml_register_buttoncase(cx)`；`#[component]` 生成 RML 模板绑定与 codegen。两者互不冲突，分别服务贡献树与 UI 渲染。
+
+应用启动时在 `register_all` 中调用各 `__rml_register_*`。详见 [贡献点架构 §#[contribute]](../09-architecture/contribution-system.md)。
+
 ### `#[component]` 的参数
 
 | 参数          | 类型     | 说明                  |

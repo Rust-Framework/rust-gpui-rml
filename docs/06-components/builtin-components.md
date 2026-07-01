@@ -1,281 +1,124 @@
 # 6.1 内置组件
 
-> **本节目标**：了解 RML 内置组件的来源——HTML 标签映射与 gpui-component 组件库。
+> **本节目标**：准确了解 RML 当前支持的标签体系，并跳转到逐组件参考文档。
 
-## 6.1.1 内置组件的来源
+## 6.1.1 双轨标签策略
 
-RML 的内置组件来自两个层次：
+RML 组件来自两个互不混淆的层次：
+
+**扩展组件标签规范**：RML 中推荐使用 **kebab-case**（如 `<context-menu>`、`<menu-item>`），`crates/engine/src/tags.rs` 的 `normalize_component_tag()` 在 codegen 时映射为 PascalCase（`ContextMenu`、`MenuItem`）。PascalCase 写法仍兼容。特殊 snake_case 标签（`menu`、`status_bar`）保持原样。
 
 ```
-┌─────────────────────────────────────────────┐
-│           RML 内置组件                        │
-│                                             │
-│  ┌─────────────────┐  ┌─────────────────┐   │
-│  │  HTML 标签映射   │  │ gpui-component  │   │
-│  │  (基础元素)      │  │  (高级组件)      │   │
-│  │                 │  │                 │   │
-│  │  div, span, p   │  │  Button, Input  │   │
-│  │  h1~h6, button  │  │  Checkbox, List │   │
-│  │  input, ul, li  │  │  Modal, Tooltip │   │
-│  └─────────────────┘  └─────────────────┘   │
-└─────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                    RML 可用标签                           │
+│                                                         │
+│  ┌─────────────────────┐   ┌─────────────────────────┐ │
+│  │  基础轨（小写 HTML）  │   │  扩展轨（路由表注册）     │ │
+│  │  BuiltinTag         │   │  component_lookup()     │ │
+│  │                     │   │                         │ │
+│  │  div, span, input   │   │  Button, Tree, menu     │ │
+│  │  h1~h6, ul, li …    │   │  ActivityBar, status_bar│ │
+│  └─────────────────────┘   └─────────────────────────┘ │
+│                                                         │
+│  ┌─────────────────────────────────────────────────────┐│
+│  │  根节点：window / modern_window / tab_window /      ││
+│  │          dialog / component                         ││
+│  └─────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────┘
 ```
 
-## 6.1.2 HTML 标签映射
+**权威来源**：`crates/engine/src/tags.rs` 中的 `lookup()`、`component_lookup()`、`root_tag_lookup()`。
 
-RML 把标准 HTML 标签映射到 GPUI 的基础元素：
+未在路由表注册的 gpui-component 类型（如 Modal、Navbar、Table、Tabs 等）**不能**在 `.rml` 中作为标签使用，即使 gpui-component 库本身提供这些类型。
 
-| HTML 标签      | GPUI 元素          | 用途           |
-| ------------- | ----------------- | ------------- |
-| `<div>`       | `div()`           | 块级容器          |
-| `<span>`      | `div()` (inline)  | 行内容器          |
-| `<p>`         | `div()`           | 段落            |
-| `<h1>`~`<h6>` | `div()` + 标题样式    | 标题            |
-| `<button>`    | `Button::new()`   | 按钮            |
-| `<input>`     | `Input::new()`    | 输入框           |
-| `<textarea>`  | `Input::new()`    | 多行输入          |
-| `<ul>`        | `div()`           | 无序列表          |
-| `<ol>`        | `div()`           | 有序列表          |
-| `<li>`        | `div()`           | 列表项           |
-| `<img>`       | `img()`           | 图片            |
-| `<a>`         | `div()`           | 链接            |
-| `<label>`     | `div()`           | 标签            |
+## 6.1.2 扩展轨组件一览
 
-详见 [2.2 标签映射](../02-syntax/tags-mapping.md)。
+完整属性与示例见 **[组件参考目录](./reference/INDEX.md)**。
 
-## 6.1.3 gpui-component 组件库
+### 表单
 
-RML 集成了 `gpui-component` 库，提供丰富的高级组件：
+| RML 标签 | 文档 |
+|----------|------|
+| `Button` | [button.md](./reference/button.md) |
+| `ButtonGroup` | [button-group.md](./reference/button-group.md) |
+| `Badge` | [badge.md](./reference/badge.md) |
+| `Checkbox` | [checkbox.md](./reference/checkbox.md) |
+| `Label` | [label.md](./reference/label.md) |
+| `Input` / `TextInput` | [input.md](./reference/input.md) / [text-input.md](./reference/text-input.md) |
+| `Slider` | [slider.md](./reference/slider.md) |
+| `Switch` | [switch.md](./reference/switch.md) |
+| `Tag` | [tag.md](./reference/tag.md) |
+| `Progress` / `ProgressCircle` | [progress.md](./reference/progress.md) / [progress-circle.md](./reference/progress-circle.md) |
+| `Separator` | [separator.md](./reference/separator.md) |
 
-### 表单组件
+### 布局 / Shell
 
-| 组件名                | RML 写法                              | 用途           |
-| ------------------ | ------------------------------------ | ------------ |
-| `Button`           | `<Button>` 或 `<button>`              | 按钮           |
-| `Input`            | `<Input>` 或 `<input>`                | 文本输入         |
-| `Checkbox`         | `<Checkbox>` 或 `<input type="checkbox">` | 复选框          |
-| `Switch`           | `<Switch>`                           | 开关           |
-| `Radio`            | `<Radio>`                            | 单选框          |
-| `Slider`           | `<Slider>`                           | 滑块           |
-| `DatePicker`       | `<DatePicker>`                       | 日期选择器        |
-| `ColorPicker`      | `<ColorPicker>`                      | 颜色选择器        |
+| RML 标签 | 文档 |
+|----------|------|
+| `TitleBar` | [title-bar.md](./reference/title-bar.md) |
+| `StatusBar` | [gpui-status-bar.md](./reference/gpui-status-bar.md) |
+| `status_bar` | [status-bar.md](./reference/status-bar.md) |
+| `ActivityBar` | [activity-bar.md](./reference/activity-bar.md) |
 
-### 导航组件
+### 数据 / 导航
 
-| 组件名           | RML 写法             | 用途           |
-| ------------- | ------------------- | ------------ |
-| `Navbar`      | `<Navbar>`          | 导航栏          |
-| `Sidebar`     | `<Sidebar>`         | 侧边栏          |
-| `Tabs`        | `<Tabs>`            | 标签页          |
-| `Breadcrumb`  | `<Breadcrumb>`      | 面包屑          |
-| `Pagination`  | `<Pagination>`      | 分页           |
+| RML 标签 | 文档 |
+|----------|------|
+| `Tree` | [tree.md](./reference/tree.md) |
+| `menu` / `MenuBar` | [menu.md](./reference/menu.md) |
+| `ContextMenu` | [context-menu.md](./reference/context-menu.md) |
+| `DropdownMenu` | [dropdown-menu.md](./reference/dropdown-menu.md) |
+| `MenuItem` / `MenuSeparator` | [menu-items.md](./reference/menu-items.md) |
+| `AppMenuBar` | [app-menu-bar.md](./reference/app-menu-bar.md) |
 
-### 数据展示组件
+## 6.1.3 基础轨 HTML 标签
 
-| 组件名           | RML 写法             | 用途           |
-| ------------- | ------------------- | ------------ |
-| `Table`       | `<Table>`           | 表格           |
-| `List`        | `<List>`            | 列表           |
-| `Card`        | `<Card>`            | 卡片           |
-| `Tag`         | `<Tag>`             | 标签           |
-| `Badge`       | `<Badge>`           | 徽章           |
-| `Avatar`      | `<Avatar>`          | 头像           |
-| `Tooltip`     | `<Tooltip>`         | 工具提示         |
-| `Empty`       | `<Empty>`           | 空状态          |
+| 标签 | 说明 |
+|------|------|
+| `div` / `span` / `p` | 容器与文本 |
+| `h1`–`h6` | 标题（内置字号） |
+| `button` | 基础 `div()` 占位，**无** Button 组件样式 |
+| `input` / `textarea` | 支持 `model={field}` 双向绑定 → `rml_ui::Input` |
+| `ul` / `ol` / `li` | 列表布局 |
+| `img` / `a` / `label` / `br` | 基础占位 |
 
-### 反馈组件
+详见 [builtin-html.md](./reference/builtin-html.md)。
 
-| 组件名           | RML 写法             | 用途           |
-| ------------- | ------------------- | ------------ |
-| `Modal`       | `<Modal>`           | 模态框          |
-| `Drawer`      | `<Drawer>`          | 抽屉           |
-| `Notification`| `<Notification>`    | 通知           |
-| `Message`     | `<Message>`         | 消息提示         |
-| `Progress`    | `<Progress>`        | 进度条          |
-| `Loading`     | `<Loading>`         | 加载           |
+## 6.1.4 根节点
 
-## 6.1.4 使用内置组件
+| 根标签 | 用途 |
+|--------|------|
+| `window` | 基础窗口 |
+| `modern_window` | 现代窗口外壳 |
+| `tab_window` | TabBar + 多插槽（Demo 主窗口） |
+| `dialog` | 模态对话框 |
+| `component` | 可复用 `#[component]` 片段 |
 
-### 基础 HTML 标签
+详见 [window-roots.md](./reference/window-roots.md)。
 
-```html
-<div class="container">
-    <h1>标题</h1>
-    <p>段落内容</p>
-    <button onclick={handle_click}>点击</button>
-</div>
-```
+## 6.1.5 快速对照：该用哪个标签？
 
-### 高级组件（PascalCase）
+| 需求 | 正确写法 | 错误写法 |
+|------|----------|----------|
+| 带样式的按钮 | `<Button primary="" onclick={...}>` | `<button variant="primary">` |
+| 双向文本输入 | `<input model={name}>` | `<Input model={name}>` |
+| 状态栏 MVVM | `<status_bar items={status_items}>` | `<StatusBar items={...}>` |
+| 案例树 | `<Tree on_activate={...}>` + Rust 初始化 `case_tree_state` | `<Tree items={...}>` |
+| 模态框 | `<dialog>` + `open(window, cx)` | `<Modal>`（未注册） |
 
-```html
-<div>
-    <Button variant="primary" onclick={submit}>提交</Button>
-    <Button variant="danger" onclick={delete_item}>删除</Button>
+## 6.1.6 codegen 属性支持范围
 
-    <Input model={username} placeholder="用户名" />
+扩展组件的属性由 `crates/engine/src/compiler/component.rs` 中的三个映射函数决定：
 
-    <Checkbox model={remember_me}>记住我</Checkbox>
+- **静态**：`label`、`placeholder`、`primary`/`ghost`/…、`disabled`、`small` 等
+- **绑定**：`value`、`disabled`、`selected`、`label`；`ActivityBar` 的 `panels`/`actions`；`menu`/`MenuBar`/`status_bar` 的 `items`
+- **事件**：`onclick`（通用）、`onchange`（Input/TextInput）、`on_panel_change`（ActivityBar）、`on_activate`（Tree）
+- **菜单**：`ContextMenu` / `DropdownMenu` / `MenuBar` 由 `compiler/menu/` codegen；子项仅 `MenuItem` + `MenuSeparator`（见 [menu-items.md](./reference/menu-items.md)）
 
-    <Modal if={show_modal} on_close={close_modal}>
-        <p>对话框内容</p>
-    </Modal>
-</div>
-```
+## 6.1.7 小结
 
-### 组件属性
-
-内置组件支持标准 HTML 属性和组件特有属性：
-
-```html
-<!-- 标准属性 -->
-<button class="btn" disabled={is_loading} onclick={submit}>
-    提交
-</button>
-
-<!-- 组件特有属性 -->
-<Button variant="primary" size="large" loading={is_loading}>
-    提交
-</Button>
-
-<Input
-    model={search_text}
-    placeholder="搜索..."
-    prefix_icon="search"
-    suffix_icon={has_value ? "clear" : ""}
-/>
-```
-
-## 6.1.5 内置组件的样式
-
-### 通过 class 属性
-
-```html
-<button class="btn primary">主要按钮</button>
-<button class="btn danger">危险按钮</button>
-```
-
-```css
-/* styles.css */
-.btn {
-    padding: 8px 16px;
-    border-radius: 4px;
-    border: none;
-    cursor: pointer;
-}
-
-.btn.primary {
-    background-color: #007bff;
-    color: white;
-}
-
-.btn.danger {
-    background-color: #dc3545;
-    color: white;
-}
-```
-
-### 通过 style 属性
-
-```html
-<div style="background: red; padding: 10px;">
-    红色背景
-</div>
-```
-
-### 通过 variant 属性（高级组件）
-
-```html
-<Button variant="primary">主要</Button>
-<Button variant="secondary">次要</Button>
-<Button variant="danger">危险</Button>
-<Button variant="ghost">幽灵</Button>
-
-<Input size="small">小输入框</Input>
-<Input size="medium">中等输入框</Input>
-<Input size="large">大输入框</Input>
-```
-
-## 6.1.6 内置组件的事件
-
-内置组件支持标准事件属性：
-
-```html
-<button onclick={handle_click}>点击</button>
-<input oninput={handle_input} onchange={handle_change} />
-<div onmouseenter={handle_enter} onmouseleave={handle_leave}>
-    悬停我
-</div>
-```
-
-高级组件还支持自定义事件：
-
-```html
-<Modal on_close={handle_close}>...</Modal>
-<Tabs on_change={handle_tab_change}>...</Tabs>
-<Pagination on_change={handle_page_change} />
-```
-
-详见 [5.4 自定义事件](../05-events/custom-events.md)。
-
-## 6.1.7 内置组件的响应式
-
-内置组件完全支持数据绑定：
-
-```html
-<div>
-    <p>当前计数: {count}</p>
-    <Button onclick={increment} disabled={count >= 10}>
-        增加
-    </Button>
-
-    <Input model={search_text} placeholder="搜索..." />
-    <p if={!search_text.is_empty()}>正在搜索: {search_text}</p>
-
-    <ul>
-        <li each={item in items} key={item.id}>
-            {item.name}
-        </li>
-    </ul>
-</div>
-```
-
-## 6.1.8 内置组件的列表渲染
-
-```html
-<Table data={users}>
-    <Column title="ID" field="id" />
-    <Column title="姓名" field="name" />
-    <Column title="邮箱" field="email" />
-</Table>
-
-<List data={items}>
-    <template>
-        <div class="item">
-            <h3>{item.title}</h3>
-            <p>{item.description}</p>
-        </div>
-    </template>
-</List>
-```
-
-## 6.1.9 内置组件 vs 自定义组件
-
-| 维度     | 内置组件           | 自定义组件           |
-| ------ | -------------- | --------------- |
-| 来源     | 框架提供           | 开发者编写           |
-| 命名     | HTML 标签或 PascalCase | PascalCase     |
-| 模板     | 内置             | `.rml` 文件       |
-| 可定制性   | 通过属性和样式        | 完全可定制           |
-| 适用场景   | 通用 UI          | 业务特定 UI         |
-
-## 6.1.10 小结
-
-RML 的内置组件来自两个层次：
-
-- **HTML 标签映射**：`div`、`span`、`button`、`input` 等基础元素
-- **gpui-component 库**：`Button`、`Input`、`Modal`、`Table` 等高级组件
-
-内置组件完全支持数据绑定、事件绑定、列表渲染等 RML 特性，是构建应用的基础。
+- 内置组件 ≠ gpui-component 全量导出；以路由表为准。
+- 逐组件 API 请查阅 [reference/INDEX.md](./reference/INDEX.md)。
+- Shell 类控件（ActivityBar、menu、status_bar、Tree）配合 [贡献点架构](../09-architecture/contribution-system.md) 与 Demo `bindings.rs` 使用。
 
 下一节 → [6.2 自定义组件](./custom-components.md)

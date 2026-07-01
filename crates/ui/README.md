@@ -16,9 +16,10 @@
 ## 设计规范
 
 1. **零成本抽象**：直接 re-export `gpui-component` 类型，避免不必要的 wrapper struct。codegen 生成的代码与用户手写 `gpui_component::Button::new(...)` 等价。
-2. **单一入口**：[`init`] 是 gpui-component 的唯一初始化函数，封装了 theme/global_state/root/focus_trap/dialog/sheet/list 等模块的子初始化。
-3. **Feature 开关**：通过 `ui-components` feature（默认开启）控制。关闭后本 crate 退化为空实现，整个 RML 框架仅使用原生 GPUI 元素。
-4. **铁律遵守**：`#![forbid(unsafe_code)]` 全 crate 启用；所有 trait 仍以 `I` 开头（本 crate 直接复用 gpui-component 的 trait，不引入新 trait）。
+2. **声明式 vs MVVM**：菜单/状态栏等**声明式**标签由 engine `compiler/menu/` 直译 gpui-component API；本 crate 仅保留 **MVVM 数据绑定**适配（`IMenuItem`/`Menu`/`RmlStatusBar`/`TreeView`），不重复包装 `PopupMenu`。
+3. **单一入口**：[`init`] 是 gpui-component 的唯一初始化函数，封装了 theme/global_state/root/focus_trap/dialog/sheet/list 等模块的子初始化。
+4. **Feature 开关**：通过 `ui-components` feature（默认开启）控制。关闭后本 crate 退化为空实现，整个 RML 框架仅使用原生 GPUI 元素。
+5. **铁律遵守**：`#![forbid(unsafe_code)]` 全 crate 启用；所有 trait 仍以 `I` 开头（本 crate 直接复用 gpui-component 的 trait，不引入新 trait）。
 
 ## 关键 API
 

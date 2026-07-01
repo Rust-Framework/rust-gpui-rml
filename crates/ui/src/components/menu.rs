@@ -1,19 +1,13 @@
-//! Menu —— MVVM 数据绑定的菜单栏组件，封装 gpui-component 的 PopupMenu/DropdownMenu
+//! MVVM 菜单数据契约 + `items={...}` 运行时渲染
 //!
-//! 参照 `activity_bar.rs` 黄金模板：`IMenuItem` trait + `MenuItem` 默认实现 +
-//! `MenuItems = Vec<Arc<dyn IMenuItem>>` 类型别名 + `Menu` 容器组件。
-//!
-//! ViewModel 通过 `#[computed]` 返回 `MenuItems`，在 RML 中 `<menu items={menu_items} />` 绑定。
-//! 每个菜单项可携带 `Arc<dyn ICommand>` 命令对象，点击时调用 `execute`。
-//!
-//! 渲染策略：
-//! - 有子菜单的顶层项 → `Button + DropdownMenu → PopupMenu`（支持键盘导航、子菜单递归）
-//! - 叶子节点顶层项 → `Button + on_click`（直接执行命令）
-//! - PopupMenu 内部项 → `PopupMenuItem`（支持 icon/disabled/checked/submenu/command）
+//! - **声明式菜单**（`<menu-bar>` / `<context-menu>` / `<dropdown-menu>` + `<menu-item>`）
+//!   由 engine `compiler/menu/` 直译 gpui-component `PopupMenu` API，不经过本模块。
+//! - **数据绑定**（`<menu items={menu_items} />`）由 ViewModel 提供 `MenuItems`，
+//!   本模块在运行时把 `IMenuItem` 树渲染为水平菜单栏。
 
 use std::sync::Arc;
 
-use gpui::{App, Context, ElementId, IntoElement, ParentElement, RenderOnce, Styled, Window};
+use gpui::{App, Context, ElementId, IntoElement, ParentElement, RenderOnce, SharedString, Styled, Window};
 use gpui_component::{
     IconName,
     button::{Button, ButtonVariants as _},
@@ -23,11 +17,9 @@ use gpui_component::{
     Disableable as _,
 };
 
-/// 菜单项接口（object-safe，可存储为 `Arc<dyn IMenuItem>`）
-///
-/// 实现者可通过 `children()` 返回子菜单项，框架自动递归构建 `PopupMenu`。
+/// 菜单项接口（object-safe）
 pub trait IMenuItem: Send + Sync + 'static {
-    fn label(&self) -> gpui::SharedString;
+    fn label(&self) -> SharedString;
     fn icon(&self) -> Option<IconName> {
         None
     }
@@ -37,35 +29,49 @@ pub trait IMenuItem: Send + Sync + 'static {
     fn separator(&self) -> bool {
         false
     }
+    /// 分组标题（非可点击项）
+    fn header(&self) -> bool {
+        false
+    }
+    fn checked(&self) -> bool {
+        false
+    }
+    fn href(&self) -> Option<SharedString> {
+        None
+    }
     fn command(&self) -> Option<Arc<dyn rml_core::command::ICommand>> {
         None
     }
-    /// 子菜单项：返回 `Some` 时渲染为 DropdownMenu + PopupMenu
     fn children(&self) -> Option<Vec<Arc<dyn IMenuItem>>> {
         None
     }
 }
 
-/// 菜单项列表类型别名（供 `#[computed]` 返回类型使用）
 pub type MenuItems = Vec<Arc<dyn IMenuItem>>;
 
 /// 菜单项默认实现
 pub struct MenuItem {
-    label: gpui::SharedString,
+    label: SharedString,
     icon: Option<IconName>,
     disabled: bool,
     separator: bool,
+    header: bool,
+    checked: bool,
+    href: Option<SharedString>,
     command: Option<Arc<dyn rml_core::command::ICommand>>,
     children: Vec<Arc<dyn IMenuItem>>,
 }
 
 impl MenuItem {
-    pub fn new(label: impl Into<gpui::SharedString>) -> Self {
+    pub fn new(label: impl Into<SharedString>) -> Self {
         Self {
             label: label.into(),
             icon: None,
             disabled: false,
             separator: false,
+            header: false,
+            checked: false,
+            href: None,
             command: None,
             children: Vec::new(),
         }
@@ -86,6 +92,21 @@ impl MenuItem {
         self
     }
 
+    pub fn header(mut self) -> Self {
+        self.header = true;
+        self
+    }
+
+    pub fn checked(mut self, c: bool) -> Self {
+        self.checked = c;
+        self
+    }
+
+    pub fn href(mut self, url: impl Into<SharedString>) -> Self {
+        self.href = Some(url.into());
+        self
+    }
+
     pub fn command(mut self, cmd: Arc<dyn rml_core::command::ICommand>) -> Self {
         self.command = Some(cmd);
         self
@@ -102,7 +123,7 @@ impl MenuItem {
 }
 
 impl IMenuItem for MenuItem {
-    fn label(&self) -> gpui::SharedString {
+    fn label(&self) -> SharedString {
         self.label.clone()
     }
 
@@ -118,6 +139,18 @@ impl IMenuItem for MenuItem {
         self.separator
     }
 
+    fn header(&self) -> bool {
+        self.header
+    }
+
+    fn checked(&self) -> bool {
+        self.checked
+    }
+
+    fn href(&self) -> Option<SharedString> {
+        self.href.clone()
+    }
+
     fn command(&self) -> Option<Arc<dyn rml_core::command::ICommand>> {
         self.command.clone()
     }
@@ -131,10 +164,7 @@ impl IMenuItem for MenuItem {
     }
 }
 
-/// Menu 容器组件
-///
-/// Stateless 构造：`Menu::new(id).items(items)`
-/// 通过 `items()` 接收 `MenuItems` 数据绑定。
+/// Menu 容器（兼容小写 `<menu items={...}>`）
 #[derive(IntoElement)]
 pub struct Menu {
     #[allow(dead_code)]
@@ -158,70 +188,17 @@ impl Menu {
 
 impl RenderOnce for Menu {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
-        let mut bar = h_flex().h_full().items_center();
-
-        for (ix, item) in self.items.iter().enumerate() {
-            if item.separator() {
-                bar = bar.child(Separator::vertical().h_full());
-                continue;
-            }
-
-            let label = item.label();
-            let disabled = item.disabled();
-            let icon = item.icon();
-            let children = item.children();
-            let command = item.command();
-
-            if let Some(children) = children {
-                // 有子菜单：Button + DropdownMenu → PopupMenu
-                let mut btn = Button::new(("rml-menu", ix))
-                    .label(label)
-                    .ghost()
-                    .disabled(disabled);
-
-                if let Some(icon) = icon {
-                    btn = btn.icon(icon);
-                }
-
-                let btn = btn.dropdown_menu(move |menu, window, cx| {
-                    build_popup_menu(menu, &children, window, cx)
-                });
-                bar = bar.child(btn);
-            } else {
-                // 叶子节点：Button + on_click 直接执行命令
-                let mut btn = Button::new(("rml-menu", ix))
-                    .label(label)
-                    .ghost()
-                    .disabled(disabled);
-
-                if let Some(icon) = icon {
-                    btn = btn.icon(icon);
-                }
-
-                if let Some(cmd) = command {
-                    btn = btn.on_click(move |_, _window, cx| cmd.execute(&(), cx));
-                }
-                bar = bar.child(btn);
-            }
-        }
-
-        bar
+        render_menu_bar_from_items(self.items)
     }
 }
 
-/// 递归构建 PopupMenu：从 `IMenuItem` 树生成 gpui-component `PopupMenu`
-///
-/// 在 `DropdownMenu` 闭包和 `submenu` 闭包中调用，每次调用时 `window`/`cx` 由
-/// gpui-component 的弹出层基础设施注入。
-fn build_popup_menu(
-    mut menu: PopupMenu,
-    items: &[Arc<dyn IMenuItem>],
-    window: &mut Window,
-    cx: &mut Context<PopupMenu>,
-) -> PopupMenu {
-    for item in items {
+/// 从 `MenuItems` 渲染水平菜单栏（供 Menu 与 codegen 复用）
+pub fn render_menu_bar_from_items(items: MenuItems) -> impl IntoElement {
+    let mut bar = h_flex().h_full().items_center();
+
+    for (ix, item) in items.iter().enumerate() {
         if item.separator() {
-            menu = menu.separator();
+            bar = bar.child(Separator::vertical().h_full());
             continue;
         }
 
@@ -232,19 +209,104 @@ fn build_popup_menu(
         let command = item.command();
 
         if let Some(children) = children {
-            menu = menu.submenu(label, window, cx, move |submenu, window, cx| {
-                build_popup_menu(submenu, &children, window, cx)
-            });
-        } else {
-            let mut pmi = PopupMenuItem::new(label).disabled(disabled);
+            let mut btn = Button::new(("rml-menu", ix))
+                .label(label)
+                .ghost()
+                .disabled(disabled);
+
             if let Some(icon) = icon {
-                pmi = pmi.icon(icon);
+                btn = btn.icon(icon);
             }
+
+            let btn = btn.dropdown_menu(move |menu, window, cx| {
+                build_popup_menu_from_items(menu, &children, window, cx)
+            });
+            bar = bar.child(btn);
+        } else {
+            let mut btn = Button::new(("rml-menu", ix))
+                .label(label)
+                .ghost()
+                .disabled(disabled);
+
+            if let Some(icon) = icon {
+                btn = btn.icon(icon);
+            }
+
             if let Some(cmd) = command {
-                pmi = pmi.on_click(move |_, _window, cx| cmd.execute(&(), cx));
+                btn = btn.on_click(move |_, _window, cx| cmd.execute(&(), cx));
             }
-            menu = menu.item(pmi);
+            bar = bar.child(btn);
         }
+    }
+
+    bar
+}
+
+/// 从 `IMenuItem` 树递归构建 gpui-component `PopupMenu`（MVVM 子菜单路径专用）。
+fn build_popup_menu_from_items(
+    mut menu: PopupMenu,
+    items: &MenuItems,
+    window: &mut Window,
+    cx: &mut Context<PopupMenu>,
+) -> PopupMenu {
+    for item in items {
+        if item.separator() {
+            menu = menu.separator();
+            continue;
+        }
+
+        if item.header() {
+            menu = menu.label(item.label());
+            continue;
+        }
+
+        let label = item.label();
+        let disabled = item.disabled();
+        let icon = item.icon();
+        let checked = item.checked();
+        let href = item.href();
+        let children = item.children();
+        let command = item.command();
+
+        if let Some(children) = children {
+            let submenu_label = label;
+            menu = if let Some(icon) = icon {
+                menu.submenu_with_icon(Some(icon.into()), submenu_label, window, cx, {
+                    let children = children.clone();
+                    move |submenu, window, cx| {
+                        build_popup_menu_from_items(submenu, &children, window, cx)
+                    }
+                })
+            } else {
+                menu.submenu(submenu_label, window, cx, {
+                    let children = children.clone();
+                    move |submenu, window, cx| {
+                        build_popup_menu_from_items(submenu, &children, window, cx)
+                    }
+                })
+            };
+            continue;
+        }
+
+        if let Some(href) = href {
+            if let Some(icon) = icon.clone() {
+                menu = menu.link_with_icon(label, icon, href);
+            } else {
+                menu = menu.link(label, href);
+            }
+            continue;
+        }
+
+        let mut pmi = PopupMenuItem::new(label)
+            .disabled(disabled)
+            .checked(checked);
+        if let Some(icon) = icon {
+            pmi = pmi.icon(icon);
+        }
+        if let Some(cmd) = command {
+            pmi = pmi.on_click(move |_, _window, cx| cmd.execute(&(), cx));
+        }
+        menu = menu.item(pmi);
     }
     menu
 }

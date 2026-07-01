@@ -13,7 +13,7 @@
     <slot_left>
         <ActivityBar panels={activity_panels} on_panel_change="on_panel_change">
             <div if={active_panel_id == "samples"} class="nav-tree">
-                <Tree on_activate="on_case_activate" />
+                <CaseActivityPanel />
             </div>
         </ActivityBar>
     </slot_left>
@@ -38,6 +38,21 @@
         </div>
         <div if={active_case_id == "components.button"}>
             <ButtonCase />
+        </div>
+        <div if={active_case_id == "components.menu.context"}>
+            <MenuContextCase />
+        </div>
+        <div if={active_case_id == "components.menu.dropdown"}>
+            <MenuDropdownCase />
+        </div>
+        <div if={active_case_id == "components.menu.editor"}>
+            <MenuEditorCase />
+        </div>
+        <div if={active_case_id == "components.menu.features"}>
+            <MenuFeaturesCase />
+        </div>
+        <div if={active_case_id == "components.menu.custom"}>
+            <MenuCustomCase />
         </div>
         <div if={active_case_id == "i18n.basic"}>
             <I18nCase />

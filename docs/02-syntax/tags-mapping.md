@@ -226,9 +226,30 @@ gpui::div()
 
 💡 **设计要点**：生成的代码与手写代码完全等价，没有任何运行时开销。你可以用 `cargo rml-expand` 命令查看生成的完整代码，详见 [第 10 章 · 调试技巧](../10-advanced/debugging.md)。
 
-## 2.2.9 自定义组件标签
+## 2.2.9 扩展组件 kebab-case 规范
 
-除了 HTML 标准标签，RML 还支持自定义组件标签。组件名采用 PascalCase，与 HTML 标签的小写名区分：
+扩展轨组件（gpui-component 路由表、`compiler/menu/` codegen）**推荐**在 RML 中使用 **kebab-case**，引擎通过 `normalize_component_tag()` 映射为 PascalCase：
+
+| RML 标签（推荐） | 规范化后 |
+|------------------|----------|
+| `context-menu` | `ContextMenu` |
+| `dropdown-menu` | `DropdownMenu` |
+| `menu-bar` | `MenuBar` |
+| `menu-item` | `MenuItem` |
+| `menu-separator` | `MenuSeparator` |
+| `app-menu-bar` | `AppMenuBar` |
+| `button`（扩展轨） | `Button` |
+
+规则：
+
+1. 连字符分段，每段首字母大写后拼接：`foo-bar-baz` → `FooBarBaz`
+2. 已是 PascalCase 的标签原样匹配（向后兼容 `<Button>`）
+3. snake_case 特殊标签（`menu`、`status_bar`）不参与 kebab 转换，单独注册
+4. `component_lookup_resolved()` 先查原始标签，再查规范化结果
+
+菜单子项仅 `menu-item` 与 `menu-separator`（菜单内小写 `separator` 为分隔线别名）。
+
+## 2.2.10 自定义组件
 
 ```html
 <!-- HTML 标准标签：小写 -->
@@ -244,7 +265,7 @@ gpui::div()
 
 自定义组件的详细用法见 [第 6 章 · 组件系统](../06-components/INDEX.md)。
 
-## 2.2.10 小结
+## 2.2.11 小结
 
 RML 的标签系统是 HTML 标签到 GPUI 元素的**一一映射**：
 

@@ -1,0 +1,104 @@
+//! `MenuBar` 声明式 / `items` 绑定 codegen
+
+use crate::compiler::menu::hoist::MenuHoist;
+use crate::compiler::menu::item::{gen_menu_item_stmt, is_menu_item_tag};
+use crate::compiler::{CodegenCtx, CodegenError};
+use crate::parser::ast::{Attribute, Element, Node};
+
+pub fn gen_menu_bar(
+    elem: &Element,
+    ctx: &CodegenCtx,
+    depth: usize,
+    id_counter: &mut usize,
+    loop_vars: &[String],
+) -> Result<String, CodegenError> {
+    // items 绑定路径
+    if let Some(items_expr) = elem.attributes.iter().find_map(|a| match a {
+        Attribute::Bind { name, expr } if name == "items" => Some(expr.clone()),
+        _ => None,
+    }) {
+        let rust_expr = format!("self.{}", items_expr);
+        return Ok(format!(
+            "rml_ui::render_menu_bar_from_items({rust_expr}.clone())"
+        ));
+    }
+
+    // 声明式：顶层 MenuItem 带子节点 → 水平栏按钮 + dropdown
+    let top_items: Vec<&Element> = elem
+        .children
+        .iter()
+        .filter_map(|c| match c {
+            Node::Element(e) if is_menu_item_tag(&e.tag) => Some(e),
+            _ => None,
+        })
+        .collect();
+
+    if top_items.is_empty() {
+        return Ok("rml_ui::h_flex().h_full().items_center()".to_string());
+    }
+
+    let mut btn_codes = Vec::new();
+    for (ix, item) in top_items.iter().enumerate() {
+        let label = item
+            .attributes
+            .iter()
+            .find_map(|a| match a {
+                Attribute::Static { name, value } if name == "label" => Some(value.clone()),
+                Attribute::Bind { name, expr } if name == "label" => {
+                    Some(format!("self.{}.clone()", expr))
+                }
+                _ => None,
+            })
+            .unwrap_or_else(|| "\"\"".to_string());
+
+        let menu_children: Vec<&Element> = item
+            .children
+            .iter()
+            .filter_map(|c| match c {
+                Node::Element(e) if is_menu_item_tag(&e.tag) => Some(e),
+                _ => None,
+            })
+            .collect();
+
+        if menu_children.is_empty() {
+            btn_codes.push(format!(
+                "rml_ui::Button::new((\"rml_menu_bar\", {ix}usize)).label({label}).ghost()"
+            ));
+        } else {
+            let mut hoist = MenuHoist::default();
+            hoist.collect_menu_items(&menu_children, ctx, loop_vars)?;
+            let hoist_lets = hoist.gen_lets(ctx);
+            let mut inner_id = *id_counter;
+            let mut stmts = Vec::new();
+            stmts.push("let mut menu = menu;".to_string());
+            for child in &menu_children {
+                stmts.push(gen_menu_item_stmt(
+                    child,
+                    ctx,
+                    depth + 1,
+                    &mut inner_id,
+                    loop_vars,
+                    &hoist,
+                )?);
+            }
+            stmts.push("menu".to_string());
+            let body = stmts.join("\n                        ");
+            *id_counter = inner_id;
+            let button = format!(
+                "rml_ui::Button::new((\"rml_menu_bar\", {ix}usize))\n                .label({label})\n                .ghost()\n                .dropdown_menu(move |menu, window, cx| {{\n                    {body}\n                }})"
+            );
+            if hoist_lets.is_empty() {
+                btn_codes.push(button);
+            } else {
+                btn_codes.push(format!(
+                    "{{\n                {hoist_lets}\n                {button}\n            }}"
+                ));
+            }
+        }
+    }
+
+    Ok(format!(
+        "{{\n            let __rml_menu_weak = cx.weak_entity();\n            rml_ui::h_flex().h_full().items_center().children(vec![{}])\n        }}",
+        btn_codes.join(", ")
+    ))
+}

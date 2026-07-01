@@ -80,6 +80,7 @@ pub(super) fn gen_model_input(
 /// String/SharedString 等直接 `.clone().into()`。
 pub(super) fn gen_field_value_expr(field: &str, ty: &str) -> String {
     match ty {
+        "bool" => format!("self.{}.to_string().into()", field),
         "i32" | "u32" | "i64" | "u64" | "f32" | "f64" | "usize" | "isize" => {
             format!("self.{}.to_string().into()", field)
         }

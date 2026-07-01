@@ -120,17 +120,64 @@ pub fn is_builtin(tag: &str) -> bool {
     lookup(tag).is_some()
 }
 
-/// 判断标签是否为自定义组件（PascalCase）
+/// 将 kebab-case 扩展组件标签规范化为 PascalCase。
+///
+/// 通用规则：`context-menu` → `ContextMenu`，`menu-item` → `MenuItem`。
+/// 已是 PascalCase、snake_case（`status_bar`）或无连字符的标签原样返回。
+pub fn normalize_component_tag(tag: &str) -> String {
+    if !tag.contains('-') {
+        return tag.to_string();
+    }
+    tag.split('-')
+        .filter(|part| !part.is_empty())
+        .map(|part| {
+            let mut chars = part.chars();
+            match chars.next() {
+                None => String::new(),
+                Some(first) => {
+                    let mut s = String::new();
+                    s.extend(first.to_uppercase());
+                    s.push_str(chars.as_str());
+                    s
+                }
+            }
+        })
+        .collect()
+}
+
+/// 查询扩展组件：先原始标签，再 kebab-case 规范化后查询。
+pub fn component_lookup_resolved(tag: &str) -> Option<ComponentTag> {
+    component_lookup(tag).or_else(|| component_lookup(&normalize_component_tag(tag)))
+}
+
+/// 判断标签是否为扩展组件（PascalCase 或 kebab-case，不含特殊小写 `menu`/`status_bar`）
 pub fn is_component(tag: &str) -> bool {
-    tag.chars()
+    if is_special_lowercase_component(tag) {
+        return false;
+    }
+    let normalized = normalize_component_tag(tag);
+    normalized
+        .chars()
         .next()
         .map(|c| c.is_ascii_uppercase())
         .unwrap_or(false)
+        && component_lookup(&normalized).is_some()
 }
 
 /// 扩展组件中的 lowercase 标签（如 `menu`、`status_bar`），在 `component_lookup` 中注册
 pub fn is_special_lowercase_component(tag: &str) -> bool {
-    component_lookup(tag).is_some() && !is_component(tag)
+    component_lookup(tag).is_some() && !tag.contains('-') && {
+        !tag
+            .chars()
+            .next()
+            .map(|c| c.is_ascii_uppercase())
+            .unwrap_or(false)
+    }
+}
+
+/// 是否为扩展轨组件（含 PascalCase、kebab-case、特殊小写）
+pub fn is_extension_component(tag: &str) -> bool {
+    is_component(tag) || is_special_lowercase_component(tag)
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -300,10 +347,39 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             ctor_path: "rml_ui::Menu",
             kind: ComponentKind::Stateless,
         }),
+        // MenuBar 由 compiler/menu/ 直译，不在此注册
         "status_bar" => Some(ComponentTag {
             ctor_path: "rml_ui::RmlStatusBar",
             kind: ComponentKind::StatelessNoId,
         }),
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod normalize_tests {
+    use super::*;
+
+    #[test]
+    fn kebab_to_pascal() {
+        assert_eq!(normalize_component_tag("context-menu"), "ContextMenu");
+        assert_eq!(normalize_component_tag("dropdown-menu"), "DropdownMenu");
+        assert_eq!(normalize_component_tag("menu-bar"), "MenuBar");
+        assert_eq!(normalize_component_tag("menu-item"), "MenuItem");
+        assert_eq!(normalize_component_tag("menu-separator"), "MenuSeparator");
+        assert_eq!(normalize_component_tag("app-menu-bar"), "AppMenuBar");
+    }
+
+    #[test]
+    fn passthrough_unchanged() {
+        assert_eq!(normalize_component_tag("Button"), "Button");
+        assert_eq!(normalize_component_tag("menu"), "menu");
+        assert_eq!(normalize_component_tag("status_bar"), "status_bar");
+    }
+
+    #[test]
+    fn menu_bar_routed_by_menu_codegen_not_lookup() {
+        assert!(component_lookup_resolved("menu-bar").is_none());
+        assert!(component_lookup_resolved("MenuBar").is_none());
     }
 }

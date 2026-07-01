@@ -2,6 +2,14 @@ use rml::prelude::*;
 use rml_core::i18n::I18nState;
 use rml_core::theme::ThemeExt;
 
+#[contribute(
+    host = "demo.shell",
+    id = "i18n.basic",
+    name = "case.i18n.title",
+    kind = "case",
+    parent_id = "cat.i18n",
+    order = 21,
+)]
 #[component]
 #[derive(Default)]
 pub struct I18nCase {}

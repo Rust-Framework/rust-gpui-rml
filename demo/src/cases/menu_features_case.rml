@@ -1,0 +1,20 @@
+<component>
+    <div class="case-pane">
+        <h2 class="case-title">{t("case.menu.features.title")}</h2>
+        <p class="case-hint">{features_status}</p>
+        <dropdown-menu scrollable="" max_h="280">
+            <Button label="Features" ghost="" />
+            <menu-item header="" label="Actions" />
+            <menu-item label="Available" onclick={on_available} />
+            <menu-item label="Disabled" disabled="" onclick={on_disabled} />
+            <menu-item label="Checkable" checked={is_checked} onclick={on_toggle_check} />
+            <menu-separator />
+            <menu-item label="Documentation" href="https://longbridge.github.io/gpui-component/" icon="Info" />
+            <menu-separator />
+            <menu-item label="Submenu">
+                <menu-item label="Item A" onclick={on_nested_a} />
+                <menu-item label="Item B" onclick={on_nested_b} />
+            </menu-item>
+        </dropdown-menu>
+    </div>
+</component>

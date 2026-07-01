@@ -1,6 +1,9 @@
-//! TreeView —— gpui-component Tree 的 RML 友好封装
+//! TreeView —— `<Tree>` 的 RML 集成默认渲染器
 //!
-//! 提供官方文档默认的文件夹/文件图标渲染，并支持叶子节点 `on_activate` 回调。
+//! gpui-component `Tree` 要求调用方提供项渲染闭包；本组件提供案例树场景的默认
+//! 文件夹/文件图标与 `on_activate` 事件接线。树数据由 ViewModel 在 Rust 侧写入
+//! `TreeState`（非声明式 `<TreeNode>` codegen）。未来若增加声明式树节点，codegen
+//! 应直译 `Tree::new`，本组件仅保留 MVVM/Stateful 绑定路径。
 
 use std::rc::Rc;
 

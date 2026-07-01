@@ -69,7 +69,105 @@
 
   "menu.lang_en": "English",
 
-  "menu.theme_toggle": "切换主题"
+  "menu.theme_toggle": "切换主题",
+
+  "tree.cat.menu": "菜单",
+
+  "tree.case.menu.context": "上下文菜单",
+
+  "tree.case.menu.dropdown": "下拉菜单",
+
+  "tree.case.menu.editor": "编辑器菜单",
+
+  "tree.case.menu.features": "菜单特性",
+
+  "tree.case.menu.custom": "自定义项",
+
+  "case.menu.context.title": "上下文菜单",
+
+  "case.menu.context.target": "右键点击此区域",
+
+  "case.menu.context.idle": "在上方区域右键打开菜单",
+
+  "case.menu.dropdown.title": "下拉菜单",
+
+  "case.menu.dropdown.idle": "点击 Options 打开菜单",
+
+  "case.menu.editor.title": "编辑器菜单（勾选 / check_side）",
+
+  "case.menu.features.title": "菜单特性（禁用/勾选/链接/子菜单）",
+
+  "case.menu.custom.title": "自定义菜单行",
+
+  "case.menu.last_action": "上次操作",
+
+  "case.menu.open": "打开",
+
+  "case.menu.copy": "复制",
+
+  "case.menu.cut": "剪切",
+
+  "case.menu.paste": "粘贴",
+
+  "case.menu.new": "新建",
+
+  "case.menu.new_file": "文件",
+
+  "case.menu.new_folder": "文件夹",
+
+  "case.menu.delete": "删除",
+
+  "case.menu.options": "选项",
+
+  "case.menu.custom": "自定义操作",
+
+  "case.menu.standard": "标准操作",
+
+  "case.menu.exit": "退出",
+
+  "case.menu.edit": "编辑",
+
+  "case.menu.save": "保存",
+
+  "case.menu.save_as": "另存为",
+
+  "case.menu.find": "查找",
+
+  "case.menu.replace": "替换",
+
+  "case.menu.word_wrap": "自动换行",
+
+  "case.menu.features.btn": "全部特性",
+
+  "case.menu.features.group": "操作分组",
+
+  "case.menu.available": "可用项",
+
+  "case.menu.disabled_item": "禁用项",
+
+  "case.menu.checked_item": "可勾选项",
+
+  "case.menu.docs": "文档",
+
+  "case.menu.nested": "子菜单",
+
+  "case.menu.nested_a": "子项 A",
+
+  "case.menu.nested_b": "子项 B",
+
+  "case.menu.settings": "设置",
+
+  "case.menu.display": "显示",
+
+  "case.menu.dark_mode": "深色模式",
+
+  "case.menu.help_center": "帮助中心",
+
+  "case.menu.sign_out": "退出登录",
+
+  "case.menu.on": "开",
+
+  "case.menu.off": "关"
 
 }
 

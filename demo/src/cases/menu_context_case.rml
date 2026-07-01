@@ -1,0 +1,21 @@
+<component>
+    <div class="case-pane">
+        <h2 class="case-title">{t("case.menu.context.title")}</h2>
+        <p class="case-hint">{context_status}</p>
+        <context-menu>
+            <div class="menu-target">{t("case.menu.context.target")}</div>
+            <menu-item label="Open" icon="FolderOpen" onclick={on_open} />
+            <menu-separator />
+            <menu-item label="Copy" icon="BookOpen" onclick={on_copy} />
+            <menu-item label="Cut" onclick={on_cut} />
+            <menu-item label="Paste" onclick={on_paste} />
+            <menu-separator />
+            <menu-item label="New">
+                <menu-item label="File" icon="File" onclick={on_new_file} />
+                <menu-item label="Folder" icon="Folder" onclick={on_new_folder} />
+            </menu-item>
+            <menu-separator />
+            <menu-item label="Delete" icon="Settings" onclick={on_delete} />
+        </context-menu>
+    </div>
+</component>

@@ -1,5 +1,13 @@
 use rml::prelude::*;
 
+#[contribute(
+    host = "demo.shell",
+    id = "binding.counter",
+    name = "case.counter.title",
+    kind = "case",
+    parent_id = "cat.binding",
+    order = 1,
+)]
 #[component]
 #[derive(Default)]
 pub struct CounterCase {

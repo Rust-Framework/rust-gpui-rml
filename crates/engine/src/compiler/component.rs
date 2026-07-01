@@ -34,7 +34,9 @@ pub fn gen_component(
     loop_vars: &[String],
 ) -> Result<String, CodegenError> {
     let tag = &elem.tag;
-    let component = match tags::component_lookup(tag) {
+    let resolved = tags::normalize_component_tag(tag);
+
+    let component = match tags::component_lookup_resolved(tag) {
         Some(c) => c,
         None => {
             // 内置路由表未命中：检查用户组件注册表
@@ -91,7 +93,7 @@ pub fn gen_component(
     for attr in &elem.attributes {
         match attr {
             Attribute::Static { name, value } => {
-                if let Some(setter) = component_static_setter(name, value, tag) {
+                if let Some(setter) = component_static_setter(name, value, &resolved) {
                     code.push_str(&setter);
                     if name == "label" {
                         label_set_by_attr = true;
@@ -100,12 +102,12 @@ pub fn gen_component(
             }
             Attribute::Bind { name, expr } => {
                 let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
-                if let Some(setter) = component_bind_setter(name, expr, &lv, &computed, tag) {
+                if let Some(setter) = component_bind_setter(name, expr, &lv, &computed, &resolved) {
                     code.push_str(&setter);
                 }
             }
             Attribute::Event { name, handler } => {
-                if let Some(setter) = component_event_setter(name, handler, tag) {
+                if let Some(setter) = component_event_setter(name, handler, &resolved) {
                     code.push_str(&setter);
                 }
             }
@@ -123,9 +125,10 @@ pub fn gen_component(
     // （gen_modern_window_wrapper）直接生成，不通过 component_lookup 路由表。
     // ActivityBar 作为容器，子节点渲染到活动面板区域。
     let is_container = (matches!(component.kind, tags::ComponentKind::StatelessNoId)
-        || tag == "ActivityBar")
-        && tag != "menu"
-        && tag != "status_bar";
+        || resolved == "ActivityBar")
+        && resolved != "menu"
+        && resolved != "MenuBar"
+        && resolved != "status_bar";
 
     if is_container {
         // 容器组件：所有 element/文本子节点作为 children

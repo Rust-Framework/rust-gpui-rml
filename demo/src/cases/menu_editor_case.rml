@@ -1,0 +1,16 @@
+<component>
+    <div class="case-pane">
+        <h2 class="case-title">{t("case.menu.editor.title")}</h2>
+        <p class="case-hint">{editor_status}</p>
+        <dropdown-menu check_side="Right">
+            <Button label="Edit" ghost="" />
+            <menu-item label="Save" onclick={on_save} />
+            <menu-item label="Save As" onclick={on_save_as} />
+            <menu-separator />
+            <menu-item label="Find" onclick={on_find} />
+            <menu-item label="Replace" onclick={on_replace} />
+            <menu-separator />
+            <menu-item label="Word Wrap" checked={word_wrap} onclick={on_toggle_wrap} />
+        </dropdown-menu>
+    </div>
+</component>

@@ -6,6 +6,7 @@ pub mod codegen;
 pub mod component;
 pub mod event;
 pub mod expr;
+pub mod menu;
 pub mod validator;
 
 use crate::css::StyleSheet;

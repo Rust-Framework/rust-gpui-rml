@@ -31,6 +31,7 @@ use crate::parser::ast::{Attribute, Directive, Element, Node, TextSegment};
 use crate::tags;
 use crate::compiler::component as comp;
 use crate::compiler::event;
+use crate::compiler::menu;
 
 /// 收集 RML 中所有 `model={field}` 绑定的字段名
 pub fn collect_model_fields(root: &Node) -> Vec<String> {
@@ -154,6 +155,7 @@ fn gen_render_impl_from_children(
     out.push_str("            rml_core::lifecycle::ILifecycle::on_loaded(self, _window, cx);\n");
     out.push_str("        }\n");
     out.push_str("        use gpui::{ParentElement, InteractiveElement, StatefulInteractiveElement, IntoElement, Styled};\n");
+    out.push_str("        use rml_ui::{ContextMenuExt, DropdownMenu, PopupMenuItem, Side, h_flex};\n");
     out.push_str("        use rml_ui::{ButtonVariants, Disableable, Sizable, Selectable, StyledExt};\n");
     out.push_str("        use rml::runtime::event_flow::convert as rml_convert;\n");
 
@@ -301,8 +303,20 @@ fn gen_element(
 ) -> Result<GenResult, CodegenError> {
     let tag = &elem.tag;
 
-    // 扩展组件（PascalCase 或特殊小写标签 menu/status_bar）：路由到 gpui-component 构造器
-    if tags::is_component(tag) || tags::is_special_lowercase_component(tag) {
+    // 菜单容器标签（context-menu / dropdown-menu / menu-bar / app-menu-bar）
+    if menu::is_menu_container(tag) {
+        let code = menu::gen_menu_element(elem, ctx, depth, id_counter, loop_vars)?;
+        return Ok((code, false));
+    }
+
+    // 用户自定义 #[component]（PascalCase，如 WelcomeCase）
+    if ctx.user_components.contains_key(tag) {
+        let code = comp::gen_component(elem, ctx, depth, id_counter, loop_vars)?;
+        return Ok((code, false));
+    }
+
+    // 扩展组件（PascalCase、kebab-case 或特殊小写标签 menu/status_bar）
+    if tags::is_extension_component(tag) {
         let code = comp::gen_component(elem, ctx, depth, id_counter, loop_vars)?;
         return Ok((code, false));
     }
@@ -510,7 +524,7 @@ fn gen_mixed_text(segments: &[TextSegment], loop_vars: &[&str], computed: &[&str
 }
 
 /// 把插值表达式字符串编译为 Rust 表达式字符串
-fn gen_expr_code(expr_str: &str, loop_vars: &[&str], computed: &[&str]) -> String {
+pub(crate) fn gen_expr_code(expr_str: &str, loop_vars: &[&str], computed: &[&str]) -> String {
     if let Some(code) = try_gen_i18n_call(expr_str, loop_vars, computed) {
         return code;
     }

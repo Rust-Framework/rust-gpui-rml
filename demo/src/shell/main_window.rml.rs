@@ -1,14 +1,33 @@
-use std::sync::Arc;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 use gpui::{BorrowAppContext, Entity, SharedString, Window};
 use rml::prelude::*;
 use rml_core::i18n::I18nExt;
 use rml_core::theme::ThemeExt;
-use rml_ui::{ActivityPanels, MenuItem, MenuItems, StatusBarItems, TabItem, TreeState};
+use rml_ui::{ActivityPanels, MenuItems, StatusBarItems, TabItem};
 
-use crate::cases::{self, ButtonCase, CounterCase, I18nCase, OpenTab, TwoWayCase, WelcomeCase};
-use crate::features::navigation;
-use crate::shell::{bindings, hosts};
+use crate::cases::{
+    self, ButtonCase, CounterCase, I18nCase, MenuContextCase, MenuDropdownCase, MenuEditorCase,
+    MenuFeaturesCase, MenuCustomCase, OpenTab, TwoWayCase, WelcomeCase,
+};
+use crate::shell::contributions::{self, SHELL_HOST};
+use crate::shell::CaseActivityPanel;
+
+static MAIN_WINDOW_WEAK: Mutex<Option<gpui::WeakEntity<MainWindow>>> = Mutex::new(None);
+
+/// 案例激活桥接入口 —— 供 `CaseActivityPanel::on_case_activate` 转发调用。
+pub fn activate_case(case_id: String, app: &mut gpui::App) {
+    if let Ok(guard) = MAIN_WINDOW_WEAK.lock() {
+        if let Some(weak) = guard.as_ref() {
+            if let Some(entity) = weak.upgrade() {
+                entity.update(app, |main, cx| {
+                    main.open_case(case_id, cx);
+                });
+            }
+        }
+    }
+}
 
 #[window]
 #[derive(Default)]
@@ -20,16 +39,20 @@ pub struct MainWindow {
     active_panel_id: String,
     activity_panels: ActivityPanels,
     status_items: StatusBarItems,
-    case_tree_state: Option<Entity<TreeState>>,
     i18n_version: u32,
+    case_activity_panel: Option<Entity<CaseActivityPanel>>,
     welcome_case: Option<Entity<WelcomeCase>>,
     counter_case: Option<Entity<CounterCase>>,
     two_way_case: Option<Entity<TwoWayCase>>,
     button_case: Option<Entity<ButtonCase>>,
     i18n_case: Option<Entity<I18nCase>>,
+    menu_context_case: Option<Entity<MenuContextCase>>,
+    menu_dropdown_case: Option<Entity<MenuDropdownCase>>,
+    menu_editor_case: Option<Entity<MenuEditorCase>>,
+    menu_features_case: Option<Entity<MenuFeaturesCase>>,
+    menu_custom_case: Option<Entity<MenuCustomCase>>,
     menu_items: MenuItems,
-    theme_cmd: Option<Arc<dyn ICommand>>,
-    lang_cmd: Option<Arc<dyn ICommand>>,
+    menu_commands: HashMap<String, Arc<dyn ICommand>>,
 }
 
 
@@ -47,11 +70,10 @@ impl ILifecycle for MainWindow {
         if self.active_panel_id.is_empty() {
             self.active_panel_id = "samples".to_string();
         }
-        if self.case_tree_state.is_none() {
-            self.case_tree_state = Some(cases::init_tree_state(cx));
-        }
         self.i18n_version = self.i18n_version.wrapping_add(1);
 
+        self.case_activity_panel
+            .get_or_insert_with(|| cx.new(|_| CaseActivityPanel::default()));
         self.welcome_case
             .get_or_insert_with(|| cx.new(|_| WelcomeCase::default()));
         self.counter_case
@@ -62,26 +84,32 @@ impl ILifecycle for MainWindow {
             .get_or_insert_with(|| cx.new(|_| ButtonCase::default()));
         self.i18n_case
             .get_or_insert_with(|| cx.new(|_| I18nCase::default()));
+        self.menu_context_case
+            .get_or_insert_with(|| cx.new(|_| MenuContextCase::default()));
+        self.menu_dropdown_case
+            .get_or_insert_with(|| cx.new(|_| MenuDropdownCase::default()));
+        self.menu_editor_case
+            .get_or_insert_with(|| cx.new(|_| MenuEditorCase::default()));
+        self.menu_features_case
+            .get_or_insert_with(|| cx.new(|_| MenuFeaturesCase::default()));
+        self.menu_custom_case
+            .get_or_insert_with(|| cx.new(|_| MenuCustomCase::default()));
 
-        self.theme_cmd = Some(Arc::new(RelayCommand::new(cx, |this, cx| {
-            this.apply_toggle_theme(cx)
-        })));
-        self.lang_cmd = Some(Arc::new(RelayCommand::new(cx, |this, cx| {
-            this.apply_switch_en(cx)
-        })));
-        self.rebuild_menu_items(cx);
+        self.menu_commands.insert(
+            "menu.theme_toggle".to_string(),
+            Arc::new(RelayCommand::new(cx, |this, cx| this.apply_toggle_theme(cx))),
+        );
+        self.menu_commands.insert(
+            "menu.lang_en".to_string(),
+            Arc::new(RelayCommand::new(cx, |this, cx| this.apply_switch_en(cx))),
+        );
 
-        let weak = cx.weak_entity();
-        navigation::set_case_activate_handler(move |case_id, cx| {
-            if let Some(entity) = weak.upgrade() {
-                entity.update(cx, |main, cx| {
-                    main.open_case(case_id, cx);
-                });
-            }
-        });
+        if let Ok(mut guard) = MAIN_WINDOW_WEAK.lock() {
+            *guard = Some(cx.weak_entity());
+        }
 
-        Self::wire_contribution_sync(cx);
-        self.refresh_shell_bindings(cx);
+        Self::wire_host_changed(cx);
+        self.refresh_bindings(cx);
 
         window.defer(cx, |window, cx| {
             super::LoginDialog::default().open(window, cx);
@@ -90,45 +118,26 @@ impl ILifecycle for MainWindow {
 }
 
 impl MainWindow {
-    fn wire_contribution_sync(cx: &mut Context<Self>) {
+    fn wire_host_changed(cx: &mut Context<Self>) {
         let weak = cx.weak_entity();
-        cx.update_global::<rml_app::contribution::ContributionRegistryGlobal, _>(|global, _cx| {
-            for host_id in [hosts::ACTIVITY_BAR, hosts::STATUS, hosts::CASE_TREE] {
-                let weak = weak.clone();
-                global.0.set_host_on_changed(
-                    host_id,
-                    Box::new(move |app| {
-                        if let Some(entity) = weak.upgrade() {
-                            entity.update(app, |main, cx| {
-                                main.refresh_shell_bindings(cx);
-                            });
-                        }
-                    }),
-                );
-            }
+        cx.update_global::<rml_app::contribution::ContributionRegistryGlobal, _>(|global, _| {
+            global.0.set_host_on_changed(
+                SHELL_HOST,
+                Box::new(move |app| {
+                    if let Some(entity) = weak.upgrade() {
+                        entity.update(app, |main, cx| {
+                            main.refresh_bindings(cx);
+                        });
+                    }
+                }),
+            );
         });
     }
 
-    fn refresh_shell_bindings(&mut self, cx: &mut Context<Self>) {
-        self.activity_panels =
-            bindings::activity_panels_from_host(cx, hosts::ACTIVITY_BAR, &self.active_panel_id);
-        self.status_items = bindings::status_items_from_host(cx, hosts::STATUS);
-    }
-
-    fn rebuild_menu_items(&mut self, cx: &mut Context<Self>) {
-        let theme_cmd = self
-            .theme_cmd
-            .clone()
-            .expect("init theme_cmd in on_loaded");
-        let lang_cmd = self.lang_cmd.clone().expect("init lang_cmd in on_loaded");
-        self.menu_items = vec![
-            MenuItem::new(cx.t("menu.theme_toggle"))
-                .command(theme_cmd)
-                .into_arc(),
-            MenuItem::new(cx.t("menu.lang_en"))
-                .command(lang_cmd)
-                .into_arc(),
-        ];
+    fn refresh_bindings(&mut self, cx: &mut Context<Self>) {
+        self.activity_panels = contributions::build_activity_panels(cx, &self.active_panel_id);
+        self.status_items = contributions::build_status_items(cx);
+        self.menu_items = contributions::build_menu_items(cx, &self.menu_commands);
     }
 
     #[computed]
@@ -153,12 +162,7 @@ impl MainWindow {
         } else {
             self.active_panel_id = new_id;
         }
-        self.refresh_shell_bindings(cx);
-    }
-
-    #[command]
-    pub fn on_case_activate(&mut self, item_id: &SharedString, cx: &mut Context<Self>) {
-        navigation::activate_case(item_id.to_string(), cx);
+        self.refresh_bindings(cx);
     }
 
     #[command]
@@ -208,11 +212,7 @@ impl MainWindow {
         self.open_tabs.iter_mut().for_each(|tab| {
             tab.title = cx.t(cases::case_title_key(&tab.id)).to_string();
         });
-        if let Some(tree) = self.case_tree_state.as_ref() {
-            cases::refresh_tree_state(tree, cx);
-        }
-        self.refresh_shell_bindings(cx);
-        self.rebuild_menu_items(cx);
+        self.refresh_bindings(cx);
         cx.notify();
     }
 }

@@ -3,7 +3,9 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, ToTokens};
 use syn::{
-    parse::Parse, parse::ParseStream, punctuated::Punctuated, Expr, Ident, ItemStruct, LitStr, Token,
+    parse::{Parse, ParseStream, Parser},
+    punctuated::Punctuated,
+    Expr, Ident, Item, LitStr, Token,
 };
 
 struct ContributeArgs {
@@ -16,6 +18,8 @@ struct ContributeArgs {
     order: Option<syn::LitInt>,
     placement: Option<Ident>,
     group: Option<LitStr>,
+    kind: Option<LitStr>,
+    parent_id: Option<LitStr>,
 }
 
 impl Parse for ContributeArgs {
@@ -29,6 +33,8 @@ impl Parse for ContributeArgs {
         let mut order = None;
         let mut placement = None;
         let mut group = None;
+        let mut kind = None;
+        let mut parent_id = None;
 
         let fields: Punctuated<syn::Meta, Token![,]> =
             input.parse_terminated(syn::Meta::parse, Token![,])?;
@@ -73,6 +79,12 @@ impl Parse for ContributeArgs {
                 Some("group") => {
                     group = Some(syn::parse2(nv.value.into_token_stream())?);
                 }
+                Some("kind") => {
+                    kind = Some(syn::parse2(nv.value.into_token_stream())?);
+                }
+                Some("parent_id") => {
+                    parent_id = Some(syn::parse2(nv.value.into_token_stream())?);
+                }
                 _ => {}
             }
         }
@@ -87,6 +99,8 @@ impl Parse for ContributeArgs {
             order,
             placement,
             group,
+            kind,
+            parent_id,
         })
     }
 }
@@ -112,12 +126,37 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
         Ok(a) => a,
         Err(e) => return e.to_compile_error(),
     };
-    let item = match syn::parse2::<ItemStruct>(input) {
-        Ok(i) => i,
+
+    // 支持多 item 输入：当与 #[component]/#[window] 叠加时，下层宏已展开为
+    // `struct + impls + include!` 多个 item。解析所有 item，找到 struct 提取名称，
+    // 原样透传所有 item，再追加生成的 impl + 注册函数。
+    let parse_items = |input: syn::parse::ParseStream| {
+        let mut items = Vec::new();
+        while !input.is_empty() {
+            items.push(input.parse::<Item>()?);
+        }
+        Ok(items)
+    };
+    let items: Vec<Item> = match parse_items.parse2(input) {
+        Ok(items) => items,
         Err(e) => return e.to_compile_error(),
     };
 
-    let struct_name = &item.ident;
+    let struct_name = items.iter().find_map(|item| {
+        if let Item::Struct(s) = item {
+            Some(s.ident.clone())
+        } else {
+            None
+        }
+    });
+    let Some(struct_name) = struct_name else {
+        return syn::Error::new(
+            proc_macro2::Span::call_site(),
+            "#[contribute] requires a struct definition in its input",
+        )
+        .to_compile_error();
+    };
+
     let register_fn = format_ident!(
         "__rml_register_{}",
         struct_name.to_string().to_lowercase()
@@ -157,9 +196,19 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
         .as_ref()
         .map(|g| quote! { .group(#g) })
         .unwrap_or_default();
+    let kind = args
+        .kind
+        .as_ref()
+        .map(|k| quote! { .property("kind", #k) })
+        .unwrap_or_default();
+    let parent_id = args
+        .parent_id
+        .as_ref()
+        .map(|p| quote! { .parent_id(#p) })
+        .unwrap_or_default();
 
     quote! {
-        #item
+        #(#items)*
 
         impl rml_core::contribution::IContribution for #struct_name {
             fn id(&self) -> &str {
@@ -197,6 +246,8 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
             let options = rml_core::contribution::ContributionOptions::new()
                 .visual_mode(#visual_mode)
                 .placement(#placement)
+                #kind
+                #parent_id
                 #order
                 #group;
             cx.update_global::<ContributionRegistryGlobal, _>(|global, cx| {

@@ -68,6 +68,104 @@
   "menu.help_about": "About RML Showcase",
 
   "menu.lang_en": "English",
-  "menu.theme_toggle": "Toggle Theme"
+  "menu.theme_toggle": "Toggle Theme",
+
+  "tree.cat.menu": "Menu",
+
+  "tree.case.menu.context": "Context menu",
+
+  "tree.case.menu.dropdown": "Dropdown menu",
+
+  "tree.case.menu.editor": "Editor menu",
+
+  "tree.case.menu.features": "Menu features",
+
+  "tree.case.menu.custom": "Custom row",
+
+  "case.menu.context.title": "Context menu",
+
+  "case.menu.context.target": "Right-click this area",
+
+  "case.menu.context.idle": "Right-click the area above",
+
+  "case.menu.dropdown.title": "Dropdown menu",
+
+  "case.menu.dropdown.idle": "Click Options to open the menu",
+
+  "case.menu.editor.title": "Editor menu (check / check_side)",
+
+  "case.menu.features.title": "Menu features (disabled/check/link/submenu)",
+
+  "case.menu.custom.title": "Custom menu row",
+
+  "case.menu.last_action": "Last action",
+
+  "case.menu.open": "Open",
+
+  "case.menu.copy": "Copy",
+
+  "case.menu.cut": "Cut",
+
+  "case.menu.paste": "Paste",
+
+  "case.menu.new": "New",
+
+  "case.menu.new_file": "File",
+
+  "case.menu.new_folder": "Folder",
+
+  "case.menu.delete": "Delete",
+
+  "case.menu.options": "Options",
+
+  "case.menu.custom": "Custom action",
+
+  "case.menu.standard": "Standard action",
+
+  "case.menu.exit": "Exit",
+
+  "case.menu.edit": "Edit",
+
+  "case.menu.save": "Save",
+
+  "case.menu.save_as": "Save As",
+
+  "case.menu.find": "Find",
+
+  "case.menu.replace": "Replace",
+
+  "case.menu.word_wrap": "Word Wrap",
+
+  "case.menu.features.btn": "All features",
+
+  "case.menu.features.group": "Actions",
+
+  "case.menu.available": "Available",
+
+  "case.menu.disabled_item": "Disabled",
+
+  "case.menu.checked_item": "Checkable",
+
+  "case.menu.docs": "Documentation",
+
+  "case.menu.nested": "Submenu",
+
+  "case.menu.nested_a": "Item A",
+
+  "case.menu.nested_b": "Item B",
+
+  "case.menu.settings": "Settings",
+
+  "case.menu.display": "Display",
+
+  "case.menu.dark_mode": "Dark Mode",
+
+  "case.menu.help_center": "Help Center",
+
+  "case.menu.sign_out": "Sign Out",
+
+  "case.menu.on": "On",
+
+  "case.menu.off": "Off"
 }
 
