@@ -19,6 +19,7 @@ pub fn case_title_key(id: &str) -> &'static str {
         "components.menu.editor" => "case.menu.editor.title",
         "components.menu.features" => "case.menu.features.title",
         "components.menu.custom" => "case.menu.custom.title",
+        "components.status_bar" => "case.status_bar.title",
         "i18n.basic" => "case.i18n.title",
         _ => "shell.case_default",
     }

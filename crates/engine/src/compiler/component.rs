@@ -442,6 +442,7 @@ mod tests {
             attributes: attrs,
             directives: vec![],
             children,
+            slot_name: None,
         }
     }
 
@@ -456,6 +457,7 @@ mod tests {
             attributes: attrs,
             directives,
             children,
+            slot_name: None,
         }
     }
 

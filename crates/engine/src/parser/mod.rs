@@ -143,6 +143,7 @@ impl Parser {
     ) -> Result<Element, ParseError> {
         let mut attributes = Vec::new();
         let mut directives = Vec::new();
+        let mut slot_name: Option<String> = None;
 
         for attr in raw_attrs {
             match attr.name.as_str() {
@@ -183,9 +184,12 @@ impl Parser {
                         directives.push(Directive::Ref(s));
                     }
                 }
+                // `slot="name"` 属性：标记此元素为具名插槽内容载体（Vue 风格 `<template slot="x">`）
+                // 不再 push 到 directives，而是设置 Element.slot_name 字段，
+                // 供 codegen 路由到目标组件的对应 slot setter。
                 "slot" => {
                     if let AttrValue::Static(s) = attr.value {
-                        directives.push(Directive::Slot(s));
+                        slot_name = Some(s);
                     }
                 }
                 name if name.starts_with("on") => {
@@ -216,6 +220,7 @@ impl Parser {
             attributes,
             directives,
             children,
+            slot_name,
         })
     }
 }

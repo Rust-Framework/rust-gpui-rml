@@ -1,10 +1,11 @@
 //! ModernWindowShell —— 内置封装的窗口视觉外壳组件
 //!
-//! 组合 `TitleBar` + 插槽化 Menu/StatusBar，用户通过插槽扩展（`slot_menu`/`slot_title_ext`/`slot_status_bar`）
+//! 组合 `TitleBar` + 插槽化 Menu/StatusBar，用户通过 Vue 风格插槽扩展
+//! （`<template slot="menu">` / `<template slot="title">` / `<template slot="footer">`）
 //! 或自定义 element 配置。
 //!
 //! 菜单 / 状态栏不再接受 `Vec<MenuItem>` / `Vec<StatusBarItem>` 数据结构绑定。
-//! 用户在 RML 中通过 `<slot_menu>` + `<MenuItem command={field} />` 声明菜单结构，
+//! 用户在 RML 中通过 `<template slot="menu">` + `<MenuItem command={field} />` 声明菜单结构，
 //! ViewModel 仅持有 `Arc<dyn ICommand>` 字段。
 
 use gpui::{

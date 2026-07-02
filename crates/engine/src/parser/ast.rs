@@ -37,6 +37,12 @@ pub struct Element {
     pub directives: Vec<Directive>,
     /// 子节点
     pub children: Vec<Node>,
+    /// 具名插槽标识（来自 `slot="name"` 属性）
+    ///
+    /// 用于 `<template slot="header">...</template>` 形式：父视图通过此字段
+    /// 声明该子节点应注入到目标组件的哪个具名插槽。
+    /// codegen 据此把子节点从普通 children 中分离，路由到对应 slot setter。
+    pub slot_name: Option<String>,
 }
 
 /// 属性

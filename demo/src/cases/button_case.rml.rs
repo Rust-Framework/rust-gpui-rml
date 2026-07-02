@@ -1,11 +1,11 @@
-﻿use rml::prelude::*;
+use rml::prelude::*;
 
 #[contribute(
     host_id = "demo.shell",
     id = "components.button",
     name = "case.button.title",
     kind = "case",
-    parent_id = "cat.components",
+    group = "components",
     order = 11,
 )]
 #[component]

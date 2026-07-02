@@ -28,4 +28,15 @@ pub trait IComponent: IViewModel {
     /// 组件标签名（PascalCase），用于 `.rml` 中的 `<MyComponent>`。
     /// 默认返回结构体名，由 `#[component]` 宏生成。
     fn rml_tag() -> &'static str;
+
+    /// 组件声明的具名插槽列表（Vue 风格 `<slot name="...">`）。
+    ///
+    /// 由 `#[component(slots = ["header", "footer", "default"])]` 宏参数生成。
+    /// 编译器据此校验父视图 `<template slot="x">` 中 `x` 是否合法。
+    /// 不写 `slots` 参数时返回空切片，表示组件不接受任何插槽。
+    ///
+    /// 保留名 `"default"` 对应模板内无 `name` 属性的 `<slot />`。
+    fn slots() -> &'static [&'static str] {
+        &[]
+    }
 }

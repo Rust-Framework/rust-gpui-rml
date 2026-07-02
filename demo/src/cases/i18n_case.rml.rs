@@ -1,4 +1,4 @@
-﻿use rml::prelude::*;
+use rml::prelude::*;
 use rml_core::i18n::I18nState;
 use rml_core::theme::ThemeExt;
 
@@ -7,7 +7,7 @@ use rml_core::theme::ThemeExt;
     id = "i18n.basic",
     name = "case.i18n.title",
     kind = "case",
-    parent_id = "cat.i18n",
+    group = "i18n",
     order = 21,
 )]
 #[component]

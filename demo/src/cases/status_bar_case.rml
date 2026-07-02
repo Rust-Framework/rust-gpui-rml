@@ -1,0 +1,6 @@
+<component>
+    <div v_flex="" class="case-pane">
+        <h2>{t("case.status_bar.title")}</h2>
+        <p>{t("case.status_bar.hint")}</p>
+    </div>
+</component>

@@ -11,25 +11,25 @@
     on_chrome_toggle="on_chrome_toggle"
     left_size={slot_left_size}>
 
-    <slot_left>
+    <template slot="left">
         <ActivityBar ref="activity_bar" />
-    </slot_left>
+    </template>
 
-    <slot_menu>
+    <template slot="menu">
         <menu-bar items={menu_items} />
-    </slot_menu>
+    </template>
 
-    <slot_title>
+    <template slot="title">
         <Button label="Docs" ghost="" />
-    </slot_title>
+    </template>
 
-    <slot_bottom>
+    <template slot="bottom">
         <div>Output panel — drag the top edge to resize</div>
-    </slot_bottom>
+    </template>
 
-    <slot_footer>
+    <template slot="footer">
         <status_bar items={status_items} />
-    </slot_footer>
+    </template>
 
     <component content={self.active_case_view(_window, cx)} />
 

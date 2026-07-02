@@ -189,7 +189,7 @@ Demo 案例除 UI 逻辑外，还向案例树注册元数据。在 struct 上**�
     id = "components.menu.context",
     name = "case.menu.context.title",  // 用 case.* 标题 key，不用 tree.*
     kind = "case",
-    parent_id = "cat.menu",
+    group = "menu",
     order = 16,
 )]
 #[component]

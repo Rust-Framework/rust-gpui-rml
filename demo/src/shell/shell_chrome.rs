@@ -90,40 +90,55 @@ pub fn map_menu_items<C>(
 }
 
 pub fn map_case_tree_items<C>(host_id: &str, cx: &Context<C>) -> Vec<TreeItem> {
+    use rml_core::i18n::t_static;
     let entries = entries_in_slot(cx, host_id, "case");
-    let mut by_parent: HashMap<Option<String>, Vec<&ContributedEntry>> = HashMap::new();
+
+    // 按 group 分组（None 为零散顶层节点）
+    let mut by_group: HashMap<Option<String>, Vec<&ContributedEntry>> = HashMap::new();
     for e in &entries {
-        by_parent
-            .entry(e.options.parent_id.as_ref().map(|s| s.to_string()))
+        by_group
+            .entry(e.options.group.as_ref().map(|s| s.to_string()))
             .or_default()
             .push(e);
     }
 
-    fn build_children(
-        parent_id: Option<&str>,
-        by_parent: &HashMap<Option<String>, Vec<&ContributedEntry>>,
-    ) -> Vec<TreeItem> {
-        let key = parent_id.map(|s| s.to_string());
-        let mut siblings = by_parent.get(&key).cloned().unwrap_or_default();
-        siblings.sort_by_key(|e| e.options.order);
-        siblings
-            .into_iter()
-            .map(|e| {
-                let id = e.contribution.id();
-                let mut item = TreeItem::new(id, e.contribution.name());
-                let children = build_children(Some(id), by_parent);
-                if !children.is_empty() {
-                    item = item.expanded(true);
-                    for child in children {
-                        item = item.child(child);
-                    }
-                }
-                item
-            })
-            .collect()
-    }
+    // group 的代表 order = 组内最小 case order，用于分类 folder 顶层排序
+    let mut groups: Vec<(Option<String>, i32)> = by_group
+        .iter()
+        .map(|(g, items)| {
+            (
+                g.clone(),
+                items.iter().map(|e| e.options.order).min().unwrap_or(0),
+            )
+        })
+        .collect();
+    groups.sort_by_key(|(_, o)| *o);
 
-    build_children(None, &by_parent)
+    let mut result: Vec<TreeItem> = Vec::new();
+    for (group, _) in groups {
+        let mut siblings = by_group.get(&group).cloned().unwrap_or_default();
+        siblings.sort_by_key(|e| e.options.order);
+
+        match group {
+            Some(g) => {
+                let group_id = format!("group.{}", g);
+                let group_name = t_static(&format!("tree.group.{}", g));
+                let mut item = TreeItem::new(group_id, group_name).expanded(true);
+                for child in siblings {
+                    let child_item =
+                        TreeItem::new(child.contribution.id(), child.contribution.name());
+                    item = item.child(child_item);
+                }
+                result.push(item);
+            }
+            None => {
+                for e in siblings {
+                    result.push(TreeItem::new(e.contribution.id(), e.contribution.name()));
+                }
+            }
+        }
+    }
+    result
 }
 
 pub struct ShellChromeBindings {

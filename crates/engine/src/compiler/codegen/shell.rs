@@ -2,6 +2,18 @@
 //!
 //! - `<modern_window>` → `ModernWindowShell` 包裹
 //! - `<tab_window>` → `TabWindowShell` 包裹 + 插槽分区
+//!
+//! ## Slot 语法（Vue 风格）
+//!
+//! shell 根元素子节点中，形如 `<template slot="name">...</template>` 的块
+//! 会被 `partition_slot_children` 拆分到对应 slot setter：
+//! - `<template slot="menu">` → `.menu_slot(...)`
+//! - `<template slot="title">` → `.title_ext_slot(...)`
+//! - `<template slot="footer">` → `.status_slot(...)`
+//! - `<template slot="left">` → `.slot_left(...)`（仅 tab_window）
+//! - `<template slot="right">` → `.slot_right(...)`（仅 tab_window）
+//! - `<template slot="bottom">` → `.slot_bottom(...)`（仅 tab_window）
+//! - 其他子节点 → 主内容（`.child(...)`）
 
 use crate::compiler::expr;
 use crate::compiler::{CodegenCtx, CodegenError};
@@ -11,7 +23,7 @@ use crate::parser::ast::{Attribute, Element, EventHandler, Node};
 ///
 /// - title 复用 IWindow::title()，不重复定义
 /// - menu/footer/icon 从根元素 Attribute::Bind 提取，使用表达式解析器处理 computed 方法
-/// - slot_title/slot_footer 从子节点插槽提取
+/// - `<template slot="menu/title/footer">` 从子节点插槽提取
 pub(super) fn gen_modern_window_wrapper(
     elem: &Element,
     ctx: &CodegenCtx,
@@ -87,6 +99,15 @@ pub(super) fn gen_modern_window_wrapper(
 
 /// 将 shell 根元素子节点拆分为插槽与主内容
 ///
+/// 识别 Vue 风格 `<template slot="name">...</template>` 形式：
+/// - `<template slot="menu">` → slot_menu
+/// - `<template slot="title">` → slot_title
+/// - `<template slot="footer">` → slot_footer
+/// - `<template slot="left">` → slot_left
+/// - `<template slot="right">` → slot_right
+/// - `<template slot="bottom">` → slot_bottom
+/// - 其他子节点（含无 slot 属性的 `<template>`）→ body 主内容
+///
 /// 返回 (menu, title, footer, left, right, bottom, body)
 pub(super) fn partition_slot_children(
     children: &[Node],
@@ -109,32 +130,40 @@ pub(super) fn partition_slot_children(
 
     for child in children {
         if let Node::Element(elem) = child {
-            match elem.tag.as_str() {
-                "slot_menu" => {
-                    slot_menu = slot_element_content(elem);
-                    continue;
+            // 仅识别 `<template slot="name">` 形式
+            if elem.tag == "template" {
+                if let Some(name) = &elem.slot_name {
+                    let content = template_block_content(elem);
+                    match name.as_str() {
+                        "menu" => {
+                            slot_menu = content;
+                            continue;
+                        }
+                        "title" => {
+                            slot_title = content;
+                            continue;
+                        }
+                        "footer" => {
+                            slot_footer = content;
+                            continue;
+                        }
+                        "left" => {
+                            slot_left = content;
+                            continue;
+                        }
+                        "right" => {
+                            slot_right = content;
+                            continue;
+                        }
+                        "bottom" => {
+                            slot_bottom = content;
+                            continue;
+                        }
+                        _ => {
+                            // 未知 slot 名：忽略并落入 body（validator 应在编译期拦截）
+                        }
+                    }
                 }
-                "slot_title" => {
-                    slot_title = slot_element_content(elem);
-                    continue;
-                }
-                "slot_footer" => {
-                    slot_footer = slot_element_content(elem);
-                    continue;
-                }
-                "slot_left" => {
-                    slot_left = slot_element_content(elem);
-                    continue;
-                }
-                "slot_right" => {
-                    slot_right = slot_element_content(elem);
-                    continue;
-                }
-                "slot_bottom" => {
-                    slot_bottom = slot_element_content(elem);
-                    continue;
-                }
-                _ => {}
             }
         }
         body.push(child.clone());
@@ -151,8 +180,12 @@ pub(super) fn partition_slot_children(
     )
 }
 
-/// 取插槽包装元素的内部内容（单子节点直接 unwrap，多子节点包 div）
-fn slot_element_content(elem: &Element) -> Option<Node> {
+/// 取 `<template slot="...">` 块的内部内容
+///
+/// - 单子节点：直接 unwrap（避免多余 div 包装）
+/// - 多子节点：包 `<div>` 作为容器
+/// - 无子节点：返回 None
+fn template_block_content(elem: &Element) -> Option<Node> {
     match elem.children.len() {
         0 => None,
         1 => Some(elem.children[0].clone()),
@@ -161,18 +194,25 @@ fn slot_element_content(elem: &Element) -> Option<Node> {
             attributes: vec![],
             directives: vec![],
             children: elem.children.clone(),
+            slot_name: None,
         })),
     }
 }
 
 /// 从根 `<tab_window>` 的 bind/event 属性生成 `TabWindowShell` 包裹代码
+///
+/// slot 参数命名与 `<template slot="name">` 的 name 一一对应：
+/// - slot_menu / slot_title / slot_footer / slot_left / slot_right / slot_bottom
+///
+/// 注意：slot_footer 在 builder 端映射到 `.status_slot(...)`，
+/// 因为 TabWindowShell 的 footer slot 装入 gpui-component 的 status_bar 控件。
 pub(super) fn gen_tab_window_wrapper(
     elem: &Element,
     ctx: &CodegenCtx,
     children_body: &str,
     slot_menu: Option<&str>,
     slot_title: Option<&str>,
-    slot_status: Option<&str>,
+    slot_footer: Option<&str>,
     slot_left: Option<&str>,
     slot_right: Option<&str>,
     slot_bottom: Option<&str>,
@@ -257,8 +297,8 @@ pub(super) fn gen_tab_window_wrapper(
     if let Some(title) = slot_title {
         code.push_str(&format!(".title_ext_slot({title})"));
     }
-    if let Some(status) = slot_status {
-        code.push_str(&format!(".status_slot(Some({status}))"));
+    if let Some(footer) = slot_footer {
+        code.push_str(&format!(".status_slot(Some({footer}))"));
     }
     if let Some(left) = slot_left {
         code.push_str(&format!(".slot_left(Some({left}))"));

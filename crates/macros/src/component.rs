@@ -145,16 +145,31 @@ pub fn inject_tracking_fields(fields: &mut Fields) {
 /// 生成组件所需的全部 trait 实现（IModel + ILifecycle + IViewModel + IComponent）
 ///
 /// 供 `#[component]` 和 `#[window]` 共用。
+/// `slots` 为组件声明的具名插槽列表（来自 `#[component(slots = [...])]`），
+/// 空切片表示不接受任何插槽（IComponent::slots 默认实现返回 &[]，无需覆写）。
 pub fn expand_component_impls(
     struct_name: &Ident,
     fields: &Fields,
     template_path: &str,
     struct_name_str: &str,
+    slots: &[String],
 ) -> TokenStream {
     let impl_i_model = gen_impl_i_model(struct_name, fields);
 
     let impl_i_view_model = quote! {
         impl rml_core::view_model::IViewModel for #struct_name {}
+    };
+
+    // 仅当 slots 非空时覆写 IComponent::slots()，避免与默认实现重复
+    let slots_override = if slots.is_empty() {
+        None
+    } else {
+        let slot_literals: Vec<&str> = slots.iter().map(|s| s.as_str()).collect();
+        Some(quote! {
+            fn slots() -> &'static [&'static str] {
+                &[#(#slot_literals),*]
+            }
+        })
     };
 
     let impl_i_component = quote! {
@@ -165,6 +180,7 @@ pub fn expand_component_impls(
             fn rml_tag() -> &'static str {
                 #struct_name_str
             }
+            #slots_override
         }
     };
 
@@ -177,16 +193,13 @@ pub fn expand_component_impls(
 
 /// `#[component]` 入口
 ///
-/// 不接受任何属性参数。模板路径固定为 `<snake_case>.rml`。
+/// 可选参数 `slots = ["header", "footer", "default"]` 声明具名插槽列表。
+/// 模板路径固定为 `<snake_case>.rml`。
 pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
-    // 拒绝任何属性参数
-    if !args.is_empty() {
-        return syn::Error::new(
-            proc_macro2::Span::call_site(),
-            "#[component] takes no arguments; template path is fixed as <snake_case>.rml",
-        )
-        .to_compile_error();
-    }
+    let slots = match parse_component_args(&args) {
+        Ok(s) => s,
+        Err(e) => return e.to_compile_error(),
+    };
 
     let item: ItemStruct = match syn::parse2(input.clone()) {
         Ok(i) => i,
@@ -212,6 +225,7 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
         &item.fields,
         &template_path,
         &struct_name_str,
+        &slots,
     );
 
     // include! 生成代码
@@ -233,4 +247,58 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
     };
 
     expanded
+}
+
+/// 解析 `#[component(...)]` 参数
+///
+/// 当前支持：
+/// - `slots = ["name1", "name2", ...]`：声明具名插槽列表
+///
+/// 未来可扩展更多参数（如 `template = "..."`）。
+fn parse_component_args(args: &TokenStream) -> syn::Result<Vec<String>> {
+    if args.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    // 尝试解析为 `slots = [...]` 形式
+    let parsed: syn::Result<ComponentArgs> = syn::parse2(args.clone());
+    match parsed {
+        Ok(ComponentArgs { slots }) => Ok(slots),
+        Err(_) => Err(syn::Error::new(
+            proc_macro2::Span::call_site(),
+            "expected #[component(slots = [\"name1\", \"name2\"])]",
+        )),
+    }
+}
+
+/// `#[component(...)]` 参数结构
+struct ComponentArgs {
+    slots: Vec<String>,
+}
+
+impl syn::parse::Parse for ComponentArgs {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let mut slots = Vec::new();
+
+        while !input.is_empty() {
+            let ident: Ident = input.parse()?;
+            if ident == "slots" {
+                let _eq: syn::Token![=] = input.parse()?;
+                let arr: syn::ExprArray = input.parse()?;
+                for expr in arr.elems {
+                    let lit: syn::LitStr = syn::parse2(quote! { #expr })?;
+                    slots.push(lit.value());
+                }
+            } else {
+                return Err(syn::Error::new(ident.span(), "unknown argument, expected `slots`"));
+            }
+
+            // 允许逗号分隔多个参数（为未来扩展预留）
+            if !input.is_empty() {
+                let _comma: syn::Token![,] = input.parse()?;
+            }
+        }
+
+        Ok(ComponentArgs { slots })
+    }
 }

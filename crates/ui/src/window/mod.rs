@@ -4,7 +4,7 @@
 //! 提供内置 Window/ModernWindow IWindow 实现用于开箱即用的窗口创建。
 //!
 //! ModernWindowShell / TabWindowShell 是易用性封装，内置组合 TitleBar + 插槽 + StatusBar。
-//! 菜单 / 状态栏通过**插槽扩展**（`slot_menu` / `slot_status_bar`）传入，
+//! 菜单 / 状态栏通过**Vue 风格插槽扩展**（`<template slot="menu">` / `<template slot="footer">`）传入，
 //! 不再提供框架级 `MenuItem` / `StatusBarItem` 数据结构。
 //! 用户在 RML 中用 `<MenuItem label="..." command={field} />` 声明菜单结构，
 //! ViewModel 仅持有 `Arc<dyn ICommand>` 字段，绑定到控件 click。

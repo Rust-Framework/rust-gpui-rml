@@ -19,11 +19,11 @@
 
   "shell.case_default": "案例",
 
-  "tree.cat.binding": "绑定",
+  "tree.group.binding": "绑定",
 
-  "tree.cat.components": "组件",
+  "tree.group.components": "组件",
 
-  "tree.cat.i18n": "国际化",
+  "tree.group.i18n": "国际化",
 
   "tree.case.counter": "计数器",
 
@@ -46,6 +46,10 @@
   "case.button.danger": "危险按钮",
 
   "case.i18n.title": "国际化 t()",
+
+  "case.status_bar.title": "状态栏",
+
+  "case.status_bar.hint": "本案例通过 #[contribute(kind = \"status\")] 向状态栏贡献项（见底部状态栏）",
 
   "demo.hello": "Hello, RML!",
 
@@ -73,7 +77,7 @@
 
   "menu.theme_toggle": "切换主题",
 
-  "tree.cat.menu": "菜单",
+  "tree.group.menu": "菜单",
 
   "tree.case.menu.context": "上下文菜单",
 

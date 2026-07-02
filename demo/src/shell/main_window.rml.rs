@@ -206,7 +206,7 @@ impl MainWindow {
 
     #[command]
     pub fn open_case(&mut self, case_id: String, cx: &mut Context<Self>) {
-        if case_id.starts_with("cat.") {
+        if case_id.starts_with("group.") {
             return;
         }
         if !self.open_tabs.iter().any(|tab| tab.id == case_id) {

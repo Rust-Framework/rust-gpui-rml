@@ -117,7 +117,7 @@ pub struct Counter {
     id = "components.button",
     name = "case.button.title",
     kind = "case",
-    parent_id = "cat.components",
+    group = "components",
     order = 11,
 )]
 #[component]

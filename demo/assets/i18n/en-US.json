@@ -19,11 +19,11 @@
 
   "shell.case_default": "Case",
 
-  "tree.cat.binding": "Binding",
+  "tree.group.binding": "Binding",
 
-  "tree.cat.components": "Components",
+  "tree.group.components": "Components",
 
-  "tree.cat.i18n": "Internationalization",
+  "tree.group.i18n": "Internationalization",
 
   "tree.case.counter": "Counter",
 
@@ -46,6 +46,10 @@
   "case.button.danger": "Danger",
 
   "case.i18n.title": "i18n with t()",
+
+  "case.status_bar.title": "Status Bar",
+
+  "case.status_bar.hint": "This case contributes an item to the status bar via #[contribute(kind = \"status\")]",
 
   "demo.hello": "Hello, RML!",
 
@@ -72,7 +76,7 @@
   "menu.lang_en": "English",
   "menu.theme_toggle": "Toggle Theme",
 
-  "tree.cat.menu": "Menu",
+  "tree.group.menu": "Menu",
 
   "tree.case.menu.context": "Context menu",
 

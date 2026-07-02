@@ -3,8 +3,10 @@
 //! 布局（单行标题栏）：
 //! `[图标切换] [菜单] [标题] [Tab…] [扩展区 suffix] [窗口操作]`
 //!
-//! 主体插槽：`slot_left` / `slot_right` / `slot_bottom`（可 resize，空则隐藏）、
-//! `slot_footer` → `status_slot`（状态栏，空则隐藏）。
+//! 主体插槽（Vue 风格 `<template slot="name">`）：
+//! - `left` / `right` / `bottom`（可 resize，空则隐藏）
+//! - `footer` → `status_slot`（状态栏，空则隐藏）
+//! - `menu` / `title`（标题栏内插槽）
 
 use std::rc::Rc;
 

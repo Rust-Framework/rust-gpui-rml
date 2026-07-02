@@ -66,11 +66,13 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
 
     // 生成组件 trait 实现（IModel + ILifecycle + IViewModel + IComponent）
     // 注意：不生成 impl IWindow —— 由 RML 编译器从 <window> 根节点生成
+    // 窗口不支持插槽，slots 传空切片
     let component_impls = expand_component_impls(
         &struct_name,
         &item.fields,
         &template_path,
         &struct_name_str,
+        &[],
     );
 
     // include! 生成代码（包含编译器生成的 impl IWindow + impl Render）
