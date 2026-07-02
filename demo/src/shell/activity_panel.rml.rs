@@ -16,11 +16,11 @@ use crate::shell::{DemoShellHost, MainWindow};
 )]
 #[component]
 #[derive(Default)]
-pub struct CaseActivityPanel {
+pub struct ActivityPanel {
     tree_state: Option<gpui::Entity<TreeState>>,
 }
 
-impl ILifecycle for CaseActivityPanel {
+impl ILifecycle for ActivityPanel {
     fn on_loaded(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let _ = window;
         self.refresh_tree(cx);
@@ -36,7 +36,7 @@ impl ILifecycle for CaseActivityPanel {
     }
 }
 
-impl CaseActivityPanel {
+impl ActivityPanel {
     fn refresh_tree(&mut self, cx: &mut Context<Self>) {
         let items = map_case_tree_items(MainWindow::ID, cx);
         if let Some(state) = self.tree_state.as_ref() {

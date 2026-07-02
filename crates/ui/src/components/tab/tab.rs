@@ -752,6 +752,9 @@ impl RenderOnce for Tab {
             .items_center()
             .flex_shrink_0()
             .h(height)
+            .when(self.variant == TabVariant::Flat && self.selected && !self.disabled, |this| {
+                this.top(px(2.))
+            })
             .overflow_hidden()
             .text_color(tab_style.fg)
             .map(|this| match self.size {

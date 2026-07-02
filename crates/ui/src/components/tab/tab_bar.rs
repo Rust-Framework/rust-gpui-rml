@@ -2,9 +2,9 @@ use std::{cell::RefCell, rc::Rc, time::Duration};
 
 use gpui::{
     Anchor, Animation, AnimationExt as _, AnyElement, App, Background, Bounds, Div, Edges,
-    ElementId, InteractiveElement, IntoElement, ParentElement, Pixels, RenderOnce, ScrollHandle,
-    SharedString, Stateful, StatefulInteractiveElement as _, StyleRefinement, Styled, Window, div,
-    prelude::FluentBuilder as _, px,
+    ElementId, Entity, InteractiveElement, IntoElement, ParentElement, Pixels, RenderOnce,
+    ScrollHandle, SharedString, Stateful, StatefulInteractiveElement as _, StyleRefinement, Styled,
+    Window, div, prelude::FluentBuilder as _, px,
 };
 use smallvec::SmallVec;
 
@@ -415,7 +415,59 @@ impl RenderOnce for TabBar {
         let indicator_element = indicator.map(|(el, _)| el);
         let indicator_ready = indicator_element.is_some();
 
-        let has_suffix_or_menu = self.suffix.is_some() || self.menu;
+        // Overflow auto-detection: measure content vs viewport width via on_prepaint
+        // to auto-show the menu button. Rc<RefCell> holds measurements without
+        // triggering re-renders; Entity<bool> holds the overflow flag and triggers
+        // re-render on change. The init flag forces a second render to pick up
+        // first-frame prepaint bounds (same pattern as the indicator code above).
+        let enable_overflow = self.menu;
+        let content_width_rc: Option<Rc<RefCell<Pixels>>> = if enable_overflow {
+            Some(
+                window
+                    .use_keyed_state(format!("{}-content-w", self.id), cx, |_, _| {
+                        Rc::new(RefCell::new(px(0.)))
+                    })
+                    .read(cx)
+                    .clone(),
+            )
+        } else {
+            None
+        };
+        let viewport_width_rc: Option<Rc<RefCell<Pixels>>> = if enable_overflow {
+            Some(
+                window
+                    .use_keyed_state(format!("{}-viewport-w", self.id), cx, |_, _| {
+                        Rc::new(RefCell::new(px(0.)))
+                    })
+                    .read(cx)
+                    .clone(),
+            )
+        } else {
+            None
+        };
+        let overflow_state: Option<Entity<bool>> = if enable_overflow {
+            let state =
+                window.use_keyed_state(format!("{}-overflow", self.id), cx, |_, _| false);
+            let init =
+                window.use_keyed_state(format!("{}-overflow-init", self.id), cx, |_, _| false);
+            if !*init.read(cx) {
+                init.update(cx, |v, _| *v = true);
+            }
+            // Re-evaluate overflow using the previous frame's measurements.
+            let cw = *content_width_rc.as_ref().unwrap().borrow();
+            let vw = *viewport_width_rc.as_ref().unwrap().borrow();
+            let new_overflow = cw > vw + px(0.5);
+            if new_overflow != *state.read(cx) {
+                state.update(cx, |v, _| *v = new_overflow);
+            }
+            Some(state)
+        } else {
+            None
+        };
+
+        let show_menu =
+            self.menu && overflow_state.as_ref().map(|s| *s.read(cx)).unwrap_or(false);
+        let has_suffix_or_menu = self.suffix.is_some() || show_menu;
         let mut item_metas: Vec<(Option<SharedString>, Option<Icon>, bool)> = Vec::new();
         let selected_index = self.selected_index;
         let on_click = self.on_click.clone();
@@ -444,62 +496,80 @@ impl RenderOnce for TabBar {
             .refine_style(&self.style)
             .when_some(self.prefix, |this, prefix| this.child(prefix))
             .child(
-                h_flex().id("tabs").flex_1().overflow_x_hidden().child(
-                    h_flex()
-                        .id("tabs-inner")
-                        .relative()
-                        .gap(gap)
-                        .overflow_x_scroll()
-                        .when_some(self.scroll_handle, |this, scroll_handle| {
-                            this.track_scroll(&scroll_handle)
+                h_flex()
+                    .id("tabs")
+                    .flex_1()
+                    .overflow_x_hidden()
+                    .when_some(viewport_width_rc.clone(), |this, vw_rc| {
+                        this.on_prepaint(move |bounds, _, _| {
+                            *vw_rc.borrow_mut() = bounds.size.width;
                         })
-                        .when_some(bounds_rc.clone(), |this, rc| {
-                            this.on_prepaint(move |bounds, _, _| {
-                                rc.borrow_mut().container = bounds;
+                    })
+                    .child(
+                        h_flex()
+                            .id("tabs-inner")
+                            .relative()
+                            .overflow_x_scroll()
+                            .when_some(self.scroll_handle, |this, scroll_handle| {
+                                this.track_scroll(&scroll_handle)
                             })
-                        })
-                        .when_some(indicator_element, |this, ind| this.child(ind))
-                        .children(self.children.into_iter().enumerate().map(|(ix, child)| {
-                            item_metas.push((
-                                child.label.clone(),
-                                child.icon.clone(),
-                                child.disabled,
-                            ));
-                            let tab_bar_prefix = child.tab_bar_prefix.unwrap_or(true);
-                            let mut tab = child
-                                .ix(ix)
-                                .tab_bar_prefix(tab_bar_prefix)
-                                .with_variant(self.variant)
-                                .with_size(self.size);
-                            tab.indicator_active = has_indicator;
-                            tab.indicator_ready = indicator_ready;
-                            tab.indicator_epoch = indicator_epoch;
-                            let tab = tab
-                                .when_some(self.selected_index, |this, selected_ix| {
-                                    this.selected(selected_ix == ix)
+                            .when_some(bounds_rc.clone(), |this, rc| {
+                                this.on_prepaint(move |bounds, _, _| {
+                                    rc.borrow_mut().container = bounds;
                                 })
-                                .when_some(self.on_click.clone(), move |this, on_click| {
-                                    this.on_click(move |_, window, cx| on_click(&ix, window, cx))
-                                });
-
-                            if let Some(ref rc) = bounds_rc {
-                                let rc = rc.clone();
-                                div()
-                                    .on_prepaint(move |bounds, _, _| {
-                                        if let Some(slot) = rc.borrow_mut().tabs.get_mut(ix) {
-                                            *slot = bounds;
-                                        }
+                            })
+                            .when_some(indicator_element, |this, ind| this.child(ind))
+                            .child(
+                                h_flex()
+                                    .gap(gap)
+                                    .flex_shrink_0()
+                                    .when_some(content_width_rc.clone(), |this, cw_rc| {
+                                        this.on_prepaint(move |bounds, _, _| {
+                                            *cw_rc.borrow_mut() = bounds.size.width;
+                                        })
                                     })
-                                    .child(tab)
-                                    .into_any_element()
-                            } else {
-                                tab.into_any_element()
-                            }
-                        }))
-                        .when(has_suffix_or_menu, |this| this.child(self.last_empty_space)),
-                ),
+                                    .children(self.children.into_iter().enumerate().map(|(ix, child)| {
+                                        item_metas.push((
+                                            child.label.clone(),
+                                            child.icon.clone(),
+                                            child.disabled,
+                                        ));
+                                        let tab_bar_prefix = child.tab_bar_prefix.unwrap_or(true);
+                                        let mut tab = child
+                                            .ix(ix)
+                                            .tab_bar_prefix(tab_bar_prefix)
+                                            .with_variant(self.variant)
+                                            .with_size(self.size);
+                                        tab.indicator_active = has_indicator;
+                                        tab.indicator_ready = indicator_ready;
+                                        tab.indicator_epoch = indicator_epoch;
+                                        let tab = tab
+                                            .when_some(self.selected_index, |this, selected_ix| {
+                                                this.selected(selected_ix == ix)
+                                            })
+                                            .when_some(self.on_click.clone(), move |this, on_click| {
+                                                this.on_click(move |_, window, cx| on_click(&ix, window, cx))
+                                            });
+
+                                        if let Some(ref rc) = bounds_rc {
+                                            let rc = rc.clone();
+                                            div()
+                                                .on_prepaint(move |bounds, _, _| {
+                                                    if let Some(slot) = rc.borrow_mut().tabs.get_mut(ix) {
+                                                        *slot = bounds;
+                                                    }
+                                                })
+                                                .child(tab)
+                                                .into_any_element()
+                                        } else {
+                                            tab.into_any_element()
+                                        }
+                                    }))
+                                    .when(has_suffix_or_menu, |this| this.child(self.last_empty_space)),
+                            ),
+                    ),
             )
-            .when(self.menu, |this| {
+            .when(show_menu, |this| {
                 this.child(
                     Button::new("more")
                         .xsmall()

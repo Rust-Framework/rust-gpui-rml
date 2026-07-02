@@ -136,7 +136,7 @@ pub fn contribution_revision<C>(host_id: &str, cx: &Context<C>) -> u64 {
         .revision(host_id)
 }
 
-/// 订阅 host 贡献变更（统一通知通道；`CaseActivityPanel` 等组件使用）。
+/// 订阅 host 贡献变更（统一通知通道；`ActivityPanel` 等组件使用）。
 pub fn subscribe_host_changes<C, F>(host_id: &str, cx: &mut Context<C>, listener: F)
 where
     C: Render + 'static,

@@ -11,7 +11,7 @@ use rml_ui::{
 };
 
 use crate::cases::{self, OpenTab};
-use crate::shell::case_activity_panel::CaseActivityPanel;
+use crate::shell::activity_panel::ActivityPanel;
 use crate::shell::case_host::CaseHost;
 use rml_app::contribution::ContributionRegistryGlobal;
 use rml_core::contribution::ComponentEntityCache;
@@ -113,7 +113,7 @@ impl ILifecycle for MainWindow {
             })),
         );
 
-        let panel = cx.new(|_| CaseActivityPanel::default());
+        let panel = cx.new(|_| ActivityPanel::default());
         cx.update_global::<ContributionRegistryGlobal, _>(|global, _| {
             global.0.entity_cache_mut().pre_register("samples", panel);
         });

@@ -48,52 +48,6 @@ impl TabItem {
     }
 }
 
-/// 按标签文案粗算 Tab 总宽度（约 8px/字符 + 48px 内边距与图标余量）
-fn estimated_tabs_width(tabs: &[TabItem]) -> gpui::Pixels {
-    let total: f32 = tabs
-        .iter()
-        .map(|tab| tab.label.len() as f32 * 8. + 48.)
-        .sum();
-    px(total)
-}
-
-/// 估算非 Tab 区域占用宽度（prefix、suffix、窗口控件）
-fn reserved_title_width(
-    show_chrome: bool,
-    has_icon: bool,
-    has_menu: bool,
-    title: Option<&SharedString>,
-    has_suffix: bool,
-) -> gpui::Pixels {
-    let mut reserved = px(140.); // 窗口控件 + TabBar 内边距
-
-    if has_icon {
-        reserved += TITLE_BAR_HEIGHT;
-    }
-    if has_suffix {
-        reserved += px(80.);
-    }
-
-    if show_chrome {
-        if has_menu {
-            reserved += px(200.);
-        }
-        if let Some(title) = title {
-            reserved += px(title.len() as f32 * 7. + 24.);
-        }
-    }
-
-    reserved
-}
-
-/// 估算 Tab 是否溢出可用宽度
-fn tabs_overflow(tabs: &[TabItem], available_width: gpui::Pixels) -> bool {
-    if tabs.is_empty() {
-        return false;
-    }
-    estimated_tabs_width(tabs) > available_width
-}
-
 /// 渲染单个窗口控件按钮（最小化/最大化/关闭）。
 fn control_button(
     id: &'static str,
@@ -354,25 +308,7 @@ impl ParentElement for TabWindowShell {
 
 impl RenderOnce for TabWindowShell {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
-        let viewport = window.viewport_size();
         let show_chrome = self.show_chrome;
-        let reserved = reserved_title_width(
-            show_chrome,
-            self.icon.is_some(),
-            self.menu_slot.is_some(),
-            self.title.as_ref(),
-            self.title_ext_slot.is_some(),
-        );
-        let tabs_area = (viewport.width - reserved).max(px(160.));
-        // 两阶段计算：溢出时 TabBar 末尾会显示 menu 下拉按钮（约 32px），
-        // 需要从可用宽度中扣除后重新判断，避免 menu 显示后 tabs 实际未溢出的误判。
-        let tab_overflow = tabs_overflow(&self.tabs, tabs_area);
-        let tab_overflow = if tab_overflow {
-            let adjusted = (viewport.width - reserved - px(32.)).max(px(160.));
-            tabs_overflow(&self.tabs, adjusted)
-        } else {
-            false
-        };
 
         let on_chrome_toggle = self.on_chrome_toggle.clone();
         let chevron = if show_chrome {
@@ -406,7 +342,7 @@ impl RenderOnce for TabWindowShell {
         });
 
         let mut tab_bar = TabBar::new("tab-window-tabs")
-            .menu(tab_overflow)
+            .menu(true)
             .flat()
             .selected_index(self.selected_tab)
             .w_full()
