@@ -1,25 +1,17 @@
-//! 贡献点运行时：Registry + 注册/bootstrap
+//! 贡献点运行时：Registry + host 注册 + 视觉提取器
+//!
+//! 框架内部模块，业务代码通过 `rml_app::prelude::*` 或具体导入使用。
 
-mod activity_panel;
-mod entry;
 mod global;
-mod host;
-mod registerable;
 mod registry;
-mod render;
 
-pub use activity_panel::{map_activity_panels, resolve_active_panel_body};
-pub use entry::{component_entry, data_entry, data_entry_dyn};
 pub use global::{
-    bootstrap_contributions, contribution_entries, contribution_revision,
-    ensure_contribution_registry, install_contribution_bootstrap, register_contribution,
-    subscribe_host_changes, ContributionExt,
+    bootstrap_contributions, ensure_contribution_registry, install_contribution_bootstrap,
+    register_host, ContributionRegistryExt,
 };
+pub use registry::extract_visual;
+
 #[doc(hidden)]
-pub use global::ContributionRegistryGlobal;
-pub use host::ContributionHost;
-pub use registerable::{component_registerable, data_registerable, Registerable};
+pub use global::EntityHostHandleBox;
 #[doc(hidden)]
-pub use registry::ContributionRegistry;
-#[doc(hidden)]
-pub use render::{render_contribution_visual, render_component_view};
+pub use registry::{register_visual_extractor, ContributionRegistry};

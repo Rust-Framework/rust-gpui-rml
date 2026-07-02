@@ -7,8 +7,8 @@ pub use crate::binding::{BindingPath, IBindingContext};
 pub use crate::command::{ICommand, RelayCommand};
 pub use crate::component::IComponent;
 pub use crate::contribution::{
-    ContributedEntry, ContributionOptions, IContribution, IContributionHost, IVisualContribution,
-    RenderContext,
+    ContributionOptions, HostHandle, IContribution, IContributionHost, IContributionRegistry,
+    IVisualContribution,
 };
 pub use crate::converter::{BoolToYesNo, Currency, IConverter, LowerCase, Percent, Trim, UpperCase};
 pub use crate::element_ref::ElementRef;

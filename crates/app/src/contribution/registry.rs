@@ -1,125 +1,57 @@
-//! 贡献注册表内部实现（通过 [`ContributionExt`](super::global::ContributionExt) 访问）
+//! 贡献注册表内部实现 + 视觉提取器进程级静态表
+//!
+//! 框架内部：桥接 contribute → host，按 host_id 路由 register 调用到 host.add。
+//! 视觉提取器由 `#[contribute]` 宏在 `#[ctor::ctor]` 阶段写入进程级静态表。
 
+use std::any::TypeId;
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock, RwLock};
 
 use gpui::App;
 use rml_core::contribution::{
-    ComponentEntityCache, ContributedEntry, ContributionOptions, IContribution,
+    ContributionOptions, HostHandle, IContribution, IContributionRegistry,
 };
 
-use super::entry::{add_entry, data_entry_dyn};
-use super::host::ContributionHost;
-use super::registerable::Registerable;
+/// 进程级视觉提取器表——由 `#[contribute]` 宏生成的 `#[ctor::ctor]` 在进程启动期写入。
+/// `OnceLock<RwLock<...>>` 保证 ctor 早期即可写入（ctor 先于 App 存在）。
+static VISUAL_EXTRACTORS: OnceLock<RwLock<HashMap<TypeId, rml_core::contribution::VisualExtractor>>> =
+    OnceLock::new();
 
-type HostListener = Box<dyn Fn(&mut App) + Send + Sync>;
+fn visual_extractors() -> &'static RwLock<HashMap<TypeId, rml_core::contribution::VisualExtractor>> {
+    VISUAL_EXTRACTORS.get_or_init(|| RwLock::new(HashMap::new()))
+}
 
-/// 全局贡献注册表（框架内部；应用通过 `App` 扩展 trait 操作）
+/// `#[contribute]` 宏在 `#[ctor::ctor]` 中调用：注册视觉提取器。
+#[doc(hidden)]
+pub fn register_visual_extractor(type_id: TypeId, extractor: rml_core::contribution::VisualExtractor) {
+    visual_extractors().write().unwrap().insert(type_id, extractor);
+}
+
+/// host 在 `add` 内调用：按 `TypeId` 查找提取器，返回 `Arc<dyn IVisualContribution>`。
+pub fn extract_visual(
+    contribution: &Arc<dyn IContribution>,
+) -> Option<Arc<dyn rml_core::contribution::IVisualContribution>> {
+    let type_id = (**contribution).type_id();
+    let extractors = visual_extractors().read().unwrap();
+    extractors.get(&type_id).and_then(|f| f(contribution))
+}
+
+/// 框架内部实现：桥接 contribute → host
 pub struct ContributionRegistry {
-    hosts: HashMap<String, ContributionHost>,
-    entity_cache: rml_core::contribution_cache::ComponentEntityCacheImpl,
-    listeners: HashMap<String, Vec<HostListener>>,
+    hosts: RwLock<HashMap<String, Box<dyn HostHandle>>>,
+    pending: RwLock<HashMap<String, Vec<(Arc<dyn IContribution>, ContributionOptions)>>>,
 }
 
 impl ContributionRegistry {
     pub fn new() -> Self {
         Self {
-            hosts: HashMap::new(),
-            entity_cache: rml_core::contribution_cache::ComponentEntityCacheImpl::new(),
-            listeners: HashMap::new(),
+            hosts: RwLock::new(HashMap::new()),
+            pending: RwLock::new(HashMap::new()),
         }
     }
 
-    pub fn entity_cache_mut(&mut self) -> &mut rml_core::contribution_cache::ComponentEntityCacheImpl {
-        &mut self.entity_cache
-    }
-
-    pub fn ensure_host(&mut self, host_id: impl Into<String>) {
-        let id = host_id.into();
-        self.hosts
-            .entry(id.clone())
-            .or_insert_with(|| ContributionHost::new(id));
-    }
-
-    pub fn remove_host(&mut self, host_id: &str) {
-        if let Some(host) = self.hosts.remove(host_id) {
-            for entry in host.entries() {
-                self.entity_cache.clear(entry.contribution.id());
-            }
-        }
-        self.listeners.remove(host_id);
-    }
-
-    pub fn entries(&self, host_id: &str) -> &[ContributedEntry] {
-        self.hosts
-            .get(host_id)
-            .map(ContributionHost::entries)
-            .unwrap_or(&[])
-    }
-
-    pub fn revision(&self, host_id: &str) -> u64 {
-        self.hosts
-            .get(host_id)
-            .map(ContributionHost::revision)
-            .unwrap_or(0)
-    }
-
-    pub fn subscribe_host(&mut self, host_id: &str, listener: HostListener) {
-        self.listeners
-            .entry(host_id.to_string())
-            .or_default()
-            .push(listener);
-    }
-
-    fn notify_host(&self, host_id: &str, cx: &mut App) {
-        if let Some(listeners) = self.listeners.get(host_id) {
-            for listener in listeners {
-                listener(cx);
-            }
-        }
-    }
-
-    pub fn register_typed<T>(
-        &mut self,
-        host_id: &str,
-        contribution: Arc<T>,
-        options: ContributionOptions,
-        cx: &mut App,
-    ) where
-        T: Registerable + 'static,
-    {
-        let entry = T::into_entry(contribution, options);
-        self.register_entry(host_id, entry, cx);
-    }
-
-    pub fn register_dyn(
-        &mut self,
-        host_id: &str,
-        contribution: Arc<dyn IContribution>,
-        options: ContributionOptions,
-        cx: &mut App,
-    ) {
-        let entry = data_entry_dyn(contribution, options);
-        self.register_entry(host_id, entry, cx);
-    }
-
-    pub fn register_entry(&mut self, host_id: &str, entry: ContributedEntry, cx: &mut App) {
-        self.ensure_host(host_id);
-        add_entry(&mut self.hosts, host_id, entry, cx);
-        self.notify_host(host_id, cx);
-    }
-
-    pub fn unregister(&mut self, host_id: &str, contribution_id: &str, cx: &mut App) -> bool {
-        let removed = self
-            .hosts
-            .get_mut(host_id)
-            .map(|h| h.remove(contribution_id, cx))
-            .unwrap_or(false);
-        if removed {
-            self.entity_cache.clear(contribution_id);
-            self.notify_host(host_id, cx);
-        }
-        removed
+    pub fn has_host(&self, host_id: &str) -> bool {
+        self.hosts.read().unwrap().contains_key(host_id)
     }
 }
 
@@ -129,23 +61,71 @@ impl Default for ContributionRegistry {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::ContributionRegistry;
+impl IContributionRegistry for ContributionRegistry {
+    fn add(&self, host: Box<dyn HostHandle>, cx: &mut App) {
+        let id = host.id().to_string();
+        {
+            let mut hosts = self.hosts.write().unwrap();
+            hosts.insert(id.clone(), host);
+        }
 
-    #[test]
-    fn ensure_host_creates_empty_slot() {
-        let mut registry = ContributionRegistry::new();
-        registry.ensure_host("test.host");
-        assert!(registry.entries("test.host").is_empty());
-        assert_eq!(registry.revision("test.host"), 0);
+        // 重放 pending 队列
+        let queue = {
+            let mut pending = self.pending.write().unwrap();
+            pending.remove(&id).unwrap_or_default()
+        };
+
+        let hosts = self.hosts.read().unwrap();
+        if let Some(host) = hosts.get(&id) {
+            for (contribution, options) in queue {
+                host.add(contribution, options, cx);
+            }
+        }
     }
 
+    fn remove(&self, host_id: &str, _cx: &mut App) {
+        self.hosts.write().unwrap().remove(host_id);
+    }
+
+    fn register(
+        &self,
+        host_id: &str,
+        contribution: Arc<dyn IContribution>,
+        options: ContributionOptions,
+        cx: &mut App,
+    ) {
+        let hosts = self.hosts.read().unwrap();
+        if let Some(host) = hosts.get(host_id) {
+            host.add(contribution, options, cx);
+        } else {
+            drop(hosts);
+            self.pending
+                .write()
+                .unwrap()
+                .entry(host_id.to_string())
+                .or_default()
+                .push((contribution, options));
+        }
+    }
+
+    fn unregister(&self, host_id: &str, contribution_id: &str, cx: &mut App) -> bool {
+        let hosts = self.hosts.read().unwrap();
+        if let Some(host) = hosts.get(host_id) {
+            host.remove(contribution_id, cx);
+            true
+        } else {
+            false
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
     #[test]
-    fn remove_host_clears_entries() {
-        let mut registry = ContributionRegistry::new();
-        registry.ensure_host("h");
-        registry.remove_host("h");
-        assert!(registry.entries("h").is_empty());
+    fn new_registry_has_no_host() {
+        let registry = ContributionRegistry::new();
+        assert!(!registry.has_host("test.host"));
     }
 }

@@ -13,8 +13,8 @@ pub mod resources;
 
 pub use application::{NoWindow, RmlApplication};
 pub use contribution::{
-    bootstrap_contributions, contribution_entries, ensure_contribution_registry,
-    register_contribution, subscribe_host_changes, ContributionExt, Registerable,
+    bootstrap_contributions, ensure_contribution_registry, extract_visual, register_host,
+    ContributionRegistryExt,
 };
 pub use lifecycle::IAppLifecycle;
 pub use resources::{

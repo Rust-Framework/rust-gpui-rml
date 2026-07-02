@@ -1,15 +1,15 @@
-//! `#[contributehost]` host marker + framework registration.
+//! `#[contributehost]` host marker —— 仅生成 `const ID` + 编译期断言。
 //!
 //! 宏只负责：
 //! 1. 生成 `pub const ID: &'static str`
 //! 2. 编译期断言目标类型已手动实现 `IContributionHost`
-//! 3. 生成隐藏的注册函数（`cx.add(ID)`）
 //!
 //! 宏**不**自动 impl `IContributionHost`——用户须手动声明，强制区分
 //! 「宏的注册职责」与「trait 的契约职责」。
+//! 宏**不**生成注册函数——host 在 `on_loaded` 调 `register_host(cx)` 注册自身。
 
 use proc_macro2::{Span, TokenStream};
-use quote::{format_ident, quote, ToTokens};
+use quote::{quote, ToTokens};
 use syn::parse::Parser;
 use syn::{
     parse::{Parse, ParseStream},
@@ -85,15 +85,6 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
         .to_compile_error();
     };
 
-    let register_fn = format_ident!(
-        "__rml_register_{}",
-        struct_name.to_string().to_lowercase()
-    );
-    let hidden_mod = format_ident!(
-        "__rml_host_{}",
-        struct_name.to_string().to_lowercase()
-    );
-
     let id = &args.id;
 
     quote! {
@@ -109,21 +100,5 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
             fn assert_contribution_host<T: rml_core::contribution::IContributionHost>() {}
             fn check() { assert_contribution_host::<#struct_name>(); }
         };
-
-        #[doc(hidden)]
-        mod #hidden_mod {
-            use super::#struct_name;
-
-            pub(super) fn register(cx: &mut gpui::App) {
-                use rml_app::contribution::{ContributionExt, ensure_contribution_registry};
-                ensure_contribution_registry(cx);
-                cx.add(#struct_name::ID);
-            }
-        }
-
-        #[doc(hidden)]
-        pub fn #register_fn(cx: &mut gpui::App) {
-            #hidden_mod::register(cx);
-        }
     }
 }

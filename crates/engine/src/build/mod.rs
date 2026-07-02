@@ -358,10 +358,10 @@ impl Builder {
             return Err(e);
         }
 
-        // 6. 扫描 `#[contributehost]` / `#[contribute]` 并生成统一注册函数
-        let (hosts, contributions) =
-            contribution_generator::scan_contribution_registrars(&self.scan_dirs);
-        if let Err(e) = contribution_generator::generate(&hosts, &contributions, &output_dir) {
+        // 6. 扫描 `#[contribute]` 并生成统一注册函数。
+        //    host 不再由 build.rs 扫描——host 在 `on_loaded` 调 `register_host(cx)` 注册自身。
+        let contributions = contribution_generator::scan_contribution_registrars(&self.scan_dirs);
+        if let Err(e) = contribution_generator::generate(&contributions, &output_dir) {
             return Err(e);
         }
 

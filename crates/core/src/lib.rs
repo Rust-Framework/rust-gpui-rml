@@ -17,7 +17,6 @@ pub mod command;
 pub mod component;
 pub mod computed_cache;
 pub mod contribution;
-pub mod contribution_cache;
 pub mod converter;
 pub mod element_ref;
 pub mod event;
