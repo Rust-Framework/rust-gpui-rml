@@ -181,7 +181,9 @@ pub fn scan_struct_metadata(rml_rs_path: &Path) -> HashMap<String, StructMetadat
                     let mut visitor = ComputedDepVisitor::default();
                     visitor.visit_block(&method.block);
                     let mut deps = visitor.deps;
-                    if visitor.uses_i18n && meta.observable_fields.contains(&"i18n_version".to_string())
+                    if visitor.uses_i18n
+                        && (meta.observable_fields.contains(&"i18n_version".to_string())
+                            || meta.is_contributehost)
                     {
                         if !deps.contains(&"i18n_version".to_string()) {
                             deps.push("i18n_version".to_string());

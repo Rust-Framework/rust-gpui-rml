@@ -1,19 +1,17 @@
 //! 贡献注册表内部实现 + 视觉提取器进程级静态表
 //!
 //! 框架内部：桥接 contribute → host，按 host_id 路由 register 调用到 host.add。
-//! 视觉提取器由 `#[contribute]` 宏在 `#[ctor::ctor]` 阶段写入进程级静态表。
+/// 视觉提取器由 `#[contribute]` 宏在 `#[ctor::ctor]` 阶段写入进程级静态表。
 
 use std::any::TypeId;
 use std::collections::HashMap;
 use std::sync::{Arc, OnceLock, RwLock};
 
-use gpui::App;
 use rml_core::contribution::{
-    ContributionOptions, HostHandle, IContribution, IContributionRegistry,
+    ContributionOptions, IContribution, IContributionHost, IContributionRegistry,
 };
 
 /// 进程级视觉提取器表——由 `#[contribute]` 宏生成的 `#[ctor::ctor]` 在进程启动期写入。
-/// `OnceLock<RwLock<...>>` 保证 ctor 早期即可写入（ctor 先于 App 存在）。
 static VISUAL_EXTRACTORS: OnceLock<RwLock<HashMap<TypeId, rml_core::contribution::VisualExtractor>>> =
     OnceLock::new();
 
@@ -38,7 +36,7 @@ pub fn extract_visual(
 
 /// 框架内部实现：桥接 contribute → host
 pub struct ContributionRegistry {
-    hosts: RwLock<HashMap<String, Box<dyn HostHandle>>>,
+    hosts: RwLock<HashMap<String, Arc<dyn IContributionHost>>>,
     pending: RwLock<HashMap<String, Vec<(Arc<dyn IContribution>, ContributionOptions)>>>,
 }
 
@@ -62,14 +60,14 @@ impl Default for ContributionRegistry {
 }
 
 impl IContributionRegistry for ContributionRegistry {
-    fn add(&self, host: Box<dyn HostHandle>, cx: &mut App) {
+    fn add(&self, host: Arc<dyn IContributionHost>) {
         let id = host.id().to_string();
         {
             let mut hosts = self.hosts.write().unwrap();
             hosts.insert(id.clone(), host);
         }
 
-        // 重放 pending 队列
+        // 重放 pending 队列 —— 直接调 host.add()，无需 cx
         let queue = {
             let mut pending = self.pending.write().unwrap();
             pending.remove(&id).unwrap_or_default()
@@ -78,12 +76,12 @@ impl IContributionRegistry for ContributionRegistry {
         let hosts = self.hosts.read().unwrap();
         if let Some(host) = hosts.get(&id) {
             for (contribution, options) in queue {
-                host.add(contribution, options, cx);
+                host.add(contribution, options);
             }
         }
     }
 
-    fn remove(&self, host_id: &str, _cx: &mut App) {
+    fn remove(&self, host_id: &str) {
         self.hosts.write().unwrap().remove(host_id);
     }
 
@@ -92,11 +90,10 @@ impl IContributionRegistry for ContributionRegistry {
         host_id: &str,
         contribution: Arc<dyn IContribution>,
         options: ContributionOptions,
-        cx: &mut App,
     ) {
         let hosts = self.hosts.read().unwrap();
         if let Some(host) = hosts.get(host_id) {
-            host.add(contribution, options, cx);
+            host.add(contribution, options);
         } else {
             drop(hosts);
             self.pending
@@ -108,14 +105,19 @@ impl IContributionRegistry for ContributionRegistry {
         }
     }
 
-    fn unregister(&self, host_id: &str, contribution_id: &str, cx: &mut App) -> bool {
+    fn unregister(&self, host_id: &str, contribution_id: &str) -> bool {
         let hosts = self.hosts.read().unwrap();
         if let Some(host) = hosts.get(host_id) {
-            host.remove(contribution_id, cx);
+            host.remove(contribution_id);
             true
         } else {
             false
         }
+    }
+
+    fn take_pending(&self, host_id: &str) -> Vec<(Arc<dyn IContribution>, ContributionOptions)> {
+        let mut pending = self.pending.write().unwrap();
+        pending.remove(host_id).unwrap_or_default()
     }
 }
 

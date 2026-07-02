@@ -19,6 +19,7 @@ use gpui_component::{
     button::{Button, ButtonVariants as _},
     h_flex, v_flex,
 };
+use rml_core::contribution::IVisualContribution;
 use smallvec::SmallVec;
 
 // ── Trait 定义 ──
@@ -266,5 +267,79 @@ impl Render for ActivityBar {
         };
 
         h_flex().size_full().child(bar).child(panel_body)
+    }
+}
+
+// ── VisualActivityPanel：视觉贡献 → IActivityPanel 通用适配器 ──
+
+/// 通用视觉贡献 → `IActivityPanel` 适配器。
+///
+/// 包装 `Arc<dyn IVisualContribution>`，`id`/`icon`/`title` 从 `IContribution` 元数据提取，
+/// `panel()` 委托给 `IVisualContribution::render`（经框架实体缓存复用 Entity）。
+pub struct VisualActivityPanel {
+    visual: Arc<dyn IVisualContribution>,
+    id: SharedString,
+    icon_name: IconName,
+    title: SharedString,
+}
+
+impl VisualActivityPanel {
+    /// 从视觉贡献创建适配器。
+    ///
+    /// `icon` 字符串经 `parse_icon_name` 解析，未匹配时 fallback `PanelLeft`。
+    pub fn new(visual: Arc<dyn IVisualContribution>) -> Option<Self> {
+        let id: SharedString = visual.id().to_string().into();
+        let title = visual.name();
+        let icon_name = visual
+            .icon()
+            .and_then(|s| parse_icon_name(&s))
+            .unwrap_or(IconName::PanelLeft);
+        Some(Self {
+            visual,
+            id,
+            icon_name,
+            title,
+        })
+    }
+}
+
+impl IActivityPanel for VisualActivityPanel {
+    fn id(&self) -> SharedString {
+        self.id.clone()
+    }
+    fn icon(&self) -> IconName {
+        self.icon_name.clone()
+    }
+    fn title(&self) -> SharedString {
+        self.title.clone()
+    }
+    fn panel(&self, window: &mut Window, cx: &mut App) -> Option<AnyElement> {
+        Some(self.visual.render(window, cx))
+    }
+}
+
+/// 解析图标名字符串 → `IconName`。
+///
+/// `IconName` 由 `icon_named!` 宏生成，未实现 `FromStr`。
+/// 此处映射常用图标子集；未匹配时返回 `None`，调用方使用 fallback。
+fn parse_icon_name(s: &str) -> Option<IconName> {
+    match s {
+        "BookOpen" => Some(IconName::BookOpen),
+        "PanelLeft" => Some(IconName::PanelLeft),
+        "PanelRight" => Some(IconName::PanelRight),
+        "PanelBottom" => Some(IconName::PanelBottom),
+        "Settings" => Some(IconName::Settings),
+        "Search" => Some(IconName::Search),
+        "Folder" => Some(IconName::Folder),
+        "File" => Some(IconName::File),
+        "Menu" => Some(IconName::Menu),
+        "LayoutDashboard" => Some(IconName::LayoutDashboard),
+        "SquareTerminal" => Some(IconName::SquareTerminal),
+        "Github" => Some(IconName::Github),
+        "Bell" => Some(IconName::Bell),
+        "User" => Some(IconName::User),
+        "Star" => Some(IconName::Star),
+        "Info" => Some(IconName::Info),
+        _ => None,
     }
 }

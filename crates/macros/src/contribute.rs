@@ -249,13 +249,13 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
     let use_component_visual = args.visual || has_component;
 
     // 视觉贡献契约：`#[contribute]` + `#[component]` 叠加时自动实现。
-    // `render` 创建 Entity 并委托给 `Render::render`——host 通过 `extract_visual` 获取
-    // `Arc<dyn IVisualContribution>` 后直接调 `render(window, cx)` 获取 `AnyElement`。
+    // `render` 通过框架实体缓存复用 Entity——避免每次渲染创建新实例导致状态丢失。
+    // host 通过 `extract_visual` 获取 `Arc<dyn IVisualContribution>` 后直接调 `render(window, cx)`。
     let visual_impl = if use_component_visual {
         quote! {
             impl rml_core::contribution::IVisualContribution for #struct_name {
                 fn render(&self, window: &mut gpui::Window, cx: &mut gpui::App) -> gpui::AnyElement {
-                    let entity = cx.new(|_| Self::default());
+                    let entity = rml_app::contribution::get_or_create_entity::<#struct_name>(cx);
                     entity.update(cx, |this, ctx| {
                         this.render(window, ctx).into_any_element()
                     })
@@ -327,7 +327,6 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
                     #order
                     #group
                     #align,
-                cx,
             );
         }
     }

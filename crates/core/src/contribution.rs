@@ -84,23 +84,48 @@ pub trait IVisualContribution: IContribution {
 }
 
 /// 贡献点主机：主动受理方。host 自行决定如何存储/映射贡献。
-/// host 可使用 Vec/HashMap/任何自定义结构，甚至不存储——框架不限定。
+/// host 使用 `ObservableVec` 等内部可变性结构存储数据，`add`/`remove` 为 `&self`。
+///
+/// `#[contributehost]` 宏生成 `pub const ID: &'static str`（inherent impl），
+/// 实现 trait 时 `fn id()` 返回 `Self::ID` 即可。
 pub trait IContributionHost: Send + Sync + 'static {
-    const ID: &'static str;
+    /// 运行时获取 host ID。
+    fn id(&self) -> &'static str;
 
-    /// 受理代码：接收并处置贡献。host 按 options.slot/group 等分发到自有数据结构。
-    fn add(&mut self, contribution: Arc<dyn IContribution>, options: ContributionOptions, cx: &mut App);
+    /// 受理代码：接收并处置贡献。host 按 `options.slot`/`group` 分发到自有 `ObservableVec`。
+    fn add(&self, contribution: Arc<dyn IContribution>, options: ContributionOptions);
 
     /// 移除贡献。host 自行清理对应数据。
-    fn remove(&mut self, contribution_id: &str, cx: &mut App);
+    fn remove(&self, contribution_id: &str);
 }
 
-/// 内部桥接 trait：类型擦除的 host 句柄，包装 WeakEntity<T>。
-#[doc(hidden)]
-pub trait HostHandle: Send + Sync {
-    fn id(&self) -> &str;
-    fn add(&self, contribution: Arc<dyn IContribution>, options: ContributionOptions, cx: &mut App);
-    fn remove(&self, contribution_id: &str, cx: &mut App);
+/// 贡献条目：host 受理的贡献 + 注册选项。
+/// 由 `#[contributehost]` 宏注入的 `entries: ObservableVec<ContributionEntry>` 字段使用。
+#[derive(Clone)]
+pub struct ContributionEntry {
+    pub contribution: Arc<dyn IContribution>,
+    pub options: ContributionOptions,
+}
+
+/// Host Entity 钩子：业务代码实现此 trait 提供 host 特有逻辑。
+///
+/// 框架生成的 `ILifecycle::on_loaded` 在完成标准 setup（channel/spawn/take_pending/i18n observe）
+/// 后调用 `host_on_loaded`；locale 变更时调用 `on_locale_changed`（框架已在外层
+/// bump `i18n_version` + `cx.notify`，业务代码只需处理额外刷新逻辑）。
+pub trait IHostEntity {
+    /// 框架标准 setup 完成后调用。业务代码在此执行 host 特有初始化。
+    fn host_on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut gpui::Context<Self>)
+    where
+        Self: Sized,
+    {
+    }
+
+    /// locale 变更时调用。默认为空（框架已 bump `i18n_version` + `cx.notify`）。
+    fn on_locale_changed(&mut self, _cx: &mut gpui::Context<Self>)
+    where
+        Self: Sized,
+    {
+    }
 }
 
 /// 视觉提取器函数类型：从 `Arc<dyn IContribution>` 提取 `Arc<dyn IVisualContribution>`。
@@ -112,17 +137,26 @@ pub type VisualExtractor = fn(&Arc<dyn IContribution>) -> Option<Arc<dyn IVisual
 
 /// 贡献注册表接口：桥接 contribute → host。
 /// 框架内实现，按 host_id 路由 register 调用到对应 host 的 add 方法。
-/// trait 仅含 4 个用户决策方法——视觉提取器注册/查找为 `#[doc(hidden)]` 自由函数，
-/// 由 `#[ctor::ctor]` 在进程启动期写入进程级静态表，host 通过 `rml_app::contribution::extract_visual` 查找。
+/// 所有方法 `&self` + 无 `cx` —— 内部 `RwLock` 可变性，`host.add` 直接调用。
 pub trait IContributionRegistry: Send + Sync {
-    fn add(&self, host: Box<dyn HostHandle>, cx: &mut App);
-    fn remove(&self, host_id: &str, cx: &mut App);
+    /// 注册 host（Entity 在 `on_loaded` 时调用，传入 `Arc<dyn IContributionHost>`）。
+    fn add(&self, host: Arc<dyn IContributionHost>);
+
+    /// 注销 host。
+    fn remove(&self, host_id: &str);
+
+    /// 向 host 注册贡献（`#[contribute]` 宏生成代码调用）。
     fn register(
         &self,
         host_id: &str,
         contribution: Arc<dyn IContribution>,
         options: ContributionOptions,
-        cx: &mut App,
     );
-    fn unregister(&self, host_id: &str, contribution_id: &str, cx: &mut App) -> bool;
+
+    /// 从 host 注销贡献。
+    fn unregister(&self, host_id: &str, contribution_id: &str) -> bool;
+
+    /// Entity host 在 `on_loaded` 中调用：取出 pending 贡献，自行 `add` 受理。
+    /// 取出后 pending 队列清空。后续 `register` 调用仍入 pending（Entity host 不注册 Arc）。
+    fn take_pending(&self, host_id: &str) -> Vec<(Arc<dyn IContribution>, ContributionOptions)>;
 }

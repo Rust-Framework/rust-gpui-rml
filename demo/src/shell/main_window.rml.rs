@@ -1,48 +1,45 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
-use gpui::{BorrowAppContext, Global, WeakEntity, Window};
+use gpui::{BorrowAppContext, Global, IntoElement, WeakEntity, Window};
 use rml::prelude::*;
-use crate::shell::shell_chrome::{map_shell_chrome, ShellChromeBindings};
 use rml_core::i18n::I18nExt;
 use rml_core::theme::ThemeExt;
-use rml_ui::{
-    ActivityBar, ActivityPanels, MenuItems, StatusBarItems, TabItem,
-};
+use rml_ui::{ActivityBar, MenuItems, StatusBarItems, TabItem};
 
 use crate::cases::{self, OpenTab};
 use crate::shell::activity_panel::ActivityPanel;
-use rml_app::contribution::{subscribe_host_changes, ContributionRegistryGlobal};
-use rml_core::contribution::ComponentEntityCache;
+use crate::shell::shell_chrome::{map_menu_items, map_status_items};
 
-/// Demo：Activity 视觉贡献面板回调 Host 开 Tab（由 MainWindow 在 `on_loaded` 注册）。
+/// Demo：ActivityPanel 通过它回调 MainWindow::open_case（在 `host_on_loaded` 中注册）。
 pub struct DemoShellHost(pub WeakEntity<MainWindow>);
 
 impl Global for DemoShellHost {}
 
-#[contributehost(id = "demo.shell")]
+/// MainWindow：`demo.shell` host + 视觉消费者。
+///
+/// `#[window]` + `#[contributehost]` 叠加：宏自动注入 `entries`/`i18n_version` 字段 +
+/// 生成 `IContributionHost`/`ILifecycle` impl。业务代码只实现 `IHostEntity` 钩子。
 #[window]
+#[contributehost(id = "demo.shell")]
 #[derive(Default)]
 pub struct MainWindow {
     open_tabs: Vec<OpenTab>,
     selected_tab: usize,
     active_case_id: String,
     show_chrome: bool,
-    activity_panels: ActivityPanels,
     activity_bar: Option<gpui::Entity<ActivityBar>>,
     status_items: StatusBarItems,
-    i18n_version: u32,
     menu_items: MenuItems,
     menu_commands: HashMap<String, Arc<dyn ICommand>>,
-    /// 左侧插槽当前宽度。由 `cx.observe(&activity_bar)` 同步：
-    /// ActivityBar 收起（active_id=None）→ 48px（仅图标栏），展开 → 260px。
-    /// 私有字段：避免被 codegen 生成 InputState 双向绑定（Pixels 非 SharedString）。
-    /// RML 通过 `left_size={slot_left_size}` 直接引用，生成 `self.slot_left_size`。
     slot_left_size: gpui::Pixels,
+    // entries, i18n_version ← #[contributehost] 自动注入
 }
 
-impl ILifecycle for MainWindow {
-    fn on_loaded(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
+// 无 impl IContributionHost —— #[contributehost] 宏自动生成
+// 无 impl ILifecycle —— #[contributehost] 宏自动生成
+
+impl IHostEntity for MainWindow {
+    fn host_on_loaded(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
         if self.open_tabs.is_empty() {
             self.open_tabs.push(OpenTab {
                 id: "welcome".to_string(),
@@ -52,11 +49,11 @@ impl ILifecycle for MainWindow {
             self.active_case_id = "welcome".to_string();
         }
         self.show_chrome = true;
-        self.i18n_version = self.i18n_version.wrapping_add(1);
 
         let shell_weak = cx.weak_entity();
         cx.set_global(DemoShellHost(shell_weak));
 
+        // menu_commands 初始化
         self.menu_commands.insert(
             "menu.file.new".to_string(),
             Arc::new(RelayCommand::new(cx, |this, cx| {
@@ -102,28 +99,25 @@ impl ILifecycle for MainWindow {
             })),
         );
 
-        let panel = cx.new(|_| ActivityPanel::default());
-        cx.update_global::<ContributionRegistryGlobal, _>(|global, _| {
-            global.0.entity_cache_mut().pre_register("samples", panel);
-        });
-
+        // 刷新 shell chrome（从 self.entries 构建 menu/status items）
         self.refresh_shell_chrome(cx);
 
-        // 构造 ActivityBar 单 Entity（在 on_loaded 中，非 render）
-        let panels = self.activity_panels.clone();
+        // 构建 ActivityBar：从 entries 中 kind="activity" 的视觉贡献自动提取
+        let panels = rml_app::contribution::build_activity_panels(&self.entries);
         self.activity_bar = Some(cx.new(|_| ActivityBar::new(panels)));
 
-        // 激活首项 —— 单 Entity 内 set_active_id 直接 cx.notify() 触发重渲
+        // observe ActivityPanel Entity（框架缓存）→ ActivityBar 重渲
+        let panel_entity = rml_app::contribution::visual_entity::<ActivityPanel>(cx);
+        cx.observe(&panel_entity, |_, _, cx| cx.notify()).detach();
+
+        // 激活首项
         if let Some(bar) = &self.activity_bar {
             bar.update(cx, |bar, cx| bar.activate_first(cx));
         }
 
-        // 初始展开态：与 activate_first 后的 active_id=Some 一致
         self.slot_left_size = gpui::px(260.);
 
-        // 监听 ActivityBar active_id 变化，同步 slot_left_size：
-        // 收起（active_id=None）→ 48px（仅图标栏），展开 → 260px。
-        // observe 注册后不会立即触发，故上面先手动初始化。
+        // observe ActivityBar active_id 变化 → 同步 slot_left_size
         if let Some(bar) = &self.activity_bar {
             cx.observe(bar, |this, bar, cx| {
                 let collapsed = bar.read(cx).active_id().is_none();
@@ -136,56 +130,32 @@ impl ILifecycle for MainWindow {
             })
             .detach();
         }
-
-        // 订阅 host 贡献变更：贡献点注册/注销时自动刷新 shell chrome
-        subscribe_host_changes(Self::ID, cx, |this, cx| {
-            this.refresh_shell_chrome(cx);
-            cx.notify();
-        });
     }
-}
-
-impl rml_core::contribution::IContributionHost for MainWindow {
-    const ID: &'static str = "demo.shell";
 }
 
 impl MainWindow {
     fn refresh_shell_chrome(&mut self, cx: &mut Context<Self>) {
-        let ShellChromeBindings {
-            activity_panels,
-            status_items,
-            menu_items,
-        } = map_shell_chrome(Self::ID, cx, &self.menu_commands);
-        self.activity_panels = activity_panels.clone();
-        self.status_items = status_items;
-        self.menu_items = menu_items;
-
-        // 同步面板数据到 ActivityBar Entity
-        if let Some(bar) = &self.activity_bar {
-            bar.update(cx, |bar, cx| bar.set_panels(activity_panels, cx));
-        }
+        let entries = self.entries.read();
+        self.status_items = map_status_items(&entries);
+        self.menu_items = map_menu_items(&entries, &self.menu_commands);
     }
 
-    /// 渲染当前激活的 IVisualContribution 视图（供 RML 模板 `content={...}` 调用）。
-    /// 从 `ContributionRegistry` 查找 `active_case_id` 对应条目，委托给
-    /// `render_contribution_visual` 执行视觉渲染（内部复用 Entity 缓存）。
+    /// 渲染当前激活的 IVisualContribution 视图。
+    /// Entity 由框架实体缓存复用，状态持久。
     pub fn active_case_view(
         &mut self,
         window: &mut gpui::Window,
         cx: &mut gpui::Context<Self>,
     ) -> gpui::AnyElement {
-        use rml_app::contribution::{contribution_entries, render_contribution_visual};
-        use rml_core::contribution::VisualRenderer;
-        let visual: Option<VisualRenderer> = {
-            let entries = contribution_entries(Self::ID, cx);
-            entries
-                .iter()
-                .find(|e| e.contribution.id() == self.active_case_id)
-                .and_then(|e| e.visual.clone())
-        };
-        if let Some(visual) = visual {
-            return render_contribution_visual(&visual, window, cx)
-                .unwrap_or_else(|| gpui::div().into_any_element());
+        use rml_app::contribution::extract_visual;
+        let entries = self.entries.read();
+        if let Some(entry) = entries
+            .iter()
+            .find(|e| e.contribution.id() == self.active_case_id)
+        {
+            if let Some(visual) = extract_visual(&entry.contribution) {
+                return visual.render(window, cx);
+            }
         }
         gpui::div().into_any_element()
     }
@@ -243,13 +213,13 @@ impl MainWindow {
             "dark"
         };
         cx.set_theme(next);
-        self.i18n_version = self.i18n_version.wrapping_add(1);
         cx.notify();
     }
 
     fn apply_switch_en(&mut self, cx: &mut Context<Self>) {
         cx.set_i18n("en-US");
-        self.i18n_version = self.i18n_version.wrapping_add(1);
+        // I18nState 变化触发 observe_global → 自动 bump i18n_version + on_locale_changed
+        // 手动刷新 tab 标题（on_locale_changed 不处理 tab 标题）
         let mut tabs = std::mem::take(&mut self.open_tabs);
         tabs.iter_mut().for_each(|tab| {
             tab.title = cx.t(cases::case_title_key(&tab.id)).to_string();
