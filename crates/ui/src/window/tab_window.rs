@@ -16,11 +16,11 @@ use gpui::{
 use gpui_component::{
     ActiveTheme, Icon, IconName, Sizable as _,
     button::{Button, ButtonRounded, ButtonVariants as _},
-    tab::{Tab, TabBar},
     h_flex,
     resizable::{h_resizable, resizable_panel, v_resizable},
     v_flex, TITLE_BAR_HEIGHT,
 };
+use crate::components::tab::{Tab, TabBar};
 use smallvec::SmallVec;
 
 /// Slot 尺寸低于此阈值视为折叠：移出 resizable group，改用普通 div 渲染，
@@ -407,7 +407,7 @@ impl RenderOnce for TabWindowShell {
 
         let mut tab_bar = TabBar::new("tab-window-tabs")
             .menu(tab_overflow)
-            .border_b_0()
+            .flat()
             .selected_index(self.selected_tab)
             .w_full()
             .min_w_0();
@@ -497,8 +497,6 @@ impl RenderOnce for TabWindowShell {
             .flex_shrink_0()
             .items_center()
             .bg(cx.theme().tokens.title_bar)
-            .border_b_1()
-            .border_color(cx.theme().title_bar_border)
             .when(cfg!(target_os = "macos"), |this| this.pl(px(80.)))
             .child(title_row)
             .child(render_window_controls(window, cx));

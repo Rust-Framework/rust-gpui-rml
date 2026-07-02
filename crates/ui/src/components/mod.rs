@@ -4,6 +4,7 @@ pub mod activity_bar;
 pub mod dialog_window;
 pub mod menu;
 pub mod status_bar;
+pub mod tab;
 pub mod tree;
 
 pub use activity_bar::{
@@ -18,4 +19,5 @@ pub use menu::{
 pub use status_bar::{
     IStatusBarItem, NativeStatusBar, StatusBar, StatusBarAlign, StatusBarItem, StatusBarItems,
 };
+pub use tab::{Tab, TabBar, TabVariant};
 pub use tree::Tree;
