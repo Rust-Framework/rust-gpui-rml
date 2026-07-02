@@ -333,9 +333,9 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             ctor_path: "rml_ui::NativeStatusBar",
             kind: ComponentKind::StatelessNoId,
         }),
-        "ActivityBar" => Some(ComponentTag {
-            ctor_path: "rml_ui::ActivityBar",
-            kind: ComponentKind::Stateless,
+        "ActivityBarShell" => Some(ComponentTag {
+            ctor_path: "rml_ui::ActivityBarShell",
+            kind: ComponentKind::StatelessNoId,
         }),
         "Tree" => Some(ComponentTag {
             ctor_path: "rml_ui::Tree",

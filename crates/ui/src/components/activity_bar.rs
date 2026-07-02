@@ -1,11 +1,21 @@
-//! ActivityBar —— VS Code 风格左侧活动栏（自治理：激活态 + 面板内容）
+//! ActivityBar —— VS Code 风格左侧活动栏（双 Entity 事件驱动模型）
+//!
+//! 架构：
+//! - `ActivityBar` Entity：仅渲染图标栏，持有激活态，点击时 emit `ActivityBarEvent`
+//! - `ActivitySidePanel` Entity：仅渲染面板内容，由 Host 通过 `set_active_id` 驱动
+//! - `ActivityBarShell` RenderOnce：布局包装器，将两个 Entity 水平排列
+//! - Host（如 MainWindow）订阅 `ActivityBarEvent` → 调用 `SidePanel::set_active_id`
+//!
+//! 设计要点（对齐参考实现 rust-agent-ide）：
+//! 1. 所有副作用（Entity 创建、Global 修改）在构造器 / on_loaded 中完成，不在 render 中执行
+//! 2. 激活态由 Entity 字段管理，非全局静态状态
+//! 3. `flush_pending` 延迟回调：`set_active_id` 只写 pending，render 开头执行
 
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::Arc;
 
 use gpui::{
-    AnyElement, App, ElementId, InteractiveElement, IntoElement, ParentElement, RenderOnce,
-    SharedString, Styled, Window, px, prelude::FluentBuilder as _,
+    AnyElement, App, Context, Entity, EventEmitter, IntoElement, ParentElement, Render,
+    RenderOnce, SharedString, Styled, Window, div, px, prelude::FluentBuilder as _,
 };
 use gpui_component::{
     ActiveTheme, IconName,
@@ -21,9 +31,7 @@ pub trait IActivityPanel: Send + Sync + 'static {
     fn id(&self) -> SharedString;
     fn icon(&self) -> IconName;
     fn title(&self) -> SharedString;
-    /// 是否激活（仅元数据面板；ActivityBar 内部状态优先）
-    fn is_activated(&self) -> bool;
-    /// 面板内容。ActivityBar 在渲染时调用当前激活面板的 `panel`。
+    /// 面板内容。`ActivitySidePanel` 在渲染时调用当前激活面板的 `panel`。
     fn panel(&self, window: &mut Window, cx: &mut App) -> Option<AnyElement> {
         let _ = (window, cx);
         None
@@ -40,25 +48,12 @@ pub trait IActivityAct: Send + Sync + 'static {
 pub type ActivityPanels = Vec<Arc<dyn IActivityPanel>>;
 pub type ActivityActs = Vec<Arc<dyn IActivityAct>>;
 
-type ActiveState = Arc<Mutex<BarState>>;
+// ── 事件 ──
 
-#[derive(Default)]
-struct BarState {
-    active: Option<SharedString>,
-    /// 是否已在首次渲染时默认选中首项（避免用户收起后又被自动打开）
-    seeded: bool,
-}
-
-fn active_state_for_bar(bar_id: &ElementId) -> ActiveState {
-    static STATES: OnceLock<Mutex<HashMap<String, ActiveState>>> = OnceLock::new();
-    let key = format!("{bar_id:?}");
-    STATES
-        .get_or_init(|| Mutex::new(HashMap::new()))
-        .lock()
-        .expect("activity bar state lock")
-        .entry(key)
-        .or_insert_with(|| Arc::new(Mutex::new(BarState::default())))
-        .clone()
+#[derive(Clone)]
+pub enum ActivityBarEvent {
+    ItemActivated(SharedString),
+    ItemDeactivated(SharedString),
 }
 
 // ── 默认实现 ──
@@ -68,7 +63,6 @@ pub struct ActivityPanel {
     id: SharedString,
     icon: IconName,
     title: SharedString,
-    active: bool,
 }
 
 impl ActivityPanel {
@@ -77,13 +71,7 @@ impl ActivityPanel {
             id: id.into(),
             icon,
             title: title.into(),
-            active: false,
         }
-    }
-
-    pub fn active(mut self, active: bool) -> Self {
-        self.active = active;
-        self
     }
 
     pub fn into_arc(self) -> Arc<dyn IActivityPanel> {
@@ -102,10 +90,6 @@ impl IActivityPanel for ActivityPanel {
 
     fn title(&self) -> SharedString {
         self.title.clone()
-    }
-
-    fn is_activated(&self) -> bool {
-        self.active
     }
 }
 
@@ -151,101 +135,75 @@ impl IActivityAct for ActivityAct {
     }
 }
 
-// ── ActivityBar 组件 ──
+// ── ActivityBar Entity（图标栏） ──
 
-/// ActivityBar：图标栏 + 激活面板内容（内容来自 `IActivityPanel::panel`）
-#[derive(IntoElement)]
+/// ActivityBar：仅渲染图标栏，持有激活态，点击时 emit 事件。
+///
+/// Host（如 MainWindow）订阅 `ActivityBarEvent` 并联动 `ActivitySidePanel`。
 pub struct ActivityBar {
-    id: ElementId,
-    bar_width: gpui::Pixels,
     panels: ActivityPanels,
     actions: ActivityActs,
-    /// MVVM 受控激活 id；`Some(None)` 表示显式无选中
-    active_panel_id: Option<Option<SharedString>>,
-    active_state: ActiveState,
-    on_panel_change: Option<Arc<dyn Fn(&SharedString, &mut Window, &mut App) + 'static>>,
-    /// 由 Host `Render::render` 解析的面板内容（优先于 `IActivityPanel::panel`）
-    panel_body: Option<AnyElement>,
-    #[allow(dead_code)]
-    panel_children: SmallVec<[AnyElement; 2]>,
+    active_id: Option<SharedString>,
+    bar_width: gpui::Pixels,
 }
 
+impl EventEmitter<ActivityBarEvent> for ActivityBar {}
+
 impl ActivityBar {
-    pub fn new(id: impl Into<ElementId>) -> Self {
-        let id = id.into();
+    /// 构造图标栏。**不**在此激活首项 —— 此时 Host 尚未 `cx.subscribe`，
+    /// emit 的事件会丢失。Host 应在 subscribe 之后调用 [`activate_first`]。
+    pub fn new(panels: ActivityPanels) -> Self {
         Self {
-            active_state: active_state_for_bar(&id),
-            id,
-            bar_width: px(48.),
-            panels: Vec::new(),
+            panels,
             actions: Vec::new(),
-            active_panel_id: None,
-            on_panel_change: None,
-            panel_body: None,
-            panel_children: SmallVec::new(),
+            active_id: None,
+            bar_width: px(48.),
         }
     }
 
-    pub fn width(mut self, width: gpui::Pixels) -> Self {
-        self.bar_width = width;
-        self
+    /// 激活首个面板。Host 须在 `cx.subscribe(&bar, ...).detach()` 之后调用，
+    /// 以保证 `ItemActivated` 事件能被订阅者收到。
+    pub fn activate_first(&mut self, cx: &mut Context<Self>) {
+        if let Some(first) = self.panels.first() {
+            self.set_active_id(Some(first.id()), cx);
+        }
     }
 
-    pub fn panels(mut self, panels: ActivityPanels) -> Self {
+    pub fn set_panels(&mut self, panels: ActivityPanels, cx: &mut Context<Self>) {
         self.panels = panels;
-        self
+        cx.notify();
     }
 
-    pub fn actions(mut self, actions: ActivityActs) -> Self {
+    pub fn set_actions(&mut self, actions: ActivityActs, cx: &mut Context<Self>) {
         self.actions = actions;
-        self
+        cx.notify();
     }
 
-    /// 受控模式：由 ViewModel 持有当前激活面板 id（`None` 表示全部收起）
-    pub fn active_panel_id(mut self, id: Option<SharedString>) -> Self {
-        self.active_panel_id = Some(id);
-        self
-    }
-
-    pub fn on_panel_change(
-        mut self,
-        f: impl Fn(&SharedString, &mut Window, &mut App) + 'static,
-    ) -> Self {
-        self.on_panel_change = Some(Arc::new(f));
-        self
-    }
-
-    /// 由 Host 在 `Render::render` 中解析当前激活面板内容并传入
-    pub fn panel_body(mut self, body: Option<AnyElement>) -> Self {
-        self.panel_body = body;
-        self
-    }
-}
-
-impl ParentElement for ActivityBar {
-    fn extend(&mut self, elements: impl IntoIterator<Item = AnyElement>) {
-        self.panel_children.extend(elements);
-    }
-}
-
-impl RenderOnce for ActivityBar {
-    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
-        let on_panel_change = self.on_panel_change.clone();
-        let active_state = self.active_state.clone();
-        let controlled = self.active_panel_id.is_some();
-
-        let active_id = if let Some(controlled_id) = self.active_panel_id {
-            controlled_id
-        } else {
-            let mut state = active_state.lock().expect("activity bar active lock");
-            if !state.seeded && !self.panels.is_empty() {
-                state.active = self.panels.first().map(|p| p.id());
-                state.seeded = true;
+    pub fn set_active_id(&mut self, id: Option<SharedString>, cx: &mut Context<Self>) {
+        if self.active_id == id {
+            return;
+        }
+        match (&self.active_id, &id) {
+            (Some(old), Some(new)) if old != new => {
+                cx.emit(ActivityBarEvent::ItemDeactivated(old.clone()));
+                cx.emit(ActivityBarEvent::ItemActivated(new.clone()));
             }
-            state.active.clone()
-        };
+            (Some(old), None) => cx.emit(ActivityBarEvent::ItemDeactivated(old.clone())),
+            (None, Some(new)) => cx.emit(ActivityBarEvent::ItemActivated(new.clone())),
+            _ => {}
+        }
+        self.active_id = id;
+        cx.notify();
+    }
 
-        let any_active = active_id.as_ref().is_some_and(|id| !id.is_empty());
+    pub fn active_id(&self) -> Option<&str> {
+        self.active_id.as_deref()
+    }
+}
+
+impl Render for ActivityBar {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let active_id = self.active_id.clone();
 
         let mut panel_buttons: SmallVec<[AnyElement; 4]> = SmallVec::new();
         for (ix, panel) in self.panels.iter().enumerate() {
@@ -253,8 +211,6 @@ impl RenderOnce for ActivityBar {
             let icon = panel.icon();
             let title = panel.title();
             let active = active_id.as_ref() == Some(&id);
-            let on_change = on_panel_change.clone();
-            let state = active_state.clone();
 
             panel_buttons.push(
                 Button::new(("activity-panel", ix))
@@ -265,20 +221,14 @@ impl RenderOnce for ActivityBar {
                     .w(px(36.))
                     .my(px(2.))
                     .when(active, |btn| btn.bg(cx.theme().sidebar_accent))
-                    .on_click(move |_, window, cx| {
-                        if !controlled {
-                            let mut current = state.lock().expect("activity bar active lock");
-                            if current.active.as_ref() == Some(&id) {
-                                current.active = None;
-                            } else {
-                                current.active = Some(id.clone());
-                            }
-                        }
-                        if let Some(f) = &on_change {
-                            f(&id, window, cx);
-                        }
-                        window.refresh();
-                    })
+                    .on_click(cx.listener(move |this, _ev: &gpui::ClickEvent, _window, cx| {
+                        let new_id = if this.active_id.as_ref() == Some(&id) {
+                            None
+                        } else {
+                            Some(id.clone())
+                        };
+                        this.set_active_id(new_id, cx);
+                    }))
                     .into_any_element(),
             );
         }
@@ -301,51 +251,140 @@ impl RenderOnce for ActivityBar {
             })
             .collect();
 
-        let icon_bar = v_flex()
+        v_flex()
             .w(self.bar_width)
             .h_full()
             .flex_shrink_0()
             .justify_between()
             .bg(cx.theme().sidebar)
             .child(v_flex().w_full().items_center().children(panel_buttons))
-            .child(v_flex().w_full().items_center().children(action_buttons));
+            .child(v_flex().w_full().items_center().children(action_buttons))
+    }
+}
 
-        let mut row = h_flex().id(self.id).h_full().child(icon_bar);
+// ── ActivitySidePanel Entity（面板内容） ──
 
-        if any_active {
-            if let Some(aid) = active_id.as_ref() {
-                let body = self.panel_body.or_else(|| {
-                    self.panels
-                        .iter()
-                        .find(|p| &p.id() == aid)
-                        .and_then(|panel| panel.panel(window, cx))
-                }).or_else(|| {
-                    if self.panel_children.is_empty() {
-                        None
-                    } else {
-                        Some(
-                            gpui::div()
-                                .size_full()
-                                .children(self.panel_children)
-                                .into_any_element(),
-                        )
-                    }
-                });
+/// ActivitySidePanel：仅渲染当前激活面板的内容。
+///
+/// 通过 `set_active_id` 驱动，由 Host 在收到 `ActivityBarEvent` 后调用。
+pub struct ActivitySidePanel {
+    panels: ActivityPanels,
+    active_id: Option<SharedString>,
+    pending_deactivate: Option<SharedString>,
+    pending_activate: Option<SharedString>,
+}
 
-                if let Some(body) = body {
-                    row = row.child(
-                        gpui::div()
-                            .flex_1()
-                            .h_full()
-                            .min_w_0()
-                            .overflow_hidden()
-                            .bg(cx.theme().sidebar)
-                            .child(body),
-                    );
-                }
-            }
+impl ActivitySidePanel {
+    pub fn new(panels: ActivityPanels) -> Self {
+        Self {
+            panels,
+            active_id: None,
+            pending_deactivate: None,
+            pending_activate: None,
+        }
+    }
+
+    pub fn set_panels(&mut self, panels: ActivityPanels, cx: &mut Context<Self>) {
+        self.panels = panels;
+        cx.notify();
+    }
+
+    pub fn set_active_id(&mut self, id: Option<SharedString>, cx: &mut Context<Self>) {
+        if self.active_id == id {
+            return;
+        }
+        self.pending_deactivate = self.active_id.clone();
+        self.active_id = id.clone();
+        self.pending_activate = id;
+        cx.notify();
+    }
+
+    fn flush_pending(&mut self, _window: &mut Window, _cx: &mut Context<Self>) {
+        // 预留：未来可在 IActivityPanel 上添加 activate/deactivate 生命周期钩子
+        self.pending_deactivate = None;
+        self.pending_activate = None;
+    }
+
+    pub fn active_id(&self) -> Option<&str> {
+        self.active_id.as_deref()
+    }
+}
+
+impl Render for ActivitySidePanel {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.flush_pending(window, cx);
+
+        let has_active = self.active_id.is_some();
+        if !has_active {
+            return div().w_0().h_full().into_any_element();
         }
 
+        let active_id = self.active_id.clone();
+        let body = self
+            .panels
+            .iter()
+            .find(|p| p.id() == active_id.as_deref().unwrap_or(""))
+            .and_then(|panel| panel.panel(window, cx));
+
+        match body {
+            Some(body) => div()
+                .flex_1()
+                .h_full()
+                .min_w_0()
+                .overflow_hidden()
+                .bg(cx.theme().sidebar)
+                .child(body)
+                .into_any_element(),
+            None => div().w_0().h_full().into_any_element(),
+        }
+    }
+}
+
+// ── ActivityBarShell RenderOnce（布局包装器） ──
+
+/// ActivityBarShell：将 `ActivityBar` 和 `ActivitySidePanel` 水平排列。
+///
+/// RML 用法：`<ActivityBarShell bar={activity_bar} panel={side_panel} />`
+#[derive(IntoElement)]
+pub struct ActivityBarShell {
+    bar: Option<Entity<ActivityBar>>,
+    panel: Option<Entity<ActivitySidePanel>>,
+}
+
+impl Default for ActivityBarShell {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ActivityBarShell {
+    pub fn new() -> Self {
+        Self {
+            bar: None,
+            panel: None,
+        }
+    }
+
+    pub fn bar(mut self, bar: Entity<ActivityBar>) -> Self {
+        self.bar = Some(bar);
+        self
+    }
+
+    pub fn panel(mut self, panel: Entity<ActivitySidePanel>) -> Self {
+        self.panel = Some(panel);
+        self
+    }
+}
+
+impl RenderOnce for ActivityBarShell {
+    fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
+        let mut row = h_flex().h_full();
+        if let Some(bar) = self.bar {
+            row = row.child(bar);
+        }
+        if let Some(panel) = self.panel {
+            row = row.child(panel);
+        }
         row
     }
 }

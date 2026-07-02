@@ -123,12 +123,11 @@ pub fn gen_component(
     //
     // 注：ModernWindowShell 不经此路径处理——它由 codegen 根元素处理路径
     // （gen_modern_window_wrapper）直接生成，不通过 component_lookup 路由表。
-    // ActivityBar 作为容器，子节点渲染到活动面板区域。
-    let is_container = (matches!(component.kind, tags::ComponentKind::StatelessNoId)
-        || resolved == "ActivityBar")
+    let is_container = matches!(component.kind, tags::ComponentKind::StatelessNoId)
         && resolved != "menu"
         && resolved != "MenuBar"
-        && resolved != "status_bar";
+        && resolved != "status_bar"
+        && resolved != "ActivityBarShell";
 
     if is_container {
         // 容器组件：所有 element/文本子节点作为 children
@@ -152,28 +151,6 @@ pub fn gen_component(
                 code.push_str(&format!(".label({:?})", text));
                 break;
             }
-        }
-    }
-
-    // ActivityBar：在 Host Render 阶段解析面板内容，避免在 RenderOnce 内调用 panel()
-    if resolved == "ActivityBar" {
-        let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
-        let panels_expr = elem.attributes.iter().find_map(|a| match a {
-            Attribute::Bind { name, expr } if name == "panels" => {
-                Some(component_bind_rust_expr(expr, &lv, &computed))
-            }
-            _ => None,
-        });
-        let active_expr = elem.attributes.iter().find_map(|a| match a {
-            Attribute::Bind { name, expr } if name == "active_panel_id" => {
-                Some(component_bind_rust_expr(expr, &lv, &computed))
-            }
-            _ => None,
-        });
-        if let (Some(panels), Some(active)) = (panels_expr, active_expr) {
-            code.push_str(&format!(
-                "\n            .panel_body(rml_app::contribution::resolve_active_panel_body(&({panels}), {active}.as_ref(), _window, cx))"
-            ));
         }
     }
 
@@ -263,7 +240,7 @@ pub fn component_static_setter(name: &str, value: &str, tag: &str) -> Option<Str
     }
 }
 
-/// 绑定表达式 → Rust 代码（供 setter 与 ActivityBar panel_body 复用）
+/// 绑定表达式 → Rust 代码（供 setter 复用）
 pub fn component_bind_rust_expr(
     expr_str: &str,
     loop_vars: &[&str],
@@ -320,11 +297,14 @@ pub fn component_bind_setter(
         "selected" => Some(format!(".selected({})", rust_expr)),
         "checked" => Some(format!(".selected({})", rust_expr)),
         "label" => Some(format!(".label({}.clone())", rust_expr)),
-        "panels" if tag == "ActivityBar" => Some(format!(".panels({}.clone())", rust_expr)),
-        "active_panel_id" if tag == "ActivityBar" => {
-            Some(format!(".active_panel_id({}.clone())", rust_expr))
-        }
-        "actions" if tag == "ActivityBar" => Some(format!(".actions({}.clone())", rust_expr)),
+        "bar" if tag == "ActivityBarShell" => Some(format!(
+            ".bar({}.as_ref().expect(\"init ActivityBar\").clone())",
+            rust_expr
+        )),
+        "panel" if tag == "ActivityBarShell" => Some(format!(
+            ".panel({}.as_ref().expect(\"init ActivitySidePanel\").clone())",
+            rust_expr
+        )),
         "items" if tag == "menu" || tag == "MenuBar" || tag == "status_bar" => {
             Some(format!(".items({}.clone())", rust_expr))
         }
@@ -384,23 +364,6 @@ pub fn component_event_setter(name: &str, handler: &EventHandler, tag: &str) -> 
             Some(format!(
                 ".on_change(cx.listener(move |this, state: &rml_ui::InputState, _window, cx| {{\n                    \
                  this.{}(state, cx);\n                }}))",
-                method
-            ))
-        }
-        "on_panel_change" if tag == "ActivityBar" => {
-            let method = match handler {
-                EventHandler::Ident(m) | EventHandler::MethodName(m) => m,
-                EventHandler::WithArgs(m, _) => m,
-            };
-            // ActivityBar 将回调存入 Rc 并在 Button::on_click 中以 App 上下文调用，
-            // 与 TabWindowShell / Tree 一致，使用 weak_entity + entity.update 而非 cx.listener。
-            Some(format!(
-                ".on_panel_change({{\n                    \
-                 let weak = cx.weak_entity();\n                    \
-                 move |panel_id: &gpui::SharedString, _window: &mut gpui::Window, app: &mut gpui::App| {{\n                        \
-                 if let Some(entity) = weak.upgrade() {{\n                            \
-                 entity.update(app, |this, cx| {{ this.{}(panel_id, cx); }});\n                        \
-                 }}\n                    }}\n                }})",
                 method
             ))
         }

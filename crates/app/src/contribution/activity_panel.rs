@@ -59,10 +59,6 @@ impl IActivityPanel for ContributedActivityPanel {
         self.title.clone()
     }
 
-    fn is_activated(&self) -> bool {
-        false
-    }
-
     fn panel(
         &self,
         window: &mut Window,
