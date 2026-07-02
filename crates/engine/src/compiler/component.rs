@@ -302,7 +302,6 @@ pub fn component_bind_setter(
     computed: &[&str],
     tag: &str,
 ) -> Option<String> {
-    let _tag = tag;
     match name {
         // content={expr}：直接嵌入表达式作为 child（与原生 div 的 content 分支一致）
         // 表达式可引用 _window/cx，不经 component_bind_rust_expr 解析
@@ -331,7 +330,19 @@ pub fn component_bind_setter(
             let rust_expr = component_bind_rust_expr(expr_str, loop_vars, computed);
             Some(format!(".items({}.clone())", rust_expr))
         }
-        _ => None,
+        _ => {
+            // 未命中：若属性在 props_registry 中已登记但此处无 match 分支，
+            // 说明 codegen 映射缺失，输出 warning 提示框架开发者补全。
+            if crate::compiler::props_registry::is_prop_registered(tag, name) {
+                eprintln!(
+                    "[rml warning] <{}> bind property `{}` is registered in props_registry \
+                     but has no mapping in component_bind_setter; property will be silently dropped. \
+                     Add a match arm in crates/engine/src/compiler/component.rs.",
+                    tag, name
+                );
+            }
+            None
+        }
     }
 }
 

@@ -7,6 +7,7 @@ pub mod component;
 pub mod event;
 pub mod expr;
 pub mod menu;
+pub mod props_registry;
 pub mod validator;
 
 use crate::css::StyleSheet;

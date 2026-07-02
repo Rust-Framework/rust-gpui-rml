@@ -150,4 +150,107 @@ pub static SHELL_PROPS: &[(&str, &[&str])] = &[
 ];
 
 /// 判断 shell 属性是否已注册
-pub fn is_shell_prop_registered(shell_tag: &str, attr
+pub fn is_shell_prop_registered(shell_tag: &str, attr: &str) -> bool {
+    if let Some((_, props)) = SHELL_PROPS.iter().find(|(t, _)| *t == shell_tag) {
+        return props.contains(&attr);
+    }
+    false
+}
+
+/// 查询 shell 的所有已注册属性
+pub fn shell_props_for(shell_tag: &str) -> Option<&'static [&'static str]> {
+    SHELL_PROPS
+        .iter()
+        .find(|(t, _)| *t == shell_tag)
+        .map(|(_, props)| *props)
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// 单元测试
+// ──────────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn common_props_are_non_empty() {
+        assert!(!COMMON_STATIC_PROPS.is_empty());
+        assert!(!COMMON_BIND_PROPS.is_empty());
+        assert!(!COMMON_EVENT_PROPS.is_empty());
+    }
+
+    #[test]
+    fn known_component_props_recognized() {
+        assert!(is_prop_registered("Input", "onchange"));
+        assert!(is_prop_registered("Tree", "items"));
+        assert!(is_prop_registered("Tree", "on_activate"));
+        assert!(is_prop_registered("MenuBar", "items"));
+        assert!(is_prop_registered("menu", "items"));
+        assert!(is_prop_registered("status_bar", "items"));
+    }
+
+    #[test]
+    fn common_props_recognized_for_any_tag() {
+        assert!(is_prop_registered("Button", "label"));
+        assert!(is_prop_registered("Button", "primary"));
+        assert!(is_prop_registered("Button", "onclick"));
+        assert!(is_prop_registered("Badge", "disabled"));
+    }
+
+    #[test]
+    fn unknown_props_not_registered() {
+        assert!(!is_prop_registered("Button", "nonexistent_prop"));
+        assert!(!is_prop_registered("Input", "on_foo"));
+    }
+
+    #[test]
+    fn shell_props_recognized() {
+        assert!(is_shell_prop_registered("tab_window", "tabs"));
+        assert!(is_shell_prop_registered("tab_window", "on_tab_click"));
+        assert!(is_shell_prop_registered("tab_window", "left_size"));
+        assert!(is_shell_prop_registered("modern_window", "menu"));
+        assert!(is_shell_prop_registered("modern_window", "footer"));
+        assert!(is_shell_prop_registered("window", "title"));
+    }
+
+    #[test]
+    fn shell_props_for_returns_list() {
+        let props = shell_props_for("tab_window").expect("tab_window should be registered");
+        assert!(props.contains(&"tabs"));
+        assert!(props.contains(&"show_chrome"));
+    }
+
+    #[test]
+    fn unknown_shell_tag_returns_none() {
+        assert!(shell_props_for("nonexistent_shell").is_none());
+        assert!(!is_shell_prop_registered("nonexistent_shell", "title"));
+    }
+
+    /// 验证 COMPONENT_PROPS 中的每个 tag 都在 tags::component_lookup 中注册
+    /// （避免注册表与路由表不一致）
+    #[test]
+    fn component_props_tags_align_with_routing_table() {
+        use crate::tags;
+        for (tag, _) in COMPONENT_PROPS {
+            assert!(
+                tags::component_lookup(tag).is_some(),
+                "COMPONENT_PROPS contains tag '{}' but tags::component_lookup returns None",
+                tag
+            );
+        }
+    }
+
+    /// 验证 SHELL_PROPS 中的每个 tag 都是合法的根标签
+    #[test]
+    fn shell_props_tags_are_valid_roots() {
+        use crate::tags;
+        for (tag, _) in SHELL_PROPS {
+            assert!(
+                tags::root_tag_lookup(tag).is_some(),
+                "SHELL_PROPS contains tag '{}' but tags::root_tag_lookup returns None",
+                tag
+            );
+        }
+    }
+}
