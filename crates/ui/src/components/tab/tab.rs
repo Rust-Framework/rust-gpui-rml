@@ -4,9 +4,9 @@ use gpui_component::animation::{Lerp, ease_in_out_cubic};
 use gpui_component::{ActiveTheme, Icon, IconName, Selectable, Sizable, Size, StyledExt, h_flex};
 use gpui::prelude::FluentBuilder as _;
 use gpui::{
-    Animation, AnimationExt as _, AnyElement, App, Background, ClickEvent, Div, Edges, ElementId,
-    Hsla, InteractiveElement, IntoElement, MouseButton, ParentElement, Pixels, RenderOnce,
-    SharedString, StatefulInteractiveElement, Styled, Window, div, px, relative,
+    Animation, AnimationExt as _, AnyElement, App, Background, ClickEvent, Corners, Div, Edges,
+    ElementId, Hsla, InteractiveElement, IntoElement, MouseButton, ParentElement, Pixels,
+    RenderOnce, SharedString, StatefulInteractiveElement, Styled, Window, div, px, relative,
 };
 
 /// Tab variants.
@@ -67,6 +67,11 @@ impl TabVariant {
                 TabVariant::Underline => px(26.),
             },
         }
+    }
+
+    /// Outer row height of a tab for layout in chrome such as [`super::TabBar`].
+    pub fn tab_height(self, size: Size) -> Pixels {
+        self.height(size)
     }
 
     /// Default px(12) to match panel px_3, See [`crate::dock::TabPanel`]
@@ -380,6 +385,19 @@ impl TabVariant {
         }
     }
 
+    fn corner_radii(&self, size: Size, selected: bool, disabled: bool, cx: &App) -> Corners<Pixels> {
+        match self {
+            // Selected Flat tab: rounded top, square bottom to meet the body.
+            TabVariant::Flat if selected && !disabled => Corners {
+                top_left: cx.theme().radius,
+                top_right: cx.theme().radius,
+                bottom_left: px(0.),
+                bottom_right: px(0.),
+            },
+            _ => Corners::all(self.radius(size, cx)),
+        }
+    }
+
     pub(super) fn inner_radius(&self, size: Size, cx: &App) -> Pixels {
         match self {
             TabVariant::Segmented => match size {
@@ -642,7 +660,9 @@ impl RenderOnce for Tab {
                 hover_style.borders.left = px(0.);
             }
         }
-        let radius = self.variant.radius(self.size, cx);
+        let corner_radii = self
+            .variant
+            .corner_radii(self.size, self.selected, self.disabled, cx);
         let inner_radius = self.variant.inner_radius(self.size, cx);
         let inner_paddings = self.variant.inner_paddings(self.size);
         let inner_margins = self.variant.inner_margins(self.size);
@@ -752,9 +772,6 @@ impl RenderOnce for Tab {
             .items_center()
             .flex_shrink_0()
             .h(height)
-            .when(self.variant == TabVariant::Flat && self.selected && !self.disabled, |this| {
-                this.top(px(2.))
-            })
             .overflow_hidden()
             .text_color(tab_style.fg)
             .map(|this| match self.size {
@@ -768,7 +785,7 @@ impl RenderOnce for Tab {
             .border_t(tab_style.borders.top)
             .border_b(tab_style.borders.bottom)
             .border_color(outer_border_color)
-            .rounded(radius)
+            .corner_radii(corner_radii)
             .when(!self.selected && !self.disabled, |this| {
                 this.hover(|this| {
                     this.text_color(hover_style.fg)
@@ -778,7 +795,7 @@ impl RenderOnce for Tab {
                         .border_t(hover_style.borders.top)
                         .border_b(hover_style.borders.bottom)
                         .border_color(hover_style.border_color)
-                        .rounded(radius)
+                        .corner_radii(corner_radii)
                 })
             })
             .when(has_inline_inner_bg, |this| {

@@ -7,13 +7,9 @@ use std::sync::Arc;
 
 use gpui::SharedString;
 
-use crate::contribution_cache::ComponentEntityCacheImpl;
-
 /// 框架内部视觉渲染回调类型（对开发者透明）
 pub type VisualRenderer = Arc<
-    dyn Fn(&mut ContributionRenderContext<'_>, &mut ComponentEntityCacheImpl) -> gpui::AnyElement
-        + Send
-        + Sync,
+    dyn Fn(&mut RenderContext<'_>) -> gpui::AnyElement + Send + Sync,
 >;
 
 /// 贡献注册选项
@@ -76,6 +72,19 @@ pub trait IContribution: Send + Sync {
     fn icon(&self) -> Option<SharedString>;
 }
 
+/// 视觉贡献契约：具备渲染能力的贡献点。
+///
+/// 由 `#[contribute]` + `#[component]` 叠加时自动实现。
+/// IVisualContribution 共享用于：
+/// 1. 构造 TreeItems（案例树/活动面板树）—— 从元数据（id/name/icon/parent_id/order）构建
+/// 2. 渲染到 tab body —— 选中后调用 render() 直接渲染
+///
+/// 开发者无需关心 Entity 缓存，框架内部处理。
+pub trait IVisualContribution: IContribution {
+    /// 渲染贡献视图。框架内部负责 Entity 缓存与复用。
+    fn render(&self, ctx: &mut RenderContext<'_>) -> gpui::AnyElement;
+}
+
 /// 贡献点主机标识（扩展点命名空间）。
 ///
 /// 由 `#[contributehost(id = "...")]` 实现。运行时条目存在 `ContributionRegistry` 中；
@@ -91,20 +100,21 @@ pub struct ContributedEntry {
     pub options: ContributionOptions,
 }
 
-/// 贡献渲染上下文（组件 visual 路径使用）
-pub struct ContributionRenderContext<'a> {
+/// 渲染上下文（视觉贡献渲染时使用）
+pub struct RenderContext<'a> {
     pub window: &'a mut gpui::Window,
     pub cx: &'a mut gpui::App,
     pub active: bool,
 }
 
-/// 组件 Entity 缓存
+/// 组件 Entity 缓存（框架内部，对开发者透明）
+#[doc(hidden)]
 pub trait ComponentEntityCache {
     fn render_view<V>(
         &mut self,
         contribution_id: &str,
         view: V,
-        ctx: &mut ContributionRenderContext<'_>,
+        ctx: &mut RenderContext<'_>,
     ) -> gpui::AnyElement
     where
         V: gpui::Render + Send + Sync + 'static;

@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use gpui::Render;
 use rml_core::component::IComponent;
-use rml_core::contribution::{ContributedEntry, ContributionOptions, IContribution};
+use rml_core::contribution::{ContributedEntry, ContributionOptions, IContribution, IVisualContribution};
 
 use super::entry::{component_entry, data_entry};
 
@@ -29,7 +29,7 @@ pub fn component_registerable<T>(
     options: ContributionOptions,
 ) -> ContributedEntry
 where
-    T: IContribution + IComponent + Render + Default + Send + Sync + 'static,
+    T: IVisualContribution + IComponent + Render + Default + Send + Sync + 'static,
 {
     component_entry(contribution, options)
 }

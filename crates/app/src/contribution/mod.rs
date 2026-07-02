@@ -22,4 +22,4 @@ pub use registerable::{component_registerable, data_registerable, Registerable};
 #[doc(hidden)]
 pub use registry::ContributionRegistry;
 #[doc(hidden)]
-pub use render::render_contribution_visual;
+pub use render::{render_contribution_visual, render_component_view};

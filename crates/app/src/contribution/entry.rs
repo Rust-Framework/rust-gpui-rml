@@ -6,10 +6,8 @@ use std::sync::Arc;
 use gpui::{App, Render};
 use rml_core::component::IComponent;
 use rml_core::contribution::{
-    ComponentEntityCache, ContributedEntry, ContributionOptions, IContribution, VisualRenderer,
+    ContributedEntry, ContributionOptions, IContribution, IVisualContribution, VisualRenderer,
 };
-
-use rml_core::contribution_cache::ComponentEntityCacheImpl;
 
 use super::host::ContributionHost;
 
@@ -26,13 +24,16 @@ pub fn data_entry<T: IContribution + 'static>(
 }
 
 /// 组件贡献条目：`#[contribute]` + `#[component]` 时组件本身即面板 UI
+///
+/// `T` 须实现 `IVisualContribution`（由宏自动生成）。VisualRenderer 闭包委托给
+/// `IVisualContribution::render`，Entity 缓存由框架内部处理（开发者不感知）。
 pub fn component_entry<T>(contribution: Arc<T>, options: ContributionOptions) -> ContributedEntry
 where
-    T: IContribution + IComponent + Render + Default + Send + Sync + 'static,
+    T: IVisualContribution + IComponent + Render + Default + Send + Sync + 'static,
 {
-    let id = contribution.id().to_string();
-    let renderer: VisualRenderer = Arc::new(move |ctx, cache: &mut ComponentEntityCacheImpl| {
-        cache.render_view(&id, T::default(), ctx)
+    let contribution_for_render = contribution.clone();
+    let renderer: VisualRenderer = Arc::new(move |ctx| {
+        contribution_for_render.render(ctx)
     });
     ContributedEntry {
         contribution: contribution as Arc<dyn IContribution>,

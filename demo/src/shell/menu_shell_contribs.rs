@@ -1,4 +1,4 @@
-//! Shell 菜单贡献：二/三级子菜单演示（叶子命令在 `MainWindow.menu_commands` 绑定）
+﻿//! Shell 菜单贡献：二/三级子菜单演示（叶子命令在 `MainWindow.menu_commands` 绑定）
 
 use rml::prelude::*;
 
@@ -6,12 +6,12 @@ use super::MainWindow;
 
 // ── File（二级） ──
 
-#[contribute(host = MainWindow, id = "menu.file", name = "menu.file", kind = "menu", order = 0)]
+#[contribute(host_id = "demo.shell", id = "menu.file", name = "menu.file", kind = "menu", order = 0)]
 #[derive(Default)]
 pub struct MenuFileRoot;
 
 #[contribute(
-    host = MainWindow,
+    host_id = "demo.shell",
     id = "menu.file.new",
     name = "menu.file_new",
     kind = "menu",
@@ -22,7 +22,7 @@ pub struct MenuFileRoot;
 pub struct MenuFileNew;
 
 #[contribute(
-    host = MainWindow,
+    host_id = "demo.shell",
     id = "menu.file.open",
     name = "menu.file_open",
     kind = "menu",
@@ -33,7 +33,7 @@ pub struct MenuFileNew;
 pub struct MenuFileOpen;
 
 #[contribute(
-    host = MainWindow,
+    host_id = "demo.shell",
     id = "menu.file.exit",
     name = "menu.file_exit",
     kind = "menu",
@@ -45,12 +45,12 @@ pub struct MenuFileExit;
 
 // ── View（二级） ──
 
-#[contribute(host = MainWindow, id = "menu.view", name = "menu.view", kind = "menu", order = 10)]
+#[contribute(host_id = "demo.shell", id = "menu.view", name = "menu.view", kind = "menu", order = 10)]
 #[derive(Default)]
 pub struct MenuViewRoot;
 
 #[contribute(
-    host = MainWindow,
+    host_id = "demo.shell",
     id = "menu.theme_toggle",
     name = "menu.theme_toggle",
     kind = "menu",
@@ -61,7 +61,7 @@ pub struct MenuViewRoot;
 pub struct MenuThemeToggleContrib;
 
 #[contribute(
-    host = MainWindow,
+    host_id = "demo.shell",
     id = "menu.lang_en",
     name = "menu.lang_en",
     kind = "menu",
@@ -73,12 +73,12 @@ pub struct MenuLangEnContrib;
 
 // ── Help（三级：Help → Docs → Guide/About） ──
 
-#[contribute(host = MainWindow, id = "menu.help", name = "menu.help", kind = "menu", order = 20)]
+#[contribute(host_id = "demo.shell", id = "menu.help", name = "menu.help", kind = "menu", order = 20)]
 #[derive(Default)]
 pub struct MenuHelpRoot;
 
 #[contribute(
-    host = MainWindow,
+    host_id = "demo.shell",
     id = "menu.help.docs",
     name = "case.menu.help_center",
     kind = "menu",
@@ -89,7 +89,7 @@ pub struct MenuHelpRoot;
 pub struct MenuHelpDocs;
 
 #[contribute(
-    host = MainWindow,
+    host_id = "demo.shell",
     id = "menu.help.guide",
     name = "case.menu.nested",
     kind = "menu",
@@ -100,7 +100,7 @@ pub struct MenuHelpDocs;
 pub struct MenuHelpGuide;
 
 #[contribute(
-    host = MainWindow,
+    host_id = "demo.shell",
     id = "menu.help.about",
     name = "menu.help_about",
     kind = "menu",
@@ -111,7 +111,7 @@ pub struct MenuHelpGuide;
 pub struct MenuHelpAbout;
 
 #[contribute(
-    host = MainWindow,
+    host_id = "demo.shell",
     id = "menu.help.cases",
     name = "case.menu.features.group",
     kind = "menu",
@@ -122,7 +122,7 @@ pub struct MenuHelpAbout;
 pub struct MenuHelpCases;
 
 #[contribute(
-    host = MainWindow,
+    host_id = "demo.shell",
     id = "menu.open_features",
     name = "case.menu.features.title",
     kind = "menu",

@@ -5,9 +5,10 @@ use std::collections::HashMap;
 
 use gpui::{AnyElement, AppContext, Entity, IntoElement, ParentElement, Render, Styled};
 
-use crate::contribution::{ComponentEntityCache, ContributionRenderContext};
+use crate::contribution::{ComponentEntityCache, RenderContext};
 
-/// 默认组件 Entity 缓存
+/// 默认组件 Entity 缓存（框架内部，对开发者透明）
+#[doc(hidden)]
 #[derive(Default)]
 pub struct ComponentEntityCacheImpl {
     entries: HashMap<String, (TypeId, Box<dyn Any + Send + Sync>)>,
@@ -24,7 +25,7 @@ impl ComponentEntityCache for ComponentEntityCacheImpl {
         &mut self,
         contribution_id: &str,
         view: V,
-        ctx: &mut ContributionRenderContext<'_>,
+        ctx: &mut RenderContext<'_>,
     ) -> AnyElement
     where
         V: Render + Send + Sync + 'static,

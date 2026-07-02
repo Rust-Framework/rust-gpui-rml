@@ -14,13 +14,13 @@ use gpui::{
     prelude::FluentBuilder as _,
 };
 use gpui_component::{
-    ActiveTheme, Icon, IconName, Sizable as _,
+    ActiveTheme, Icon, IconName, Size, Sizable as _,
     button::{Button, ButtonRounded, ButtonVariants as _},
     h_flex,
     resizable::{h_resizable, resizable_panel, v_resizable},
     v_flex, TITLE_BAR_HEIGHT,
 };
-use crate::components::tab::{Tab, TabBar};
+use crate::components::tab::{Tab, TabBar, TabVariant};
 use smallvec::SmallVec;
 
 /// Slot 尺寸低于此阈值视为折叠：移出 resizable group，改用普通 div 渲染，
@@ -344,9 +344,16 @@ impl RenderOnce for TabWindowShell {
         let mut tab_bar = TabBar::new("tab-window-tabs")
             .menu(true)
             .flat()
+            .with_size(Size::default())
             .selected_index(self.selected_tab)
             .w_full()
             .min_w_0();
+
+        // Flat tab strip: align tab row to the title-bar bottom and leave the
+        // remaining height above as inset (TITLE_BAR_HEIGHT − tab row height).
+        let tab_row_height = TabVariant::Flat.tab_height(Size::default());
+        let tab_top_inset = TITLE_BAR_HEIGHT - tab_row_height;
+        tab_bar = tab_bar.h(tab_row_height);
 
         // 菜单与标题随 show_chrome 展开/收起；切换按钮独立贴左，不在 prefix 内
         if show_chrome {
@@ -414,7 +421,10 @@ impl RenderOnce for TabWindowShell {
                 .flex_1()
                 .min_w_0()
                 .h_full()
-                .overflow_hidden()
+                .flex()
+                .items_end()
+                .pt(tab_top_inset)
+                .overflow_x_hidden()
                 .child(tab_bar),
         );
 

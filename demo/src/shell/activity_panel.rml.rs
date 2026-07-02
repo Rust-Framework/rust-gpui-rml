@@ -1,4 +1,4 @@
-use rml::prelude::*;
+﻿use rml::prelude::*;
 use rml_app::contribution::subscribe_host_changes;
 use crate::shell::shell_chrome::map_case_tree_items;
 use rml_core::i18n::I18nState;
@@ -7,7 +7,7 @@ use rml_ui::TreeState;
 use crate::shell::{DemoShellHost, MainWindow};
 
 #[contribute(
-    host = MainWindow,
+    host_id = "demo.shell",
     id = "samples",
     name = "shell.samples",
     icon = IconName::BookOpen,
