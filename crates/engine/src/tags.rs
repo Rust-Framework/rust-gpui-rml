@@ -248,6 +248,10 @@ pub enum ComponentKind {
     /// 有状态组件：构造调用形如 `Input::new(&self.<field>)`
     /// 需要视图中持有对应 state entity 字段（如 `Entity<InputState>`）
     Stateful { state_field: &'static str },
+    /// Entity 引用组件：从 Host 的 `Entity<T>` 字段直接 clone
+    /// 配合 `ref="field_name"` 指令指定字段名
+    /// 生成 `self.<field>.as_ref().expect("init in on_loaded").clone()`
+    EntityRef,
 }
 
 /// 扩展组件的元信息
@@ -333,9 +337,9 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             ctor_path: "rml_ui::NativeStatusBar",
             kind: ComponentKind::StatelessNoId,
         }),
-        "ActivityBarShell" => Some(ComponentTag {
-            ctor_path: "rml_ui::ActivityBarShell",
-            kind: ComponentKind::StatelessNoId,
+        "ActivityBar" => Some(ComponentTag {
+            ctor_path: "rml_ui::ActivityBar",
+            kind: ComponentKind::EntityRef,
         }),
         "Tree" => Some(ComponentTag {
             ctor_path: "rml_ui::Tree",

@@ -7,8 +7,8 @@ pub mod status_bar;
 pub mod tree;
 
 pub use activity_bar::{
-    ActivityAct, ActivityActs, ActivityBar, ActivityBarEvent, ActivityBarShell, ActivityPanel,
-    ActivityPanels, ActivitySidePanel, IActivityAct, IActivityPanel,
+    ActivityAct, ActivityActs, ActivityBar, ActivityPanel, ActivityPanels, IActivityAct,
+    IActivityPanel,
 };
 pub use dialog_window::{DialogDragState, DialogTitleBar};
 pub use menu::{

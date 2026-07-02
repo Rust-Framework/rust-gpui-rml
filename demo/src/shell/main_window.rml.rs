@@ -7,8 +7,7 @@ use crate::shell::shell_chrome::{map_shell_chrome, ShellChromeBindings};
 use rml_core::i18n::I18nExt;
 use rml_core::theme::ThemeExt;
 use rml_ui::{
-    ActivityBar, ActivityBarEvent, ActivityPanels, ActivitySidePanel, MenuItems, StatusBarItems,
-    TabItem,
+    ActivityBar, ActivityPanels, MenuItems, StatusBarItems, TabItem,
 };
 
 use crate::cases::{self, OpenTab};
@@ -32,7 +31,6 @@ pub struct MainWindow {
     show_chrome: bool,
     activity_panels: ActivityPanels,
     activity_bar: Option<gpui::Entity<ActivityBar>>,
-    side_panel: Option<gpui::Entity<ActivitySidePanel>>,
     status_items: StatusBarItems,
     i18n_version: u32,
     case_host: Option<gpui::Entity<CaseHost>>,
@@ -117,36 +115,11 @@ impl ILifecycle for MainWindow {
 
         self.refresh_bindings(cx);
 
-        // 构造 ActivityBar + ActivitySidePanel 双 Entity（在 on_loaded 中，非 render）
+        // 构造 ActivityBar 单 Entity（在 on_loaded 中，非 render）
         let panels = self.activity_panels.clone();
-        self.activity_bar = Some(cx.new(|_| ActivityBar::new(panels.clone())));
-        self.side_panel = Some(cx.new(|_| ActivitySidePanel::new(panels)));
+        self.activity_bar = Some(cx.new(|_| ActivityBar::new(panels)));
 
-        // 订阅 ActivityBar 事件 → 联动 SidePanel
-        // 必须在 activate_first 之前注册，否则初始 ItemActivated 事件会丢失
-        if let Some(bar) = self.activity_bar.clone() {
-            cx.subscribe(&bar, |this, _emitter, event: &ActivityBarEvent, cx| {
-                if let Some(panel) = &this.side_panel {
-                    match event {
-                        ActivityBarEvent::ItemActivated(id) => {
-                            panel.update(cx, |p, cx| p.set_active_id(Some(id.clone()), cx));
-                        }
-                        ActivityBarEvent::ItemDeactivated(_) => {
-                            panel.update(cx, |p, cx| p.set_active_id(None, cx));
-                        }
-                    }
-                }
-            })
-            .detach();
-        }
-
-        // subscribe 之后再激活首项，确保初始 ItemActivated 事件能被订阅者收到。
-        // 同时直接设置 SidePanel 的 active_id —— 不依赖事件传递时序，
-        // 保证首次 render 时 SidePanel 即有正确 active_id（事件到达后 subscriber 调用为 no-op）。
-        let first_id = self.activity_panels.first().map(|p| p.id());
-        if let Some(panel) = &self.side_panel {
-            panel.update(cx, |p, cx| p.set_active_id(first_id.clone(), cx));
-        }
+        // 激活首项 —— 单 Entity 内 set_active_id 直接 cx.notify() 触发重渲
         if let Some(bar) = &self.activity_bar {
             bar.update(cx, |bar, cx| bar.activate_first(cx));
         }
@@ -164,12 +137,9 @@ impl MainWindow {
         self.status_items = status_items;
         self.menu_items = menu_items;
 
-        // 同步面板数据到 ActivityBar + ActivitySidePanel Entity
+        // 同步面板数据到 ActivityBar Entity
         if let Some(bar) = &self.activity_bar {
-            bar.update(cx, |bar, cx| bar.set_panels(activity_panels.clone(), cx));
-        }
-        if let Some(panel) = &self.side_panel {
-            panel.update(cx, |panel, cx| panel.set_panels(activity_panels, cx));
+            bar.update(cx, |bar, cx| bar.set_panels(activity_panels, cx));
         }
     }
 

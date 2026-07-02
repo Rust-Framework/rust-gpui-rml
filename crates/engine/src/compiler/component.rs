@@ -83,6 +83,20 @@ pub fn gen_component(
             "{}::new(&self.{})",
             component.ctor_path, state_field
         ),
+        tags::ComponentKind::EntityRef => {
+            // EntityRef：从 Host 的 `Entity<T>` 字段直接 clone
+            // 必须配合 `ref="field_name"` 指令指定字段名
+            let name = ref_name.ok_or_else(|| CodegenError {
+                message: format!(
+                    "EntityRef component <{}> requires `ref=\"field_name\"` directive",
+                    tag
+                ),
+            })?;
+            return Ok(format!(
+                "self.{}.as_ref().expect(\"init {} in on_loaded\").clone()",
+                name, name
+            ));
+        }
     };
 
     // 将 loop_vars 转换为 &[&str] 供绑定表达式使用
@@ -126,8 +140,7 @@ pub fn gen_component(
     let is_container = matches!(component.kind, tags::ComponentKind::StatelessNoId)
         && resolved != "menu"
         && resolved != "MenuBar"
-        && resolved != "status_bar"
-        && resolved != "ActivityBarShell";
+        && resolved != "status_bar";
 
     if is_container {
         // 容器组件：所有 element/文本子节点作为 children
@@ -297,14 +310,6 @@ pub fn component_bind_setter(
         "selected" => Some(format!(".selected({})", rust_expr)),
         "checked" => Some(format!(".selected({})", rust_expr)),
         "label" => Some(format!(".label({}.clone())", rust_expr)),
-        "bar" if tag == "ActivityBarShell" => Some(format!(
-            ".bar({}.as_ref().expect(\"init ActivityBar\").clone())",
-            rust_expr
-        )),
-        "panel" if tag == "ActivityBarShell" => Some(format!(
-            ".panel({}.as_ref().expect(\"init ActivitySidePanel\").clone())",
-            rust_expr
-        )),
         "items" if tag == "menu" || tag == "MenuBar" || tag == "status_bar" => {
             Some(format!(".items({}.clone())", rust_expr))
         }
