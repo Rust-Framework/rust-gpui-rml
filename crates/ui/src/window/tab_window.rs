@@ -9,12 +9,12 @@
 use std::rc::Rc;
 
 use gpui::{
-    AnyElement, App, IntoElement, ParentElement, RenderOnce, SharedString,
-    Styled, Window, div, px, prelude::FluentBuilder as _,
+    AnyElement, App, InteractiveElement, IntoElement, MouseButton, ParentElement, RenderOnce,
+    SharedString, StatefulInteractiveElement as _, Styled, Window, WindowControlArea, div, px,
+    prelude::FluentBuilder as _,
 };
 use gpui_component::{
     ActiveTheme, Icon, IconName, Sizable as _,
-    TitleBar,
     button::{Button, ButtonRounded, ButtonVariants as _},
     tab::{Tab, TabBar},
     h_flex,
@@ -92,6 +92,104 @@ fn tabs_overflow(tabs: &[TabItem], available_width: gpui::Pixels) -> bool {
         return false;
     }
     estimated_tabs_width(tabs) > available_width
+}
+
+/// 渲染单个窗口控件按钮（最小化/最大化/关闭）。
+fn control_button(
+    id: &'static str,
+    icon: IconName,
+    area: WindowControlArea,
+    cx: &App,
+) -> AnyElement {
+    let is_close = matches!(area, WindowControlArea::Close);
+    let hover_fg = if is_close {
+        cx.theme().danger_foreground
+    } else {
+        cx.theme().secondary_foreground
+    };
+    let hover_bg = if is_close {
+        cx.theme().danger
+    } else {
+        cx.theme().secondary_hover
+    };
+    let active_bg = if is_close {
+        cx.theme().danger_active
+    } else {
+        cx.theme().secondary_active
+    };
+
+    div()
+        .id(id)
+        .flex()
+        .w(TITLE_BAR_HEIGHT)
+        .h_full()
+        .flex_shrink_0()
+        .justify_center()
+        .content_center()
+        .items_center()
+        .text_color(cx.theme().foreground)
+        .hover(|style| style.bg(hover_bg).text_color(hover_fg))
+        .active(|style| style.bg(active_bg).text_color(hover_fg))
+        .when(cfg!(target_os = "windows"), |this| {
+            this.window_control_area(area)
+        })
+        .when(cfg!(target_os = "linux"), |this| {
+            this.on_mouse_down(MouseButton::Left, |_, window, _| {
+                window.prevent_default();
+            })
+            .on_click(move |_, window, cx| {
+                cx.stop_propagation();
+                match area {
+                    WindowControlArea::Min => window.minimize_window(),
+                    WindowControlArea::Max => window.zoom_window(),
+                    WindowControlArea::Close => window.remove_window(),
+                    _ => {}
+                }
+            })
+        })
+        .child(Icon::new(icon).small())
+        .into_any_element()
+}
+
+/// 渲染窗口控件组（最小化/最大化/关闭），macOS 和 wasm 返回空 div。
+fn render_window_controls(window: &Window, cx: &App) -> AnyElement {
+    if cfg!(target_os = "macos") || cfg!(target_family = "wasm") {
+        return div().id("window-controls").into_any_element();
+    }
+
+    h_flex()
+        .id("window-controls")
+        .items_center()
+        .flex_shrink_0()
+        .h_full()
+        .child(control_button(
+            "minimize",
+            IconName::WindowMinimize,
+            WindowControlArea::Min,
+            cx,
+        ))
+        .child(if window.is_maximized() {
+            control_button(
+                "restore",
+                IconName::WindowRestore,
+                WindowControlArea::Max,
+                cx,
+            )
+        } else {
+            control_button(
+                "maximize",
+                IconName::WindowMaximize,
+                WindowControlArea::Max,
+                cx,
+            )
+        })
+        .child(control_button(
+            "close",
+            IconName::WindowClose,
+            WindowControlArea::Close,
+            cx,
+        ))
+        .into_any_element()
 }
 
 /// TabWindow 高级窗口壳
@@ -363,7 +461,15 @@ impl RenderOnce for TabWindowShell {
             tab_bar = tab_bar.on_click(move |ix, window, cx| on_click(*ix, window, cx));
         }
 
-        let mut title_row = h_flex().h_full().w_full().min_w_0().items_center();
+        let mut title_row = h_flex()
+            .id("tab-window-title-drag")
+            .h_full()
+            .flex_1()
+            .min_w_0()
+            .items_center()
+            .when(!cfg!(target_family = "wasm"), |this| {
+                this.window_control_area(WindowControlArea::Drag)
+            });
         if let Some(toggle) = chrome_toggle {
             title_row = title_row.child(toggle);
         }
@@ -372,16 +478,30 @@ impl RenderOnce for TabWindowShell {
                 .flex_1()
                 .min_w_0()
                 .h_full()
+                .overflow_hidden()
                 .child(tab_bar),
         );
 
-        let mut title_bar = TitleBar::new().border_b_0();
-        // 非 macOS：取消 TitleBar 默认左内边距，使切换按钮与窗口左上角贴合
-        #[cfg(not(target_os = "macos"))]
-        {
-            title_bar = title_bar.pl(px(0.));
-        }
-        let title_bar = title_bar.child(title_row);
+        // 自定义 title bar：不使用 gpui-component 的 TitleBar。
+        // TitleBar 内部 #bar 有 flex_shrink_0 且无 min_w_0，把 TabBar 放进去后
+        // tabs 固有宽度成为 #bar 的 min-content，#bar 不收缩，窗口控件被挤出可视范围。
+        // 自定义布局让 TabBar wrapper（flex_1 + min_w_0 + overflow_hidden）能自由收缩，
+        // 窗口控件（flex_shrink_0）始终固定在右侧。
+        //
+        // window_control_area(Drag) 只设在 title_row 上，与窗口控件是兄弟关系，
+        // 避免 Drag 区域覆盖按钮导致点击无效。
+        let title_bar = h_flex()
+            .id("tab-window-title-bar")
+            .h(TITLE_BAR_HEIGHT)
+            .w_full()
+            .flex_shrink_0()
+            .items_center()
+            .bg(cx.theme().tokens.title_bar)
+            .border_b_1()
+            .border_color(cx.theme().title_bar_border)
+            .when(cfg!(target_os = "macos"), |this| this.pl(px(80.)))
+            .child(title_row)
+            .child(render_window_controls(window, cx));
 
         let body = resizable_panel()
             .flex_1()
