@@ -12,8 +12,7 @@ use rml_ui::{
 
 use crate::cases::{self, OpenTab};
 use crate::shell::activity_panel::ActivityPanel;
-use crate::shell::case_host::CaseHost;
-use rml_app::contribution::ContributionRegistryGlobal;
+use rml_app::contribution::{subscribe_host_changes, ContributionRegistryGlobal};
 use rml_core::contribution::ComponentEntityCache;
 
 /// Demo：Activity 视觉贡献面板回调 Host 开 Tab（由 MainWindow 在 `on_loaded` 注册）。
@@ -21,7 +20,7 @@ pub struct DemoShellHost(pub WeakEntity<MainWindow>);
 
 impl Global for DemoShellHost {}
 
-#[contributehost(id = "demo.shell", bindings = "refresh_bindings")]
+#[contributehost(id = "demo.shell")]
 #[window]
 #[derive(Default)]
 pub struct MainWindow {
@@ -33,7 +32,6 @@ pub struct MainWindow {
     activity_bar: Option<gpui::Entity<ActivityBar>>,
     status_items: StatusBarItems,
     i18n_version: u32,
-    case_host: Option<gpui::Entity<CaseHost>>,
     menu_items: MenuItems,
     menu_commands: HashMap<String, Arc<dyn ICommand>>,
     /// 左侧插槽当前宽度。由 `cx.observe(&activity_bar)` 同步：
@@ -58,15 +56,6 @@ impl ILifecycle for MainWindow {
 
         let shell_weak = cx.weak_entity();
         cx.set_global(DemoShellHost(shell_weak));
-
-        self.case_host.get_or_insert_with(|| {
-            let id = self.active_case_id.clone();
-            cx.new(move |_| {
-                let mut host = CaseHost::default();
-                host.active_case_id = id;
-                host
-            })
-        });
 
         self.menu_commands.insert(
             "menu.file.new".to_string(),
@@ -118,7 +107,7 @@ impl ILifecycle for MainWindow {
             global.0.entity_cache_mut().pre_register("samples", panel);
         });
 
-        self.refresh_bindings(cx);
+        self.refresh_shell_chrome(cx);
 
         // 构造 ActivityBar 单 Entity（在 on_loaded 中，非 render）
         let panels = self.activity_panels.clone();
@@ -147,11 +136,21 @@ impl ILifecycle for MainWindow {
             })
             .detach();
         }
+
+        // 订阅 host 贡献变更：贡献点注册/注销时自动刷新 shell chrome
+        subscribe_host_changes(Self::ID, cx, |this, cx| {
+            this.refresh_shell_chrome(cx);
+            cx.notify();
+        });
     }
 }
 
+impl rml_core::contribution::IContributionHost for MainWindow {
+    const ID: &'static str = "demo.shell";
+}
+
 impl MainWindow {
-    fn refresh_bindings(&mut self, cx: &mut Context<Self>) {
+    fn refresh_shell_chrome(&mut self, cx: &mut Context<Self>) {
         let ShellChromeBindings {
             activity_panels,
             status_items,
@@ -165,6 +164,30 @@ impl MainWindow {
         if let Some(bar) = &self.activity_bar {
             bar.update(cx, |bar, cx| bar.set_panels(activity_panels, cx));
         }
+    }
+
+    /// 渲染当前激活的 IVisualContribution 视图（供 RML 模板 `content={...}` 调用）。
+    /// 从 `ContributionRegistry` 查找 `active_case_id` 对应条目，委托给
+    /// `render_contribution_visual` 执行视觉渲染（内部复用 Entity 缓存）。
+    pub fn active_case_view(
+        &mut self,
+        window: &mut gpui::Window,
+        cx: &mut gpui::Context<Self>,
+    ) -> gpui::AnyElement {
+        use rml_app::contribution::{contribution_entries, render_contribution_visual};
+        use rml_core::contribution::VisualRenderer;
+        let visual: Option<VisualRenderer> = {
+            let entries = contribution_entries(Self::ID, cx);
+            entries
+                .iter()
+                .find(|e| e.contribution.id() == self.active_case_id)
+                .and_then(|e| e.visual.clone())
+        };
+        if let Some(visual) = visual {
+            return render_contribution_visual(&visual, window, cx)
+                .unwrap_or_else(|| gpui::div().into_any_element());
+        }
+        gpui::div().into_any_element()
     }
 
     #[computed]
@@ -200,10 +223,8 @@ impl MainWindow {
             .iter()
             .position(|tab| tab.id == case_id)
             .unwrap_or(0);
-        self.active_case_id = case_id.clone();
-        if let Some(host) = self.case_host.as_ref() {
-            host.update(cx, |h, _| h.active_case_id = case_id);
-        }
+        self.active_case_id = case_id;
+        cx.notify();
     }
 
     #[command]
@@ -211,9 +232,7 @@ impl MainWindow {
         if let Some(tab) = self.open_tabs.get(index) {
             self.selected_tab = index;
             self.active_case_id = tab.id.clone();
-            if let Some(host) = self.case_host.as_ref() {
-                host.update(cx, |h, _| h.active_case_id = tab.id.clone());
-            }
+            cx.notify();
         }
     }
 
@@ -236,7 +255,7 @@ impl MainWindow {
             tab.title = cx.t(cases::case_title_key(&tab.id)).to_string();
         });
         self.open_tabs = tabs;
-        self.refresh_bindings(cx);
+        self.refresh_shell_chrome(cx);
         cx.notify();
     }
 }

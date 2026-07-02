@@ -1,6 +1,5 @@
-﻿//! Shell metadata：案例树分类 + 状态栏（菜单项由各 case 模块自行 `#[contribute]` 注册）
+//! Shell metadata：案例树分类 + 状态栏（菜单项由各 case 模块自行 `#[contribute]` 注册）
 
-use super::MainWindow;
 use rml::contribute;
 
 #[contribute(host_id = "demo.shell", id = "cat.binding", name = "tree.cat.binding", kind = "case", order = 0)]

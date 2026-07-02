@@ -307,6 +307,26 @@ fn gen_element(
 ) -> Result<GenResult, CodegenError> {
     let tag = &elem.tag;
 
+    // 透明容器：<component content={expr} /> 直接嵌入表达式，不创建元素包装。
+    // 用于在 RML 模板中注入动态 AnyElement/impl IntoElement（类似 WPF ContentControl）。
+    // 表达式可引用 _window/cx（render 方法作用域内可用）。
+    if tag == "component" {
+        let content_expr = elem.attributes.iter().find_map(|attr| {
+            if let Attribute::Bind { name, expr } = attr {
+                if name == "content" {
+                    return Some(expr.clone());
+                }
+            }
+            None
+        });
+        if let Some(expr) = content_expr {
+            return Ok((expr, false));
+        }
+        return Err(CodegenError {
+            message: "<component> 标签必须提供 content={expr} 属性".to_string(),
+        });
+    }
+
     // 菜单容器标签（context-menu / dropdown-menu / menu-bar / app-menu-bar）
     if menu::is_menu_container(tag) {
         let code = menu::gen_menu_element(elem, ctx, depth, id_counter, loop_vars)?;
@@ -499,6 +519,9 @@ fn apply_inline_style(style_str: &str) -> String {
 
 fn apply_bind_attr(name: &str, expr: &str, loop_vars: &[&str], computed: &[&str]) -> String {
     match name {
+        // content={expr}：直接嵌入表达式作为 child（支持 AnyElement/impl IntoElement）
+        // 表达式可引用 _window/cx（render 方法作用域内可用），不经 gen_expr_code 解析
+        "content" => format!(".child({})", expr),
         "value" => format!(".child(format!(\"{{}}\", {}))", gen_expr_code(expr, loop_vars, computed)),
         "class" | "id" | "style" => String::new(),
         "disabled" | "checked" | "readonly" => format!(".when({}, |el| el)", gen_expr_code(expr, loop_vars, computed)),

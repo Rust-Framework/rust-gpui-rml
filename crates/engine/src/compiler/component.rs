@@ -302,15 +302,33 @@ pub fn component_bind_setter(
     computed: &[&str],
     tag: &str,
 ) -> Option<String> {
-    let rust_expr = component_bind_rust_expr(expr_str, loop_vars, computed);
     let _tag = tag;
     match name {
-        "value" => Some(format!(".value({}.clone())", rust_expr)),
-        "disabled" => Some(format!(".disabled({})", rust_expr)),
-        "selected" => Some(format!(".selected({})", rust_expr)),
-        "checked" => Some(format!(".selected({})", rust_expr)),
-        "label" => Some(format!(".label({}.clone())", rust_expr)),
+        // content={expr}：直接嵌入表达式作为 child（与原生 div 的 content 分支一致）
+        // 表达式可引用 _window/cx，不经 component_bind_rust_expr 解析
+        "content" => Some(format!(".child({})", expr_str)),
+        "value" => {
+            let rust_expr = component_bind_rust_expr(expr_str, loop_vars, computed);
+            Some(format!(".value({}.clone())", rust_expr))
+        }
+        "disabled" => {
+            let rust_expr = component_bind_rust_expr(expr_str, loop_vars, computed);
+            Some(format!(".disabled({})", rust_expr))
+        }
+        "selected" => {
+            let rust_expr = component_bind_rust_expr(expr_str, loop_vars, computed);
+            Some(format!(".selected({})", rust_expr))
+        }
+        "checked" => {
+            let rust_expr = component_bind_rust_expr(expr_str, loop_vars, computed);
+            Some(format!(".selected({})", rust_expr))
+        }
+        "label" => {
+            let rust_expr = component_bind_rust_expr(expr_str, loop_vars, computed);
+            Some(format!(".label({}.clone())", rust_expr))
+        }
         "items" if tag == "menu" || tag == "MenuBar" || tag == "status_bar" => {
+            let rust_expr = component_bind_rust_expr(expr_str, loop_vars, computed);
             Some(format!(".items({}.clone())", rust_expr))
         }
         _ => None,

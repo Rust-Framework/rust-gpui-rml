@@ -31,6 +31,6 @@
         <status_bar items={status_items} />
     </slot_footer>
 
-    <CaseHost active_case_id={active_case_id} />
+    <component content={self.active_case_view(_window, cx)} />
 
 </tab_window>

@@ -1,8 +1,6 @@
-﻿//! Shell 菜单贡献：二/三级子菜单演示（叶子命令在 `MainWindow.menu_commands` 绑定）
+//! Shell 菜单贡献：二/三级子菜单演示（叶子命令在 `MainWindow.menu_commands` 绑定）
 
 use rml::prelude::*;
-
-use super::MainWindow;
 
 // ── File（二级） ──
 
