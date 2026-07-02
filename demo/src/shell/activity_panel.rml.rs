@@ -3,7 +3,7 @@ use rml::prelude::*;
 use rml_ui::TreeState;
 
 use crate::shell::shell_chrome::map_case_tree_items;
-use crate::shell::{DemoShellHost, MainWindow};
+use crate::shell::DemoShellHost;
 
 /// ActivityPanel 双重角色：
 /// - 视觉贡献（`#[contribute]`）：为 MainWindow 贡献活动栏面板
@@ -42,8 +42,10 @@ impl IHostEntity for ActivityPanel {
 
 impl ActivityPanel {
     fn refresh_tree(&mut self, cx: &mut Context<Self>) {
-        let entries = self.entries.read();
-        let items = map_case_tree_items(&entries);
+        let items = {
+            let entries = self.entries.read();
+            map_case_tree_items(&entries)
+        };
         self.set_tree_items(items, cx);
     }
 

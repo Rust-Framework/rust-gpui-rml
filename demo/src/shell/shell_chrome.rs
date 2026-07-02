@@ -125,18 +125,3 @@ pub fn map_case_tree_items(entries: &[ContributionEntry]) -> Vec<TreeItem> {
     }
     result
 }
-
-pub struct ShellChromeBindings {
-    pub status_items: StatusBarItems,
-    pub menu_items: MenuItems,
-}
-
-pub fn map_shell_chrome(
-    entries: &[ContributionEntry],
-    menu_commands: &HashMap<String, Arc<dyn ICommand>>,
-) -> ShellChromeBindings {
-    ShellChromeBindings {
-        status_items: map_status_items(entries),
-        menu_items: map_menu_items(entries, menu_commands),
-    }
-}

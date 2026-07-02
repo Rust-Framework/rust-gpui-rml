@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use gpui::{BorrowAppContext, Global, IntoElement, WeakEntity, Window};
@@ -100,10 +101,10 @@ impl IHostEntity for MainWindow {
         );
 
         // 刷新 shell chrome（从 self.entries 构建 menu/status items）
-        self.refresh_shell_chrome(cx);
+        self.refresh_shell_chrome();
 
         // 构建 ActivityBar：从 entries 中 kind="activity" 的视觉贡献自动提取
-        let panels = rml_app::contribution::build_activity_panels(&self.entries);
+        let panels = rml_app::contribution::build_activity_panels(&*self.entries.read());
         self.activity_bar = Some(cx.new(|_| ActivityBar::new(panels)));
 
         // observe ActivityPanel Entity（框架缓存）→ ActivityBar 重渲
@@ -134,7 +135,7 @@ impl IHostEntity for MainWindow {
 }
 
 impl MainWindow {
-    fn refresh_shell_chrome(&mut self, cx: &mut Context<Self>) {
+    fn refresh_shell_chrome(&mut self) {
         let entries = self.entries.read();
         self.status_items = map_status_items(&entries);
         self.menu_items = map_menu_items(&entries, &self.menu_commands);
@@ -225,7 +226,7 @@ impl MainWindow {
             tab.title = cx.t(cases::case_title_key(&tab.id)).to_string();
         });
         self.open_tabs = tabs;
-        self.refresh_shell_chrome(cx);
+        self.refresh_shell_chrome();
         cx.notify();
     }
 }
