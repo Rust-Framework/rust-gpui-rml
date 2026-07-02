@@ -8,7 +8,8 @@
     selected_tab={selected_tab}
     on_tab_click="on_tab_click"
     show_chrome={show_chrome}
-    on_chrome_toggle="on_chrome_toggle">
+    on_chrome_toggle="on_chrome_toggle"
+    left_size={slot_left_size}>
 
     <slot_left>
         <ActivityBar ref="activity_bar" />

@@ -237,11 +237,13 @@ impl Render for ActivityBar {
             .h_full()
             .flex_shrink_0()
             .justify_between()
-            .bg(cx.theme().sidebar)
+            .bg(cx.theme().title_bar)
             .child(v_flex().w_full().items_center().children(panel_buttons))
             .child(v_flex().w_full().items_center().children(action_buttons));
 
         // ── 面板内容 ──
+        // panel_body 背景用 title_bar：亮色主题接近白色，暗色主题比窗口主色略亮形成色差。
+        // icon_bar 背景透明，与窗口背景一致；两者之间无边框线。
         let active_id_for_body = self.active_id.clone();
         let panel_body = if active_id_for_body.is_some() {
             let body = self
@@ -255,7 +257,6 @@ impl Render for ActivityBar {
                     .h_full()
                     .min_w_0()
                     .overflow_hidden()
-                    .bg(cx.theme().sidebar)
                     .child(body)
                     .into_any_element(),
                 None => div().w_0().h_full().into_any_element(),

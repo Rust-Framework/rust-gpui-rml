@@ -36,6 +36,11 @@ pub struct MainWindow {
     case_host: Option<gpui::Entity<CaseHost>>,
     menu_items: MenuItems,
     menu_commands: HashMap<String, Arc<dyn ICommand>>,
+    /// 左侧插槽当前宽度。由 `cx.observe(&activity_bar)` 同步：
+    /// ActivityBar 收起（active_id=None）→ 48px（仅图标栏），展开 → 260px。
+    /// 私有字段：避免被 codegen 生成 InputState 双向绑定（Pixels 非 SharedString）。
+    /// RML 通过 `left_size={slot_left_size}` 直接引用，生成 `self.slot_left_size`。
+    slot_left_size: gpui::Pixels,
 }
 
 impl ILifecycle for MainWindow {
@@ -122,6 +127,25 @@ impl ILifecycle for MainWindow {
         // 激活首项 —— 单 Entity 内 set_active_id 直接 cx.notify() 触发重渲
         if let Some(bar) = &self.activity_bar {
             bar.update(cx, |bar, cx| bar.activate_first(cx));
+        }
+
+        // 初始展开态：与 activate_first 后的 active_id=Some 一致
+        self.slot_left_size = gpui::px(260.);
+
+        // 监听 ActivityBar active_id 变化，同步 slot_left_size：
+        // 收起（active_id=None）→ 48px（仅图标栏），展开 → 260px。
+        // observe 注册后不会立即触发，故上面先手动初始化。
+        if let Some(bar) = &self.activity_bar {
+            cx.observe(bar, |this, bar, cx| {
+                let collapsed = bar.read(cx).active_id().is_none();
+                this.slot_left_size = if collapsed {
+                    gpui::px(48.)
+                } else {
+                    gpui::px(260.)
+                };
+                cx.notify();
+            })
+            .detach();
         }
     }
 }

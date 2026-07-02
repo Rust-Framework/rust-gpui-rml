@@ -23,6 +23,10 @@ use gpui_component::{
 };
 use smallvec::SmallVec;
 
+/// Slot 尺寸低于此阈值视为折叠：移出 resizable group，改用普通 div 渲染，
+/// 从而隐藏 resize handle 且不污染 ResizableState 的 panel_ix 映射。
+const SLOT_COLLAPSED_THRESHOLD: gpui::Pixels = px(60.);
+
 /// Tab 页签数据
 #[derive(Clone)]
 pub struct TabItem {
@@ -217,6 +221,25 @@ impl TabWindowShell {
         self.bottom_height = bottom;
         self
     }
+
+    /// 设置左侧插槽当前宽度。RML 通过 `left_size={field}` 绑定，
+    /// 配合 Host 的 `cx.observe` 可实现 ActivityBar 收起时插槽自适应收回。
+    pub fn left_size(mut self, size: gpui::Pixels) -> Self {
+        self.left_width = size;
+        self
+    }
+
+    /// 设置右侧插槽当前宽度。
+    pub fn right_size(mut self, size: gpui::Pixels) -> Self {
+        self.right_width = size;
+        self
+    }
+
+    /// 设置底部插槽当前高度。
+    pub fn bottom_size(mut self, size: gpui::Pixels) -> Self {
+        self.bottom_height = size;
+        self
+    }
 }
 
 impl Default for TabWindowShell {
@@ -243,7 +266,15 @@ impl RenderOnce for TabWindowShell {
             self.title_ext_slot.is_some(),
         );
         let tabs_area = (viewport.width - reserved).max(px(160.));
+        // 两阶段计算：溢出时 TabBar 末尾会显示 menu 下拉按钮（约 32px），
+        // 需要从可用宽度中扣除后重新判断，避免 menu 显示后 tabs 实际未溢出的误判。
         let tab_overflow = tabs_overflow(&self.tabs, tabs_area);
+        let tab_overflow = if tab_overflow {
+            let adjusted = (viewport.width - reserved - px(32.)).max(px(160.));
+            tabs_overflow(&self.tabs, adjusted)
+        } else {
+            false
+        };
 
         let on_chrome_toggle = self.on_chrome_toggle.clone();
         let chevron = if show_chrome {
@@ -279,7 +310,9 @@ impl RenderOnce for TabWindowShell {
         let mut tab_bar = TabBar::new("tab-window-tabs")
             .menu(tab_overflow)
             .border_b_0()
-            .selected_index(self.selected_tab);
+            .selected_index(self.selected_tab)
+            .w_full()
+            .min_w_0();
 
         // 菜单与标题随 show_chrome 展开/收起；切换按钮独立贴左，不在 prefix 内
         if show_chrome {
@@ -354,6 +387,11 @@ impl RenderOnce for TabWindowShell {
             .flex_1()
             .child(div().flex_1().min_h_0().size_full().children(self.children));
 
+        let bottom_collapsed = self.bottom_height <= SLOT_COLLAPSED_THRESHOLD;
+
+        // center_col：v_resizable 始终包含 body；bottom 展开时进 v_resizable，
+        // 折叠时移出 v_resizable 放到下方独立 div（无 resize handle）。
+        let mut collapsed_bottom: Option<AnyElement> = None;
         let center_col = {
             let mut col = v_resizable("tab-window-center-col").child(body);
             if let Some(bottom) = self.slot_bottom {
@@ -370,34 +408,97 @@ impl RenderOnce for TabWindowShell {
                     .border_t_1()
                     .border_color(cx.theme().border)
                     .child(bottom);
-                col = col.child(
-                    resizable_panel()
-                        .size(self.bottom_height)
-                        .flex_none()
-                        .size_range(px(80.)..px(500.))
-                        .child(panel),
-                );
+
+                if bottom_collapsed {
+                    collapsed_bottom = Some(
+                        div()
+                            .h(self.bottom_height)
+                            .flex_none()
+                            .child(panel)
+                            .into_any_element(),
+                    );
+                } else {
+                    col = col.child(
+                        resizable_panel()
+                            .size(self.bottom_height)
+                            .flex_none()
+                            .size_range(px(80.)..px(500.))
+                            .child(panel),
+                    );
+                }
             }
             col
         };
 
-        let mut main_row = h_resizable("tab-window-main-row");
-        if let Some(left) = self.slot_left {
-            main_row = main_row.child(
-                resizable_panel()
-                    .size(self.left_width)
-                    .flex_none()
-                    .size_range(px(48.)..px(600.))
-                    .child(left),
-            );
+        // 把折叠的 bottom 包到 center_col 外层 v_flex（仍在 h_resizable 内的 center panel 中）
+        let center_col = if let Some(d) = collapsed_bottom {
+            v_flex()
+                .flex_1()
+                .min_w_0()
+                .h_full()
+                .child(center_col)
+                .child(d)
+                .into_any_element()
+        } else {
+            center_col.into_any_element()
+        };
+
+        // main_row：折叠的 left/right 移出 h_resizable，避免 resize handle 残留
+        // 且不污染 ResizableState 的 panel_ix 映射。
+        let left_collapsed = self.left_width <= SLOT_COLLAPSED_THRESHOLD;
+        let right_collapsed = self.right_width <= SLOT_COLLAPSED_THRESHOLD;
+
+        let mut row = h_flex().w_full().h_full().min_h_0();
+        let mut main_h = h_resizable("tab-window-main-row");
+
+        match self.slot_left {
+            Some(left) if left_collapsed => {
+                row = row.child(
+                    div()
+                        .w(self.left_width)
+                        .flex_none()
+                        .h_full()
+                        .child(left),
+                );
+            }
+            Some(left) => {
+                main_h = main_h.child(
+                    resizable_panel()
+                        .size(self.left_width)
+                        .flex_none()
+                        .size_range(px(48.)..px(600.))
+                        .child(left),
+                );
+            }
+            None => {}
         }
-        main_row = main_row.child(center_col);
-        if let Some(right) = self.slot_right {
-            main_row = main_row.child(
-                resizable_panel()
-                    .size(self.right_width)
+
+        main_h = main_h.child(center_col);
+
+        let mut collapsed_right: Option<AnyElement> = None;
+        match self.slot_right {
+            Some(right) if right_collapsed => {
+                collapsed_right = Some(right);
+            }
+            Some(right) => {
+                main_h = main_h.child(
+                    resizable_panel()
+                        .size(self.right_width)
+                        .flex_none()
+                        .size_range(px(160.)..px(800.))
+                        .child(right),
+                );
+            }
+            None => {}
+        }
+        row = row.child(main_h);
+
+        if let Some(right) = collapsed_right {
+            row = row.child(
+                div()
+                    .w(self.right_width)
                     .flex_none()
-                    .size_range(px(160.)..px(800.))
+                    .h_full()
                     .child(right),
             );
         }
@@ -405,7 +506,7 @@ impl RenderOnce for TabWindowShell {
         v_flex()
             .size_full()
             .child(title_bar)
-            .child(div().flex_1().min_h_0().child(main_row))
+            .child(div().flex_1().min_h_0().child(row))
             .when_some(self.status_slot, |this, slot| this.child(slot))
     }
 }

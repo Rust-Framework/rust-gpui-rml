@@ -211,6 +211,9 @@ pub(super) fn gen_tab_window_wrapper(
                     "tabs" => code.push_str(&format!(".tabs({}.clone())", rust_expr)),
                     "selected_tab" => code.push_str(&format!(".selected_tab({})", rust_expr)),
                     "show_chrome" => code.push_str(&format!(".show_chrome({})", rust_expr)),
+                    "left_size" => code.push_str(&format!(".left_size({})", rust_expr)),
+                    "right_size" => code.push_str(&format!(".right_size({})", rust_expr)),
+                    "bottom_size" => code.push_str(&format!(".bottom_size({})", rust_expr)),
                     _ => {}
                 }
             }
