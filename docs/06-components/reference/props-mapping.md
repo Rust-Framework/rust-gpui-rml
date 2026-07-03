@@ -80,6 +80,8 @@ RML 通过两层机制确保 codegen 属性映射齐全：
 | `status_bar` | `items` | 状态栏项数据绑定 |
 | `Accordion` | `multiple`, `bordered`, `on_toggle_click` | 多选/边框/切换事件 |
 | `AccordionItem` | `title`, `open`, `icon` | 子项标题/初始展开/图标 |
+| `DescriptionList` | `vertical`, `horizontal`, `bordered`, `columns`, `label_width` | 布局方向/边框/列数/标签列宽 |
+| `DescriptionItem` | `label`, `value`, `span` | 子项标签（构造器参数）/值/跨列 |
 
 ## Shell 窗口属性
 

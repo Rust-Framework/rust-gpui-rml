@@ -45,6 +45,7 @@ pub use gpui_component::{
     badge::Badge,
     button::{Button, ButtonGroup},
     checkbox::Checkbox,
+    description_list::{DescriptionItem, DescriptionList, DescriptionText},
     dialog::Dialog,
     form::Form,
     input::{Input, InputEvent, InputState},

@@ -291,6 +291,20 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
         quote! {}
     };
 
+    // 无条件注册 `dyn IContribution` 能力——使 `dyn IValue` 可经 `as_contribution()`
+    // 查询到贡献元数据（id/name/description/icon）。
+    let contribution_ability_registration = quote! {
+        rml_core::ability::register::<#struct_name, dyn rml_core::contribution::IContribution>(
+            |c| {
+                let any: &dyn std::any::Any = c;
+                any.downcast_ref::<#struct_name>().map(|s| {
+                    let c: &dyn rml_core::contribution::IContribution = s;
+                    unsafe { rml_core::ability::erase(c) }
+                })
+            },
+        );
+    };
+
     // 统一注册调用：始终 register（host 自行用 as_command()/as_visual() 分类）
     let register_call = quote! {
         cx.get_contribution_registry().register(
@@ -338,6 +352,7 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
         /// 由 build.rs 生成的 `register_rml_contributions_for(cx, host_id)` 按 host_id 分组调用。
         pub fn #register_fn(cx: &mut gpui::App) {
             use rml_app::contribution::ContributionRegistryExt;
+            #contribution_ability_registration
             #command_ability_registration
             #visual_ability_registration
             #register_call

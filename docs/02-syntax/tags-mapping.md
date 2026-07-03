@@ -241,6 +241,9 @@ gpui::div()
 | `button`（扩展轨） | `Button` | 小写 |
 | `accordion` | `Accordion` | 小写别名（非 kebab） |
 | `item` | `AccordionItem` | 仅 `<accordion>` 内上下文敏感短标签 |
+| `descriptions` | `DescriptionList` | 小写别名（非 kebab） |
+| `description` | `DescriptionItem` | 仅 `<descriptions>` 内上下文敏感短标签 |
+| `separator` | `DescriptionSeparator` | 仅 `<descriptions>` 内上下文敏感短标签；PascalCase `<Separator>` 是独立组件 |
 
 规则：
 
@@ -248,10 +251,10 @@ gpui::div()
 2. 已是 PascalCase 的标签原样匹配（向后兼容 `<Button>`）
 3. snake_case 特殊标签（`menu`、`status_bar`）不参与 kebab 转换，单独注册
 4. `component_lookup_resolved()` 先查原始标签，再查规范化结果
-5. `canonical_tag()` 在 `normalize_component_tag` 基础上额外处理小写别名：`accordion` → `Accordion`、`item` → `AccordionItem`。供 `props_registry` 属性查询使用，避免在 `COMPONENT_PROPS` 中重复登记
-6. `<item>` 短标签仅在 `<accordion>` / `<Accordion>` 父容器内被识别为 `AccordionItem`（由 `is_item_builder_tag` 判断）；顶层使用 `<item>` 报 "unknown tag" 错误
+5. `canonical_tag()` 在 `normalize_component_tag` 基础上额外处理小写别名：`accordion` → `Accordion`、`item` → `AccordionItem`、`descriptions` → `DescriptionList`、`description` → `DescriptionItem`、`separator` → `DescriptionSeparator`。供 `props_registry` 属性查询使用，避免在 `COMPONENT_PROPS` 中重复登记
+6. `<item>` 短标签仅在 `<accordion>` / `<Accordion>` 父容器内被识别为 `AccordionItem`（由 `is_item_builder_tag` 判断）；顶层使用 `<item>` 报 "unknown tag" 错误。同理，`<description>` / `<separator>` 仅在 `<descriptions>` / `<DescriptionList>` 父容器内被识别
 
-菜单子项仅 `menu-item` 与 `menu-separator`（菜单内小写 `separator` 为分隔线别名）。
+菜单子项仅 `menu-item` 与 `menu-separator`（菜单内小写 `separator` 为分隔线别名）；描述列表内小写 `<separator />` 映射到 `DescriptionSeparator`（调用容器 `.separator()`），与独立组件 `<Separator>`（PascalCase）区分。
 
 ## 2.2.10 自定义组件
 

@@ -307,3 +307,36 @@ cargo test --workspace      # 期望：553 旧 + 56 新 + 3 (A-3) ≈ 612 通过
 5. Step C-1 → C-2 → C-3（依次接入三个 demo 示例，每个接入后跑 `cargo build -p rust-rml-demo`）
 6. Step D（文档更新）
 7. 最终 `cargo build --workspace && cargo test --workspace` 收尾
+
+---
+
+## 执行结果（已完成）
+
+| 步骤 | 状态 | 备注 |
+|---|---|---|
+| A-1 + A-2 | ✅ | `shell_bind_expr` 引入 `observable_fields` 判定；`tab_item_template` codegen 移除冗余 `Arc::new` |
+| A-3 | ✅ | 新增 3 个 shell 测试全部通过 |
+| B | ✅ | 全量 build + test 通过 |
+| C-1 | ✅ | B-1 command binding demo：`MenuFeaturesCase` 用 `Arc<RelayCommand>` + `#[derive(Default)]`；框架新增 `impl Default for RelayCommand`（空对象模式） |
+| C-2 | ✅ | B-2 converter demo：修复 `gen_field_value_expr` 正向同步未调用 `convert()` 的 gap；`TwoWayCase` 增 `price: f64` + `model={price \| Currency}` |
+| C-3 | ✅ | B-3 oninput/onchange demo：修复 `rml_convert` 别名作用域 bug（仅 `render()` 内可见）→ 改用全限定路径 `rml::runtime::event_flow::convert::input/change`；`TwoWayCase` 增 input/change 事件计数器 |
+| D | ✅ | 3 份文档更新：`menu-items.md`、`two-way-binding.md`、`command-system.md` |
+
+### 最终验证
+
+- `cargo build --workspace`：✅ 0 错误（28.95s）
+- `cargo test --workspace`：✅ 616 passed, 0 failed, 27 ignored
+
+### 计划外修复（执行中发现）
+
+1. **`impl Default for RelayCommand`**（`crates/core/src/command.rs`）：原计划 C-1 写 `Arc<dyn ICommand>` 字段，但 `dyn` 无 `Default`，需手写 8+ 个宏注入的 `__rml_*` 字段初始化。改为 `Arc<RelayCommand>` + 框架级 `impl Default`（no-op 空对象），ViewModel 用 `#[derive(Default)]` 自动初始化，`on_loaded` 中替换为真实命令。
+2. **`gen_field_value_expr` 正向 converter gap**（`crates/engine/src/compiler/codegen/binding.rs`）：原 codegen 正向同步（VM→UI）未调用 `convert()`，输入框会显示原始值而非格式化值。新增 `converter: Option<&str>` 参数，converter 存在时生成 `Converter.convert(&self.field).into()`。
+3. **`rml_convert` 别名作用域 bug**（`crates/engine/src/compiler/codegen/observable.rs`）：`use rml::runtime::event_flow::convert as rml_convert;` 仅在 `render()` 方法内可见（render.rs:45），但 oninput/onchange handler 代码生成在 `__rml_get_or_init_input_state` 方法内。改用全限定路径 `rml::runtime::event_flow::convert::input(...)` / `::change(...)`。
+4. **`RelayCommand: IValue` 阻塞**（`crates/core/src/value.rs`）：`cargo clean -p rust-rml-core` 后全量重编暴露先前 `IValue` 重构的潜在编译错误。调查确认 `value.rs:20` 已有 blanket impl `impl<T: Send + Sync + Any> IValue for T {}`，`RelayCommand: Send + Sync + Any` 自动满足。clean 后二次编译通过——首次错误为陈旧缓存产物。
+
+### 未验证项
+
+- **UI 交互行为未手动验证**：本环境无法启动 GUI。建议用户本地 `cargo run -p rust-rml-demo` 抽查三个 demo case 的实际行为：
+  - B-1：`menu_features_case` 中 "Save (Command)" 菜单项点击后 `last_action` 应更新
+  - B-2：`two_way_case` 中金额输入框应显示 `¥1500.00` 格式，反向输入应解析回 `f64`
+  - B-3：`two_way_case` 中 name/age 输入框的 input/change 事件计数器应递增

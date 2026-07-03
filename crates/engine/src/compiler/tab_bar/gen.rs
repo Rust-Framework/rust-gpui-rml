@@ -66,12 +66,23 @@ pub fn gen_tab_bar(
         }
     }
 
-    // 3. 子节点 → .child(rml_ui::Tab::new()...) 直接构造
+    // 3. 子节点 → .child(Tab/TabItem) 直接构造
     for child in &elem.children {
         match child {
             Node::Element(child_elem) if tags::is_item_builder_tag(&child_elem.tag) => {
-                let tab_code = super::tab::gen_tab_child(child_elem, ctx, id_counter, loop_vars)?;
-                code.push_str(&format!("\n            .child({})", tab_code));
+                let canonical = tags::canonical_tag(&child_elem.tag);
+                if canonical == "TabItem" {
+                    let (item_code, is_iter) =
+                        super::tab_item::gen_tab_item_child(child_elem, ctx, id_counter, loop_vars)?;
+                    if is_iter {
+                        code.push_str(&format!("\n            .children({})", item_code));
+                    } else {
+                        code.push_str(&format!("\n            .child({})", item_code));
+                    }
+                } else {
+                    let tab_code = super::tab::gen_tab_child(child_elem, ctx, id_counter, loop_vars)?;
+                    code.push_str(&format!("\n            .child({})", tab_code));
+                }
             }
             Node::Text(text) => {
                 eprintln!(
@@ -82,7 +93,7 @@ pub fn gen_tab_bar(
             Node::Element(child_elem) => {
                 return Err(CodegenError {
                     message: format!(
-                        "<TabBar> 仅支持 <Tab> 子节点，得到 <{}>",
+                        "<TabBar> 仅支持 <Tab>/<TabItem> 子节点，得到 <{}>",
                         child_elem.tag
                     ),
                 });
@@ -305,7 +316,7 @@ mod tests {
         assert!(result
             .unwrap_err()
             .message
-            .contains("仅支持 <Tab> 子节点"));
+            .contains("仅支持 <Tab>/<TabItem> 子节点"));
     }
 
     #[test]

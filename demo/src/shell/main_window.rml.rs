@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use gpui::{BorrowAppContext, Global, IntoElement, WeakEntity, Window};
 use rml::prelude::*;
-use rml_core::contribution::{IContribution, VisualAbilityExt};
+use rml_core::contribution::{ContributionAbilityExt, IContribution, VisualAbilityExt};
 use rml_core::i18n::I18nExt;
 use rml_core::theme::ThemeExt;
 use rml_ui::{ActivityBar, IMenuItem, IStatusBarItem};
@@ -33,7 +33,7 @@ impl Global for DemoShellHost {}
 #[contributehost(id = "demo.shell")]
 #[derive(Default)]
 pub struct MainWindow {
-    open_tabs: Vec<Arc<dyn IContribution>>,
+    open_tabs: Vec<Arc<dyn IValue>>,
     selected_tab: usize,
     active_case_id: String,
     show_chrome: bool,
@@ -85,7 +85,7 @@ impl ILifecycle for MainWindow {
             self.open_tabs.push(Arc::new(OpenTab {
                 id: "welcome".to_string(),
                 title: cx.t("shell.welcome").to_string(),
-            }) as Arc<dyn IContribution>);
+            }) as Arc<dyn IValue>);
             self.selected_tab = 0;
             self.active_case_id = "welcome".to_string();
         }
@@ -204,7 +204,7 @@ impl MainWindow {
     }
 
     #[computed]
-    pub fn tab_bar_items(&self) -> Vec<Arc<dyn IContribution>> {
+    pub fn tab_bar_items(&self) -> Vec<Arc<dyn IValue>> {
         self.open_tabs.clone()
     }
 
@@ -218,16 +218,20 @@ impl MainWindow {
         if case_id.starts_with("group.") {
             return;
         }
-        if !self.open_tabs.iter().any(|tab| tab.id() == case_id) {
+        if !self
+            .open_tabs
+            .iter()
+            .any(|tab| tab.as_contribution().map(|c| c.id() == case_id).unwrap_or(false))
+        {
             self.open_tabs.push(Arc::new(OpenTab {
                 id: case_id.clone(),
                 title: cx.t(cases::case_title_key(&case_id)).to_string(),
-            }) as Arc<dyn IContribution>);
+            }) as Arc<dyn IValue>);
         }
         self.selected_tab = self
             .open_tabs
             .iter()
-            .position(|tab| tab.id() == case_id)
+            .position(|tab| tab.as_contribution().map(|c| c.id() == case_id).unwrap_or(false))
             .unwrap_or(0);
         self.active_case_id = case_id;
         cx.notify();
@@ -238,7 +242,11 @@ impl MainWindow {
     #[command]
     pub fn open_lsp_file(&mut self, relative_path: String, cx: &mut Context<Self>) {
         let tab_id = format!("lsp://{relative_path}");
-        if !self.open_tabs.iter().any(|tab| tab.id() == tab_id) {
+        if !self
+            .open_tabs
+            .iter()
+            .any(|tab| tab.as_contribution().map(|c| c.id() == tab_id).unwrap_or(false))
+        {
             let title = std::path::Path::new(&relative_path)
                 .file_name()
                 .and_then(|n| n.to_str())
@@ -247,12 +255,12 @@ impl MainWindow {
             self.open_tabs.push(Arc::new(OpenTab {
                 id: tab_id.clone(),
                 title,
-            }) as Arc<dyn IContribution>);
+            }) as Arc<dyn IValue>);
         }
         self.selected_tab = self
             .open_tabs
             .iter()
-            .position(|tab| tab.id() == tab_id)
+            .position(|tab| tab.as_contribution().map(|c| c.id() == tab_id).unwrap_or(false))
             .unwrap_or(0);
         self.active_case_id = tab_id;
         cx.notify();
@@ -262,7 +270,10 @@ impl MainWindow {
     pub fn on_tab_click(&mut self, index: usize, cx: &mut Context<Self>) {
         if let Some(tab) = self.open_tabs.get(index) {
             self.selected_tab = index;
-            self.active_case_id = tab.id().to_string();
+            self.active_case_id = tab
+                .as_contribution()
+                .map(|c| c.id().to_string())
+                .unwrap_or_default();
             cx.notify();
         }
     }
@@ -284,9 +295,12 @@ impl MainWindow {
             .open_tabs
             .iter()
             .map(|tab| {
-                let id = tab.id().to_string();
+                let id = tab
+                    .as_contribution()
+                    .map(|c| c.id().to_string())
+                    .unwrap_or_default();
                 let title = cx.t(cases::case_title_key(&id)).to_string();
-                Arc::new(OpenTab { id, title }) as Arc<dyn IContribution>
+                Arc::new(OpenTab { id, title }) as Arc<dyn IValue>
             })
             .collect();
         self.refresh_shell_chrome();

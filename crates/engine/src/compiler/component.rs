@@ -97,6 +97,16 @@ pub fn gen_component(
                     loop_vars,
                 );
             }
+            if resolved_tag == "DescriptionList" {
+                return crate::compiler::description_list::gen_description_list(
+                    elem,
+                    ref_name,
+                    id_val,
+                    ctx,
+                    id_counter,
+                    loop_vars,
+                );
+            }
             return crate::compiler::accordion::gen_accordion(
                 elem,
                 ref_name,
@@ -261,6 +271,10 @@ pub fn component_static_setter(name: &str, value: &str, tag: &str) -> Option<Str
     if let Some(s) = super::table::setters::static_setter(name, value, tag) {
         return Some(s);
     }
+    // DescriptionList 的 vertical/horizontal/bordered/columns/label_width + DescriptionItem 的 value/span
+    if let Some(s) = super::description_list::setters::static_setter(name, value, tag) {
+        return Some(s);
+    }
     match name {
         "label" => Some(format!(".label({:?})", value)),
         "placeholder" => Some(format!(".placeholder({:?})", value)),
@@ -393,6 +407,12 @@ pub fn component_bind_setter(
     if let Some(s) = super::table::setters::bind_setter(name, expr_str, loop_vars, computed, tag) {
         return Some(s);
     }
+    // DescriptionList 的 bordered/columns/label_width + DescriptionItem 的 value/span
+    if let Some(s) =
+        super::description_list::setters::bind_setter(name, expr_str, loop_vars, computed, tag)
+    {
+        return Some(s);
+    }
 
     match name {
         // content={expr}：直接嵌入表达式作为 child（与原生 div 的 content 分支一致）
@@ -441,6 +461,9 @@ pub fn component_bind_setter(
 ///
 /// 组件专用事件（Input/TextInput 的 onchange、Tree 的 on_activate、Accordion 的 on_toggle_click）
 /// 已迁移到各自的组件模块，本函数仅处理通用 `onclick` 事件并作为回退入口。
+///
+/// `on_click`（下划线形式）作为 `onclick` 的别名，供 Tab/TabItem 等 tab 家族组件使用
+/// （与 props_registry 中登记的形式一致）。
 pub fn component_event_setter(name: &str, handler: &EventHandler, tag: &str) -> Option<String> {
     // 组件专用事件 setter 委托（Input/TextInput 的 onchange）
     if tag == "Input" || tag == "TextInput" {
@@ -450,7 +473,7 @@ pub fn component_event_setter(name: &str, handler: &EventHandler, tag: &str) -> 
     }
 
     match name {
-        "onclick" => {
+        "onclick" | "on_click" => {
             let method = match handler {
                 EventHandler::Ident(m) | EventHandler::MethodName(m) => m,
                 EventHandler::WithArgs(m, _) => m,

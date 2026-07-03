@@ -48,6 +48,7 @@
 | [menu-items.md](./menu-items.md) | `MenuItem` / `MenuSeparator` | 菜单子项 |
 | [app-menu-bar.md](./app-menu-bar.md) | `AppMenuBar` | codegen |
 | [accordion.md](./accordion.md) | `accordion` / `Accordion` | StatelessWithItems（闭包 builder） |
+| [description-list.md](./description-list.md) | `descriptions` / `DescriptionList` | StatelessWithItems（直接 `.child()` 注入） |
 
 ## 内置 HTML 标签
 

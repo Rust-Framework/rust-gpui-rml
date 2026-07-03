@@ -94,6 +94,45 @@ codegen 根据 `#[component]` 宏扫描的字段类型自动生成转换代码�
 
 > 注：数字类型 parse 失败时（类型不匹配如 `"abc"`、类型溢出如 `"99999999999999999999"` 给 i32）**不覆盖原值**，仅设置校验错误状态，UI 显示红色边框 + tooltip。
 
+### 转换器（Converter）
+
+当字段类型与输入框显示格式不一致时，用 `model={field | Converter}` 声明转换器。转换器实现 `IConverter` trait，提供两个方向的自定义转换：
+
+| 方向 | 调用 | 作用 |
+|---|---|---|
+| 正向（VM→UI） | `Converter.convert(&self.field)` | 字段值 → 显示串（如 `1500.0` → `"¥1500.00"`） |
+| 反向（UI→VM） | `Converter.convert_back(&value)` | 输入串 → 字段值（如 `"¥1500.00"` → `Some(1500.0)`） |
+
+框架内置转换器（`rml::prelude::*`）：`Currency`（f64↔`¥#.##`）、`Percent`、`UpperCase`/`LowerCase`、`Trim`、`BoolToYesNo`。
+
+```rust
+#[derive(Default)]
+#[component]
+pub struct OrderView {
+    pub price: f64,  // VM 中存原始数值
+}
+```
+
+```html
+<!-- 正向显示 ¥1500.00，反向解析 ¥1500.00 → 1500.0 -->
+<input model={price | Currency} placeholder="输入 ¥1500.00" />
+```
+
+codegen 生成（简化）：
+
+```rust
+// 正向（初始值 + 版本号变化时）
+"price" => Currency.convert(&self.price).into(),  // 而非 to_string()
+
+// 反向（InputEvent::Change）
+match Currency.convert_back(&value.to_string()) {
+    Some(v) => { this.price = v; bump_version("price"); }  // 解析成功
+    None    => { __rml_field_errors["price"] = Some("转换失败".into()); }  // 解析失败
+}
+```
+
+> ⚠️ `convert_back` 返回 `None` 时**不覆盖原值**，设置 `"转换失败"` 错误状态，UI 显示红色边框 + tooltip。无 converter 的字段仍走裸 `parse` 路径。
+
 ## 3.3.4 基础用法
 
 ### 文本输入
@@ -205,6 +244,38 @@ pub fn perform_search(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
 ```
 
 > ⚠️ **避免在命令中重复修改 `model` 绑定的字段**：若 `#[command]` 修改了 `model` 绑定的字段（如 `self.name = ...`），会触发正向同步 `set_value`。虽然循环防护机制会避免无限循环，但可能导致用户输入被覆盖。
+
+### `oninput` / `onchange` 与 `model` 协作
+
+`<input model={field}>` 可同时声明 `oninput={fn}` / `onchange={fn}`。handler 在 model 反向同步**之后**、`cx.notify()` **之前**调用，可读取已同步的最新字段值：
+
+```html
+<input model={name} oninput={on_name_input} />
+<input model={age} onchange={on_age_change} />
+```
+
+```rust
+#[command]
+pub fn on_name_input(&mut self, _ev: &InputEvent, cx: &mut Context<Self>) {
+    // name 字段已被 model 反向同步，self.name 是最新值
+    self.input_count += 1;
+    cx.notify();
+}
+
+#[command]
+pub fn on_age_change(&mut self, _ev: &ChangeEvent, cx: &mut Context<Self>) {
+    // onchange 在失焦/回车时触发，与 oninput 的逐键触发互补
+    self.change_count += 1;
+    cx.notify();
+}
+```
+
+| 事件 | 触发时机 | 与 model 的关系 |
+|---|---|---|
+| `oninput` | 每次输入（逐键） | model 已反向同步，可读最新字段 |
+| `onchange` | 失焦 / 回车（值提交） | model 已反向同步，适合提交类逻辑 |
+
+> `oninput`/`onchange` handler 签名为 `(&InputEvent, &mut Context<Self>)` / `(&ChangeEvent, &mut Context<Self>)`，与独立 `<input>`（无 `model`）上的事件绑定一致。
 
 ## 3.3.7 双向绑定的特殊场景
 

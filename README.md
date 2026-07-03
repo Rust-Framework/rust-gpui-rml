@@ -404,15 +404,15 @@ RML 语法遵循 **“HTML 优先，增强属性”** 的策略：
 // todo.rml.rs
 use rml::prelude::*;
 
-#[derive(Model)]
+#[derive(IModel, Clone, Debug)]
 pub struct TodoItem {
     pub id: u64,
     pub text: SharedString,
     pub done: bool,
 }
 
-#[derive(Model)]
-#[view]  // 极简宏：标记为 RML 视图
+#[derive(Default)]
+#[component]  // 标记为 RML 组件（Code-Behind ViewModel）
 pub struct TodoViewModel {
     pub new_todo_text: SharedString,
     pub todos: Vec<TodoItem>,
@@ -439,7 +439,7 @@ impl TodoViewModel {
         self.todos.len() - self.completed_count()
     }
 
-    // 命令方法：UI 可直接调用
+    // 命令方法：UI 可直接调用，宏自动注入 bump_version + cx.notify()
     #[command]
     pub fn add_todo(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         if self.new_todo_text.is_empty() {
@@ -485,13 +485,14 @@ impl TodoViewModel {
 
 | 宏属性              | 用途                         |
 | ---------------- | -------------------------- |
-| `#[window]`      | 标记结构体为 RML 窗口的 Code-Behind（顶层入口） |
-| `#[component]`   | 标记结构体为自定义组件                |
+| `#[window]`      | 标记结构体为 RML 窗口的 Code-Behind（顶层 OS 窗口入口） |
+| `#[component]`   | 标记结构体为 RML 组件（Code-Behind ViewModel） |
+| `#[derive(IModel)]` | 使结构体成为 GPUI Entity（响应式状态容器） |
 | `#[command]`     | 标记方法为 UI 可调用的命令（自动注入 `bump_version` + `cx.notify()`） |
-| `#[computed]`    | 标记为计算属性（依赖追踪 + 缓存）        |
-| `#[on_loaded]`   | 视图加载完成后的回调                 |
+| `#[computed]`    | 标记为计算属性（依赖追踪 + `ComputedCache` 缓存） |
+| `#[on_loaded]`   | 视图加载完成后的回调（自动检测并接入生命周期） |
 | `#[on_unloaded]` | 视图卸载前的清理回调                 |
-| `#[element]`     | 标记字段为 `ref` 引用的 UI 元素      |
+| `#[element]`     | 标记字段为 `ref` 引用的 UI 元素（`#[derive(IModel)]` 的 helper attribute） |
 | `#[validate]`    | 声明字段校验规则（range/length/required/regex/custom/IValidate） |
 | `#[rml::main]`   | main.rs 入口属性宏（自动注入资源注册代码） |
 
@@ -559,8 +560,8 @@ impl MyView {
 // components/primary_button.rml.rs
 use rml::prelude::*;
 
-#[derive(Model)]
-#[component(template = "components/primary_button.rml")]
+#[derive(Default)]
+#[component]
 pub struct PrimaryButton {
     pub label: SharedString,
     pub on_click: Option<Arc<dyn Fn(&ClickEvent)>>,
@@ -770,8 +771,8 @@ fn main() {
 GPUI 中所有状态都由 `App` 统一管理，通过 `Entity` 句柄访问。RML 的 Code-Behind 结构体天然对应 GPUI 的 `Model` trait：
 
 ```rust
-#[derive(Model)]  // 使结构体成为 GPUI Entity
-#[view]
+#[derive(IModel)]  // 使结构体成为 GPUI Entity
+#[component]
 pub struct MyView {
     pub count: u32,  // 自动成为响应式状态
 }
@@ -816,8 +817,8 @@ GPUI 的 `div` 元素是核心构建块，类似 HTML 的 `<div>` 但针对 Rust
 ```rust
 use rml::prelude::*;
 
-#[derive(Model)]
-#[view]
+#[derive(Default)]
+#[component]
 pub struct Counter {
     pub count: i32,
 }
@@ -911,43 +912,47 @@ fn main() {
 
 ## 十三、实施路线图
 
-### Phase 1：基础架构（6-8 周）
+### Phase 1：基础架构
 
-- [ ] 建立 Workspace 结构（5 个 crates）
-- [ ] `core`：定义 `RmlView`、`BindingContext` 等基础 trait
-- [ ] `rml`：实现基于 `quick-xml` 的 HTML 友好解析器
-- [ ] `macros`：实现 `#[view]` 属性宏框架
-- [ ] `app`：实现 `RmlApplication` 启动器
-- [ ] 支持基础标签：`div`、`p`、`span`、`button`、`input`
-- [ ] 支持基础属性：`class`、`id`、`style`、`value`
-- [ ] 支持 `{ }` 单向数据绑定
-- [ ] `build.rs` 集成
+- [x] 建立 Workspace 结构（5 个 crates）
+- [x] `core`：定义 `RmlView`、`BindingContext` 等基础 trait
+- [x] `rml`：实现基于 `quick-xml` 的 HTML 友好解析器
+- [x] `macros`：实现 `#[component]` 属性宏框架
+- [x] `app`：实现 `RmlApplication` 启动器
+- [x] 支持基础标签：`div`、`p`、`span`、`button`、`input`
+- [x] 支持基础属性：`class`、`id`、`style`、`value`
+- [x] 支持 `{ }` 单向数据绑定
+- [x] `build.rs` 集成
 
-### Phase 2：核心功能（6-8 周）
+### Phase 2：核心功能
 
-- [ ] 事件绑定：`onclick`、`oninput`、`onkeydown` 等
-- [ ] 双向绑定：`model` 指令
-- [ ] 条件渲染：`if` / `else`
-- [ ] 列表渲染：`each` / `key`
-- [ ] 计算属性：`#[computed]`
-- [ ] 命令系统：`#[command]`
+- [x] 事件绑定：`onclick`、`oninput`、`onkeydown` 等
+- [x] 双向绑定：`model` 指令
+- [x] 条件渲染：`if` / `else`
+- [x] 列表渲染：`each` / `key`
+- [x] 计算属性：`#[computed]`（含 `ComputedCache` 依赖缓存）
+- [x] 命令系统：`#[command]`（含数据驱动 `bump_version` + `cx.notify()` 自动注入）
 
-### Phase 3：高级特性（6-8 周）
+### Phase 3：高级特性
 
-- [ ] 自定义组件系统（`#[component]`）
-- [ ] 插槽（`slot`）
-- [ ] 样式系统（`ResourceDictionary`）
-- [ ] 值转换器（`Converter` trait）
-- [ ] 生命周期回调（`#[on_loaded]`、`#[on_unloaded]`）
-- [ ] 元素引用（`ref` / `#[element]`）
+- [x] 自定义组件系统（`#[component]`）
+- [x] 插槽（`slot`）
+- [x] 样式系统（`ResourceDictionary`）
+- [x] 值转换器（`IConverter` trait，含 `model={field | Converter}` 双向绑定）
+- [x] 生命周期回调（`#[on_loaded]`、`#[on_unloaded]`）
+- [x] 元素引用（`ref` / `#[element]`）
+- [x] 声明式命令绑定（`command={field}`，对齐 WPF `ICommand`）
+- [x] 字段校验（`#[validate]`：range/length/required/regex/custom/IValidate）
+- [x] 防抖与节流（`#[command(debounce = "300ms")]`）
+- [x] 贡献点系统（`IContribution` / `IVisualContribution` / `IContributionHost`）
 
 ### Phase 4：生态与工具（持续）
 
 - [ ] VS Code 插件：语法高亮、自动补全、错误提示
 - [ ] 热重载：文件监听 + 增量编译
 - [ ] 性能优化：增量渲染
-- [ ] 文档站点 + API 文档
-- [ ] 示例应用集合
+- [x] 文档站点 + API 文档（`docs/` 目录，渐进式披露）
+- [x] 示例应用集合（`demo/` 目录，含 10+ case 演示）
 
 ## 十四、总结
 
@@ -961,6 +966,22 @@ RML 框架的核心价值在于 **“HTML 的语法亲和力 + WPF 的设计理�
 | **生态** | 5 个独立 crates 模块化设计，可单独复用或替换             |
 | **扩展** | 自定义组件 + 极简指令系统，满足任意复杂 UI 需求             |
 | **体验** | 热重载、IDE 支持、设计师可参与                       |
+
+### MVVM 能力矩阵（Phase 1-3 已实现）
+
+| 能力 | 语法 | 说明 |
+|---|---|---|
+| 单向绑定 | `{field}` / `attr={expr}` | ViewModel → View 自动同步 |
+| 双向绑定 | `<input model={field}>` | 基于 `Entity<InputState>` 的完整双向数据流 + 循环防护 |
+| 转换器绑定 | `model={field \| Converter}` | `IConverter` 正向 `convert()` + 反向 `convert_back()` |
+| 计算属性 | `#[computed]` | 依赖追踪 + `ComputedCache` 缓存，自动失效 |
+| 命令方法 | `#[command]` + `onclick={method}` | 强类型直接调用，自动注入 `bump_version` + `cx.notify()` |
+| 声明式命令 | `command={field}` | 对齐 WPF `ICommand`，经 `can_execute`/`execute` 动态调度 |
+| 事件处理 | `oninput={fn}` / `onchange={fn}` | handler 注入到 `cx.subscribe` 回调，与 `model` 协作 |
+| 字段校验 | `#[validate(range/length/required/...)]` | 校验链 + 错误消息自动管理 |
+| 防抖节流 | `#[command(debounce = "300ms")]` | 函数局部 `AtomicU64` 计时器 |
+| 生命周期 | `#[on_loaded]` / `#[on_unloaded]` | 自动检测并接入生命周期钩子 |
+| 贡献点系统 | `IContribution` / `IVisualContribution` | 能力查询（`as_visual()`/`as_command()`）+ host 主动受理 |
 
 通过这套方案，Rust + GPUI 桌面开发将获得：
 

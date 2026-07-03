@@ -36,6 +36,8 @@ pub fn static_setter(name: &str, value: &str, tag: &str) -> Option<String> {
             Some(format!(".menu({})", bool_val))
         }
         "icon" if tag == "Tab" => Some(format!(".icon(rml_ui::IconName::{})", value)),
+        "title" if tag == "TabItem" => Some(format!(".title({:?})", value)),
+        "title_icon" if tag == "TabItem" => Some(format!(".title_icon(rml_ui::IconName::{})", value)),
         _ => None,
     }
 }
@@ -65,6 +67,18 @@ pub fn bind_setter(
                 expr_str, loop_vars, computed,
             );
             Some(format!(".{}({})", name, rust_expr))
+        }
+        "title" if tag == "TabItem" => {
+            let rust_expr = super::super::component::component_bind_rust_expr(
+                expr_str, loop_vars, computed,
+            );
+            Some(format!(".title({}.clone())", rust_expr))
+        }
+        "title_icon" if tag == "TabItem" => {
+            let rust_expr = super::super::component::component_bind_rust_expr(
+                expr_str, loop_vars, computed,
+            );
+            Some(format!(".title_icon({})", rust_expr))
         }
         _ => None,
     }

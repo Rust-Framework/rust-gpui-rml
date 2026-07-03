@@ -94,10 +94,16 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
         "label", "icon", "disabled", "selected", "prefix", "suffix", "on_click",
         "underline", "pill", "flat", "outline", "segmented",
     ]),
+    // TabItem 专用（item builder 子标签，WPF TabItem 模式：title + body）
+    ("TabItem", &["title", "title_icon", "disabled", "on_click"]),
     // Table 专用（WPF DataGrid 风格表格）
     ("Table", &["columns", "rows", "delegate", "bordered", "borderless", "stripe"]),
     // Column 专用（item builder 子标签，不在 component_lookup 中）
     ("Column", &["key", "title", "width", "align", "field"]),
+    // DescriptionList 专用（无 ElementId 容器，layout/bordered/columns/label_width）
+    ("DescriptionList", &["vertical", "horizontal", "bordered", "columns", "label_width"]),
+    // DescriptionItem 专用（item builder 子标签，label 为构造器参数，value/span 为 setter）
+    ("DescriptionItem", &["label", "value", "span"]),
 ];
 
 /// 查询组件的所有已注册属性（通用 + 专用）

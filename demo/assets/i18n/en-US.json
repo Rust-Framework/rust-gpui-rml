@@ -251,7 +251,9 @@
 
   "case.slot.footer": "Footer slot",
 
-  "case.table.title": "Table Component"
+  "case.table.title": "Table Component",
+
+  "case.description_list.title": "Description List"
 
 }
 

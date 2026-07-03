@@ -25,13 +25,13 @@
             <div class="demo-section">
                 <h3>文本双向绑定</h3>
                 <p>输入姓名，下方文案实时更新：</p>
-                <input model={name} placeholder={t("demo.name_placeholder")} />
+                <input model={name} placeholder={t("demo.name_placeholder")} oninput={on_name_input} />
                 <p>当前姓名：{name}</p>
             </div>
             <div class="demo-section">
                 <h3>数值双向绑定</h3>
                 <p>输入年龄（0-150），下方文案实时更新：</p>
-                <input model={age} placeholder={t("demo.age_placeholder")} />
+                <input model={age} placeholder={t("demo.age_placeholder")} onchange={on_age_change} />
                 <p>当前年龄：{age}</p>
             </div>
             <div class="demo-section">
@@ -39,6 +39,17 @@
                 <p>输入超范围值（如 200 或 -5），观察输入框红框 + tooltip：</p>
                 <input model={age} placeholder="输入 200 测试验证" />
                 <p>{profile_summary}</p>
+            </div>
+            <div class="demo-section">
+                <h3>转换器双向绑定（B-2）</h3>
+                <p><code>model=&#123;price | Currency&#125;</code> 正向经 <code>Currency.convert</code> 显示 <code>¥1500.00</code>，反向经 <code>convert_back</code> 解析回 <code>f64</code>：</p>
+                <input model={price | Currency} placeholder="输入 ¥1500.00 测试转换" />
+                <p>{price_raw}</p>
+            </div>
+            <div class="demo-section">
+                <h3>输入事件（B-3）</h3>
+                <p><code>oninput</code> 逐键触发，<code>onchange</code> 失焦/回车触发。在姓名框输入观察 oninput 计数，在年龄框失焦观察 onchange 计数：</p>
+                <p>oninput 触发次数：{input_event_count} | onchange 触发次数：{change_event_count}</p>
             </div>
         </Card>
     </div>

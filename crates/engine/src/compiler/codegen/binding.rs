@@ -76,9 +76,13 @@ pub(super) fn gen_model_input(
 
 /// 生成正向值表达式：`self.field` → `gpui::SharedString`
 ///
-/// 数字类型需 `to_string().into()`（SharedString: From<String>）；
-/// String/SharedString 等直接 `.clone().into()`。
-pub(super) fn gen_field_value_expr(field: &str, ty: &str) -> String {
+/// - 有 converter 时：`Converter.convert(&self.field).into()`（`convert` 返回 `Target`，
+///   通常为 `String`，`SharedString: From<String>` 生效）
+/// - 无 converter：数字类型 `to_string().into()`；String/SharedString 等 `.clone().into()`
+pub(super) fn gen_field_value_expr(field: &str, ty: &str, converter: Option<&str>) -> String {
+    if let Some(conv) = converter {
+        return format!("{}.convert(&self.{}).into()", conv, field);
+    }
     match ty {
         "bool" => format!("self.{}.to_string().into()", field),
         "i32" | "u32" | "i64" | "u64" | "f32" | "f64" | "usize" | "isize" => {

@@ -7,8 +7,8 @@
 //! - `left` / `right` / `bottom`（可 resize，空则隐藏）
 //! - `footer` → `status_slot`（状态栏，空则隐藏）
 //! - `menu` / `title`（标题栏内插槽）
-//! - `tabs` → `Vec<Arc<dyn IContribution>>`（业务数据，由 IContribution::name() 提供 title，
-//!   IVisualContribution::render() 提供 body）
+//! - `tabs` → `Vec<Arc<dyn IValue>>`（业务数据，由 as_contribution()?.name() 提供 title，
+//!   as_visual()?.render() 提供 body）
 
 use std::rc::Rc;
 use std::sync::Arc;
@@ -25,7 +25,8 @@ use gpui_component::{
     resizable::{h_resizable, resizable_panel, v_resizable},
     v_flex, TITLE_BAR_HEIGHT,
 };
-use rml_core::contribution::{IContribution, VisualAbilityExt};
+use rml_core::contribution::{ContributionAbilityExt, VisualAbilityExt};
+use rml_core::value::IValue;
 use crate::components::tab::{TabBar, TabItem, TabVariant};
 use smallvec::SmallVec;
 
@@ -139,9 +140,9 @@ pub struct TabWindowShell {
     show_chrome: bool,
     menu_slot: Option<AnyElement>,
     title_ext_slot: Option<AnyElement>,
-    /// 业务数据载体（实现 IContribution 的任意类型）。
-    /// `IContribution::name()` 提供 tab title，`IVisualContribution::render()` 提供 tab body。
-    tabs: Vec<Arc<dyn IContribution>>,
+    /// 业务数据载体（实现 IValue 的任意类型，通常为 IContribution）。
+    /// `as_contribution()?.name()` 提供 tab title，`as_visual()?.render()` 提供 tab body。
+    tabs: Vec<Arc<dyn IValue>>,
     selected_index: usize,
     on_tab_click: Option<Rc<dyn Fn(usize, &mut Window, &mut App) + 'static>>,
     on_chrome_toggle: Option<Rc<dyn Fn(&mut Window, &mut App) + 'static>>,
@@ -203,7 +204,7 @@ impl TabWindowShell {
         self
     }
 
-    pub fn tabs(mut self, tabs: Vec<Arc<dyn IContribution>>) -> Self {
+    pub fn tabs(mut self, tabs: Vec<Arc<dyn IValue>>) -> Self {
         self.tabs = tabs;
         self
     }
@@ -217,7 +218,7 @@ impl TabWindowShell {
     ///
     /// 返回 `tabs[selected_index]` 的引用；若索引越界返回 None。
     /// 与 `selected_index`（索引）对应，参照 WPF TabControl.SelectedItem。
-    pub fn selected_item(&self) -> Option<&Arc<dyn IContribution>> {
+    pub fn selected_item(&self) -> Option<&Arc<dyn IValue>> {
         self.tabs.get(self.selected_index)
     }
 
@@ -383,11 +384,12 @@ impl RenderOnce for TabWindowShell {
             }
         }
 
-        // 从 tabs（IContribution）构建 TabItem 注入 TabBar
-        // IContribution::name() 提供 title，IVisualContribution::render() 提供 body
-        for contribution in &self.tabs {
-            let c = Arc::clone(contribution);
-            let item = TabItem::new().title(c.name()).body(move |window, cx| {
+        // 从 tabs（IValue）构建 TabItem 注入 TabBar
+        // as_contribution()?.name() 提供 title，as_visual()?.render() 提供 body
+        for value in &self.tabs {
+            let c = Arc::clone(value);
+            let title = c.as_contribution().map(|c| c.name()).unwrap_or_default();
+            let item = TabItem::new().title(title).body(move |window, cx| {
                 if let Some(visual) = c.as_visual() {
                     visual.render(window, cx)
                 } else {

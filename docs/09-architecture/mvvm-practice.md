@@ -26,9 +26,29 @@ RML 的 MVVM 不是口号，而是被编译器和绑定引擎强制约束的运�
 
 | 层          | RML 中的体现                                       | 是否依赖 GPUI          |
 | ---------- | ----------------------------------------------- | ------------------- |
-| **Model**  | `#[derive(Model)]` 的纯数据结构体                      | 否（可独立编译、单测）         |
-| **ViewModel** | `#[derive(Model)]` + `#[command]` + `#[computed]` | 是（持有 `ViewContext` 时的方法签名） |
+| **Model**  | `#[derive(IModel)]` 的纯数据结构体                    | 否（可独立编译、单测）         |
+| **ViewModel** | `#[derive(IModel)]` + `#[component]` + `#[command]` + `#[computed]` | 是（持有 `Context<Self>` 时的方法签名） |
 | **View**   | `.rml` 模板 + 编译期生成的 `Render` 实现                  | 是（由框架生成，开发者不手写）     |
+
+### MVVM 能力矩阵
+
+RML 的 MVVM 支持已覆盖 WPF XAML 的核心数据绑定与命令能力。下表是当前已实现能力的快速索引，每项均可直接用于生产代码：
+
+| 能力 | 语法 | 行为概述 | 参考章节 |
+|---|---|---|---|
+| 单向绑定 | `{field}` / `attr={expr}` | ViewModel 字段变化经 `bump_version` 触发正向同步 | [3.2 单向绑定](../03-binding/one-way-binding.md) |
+| 双向绑定 | `<input model={field}>` | 基于 `Entity<InputState>` 的双向数据流 + 版本号循环防护 | [3.3 双向绑定](../03-binding/two-way-binding.md) |
+| 转换器绑定 | `model={field \| Converter}` | `IConverter::convert()` 正向格式化 + `convert_back()` 反向解析 | [3.5 值转换器](../03-binding/converter.md) |
+| 计算属性 | `#[computed]` | 依赖字段版本号追踪 + `ComputedCache` 自动缓存与失效 | [3.4 计算属性](../03-binding/computed.md) |
+| 命令方法 | `#[command]` + `onclick={method}` | 强类型直接调用，宏自动注入 `bump_version` + `cx.notify()` | [4.4 命令系统](../04-code-behind/command-system.md) |
+| 声明式命令 | `<menu-item command={field} />` | 对齐 WPF `ICommand`，经 `can_execute`/`execute` 动态调度 | [4.4.12 声明式命令绑定](../04-code-behind/command-system.md) |
+| 事件处理 | `oninput={fn}` / `onchange={fn}` | handler 注入 `cx.subscribe` 回调，与 `model` 反向同步协作 | [3.3.6 oninput/onchange](../03-binding/two-way-binding.md) |
+| 事件冒泡控制 | `ev.stop_propagation()` | 事件流 `apply_event` 分支注入 stop 标志 | [5.4 事件流](../05-events/event-flow.md) |
+| 字段校验 | `#[validate(range/length/required/regex/custom)]` | 校验链 + `__rml_field_errors` 自动管理 | [4.5 状态管理](../04-code-behind/state-management.md) |
+| 防抖节流 | `#[command(debounce = "300ms")]` | 函数局部 `AtomicU64` 计时器，无全局状态 | [5.5 防抖与节流](../05-events/debounce-throttle.md) |
+| 生命周期 | `#[on_loaded]` / `#[on_unloaded]` | 自动检测方法名并接入生命周期钩子 | [8.1 生命周期总览](../08-lifecycle/lifecycle-overview.md) |
+| 元素引用 | `ref="name"` + `#[element]` | `Entity<InputState>` 句柄注入字段 | [4.3 元素引用](../04-code-behind/element-ref.md) |
+| 贡献点 | `IContribution` / `IVisualContribution` | 能力查询（`as_visual()`/`as_command()`）+ host 主动受理 | [9.4 贡献点系统](./contribution-system.md) |
 
 ## 9.2.2 Model 层契约
 
@@ -38,7 +58,7 @@ Model 应当被设计为**值语义**：状态变化通过“替换整个 Model�
 
 ```rust
 // ✅ 推荐：Model 是 Clone 的纯数据
-#[derive(Model, Clone, Debug)]
+#[derive(IModel, Clone, Debug)]
 pub struct TodoItem {
     pub id: u64,
     pub title: SharedString,
@@ -126,6 +146,39 @@ impl TodoListViewModel {
 2. **只改状态**：不返回值、不直接操作 DOM、不调用其他视图的命令
 3. **数据驱动 notify**：宏自动追踪 `self.<field>` 的赋值/复合赋值操作，自动注入 `bump_version` + `cx.notify()`。**方法体内一般无需手写 notify**——这是 RML MVVM 数据驱动的核心。例外：① 间接修改（如 `let p = &mut self.x; *p = 1;` 或方法调用 `self.items.retain()`）宏无法识别，需手动 notify；② 异步闭包（`cx.spawn` / `this.update`）内的修改不在方法体范围内，需手动 notify；③ 想精确控制 notify 时机时用 `#[command(no_notify)]`。
 4. **可重入**：同一命令可能被快速连续触发，状态机要能正确处理
+
+### 两种命令绑定方式
+
+RML 提供两种命令绑定，适用于不同场景：
+
+| 方式 | 语法 | 调度机制 | 适用场景 |
+|---|---|---|---|
+| **方法绑定** | `onclick={method}` | codegen 生成 `this.method(&ev, cx)` 强类型直接调用 | 事件与命令一一对应（推荐默认） |
+| **声明式绑定** | `command={field}` | 经 `ICommand::can_execute`/`execute` 动态调度 | 命令可复用、可快捷键、可命令面板 |
+
+声明式绑定使用 `RelayCommand`（WPF `RelayCommand`/`DelegateCommand` 等价物），持有 `WeakEntity<T>` + 闭包：
+
+```rust
+#[derive(Default)]
+#[component]
+pub struct MyView {
+    pub save_command: Arc<RelayCommand>,  // 框架提供 Default（no-op 空对象）
+}
+
+impl ILifecycle for MyView {
+    fn on_loaded(&mut self, _: &mut Window, cx: &mut Context<Self>) {
+        self.save_command = Arc::new(RelayCommand::new(cx, |this, cx| {
+            this.save(cx);
+        }));
+    }
+}
+```
+
+```html
+<menu-item label="Save" command={save_command} />
+```
+
+`RelayCommand` 实现了 `Default`（空对象模式——返回 no-op 命令），使 `Arc<RelayCommand>` 字段可随 `#[derive(Default)]` 自动初始化，`on_loaded` 中再替换为真实命令。详见 [4.4.12 声明式命令绑定](../04-code-behind/command-system.md)。
 
 ### 异步命令的模式
 
@@ -254,12 +307,12 @@ impl SearchViewModel {
 
 ```html
 <div class="search">
-  <input ref="input" r:model="query" on:input="on_input" placeholder="搜索…" />
-  <p r:if="is_searching">搜索中…</p>
-  <p r:if="error" class="error">{error}</p>
-  <ul r:if="has_results">
-    <li r:each="results" r:key="id">
-      <a href="{url}">{title}</a>
+  <input ref="input" model={query} oninput={on_input} placeholder="搜索…" />
+  <p if={is_searching}>搜索中…</p>
+  <p if={error} class="error">{error}</p>
+  <ul if={has_results}>
+    <li each={result in results} key={result.id}>
+      <a href={result.url}>{result.title}</a>
     </li>
   </ul>
 </div>

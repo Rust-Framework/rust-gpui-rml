@@ -31,6 +31,7 @@ pub fn case_title_key(id: &str) -> &'static str {
         "components.avatar" => "case.avatar.title",
         "components.slot" => "case.slot.title",
         "components.table" => "case.table.title",
+        "components.description_list" => "case.description_list.title",
         "components.menu.context" => "case.menu.context.title",
         "components.menu.dropdown" => "case.menu.dropdown.title",
         "components.menu.editor" => "case.menu.editor.title",

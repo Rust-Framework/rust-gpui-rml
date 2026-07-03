@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use gpui::{App, SharedString};
+use gpui::SharedString;
 use rml::prelude::*;
-use rml_core::command::{ICommand, RelayCommand};
+use rml_core::command::RelayCommand;
 use rml_core::i18n::t_static;
 
 #[contribute(
@@ -13,23 +13,16 @@ use rml_core::i18n::t_static;
     order = 19,
 )]
 #[component]
+#[derive(Default)]
 pub struct MenuFeaturesCase {
     pub is_checked: bool,
     pub last_action: String,
     /// B-1 demo：声明式命令绑定字段。
     /// RML `<menu-item command={save_command} />` 据此生成 clone-Arc-out 闭包，
     /// 点击时经 `ICommand::execute` 调度（区别于 `onclick={method}` 的强类型直接调用）。
-    pub save_command: Arc<dyn ICommand>,
-}
-
-impl Default for MenuFeaturesCase {
-    fn default() -> Self {
-        Self {
-            is_checked: false,
-            last_action: String::new(),
-            save_command: Arc::new(RelayCommand::action(|_cx: &mut App| {})),
-        }
-    }
+    /// 类型为 `Arc<RelayCommand>`（具体类型）而非 `Arc<dyn ICommand>`，以便
+    /// `#[derive(Default)]` 生效——框架已为 `RelayCommand` 实现 `Default`（no-op 空对象）。
+    pub save_command: Arc<RelayCommand>,
 }
 
 impl IContribution for MenuFeaturesCase {

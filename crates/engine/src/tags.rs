@@ -158,8 +158,12 @@ pub fn canonical_tag(tag: &str) -> String {
         "item" => "AccordionItem".to_string(),
         "tab_bar" => "TabBar".to_string(),
         "tab" => "Tab".to_string(),
+        "tab_item" => "TabItem".to_string(),
         "table" => "Table".to_string(),
         "column" => "Column".to_string(),
+        "descriptions" => "DescriptionList".to_string(),
+        "description" => "DescriptionItem".to_string(),
+        "separator" => "DescriptionSeparator".to_string(),
         _ => normalized,
     }
 }
@@ -319,6 +323,11 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             ctor_path: "rml_ui::Separator",
             kind: ComponentKind::Stateless,
         }),
+        // DescriptionList：无 ElementId 容器，子节点为 <description>/<separator>
+        "DescriptionList" | "descriptions" => Some(ComponentTag {
+            ctor_path: "rml_ui::DescriptionList",
+            kind: ComponentKind::StatelessWithItems,
+        }),
         "Tag" => Some(ComponentTag {
             ctor_path: "rml_ui::Tag",
             kind: ComponentKind::Stateless,
@@ -438,10 +447,14 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
 pub fn is_item_builder_tag(tag: &str) -> bool {
     matches!(
         tag,
-        "AccordionItem" | "item" | "Tab" | "tab" | "Column" | "column"
+        "AccordionItem" | "item" | "Tab" | "tab" | "TabItem" | "tab_item" | "Column" | "column"
+            | "DescriptionItem" | "description" | "DescriptionSeparator" | "separator"
     ) || normalize_component_tag(tag) == "AccordionItem"
         || normalize_component_tag(tag) == "Tab"
+        || normalize_component_tag(tag) == "TabItem"
         || normalize_component_tag(tag) == "Column"
+        || normalize_component_tag(tag) == "DescriptionItem"
+        || normalize_component_tag(tag) == "DescriptionSeparator"
 }
 
 #[cfg(test)]

@@ -1,7 +1,7 @@
 //! 能力查询基础设施 —— mopa 模式实现 trait object 间 downcast。
 //!
 //! 核心思路：
-//! - trait upcasting：`&dyn IContribution` 直接 coerce 到 `&dyn Any`（因 `IContribution: Any`）
+//! - trait upcasting：`&dyn IValue` 直接 coerce 到 `&dyn Any`（因 `IValue: Any`）
 //! - `downcast_ref::<T>()` 还原具体类型，再 trait upcast 到 `&dyn Ability`
 //! - 全局 `HashMap<(TypeId, TypeId), CastFn>` 按 (concrete_type_id, ability_trait_id) 索引 cast 函数
 //! - cast 函数 transmute `&dyn Ability` 为 `ErasedAbility`（擦除 fat pointer）
@@ -13,7 +13,7 @@ use std::any::{Any, TypeId};
 use std::collections::HashMap;
 use std::sync::{LazyLock, RwLock};
 
-use crate::contribution::IContribution;
+use crate::value::IValue;
 
 /// 擦除后的能力 fat pointer（data + vtable）。
 #[repr(C)]
@@ -23,8 +23,8 @@ pub struct ErasedAbility {
     vtable: *const (),
 }
 
-/// cast 函数类型：`&dyn IContribution` → `Option<ErasedAbility>`。
-pub type CastFn = fn(&dyn IContribution) -> Option<ErasedAbility>;
+/// cast 函数类型：`&dyn IValue` → `Option<ErasedAbility>`。
+pub type CastFn = fn(&dyn IValue) -> Option<ErasedAbility>;
 
 static ABILITY_REGISTRY: LazyLock<RwLock<HashMap<(TypeId, TypeId), CastFn>>> =
     LazyLock::new(|| RwLock::new(HashMap::new()));
@@ -38,8 +38,8 @@ pub fn register<T: 'static, A: ?Sized + 'static>(cast_fn: CastFn) {
 }
 
 /// 查询能力：返回擦除后的 fat pointer，由 `restore::<A>` 还原。
-pub fn query<A: ?Sized + 'static>(c: &dyn IContribution) -> Option<ErasedAbility> {
-    // trait upcast：&dyn IContribution → &dyn Any（因 IContribution: Any）
+pub fn query<A: ?Sized + 'static>(c: &dyn IValue) -> Option<ErasedAbility> {
+    // trait upcast：&dyn IValue → &dyn Any（因 IValue: Any）
     let any: &dyn Any = c;
     let concrete_id = any.type_id();
     let ability_id = TypeId::of::<A>();
@@ -78,6 +78,7 @@ mod tests {
     use super::*;
     use crate::command::{CallContext, CommandAbilityExt, ICommand};
     use crate::contribution::IContribution;
+    use crate::value::IValue;
     use gpui::SharedString;
 
     struct TestCmd;
@@ -104,7 +105,7 @@ mod tests {
             })
         });
         let cmd = TestCmd;
-        let c: &dyn IContribution = &cmd;
+        let c: &dyn IValue = &cmd;
         assert!(c.as_command().is_some());
     }
 
@@ -120,7 +121,7 @@ mod tests {
             }
         }
         let u = Unregistered;
-        let c: &dyn IContribution = &u;
+        let c: &dyn IValue = &u;
         assert!(c.as_command().is_none());
     }
 }

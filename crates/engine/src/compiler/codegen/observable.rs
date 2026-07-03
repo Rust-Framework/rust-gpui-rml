@@ -15,13 +15,13 @@ fn gen_input_handler_call(field: &str, ctx: &CodegenCtx) -> String {
     let mut calls = Vec::new();
     if let Some(method) = &handlers.on_input {
         calls.push(format!(
-            "let __rml_input_ev = rml_convert::convert::input(value.clone(), gpui::SharedString::default());\n                    this.{}(&__rml_input_ev, cx);",
+            "let __rml_input_ev = rml::runtime::event_flow::convert::input(value.clone(), gpui::SharedString::default());\n                    this.{}(&__rml_input_ev, cx);",
             method
         ));
     }
     if let Some(method) = &handlers.on_change {
         calls.push(format!(
-            "let __rml_change_ev = rml_convert::convert::change(value.clone());\n                    this.{}(&__rml_change_ev, cx);",
+            "let __rml_change_ev = rml::runtime::event_flow::convert::change(value.clone());\n                    this.{}(&__rml_change_ev, cx);",
             method
         ));
     }
@@ -169,7 +169,8 @@ pub(super) fn gen_input_state_impl(ctx: &CodegenCtx) -> String {
     let mut forward_arms = String::new();
     for field in &input_fields {
         let ty = ctx.field_types.get(field).cloned().unwrap_or_default();
-        let expr = gen_field_value_expr(field, &ty);
+        let converter = ctx.model_converters.get(field).map(|s| s.as_str());
+        let expr = gen_field_value_expr(field, &ty, converter);
         forward_arms.push_str(&format!("            \"{}\" => {},\n", field, expr));
     }
 

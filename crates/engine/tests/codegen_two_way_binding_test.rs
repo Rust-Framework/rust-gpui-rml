@@ -499,6 +499,52 @@ fn model_without_converter_keeps_parse_behavior() {
     );
 }
 
+#[test]
+fn model_with_converter_generates_forward_convert_call() {
+    // model={price | Currency} 正向同步（VM→UI）应生成 Currency.convert(&self.price) 调用，
+    // 而非裸 to_string()——否则输入框会显示 "1500" 而非 "¥1500.00"。
+    let ctx = CodegenCtx {
+        view_struct_name: "TestView".to_string(),
+        view_module_path: "test".to_string(),
+        stylesheet: None,
+        computed_methods: Vec::new(),
+        observable_fields: vec!["price".to_string()],
+        version_fields: vec!["price".to_string()],
+        computed_deps: HashMap::new(),
+        computed_returns: HashMap::new(),
+        field_types: {
+            let mut m = HashMap::new();
+            m.insert("price".to_string(), "f64".to_string());
+            m
+        },
+        field_validations: HashMap::new(),
+        model_fields: Vec::new(),
+        user_components: HashMap::new(),
+        is_contributehost: false,
+        contribution_bindings: false,
+        ..Default::default()
+    };
+    let source = r#"
+<component>
+    <input model={price | Currency} />
+</component>
+"#;
+    let code = compile(source, &ctx).expect("compile failed");
+
+    // 正向应生成 Currency.convert(&self.price).into()
+    assert!(
+        code.contains("Currency.convert(&self.price).into()"),
+        "有 converter 时正向同步应生成 convert 调用，实际：\n{}",
+        code
+    );
+    // 不应生成裸 to_string 正向路径（被 converter 劫持）
+    assert!(
+        !code.contains("self.price.to_string().into()"),
+        "有 converter 时正向不应再走 to_string 路径，实际：\n{}",
+        code
+    );
+}
+
 // ─── Phase B-3: oninput/onchange handler 注入测试 ───
 
 #[test]
@@ -512,9 +558,9 @@ fn oninput_handler_injected_into_subscribe_callback() {
 "#;
     let code = compile(source, &ctx).expect("compile failed");
 
-    // 应生成 InputEvent 构造 + handler 调用
+    // 应生成 InputEvent 构造 + handler 调用（全限定路径，不依赖 render 内的 rml_convert 别名）
     assert!(
-        code.contains("rml_convert::convert::input(value.clone(), gpui::SharedString::default())"),
+        code.contains("rml::runtime::event_flow::convert::input(value.clone(), gpui::SharedString::default())"),
         "应构造 InputEvent，实际：\n{}",
         code
     );
@@ -536,9 +582,9 @@ fn onchange_handler_separate_from_oninput() {
 "#;
     let code = compile(source, &ctx).expect("compile failed");
 
-    // 应生成 ChangeEvent 构造 + handler 调用
+    // 应生成 ChangeEvent 构造 + handler 调用（全限定路径，不依赖 render 内的 rml_convert 别名）
     assert!(
-        code.contains("rml_convert::convert::change(value.clone())"),
+        code.contains("rml::runtime::event_flow::convert::change(value.clone())"),
         "应构造 ChangeEvent，实际：\n{}",
         code
     );

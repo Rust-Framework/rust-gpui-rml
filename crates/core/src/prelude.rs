@@ -8,9 +8,10 @@ pub use crate::binding::{BindingContext, BindingPath, IBindingContext};
 pub use crate::command::{CallContext, CommandAbilityExt, ICommand, RelayCommand};
 pub use crate::component::IComponent;
 pub use crate::contribution::{
-    ContributionOptions, IContribution, IContributionHost, IContributionRegistry,
-    IVisualContribution, VisualAbilityExt,
+    ContributionAbilityExt, ContributionOptions, IContribution, IContributionHost,
+    IContributionRegistry, IVisualContribution, VisualAbilityExt,
 };
+pub use crate::value::IValue;
 pub use crate::workbench::{IWorkbench, IWorkbenchManager, IWorkbenchProvider, Uri};
 pub use crate::converter::{BoolToYesNo, Currency, IConverter, LowerCase, Percent, Trim, UpperCase};
 pub use crate::element_ref::ElementRef;

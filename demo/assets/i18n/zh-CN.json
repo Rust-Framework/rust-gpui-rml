@@ -252,7 +252,9 @@
 
   "case.slot.footer": "页脚插槽",
 
-  "case.table.title": "表格组件"
+  "case.table.title": "表格组件",
+
+  "case.description_list.title": "描述列表"
 
 }
 

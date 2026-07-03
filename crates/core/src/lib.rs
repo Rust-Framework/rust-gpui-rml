@@ -37,6 +37,7 @@ pub mod observable;
 pub mod slot;
 pub mod two_way_binding;
 pub mod validate;
+pub mod value;
 pub mod view_model;
 pub mod window;
 

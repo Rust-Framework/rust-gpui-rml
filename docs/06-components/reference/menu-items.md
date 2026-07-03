@@ -28,7 +28,34 @@
 | `disabled` | 布尔 | `{expr}` | 禁用 |
 | `checked` | 布尔 | `{expr}` | 勾选态 |
 | `href` | 字符串 | `{expr}` | 链接项 |
-| `onclick` | 命令 | `{handler}` | 点击回调 |
+| `onclick` | 命令 | `{handler}` | 点击回调（强类型直接调用 `#[command]` 方法） |
+| `command` | `Arc<RelayCommand>` 字段 | `{field}` | 声明式命令绑定，点击经 `ICommand::execute` 调度（见下） |
+
+### `command={field}` 声明式命令绑定
+
+`onclick={method}` 是强类型直接调用——codegen 生成 `this.method(&ev, cx)`。`command={field}` 则是声明式命令绑定：ViewModel 持有 `Arc<RelayCommand>` 字段，点击时经 `ICommand::can_execute` / `execute` 动态调度，适用于命令可复用、可快捷键、可命令面板等场景（对齐 WPF `ICommand`）。
+
+```html
+<menu-item label="Save" command={save_command} />
+```
+
+```rust
+#[derive(Default)]
+#[component]
+pub struct MyView {
+    pub save_command: Arc<RelayCommand>,  // 框架提供 Default（no-op 空对象）
+}
+
+impl ILifecycle for MyView {
+    fn on_loaded(&mut self, _: &mut Window, cx: &mut Context<Self>) {
+        self.save_command = Arc::new(RelayCommand::new(cx, |this, cx| {
+            this.save(cx);
+        }));
+    }
+}
+```
+
+`command` 与 `onclick` 同时声明时，`command` 优先。详见 [4.4 命令系统 · 声明式命令绑定](../../04-code-behind/command-system.md)。
 
 ## 子节点语义
 

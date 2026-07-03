@@ -8,6 +8,7 @@ pub mod card;
 pub mod code_editor;
 pub mod codegen;
 pub mod component;
+pub mod description_list;
 pub mod event;
 pub mod expr;
 pub mod input;

@@ -14,6 +14,7 @@ use std::any::Any;
 use gpui::{App, SharedString, Window};
 
 use crate::contribution::IContribution;
+use crate::value::IValue;
 
 /// 命令执行上下文——封装 `Window` + `App` + 可选 `parameter`，提供命令执行所需能力。
 ///
@@ -66,20 +67,29 @@ pub trait ICommand: IContribution {
     }
 }
 
-/// 命令能力扩展 trait —— 让 `dyn IContribution` 可查询 `ICommand` 能力。
+/// 命令能力扩展 trait —— 让 `dyn IValue` 可查询 `ICommand` 能力。
 ///
 /// 框架内置：`#[contribute(command, ...)]` 宏自动注册能力 cast 函数。
 /// 业务自定义能力 trait 时，参考此模式编写等价 extension trait。
 pub trait CommandAbilityExt {
-    /// 若此贡献实现了 `ICommand`，返回命令引用；否则 `None`。
+    /// 若此值实现了 `ICommand`，返回命令引用；否则 `None`。
     fn as_command(&self) -> Option<&dyn ICommand>;
 }
 
 #[allow(unsafe_code)]
-impl CommandAbilityExt for dyn IContribution {
+impl CommandAbilityExt for dyn IValue {
     fn as_command(&self) -> Option<&dyn ICommand> {
         let erased = crate::ability::query::<dyn ICommand>(self)?;
         Some(unsafe { crate::ability::restore::<dyn ICommand>(erased) })
+    }
+}
+
+/// `dyn IContribution` 薄委托——trait upcast 到 `&dyn IValue` 后调用主 impl，
+/// 使现有 `&dyn IContribution` 调用点无需修改。
+impl CommandAbilityExt for dyn IContribution {
+    fn as_command(&self) -> Option<&dyn ICommand> {
+        let iv: &dyn IValue = self;
+        iv.as_command()
     }
 }
 
@@ -171,6 +181,14 @@ impl ICommand for RelayCommand {
 
     fn can_execute(&self, _ctx: &mut CallContext) -> bool {
         self.can_run.as_ref().map_or(true, |f| f())
+    }
+}
+
+/// 空对象模式——默认为 no-op 命令，使 `Arc<RelayCommand>` 字段可随 ViewModel
+/// `#[derive(Default)]` 自动初始化，`on_loaded` 中再替换为真实命令。
+impl Default for RelayCommand {
+    fn default() -> Self {
+        Self::action(|_cx: &mut App| {})
     }
 }
 

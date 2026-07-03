@@ -1,14 +1,14 @@
 # 3.5 值转换器
 
-> **本节目标**：掌握 `Converter` trait 的实现与使用，在绑定路径上进行类型转换或格式化。
+> **本节目标**：掌握 `IConverter` trait 的实现与使用，在绑定路径上进行类型转换或格式化。
 
 ## 3.5.1 值转换器的定义
 
 值转换器是绑定路径上的"过滤器"，在 ViewModel 字段值与 UI 显示值之间进行转换。
 
 ```
-ViewModel 字段 (i32)  ──[Converter]──▶  UI 显示 (SharedString)
-UI 输入 (SharedString) ──[Converter]──▶  ViewModel 字段 (i32)
+ViewModel 字段 (f64)     ──[IConverter]──▶  UI 显示 (SharedString)
+UI 输入 (SharedString)   ──[IConverter]──▶  ViewModel 字段 (f64)
 ```
 
 典型场景：
@@ -18,10 +18,10 @@ UI 输入 (SharedString) ──[Converter]──▶  ViewModel 字段 (i32)
 - 大小写转换：`"hello"` → `"HELLO"`
 - 日期格式化：时间戳 → `"2026-06-25"`
 
-## 3.5.2 Converter trait
+## 3.5.2 IConverter trait
 
 ```rust
-pub trait Converter: Send + Sync {
+pub trait IConverter: Send + Sync {
     type Source;  // ViewModel 侧的类型
     type Target;  // UI 侧的类型
 
@@ -29,6 +29,8 @@ pub trait Converter: Send + Sync {
     fn convert(&self, value: &Self::Source) -> Self::Target;
 
     /// UI → ViewModel：反向转换（双向绑定时需要）
+    ///
+    /// 返回 `Option` 表示反向转换可能失败。失败时 RML 保持 ViewModel 字段不变。
     fn convert_back(&self, value: &Self::Target) -> Option<Self::Source>;
 }
 ```
@@ -42,7 +44,7 @@ use rml::prelude::*;
 
 pub struct PriceConverter;
 
-impl Converter for PriceConverter {
+impl IConverter for PriceConverter {
     type Source = f64;
     type Target = SharedString;
 
@@ -68,7 +70,7 @@ pub enum Status {
 
 pub struct StatusConverter;
 
-impl Converter for StatusConverter {
+impl IConverter for StatusConverter {
     type Source = Status;
     type Target = SharedString;
 
@@ -103,28 +105,30 @@ impl Converter for StatusConverter {
 <input model={price | PriceConverter} />
 ```
 
-双向绑定时，`convert` 用于 ViewModel → UI，`convert_back` 用于 UI → ViewModel。
+双向绑定时，codegen 生成：
+- **正向同步（VM→UI）**：`PriceConverter.convert(&self.price).into()` —— 字段值经 `convert` 格式化后写入 `InputState`
+- **反向同步（UI→VM）**：`PriceConverter.convert_back(&value.to_string())` —— 用户输入经 `convert_back` 解析后回写 ViewModel 字段
+
+转换器是零字段 struct，codegen 直接以类型名调用静态方法风格生成代码，**无需注册**。
 
 ### 转换器链
 
 多个转换器可以串联：
 
 ```html
-<p>{value | TrimConverter | UpperCaseConverter}</p>
+<p>{value | Trim | UpperCase}</p>
 ```
 
-执行顺序：从左到右，前一个的输出作为后一个的输入。
+执行顺序：从左到右，前一个的输出作为后一个的输入。codegen 嵌套生成 `UpperCase.convert(Trim.convert(&self.value))`。
 
 ## 3.5.5 内置转换器
 
-RML 提供常用内置转换器：
+RML 内置以下转换器（均位于 `rml::prelude`，无需手动导入）：
 
 | 转换器             | 功能               | 示例                              |
 | --------------- | ---------------- | ------------------------------- |
-| `Currency`      | 货币格式化            | `1500.0` → `"¥1,500.00"`        |
+| `Currency`      | 货币格式化            | `1500.0` → `"¥1500.00"`         |
 | `Percent`       | 百分比格式化           | `0.85` → `"85%"`                |
-| `Date`          | 日期格式化            | 时间戳 → `"2026-06-25"`            |
-| `DateTime`      | 日期时间格式化          | 时间戳 → `"2026-06-25 14:30:00"`   |
 | `UpperCase`     | 转大写              | `"hello"` → `"HELLO"`           |
 | `LowerCase`     | 转小写              | `"HELLO"` → `"hello"`           |
 | `Trim`          | 去除首尾空白           | `" hello "` → `"hello"`         |
@@ -147,7 +151,7 @@ RML 提供常用内置转换器：
 | 参数化    | ❌ 无参数（通过类型参数化）         | ❌ 无参数             |
 | 缓存     | ❌ 每次绑定都执行              | ✅ 自动缓存            |
 | 适用场景   | 通用类型转换、格式化             | 特定 ViewModel 的派生值 |
-| 定义位置   | 独立 struct，实现 Converter | ViewModel 的方法     |
+| 定义位置   | 独立 struct，实现 `IConverter` | ViewModel 的方法     |
 
 ### 选择建议
 
@@ -155,72 +159,21 @@ RML 提供常用内置转换器：
 - **特定派生值**（如"已完成任务数"）：用计算属性
 - **简单一次性计算**：直接在插值中写表达式
 
-## 3.5.7 转换器的注册
-
-转换器需要在 ViewModel 中注册，RML 编译器才能识别：
-
-```rust
-#[derive(Model)]
-#[component]
-pub struct MyView {
-    pub price: f64,
-    pub status: Status,
-}
-
-impl MyView {
-    pub fn new() -> Self {
-        let mut view = Self {
-            price: 0.0,
-            status: Status::Loading,
-        };
-
-        // 注册转换器
-        view.register_converter("PriceConverter", PriceConverter);
-        view.register_converter("StatusConverter", StatusConverter);
-
-        view
-    }
-}
-```
-
-💡 **提示**：内置转换器无需注册，可直接使用。
-
-## 3.5.8 转换器的错误处理
+## 3.5.7 转换器的错误处理
 
 `convert_back` 返回 `Option`，表示反向转换可能失败：
 
 ```rust
-impl Converter for PriceConverter {
+impl IConverter for PriceConverter {
     fn convert_back(&self, value: &SharedString) -> Option<f64> {
         value.trim_start_matches('¥').parse().ok()
     }
 }
 ```
 
-如果反向转换失败，RML 会：
+如果反向转换失败（返回 `None`），RML 保持 ViewModel 字段不变，UI 显示值与 ViewModel 暂时不一致——下次正向同步时会用 ViewModel 的值重新格式化，自动恢复一致。
 
-1. 保持 ViewModel 字段不变
-2. 在 UI 上显示转换失败提示（可选）
-
-### 自定义错误提示
-
-```html
-<input
-    model={price | PriceConverter}
-    on_convert_error={handle_convert_error}
-/>
-<p if={convert_error.is_some()} class="error">{convert_error}</p>
-```
-
-```rust
-#[command]
-pub fn handle_convert_error(&mut self, error: &ConvertError, cx: &mut ViewContext<Self>) {
-    self.convert_error = Some(error.message.clone());
-    cx.notify();
-}
-```
-
-## 3.5.9 转换器的性能
+## 3.5.8 转换器的性能
 
 转换器在每次绑定时执行，没有缓存。因此：
 
@@ -229,17 +182,17 @@ pub fn handle_convert_error(&mut self, error: &ConvertError, cx: &mut ViewContex
 
 重量级计算应该用计算属性，享受缓存。
 
-## 3.5.10 完整示例：金额输入
+## 3.5.9 完整示例：金额输入
 
-需求：用户输入金额字符串，ViewModel 存储为 `f64`，显示时格式化为 `"¥1,500.00"`。
+需求：用户输入金额字符串，ViewModel 存储为 `f64`，显示时格式化为 `"¥1500.00"`。
 
 ```rust
-// converter.rs
+// converter.rs —— 直接定义 struct + impl IConverter，无需注册
 use rml::prelude::*;
 
 pub struct CurrencyConverter;
 
-impl Converter for CurrencyConverter {
+impl IConverter for CurrencyConverter {
     type Source = f64;
     type Target = SharedString;
 
@@ -259,8 +212,8 @@ impl Converter for CurrencyConverter {
 ```
 
 ```rust
-// view.rml.rs
-#[derive(Model)]
+// view.rml.rs —— ViewModel 仅声明字段，无需 register_converter
+#[derive(Default)]
 #[component]
 pub struct PaymentView {
     pub amount: f64,
@@ -268,20 +221,11 @@ pub struct PaymentView {
 }
 
 impl PaymentView {
-    pub fn new() -> Self {
-        let mut view = Self {
-            amount: 0.0,
-            error: None,
-        };
-        view.register_converter("CurrencyConverter", CurrencyConverter);
-        view
-    }
-
     #[command]
-    pub fn submit(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
+    pub fn submit(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         if self.amount <= 0.0 {
             self.error = Some("金额必须大于 0".into());
-            cx.notify();
+            // 宏自动注入：bump_version("error") + cx.notify()
             return;
         }
         // 提交逻辑...
@@ -301,12 +245,19 @@ impl PaymentView {
 </div>
 ```
 
-## 3.5.11 小结
+也可直接使用内置的 `Currency` 转换器，效果等价：
+
+```html
+<input model={amount | Currency} placeholder="¥0.00" />
+```
+
+## 3.5.10 小结
 
 值转换器是绑定路径上的"过滤器"：
 
-- **定义**：实现 `Converter` trait，提供 `convert` 和 `convert_back`
-- **使用**：在绑定中用 `|` 管道符，如 `{value | Converter}`
+- **定义**：实现 `IConverter` trait，提供 `convert`（正向）和 `convert_back`（反向）
+- **使用**：在绑定中用 `|` 管道符，如 `{value | Converter}` 或 `model={field | Converter}`
+- **无需注册**：转换器是零字段 struct，codegen 直接以类型名生成调用
 - **复用**：转换器是独立 struct，可在多个 ViewModel 中复用
 - **缓存**：转换器无缓存，适合轻量级转换
 

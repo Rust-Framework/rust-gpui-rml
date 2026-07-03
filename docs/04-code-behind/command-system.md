@@ -32,22 +32,21 @@ pub fn increment(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
 
 ## 4.4.2 ICommand trait
 
-RML 的命令系统基于 `ICommand` trait，借鉴自 WPF：
+RML 的命令系统基于 `ICommand` trait，借鉴自 WPF。`ICommand` 继承 `IContribution`——命令本身即是贡献点，可经统一 `register` 路由到 host：
 
 ```rust
-pub trait ICommand: Send + Sync {
-    /// 命令是否可执行
-    fn can_execute(&self) -> bool;
+pub trait ICommand: IContribution {
+    /// 执行命令（WPF: Execute）。ctx 提供 Window/App 访问能力。
+    fn execute(&self, ctx: &mut CallContext);
 
-    /// 执行命令
-    fn execute(&mut self, cx: &mut Context<Self>);
-
-    /// 命令可执行性变化时通知
-    fn can_execute_changed(&self) -> Option<Subscription>;
+    /// 是否可执行（WPF: CanExecute）。返回 false 时 UI 应禁用对应控件。
+    fn can_execute(&self, _ctx: &mut CallContext) -> bool { true }
 }
 ```
 
-`#[command]` 宏自动为标记的方法生成 `ICommand` 的实现，开发者通常不需要手动实现这个 trait。
+`CallContext` 封装 `&mut Window` + `&mut App` + 可选 `parameter`（对齐 WPF `Execute(parameter)`），替代旧的弱类型 `(&dyn Any, &mut App)` 参数。
+
+`#[command]` 宏生成的事件绑定直接调用强类型方法（绕过 trait，保留类型安全）；`ICommand` trait 用于声明式命令绑定（`command={field}`）、快捷键、命令面板等动态调度场景。开发者通常不需要手动实现这个 trait——框架提供 `RelayCommand` 默认实现。
 
 ## 4.4.3 `#[command]` 宏
 
@@ -473,7 +472,63 @@ async fn process_payment(amount: f64) -> Result<(), String> {
 }
 ```
 
-## 4.4.12 小结
+## 4.4.12 声明式命令绑定（command={field}）
+
+`onclick={method}` 是强类型直接调用——codegen 生成 `this.method(&ev, cx)`，类型安全但命令与事件绑定耦合。`command={field}` 则是声明式命令绑定（对齐 WPF `ICommand`）：ViewModel 持有 `Arc<RelayCommand>` 字段，UI 通过 `command={field}` 绑定，点击时经 `ICommand::can_execute` / `execute` 动态调度。
+
+### RelayCommand
+
+`RelayCommand` 是框架提供的 `ICommand` 默认实现（WPF `RelayCommand` / `DelegateCommand` 等价物），持有 `WeakEntity<T>` + 闭包：
+
+```rust
+pub struct MainWindow {
+    pub save_command: Arc<RelayCommand>,  // 框架提供 Default（no-op 空对象）
+}
+
+impl ILifecycle for MainWindow {
+    fn on_loaded(&mut self, _: &mut Window, cx: &mut Context<Self>) {
+        self.save_command = Arc::new(RelayCommand::new(cx, |this, cx| {
+            this.save(cx);
+        }));
+    }
+}
+```
+
+```html
+<menu-item label="Save" command={save_command} />
+```
+
+### 字段类型选择
+
+| 字段类型 | `#[derive(Default)]` | 适用场景 |
+|---|---|---|
+| `Arc<RelayCommand>` | ✅（框架提供 `Default: no-op`） | 命令字段为单一 `RelayCommand`（推荐） |
+| `Arc<dyn ICommand>` | ❌（`dyn` 无 `Default`） | 需多态（字段可能持有不同命令实现） |
+
+`RelayCommand` 实现了 `Default`（空对象模式——返回 no-op 命令），使 `Arc<RelayCommand>` 字段可随 ViewModel `#[derive(Default)]` 自动初始化，`on_loaded` 中再替换为真实命令。若字段需多态（`Arc<dyn ICommand>`），则需手写 `Default` 并显式初始化宏注入的 `__rml_*` 字段。
+
+### codegen 行为
+
+`command={save_command}` 生成 clone-Arc-out 闭包，点击时构造 `CallContext` 调度：
+
+```rust
+.on_click({
+    let weak = __rml_menu_weak.clone();
+    move |_ev, window, app| {
+        if let Some(entity) = weak.upgrade() {
+            let __rml_cmd = entity.update(app, |this, _cx| this.save_command.clone());
+            let mut __rml_ctx = rml_core::command::CallContext::new(window, app);
+            if __rml_cmd.can_execute(&mut __rml_ctx) {
+                __rml_cmd.execute(&mut __rml_ctx);
+            }
+        }
+    }
+})
+```
+
+`command` 与 `onclick` 同时声明时，`command` 优先。详见 [6.x menu-item · command 属性](../06-components/reference/menu-items.md)。
+
+## 4.4.13 小结
 
 命令系统是 RML 事件处理的核心抽象：
 
@@ -482,6 +537,7 @@ async fn process_payment(amount: f64) -> Result<(), String> {
 - **`can_execute`**：控制命令的启用状态
 - **事件对象**：命令方法接收事件对象，可访问事件信息
 - **异步支持**：命令可以启动异步任务
+- **声明式绑定**：`command={field}` 经 `ICommand` 动态调度（`RelayCommand` + `Arc<RelayCommand>` 字段）
 
 掌握命令系统，你就能把任何业务逻辑暴露给 UI 调用。
 

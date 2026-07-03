@@ -1,14 +1,18 @@
 //! 贡献点契约 —— 能力贡献 / 可视化贡献 / 受理方 / 桥接注册表
 //!
 //! 框架不存储贡献数据——host 主动受理（`add`/`remove`），registry 仅按 `host_id` 路由。
-//! 能力查询（`ICommand`/`IVisualContribution`）经 `CommandAbilityExt`/`VisualAbilityExt`
+//! 能力查询（`ICommand`/`IVisualContribution`/`IContribution`）经 `*AbilityExt`
 //! extension trait 实现，核心 trait 不枚举贡献类型。
+//!
+//! `IContribution: IValue`——贡献是值对象的特化。UI 组件依赖 `IValue` 空接口，
+//! 通过 `as_contribution()`/`as_visual()` 能力查询按需提取元数据与视图。
 
-use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, SharedString, Window};
+
+use crate::value::IValue;
 
 /// 贡献注册选项（纯数据，builder 模式）
 ///
@@ -56,9 +60,10 @@ impl ContributionOptions {
 
 /// 能力贡献点：仅元数据，不渲染。
 /// 业务贡献（菜单项、状态栏项、案例树节点等）实现此 trait。
-/// 添加 `Any` supertrait——使 `dyn IContribution` 支持 trait upcasting 到 `dyn Any`，
-/// 供能力查询（`ability::query`）获取具体 `TypeId`。
-pub trait IContribution: Send + Sync + Any {
+///
+/// `IContribution: IValue`——贡献是值对象的特化，`IValue: Send + Sync + Any`
+/// 提供 trait upcasting 到 `dyn Any`，供能力查询获取具体 `TypeId`。
+pub trait IContribution: IValue {
     fn id(&self) -> &str;
     fn name(&self) -> SharedString;
     fn description(&self) -> SharedString {
@@ -77,20 +82,46 @@ pub trait IVisualContribution: IContribution {
     fn render(&self, window: &mut Window, cx: &mut App) -> AnyElement;
 }
 
-/// 视觉能力扩展 trait —— 让 `dyn IContribution` 可查询 `IVisualContribution` 能力。
+/// 视觉能力扩展 trait —— 让 `dyn IValue` 可查询 `IVisualContribution` 能力。
 ///
 /// 框架内置：`#[contribute]` + `#[component]` 叠加时宏自动注册能力 cast 函数。
 /// 业务自定义能力 trait 时，参考此模式编写等价 extension trait。
 pub trait VisualAbilityExt {
-    /// 若此贡献实现了 `IVisualContribution`，返回视觉引用；否则 `None`。
+    /// 若此值实现了 `IVisualContribution`，返回视觉引用；否则 `None`。
     fn as_visual(&self) -> Option<&dyn IVisualContribution>;
 }
 
 #[allow(unsafe_code)]
-impl VisualAbilityExt for dyn IContribution {
+impl VisualAbilityExt for dyn IValue {
     fn as_visual(&self) -> Option<&dyn IVisualContribution> {
         let erased = crate::ability::query::<dyn IVisualContribution>(self)?;
         Some(unsafe { crate::ability::restore::<dyn IVisualContribution>(erased) })
+    }
+}
+
+/// `dyn IContribution` 薄委托——trait upcast 到 `&dyn IValue` 后调用主 impl，
+/// 使现有 `&dyn IContribution` 调用点无需修改。
+impl VisualAbilityExt for dyn IContribution {
+    fn as_visual(&self) -> Option<&dyn IVisualContribution> {
+        let iv: &dyn IValue = self;
+        iv.as_visual()
+    }
+}
+
+/// 贡献能力扩展 trait —— 让 `dyn IValue` 可查询 `IContribution` 能力。
+///
+/// UI 组件持有 `Vec<Arc<dyn IValue>>` 时，通过 `as_contribution()?.name()` 获取标题。
+/// `#[contribute]` 宏为每个贡献结构体注册 `dyn IContribution` 能力 cast 函数。
+pub trait ContributionAbilityExt {
+    /// 若此值实现了 `IContribution`，返回贡献引用；否则 `None`。
+    fn as_contribution(&self) -> Option<&dyn IContribution>;
+}
+
+#[allow(unsafe_code)]
+impl ContributionAbilityExt for dyn IValue {
+    fn as_contribution(&self) -> Option<&dyn IContribution> {
+        let erased = crate::ability::query::<dyn IContribution>(self)?;
+        Some(unsafe { crate::ability::restore::<dyn IContribution>(erased) })
     }
 }
 
