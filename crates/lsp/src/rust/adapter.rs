@@ -11,7 +11,8 @@ use lsp_types::{CompletionItemKind, DiagnosticSeverity, Position, Range, Url};
 
 use super::host::RaHost;
 use super::query::{
-    CompletionEntry, HoverInfo, RustDiagnostic, RustSemanticQuery, SymbolInfo, SymbolLocation,
+    CompletionEntry, HoverInfo, RustDiagnostic, RustSemanticQuery, SymbolInfo, SymbolKind,
+    SymbolLocation,
 };
 
 /// RA 适配器：桥接 `RustSemanticQuery` 到 `ra_ap_ide::Analysis`
@@ -292,13 +293,76 @@ impl RustSemanticQuery for RaAdapter {
 
     fn resolve_member(
         &self,
-        _rml_rs_uri: &Url,
-        _struct_name: &str,
-        _member: &str,
+        rml_rs_uri: &Url,
+        struct_name: &str,
+        member: &str,
     ) -> Option<SymbolInfo> {
-        // TODO Phase 4：基于 HIR 查询 struct 的 field/method 类型 + 定义位置
-        // Phase 3 由 coordinator 使用 StructMetadata.field_types 替代
-        None
+        let file_id = url_to_file_id(&self.host, rml_rs_uri)?;
+        let analysis = self.host.analysis()?;
+        let source_file = analysis.parse(file_id).ok()?;
+
+        // 阶段 1：在 with_db 内执行 HIR 查询，收集原始数据
+        // （不能在 with_db 内调用 range_to_location，否则会重入锁死）
+        let member_data: Option<(SymbolKind, String, ra_ap_ide::FileId, ra_ap_ide::TextRange)> =
+            self.host.with_db(|db| {
+                use ra_ap_hir::{AssocItem, HasSource, HirDisplay, Semantics};
+                use ra_ap_syntax::AstNode;
+
+                let sema = Semantics::new(db);
+
+                // 在文件语法树中查找名称匹配的 ast::Struct，转为 hir::Struct
+                let hir_struct = source_file
+                    .syntax()
+                    .descendants()
+                    .filter_map(ra_ap_syntax::ast::Struct::cast)
+                    .find_map(|s| {
+                        let h = sema.to_struct_def(&s)?;
+                        (h.name(db).as_str() == struct_name).then_some(h)
+                    })?;
+
+                let krate = hir_struct.module(db).krate(db);
+                let display_target = krate.to_display_target(db);
+
+                // 优先查字段
+                for field in hir_struct.fields(db) {
+                    if field.name(db).as_str() == member {
+                        let type_str = field.ty(db).display(db, display_target).to_string();
+                        let src = field.source(db)?;
+                        let fid = src.file_id.original_file(db).file_id(db);
+                        let range = src.value.syntax().text_range();
+                        return Some((SymbolKind::Field, type_str, fid, range));
+                    }
+                }
+
+                // 字段未命中，查 impl 块中的方法
+                let struct_ty = hir_struct.ty(db);
+                for impl_ in ra_ap_hir::Impl::all_for_type(db, struct_ty) {
+                    for item in impl_.items(db) {
+                        if let AssocItem::Function(f) = item {
+                            if f.name(db).as_str() == member {
+                                let type_str = f.display(db, display_target).to_string();
+                                let src = f.source(db)?;
+                                let fid = src.file_id.original_file(db).file_id(db);
+                                let range = src.value.syntax().text_range();
+                                return Some((SymbolKind::Method, type_str, fid, range));
+                            }
+                        }
+                    }
+                }
+
+                None
+            })?;
+
+        // 阶段 2：在 with_db 外将 (FileId, TextRange) 转为 SymbolLocation
+        let (kind, type_str, fid, range) = member_data?;
+        let location = range_to_location(&self.host, fid, range);
+        Some(SymbolInfo {
+            name: member.to_string(),
+            kind,
+            type_str: Some(type_str),
+            doc: None,
+            location,
+        })
     }
 
     fn find_struct(&self, struct_name: &str) -> Option<SymbolLocation> {
@@ -314,19 +378,39 @@ impl RustSemanticQuery for RaAdapter {
         range_to_location(&self.host, nav.file_id, range)
     }
 
-    fn struct_slots(&self, _rml_rs_uri: &Url, _struct_name: &str) -> Vec<String> {
-        // Phase 3 由 coordinator 使用 StructMetadata.slots 替代
-        Vec::new()
+    fn struct_slots(&self, rml_rs_uri: &Url, struct_name: &str) -> Vec<String> {
+        let Some(file_id) = url_to_file_id(&self.host, rml_rs_uri) else {
+            return Vec::new();
+        };
+        let Some(analysis) = self.host.analysis() else {
+            return Vec::new();
+        };
+        let Ok(source_file) = analysis.parse(file_id) else {
+            return Vec::new();
+        };
+
+        use ra_ap_syntax::ast::{AstNode, HasName, Struct};
+        let ast_struct = source_file
+            .syntax()
+            .descendants()
+            .filter_map(Struct::cast)
+            .find(|s| s.name().is_some_and(|n| n.text() == struct_name));
+
+        let Some(ast_struct) = ast_struct else {
+            return Vec::new();
+        };
+
+        parse_slots_from_attrs(&ast_struct)
     }
 
     fn command_signature(
         &self,
-        _rml_rs_uri: &Url,
-        _struct_name: &str,
-        _method: &str,
+        rml_rs_uri: &Url,
+        struct_name: &str,
+        method: &str,
     ) -> Option<SymbolInfo> {
-        // TODO Phase 4：基于 HIR 查询 #[command] 方法签名
-        None
+        // 委托 resolve_member：#[command] 过滤由调用方通过 StructMetadata.commands 完成
+        self.resolve_member(rml_rs_uri, struct_name, method)
     }
 
     fn is_ready(&self) -> bool {
@@ -337,6 +421,46 @@ impl RustSemanticQuery for RaAdapter {
 // ──────────────────────────────────────────────────────────────────────────
 // 类型映射辅助
 // ──────────────────────────────────────────────────────────────────────────
+
+/// 从 `#[component(slots = ["header", "footer"])]` 属性解析 slot 名称列表
+fn parse_slots_from_attrs(s: &ra_ap_syntax::ast::Struct) -> Vec<String> {
+    use ra_ap_syntax::ast::{AstNode, HasAttrs};
+    for attr in s.attrs() {
+        let is_component = attr
+            .path()
+            .is_some_and(|p| p.syntax().text() == "component");
+        if !is_component {
+            continue;
+        }
+        // 取属性完整文本（如 `#[component(slots = ["header", "footer"])]`）
+        let attr_text = attr.syntax().text().to_string();
+        return extract_slot_names(&attr_text);
+    }
+    Vec::new()
+}
+
+/// 从属性参数字符串（如 `#[component(slots = ["header", "footer"])]`）提取 slot 名
+fn extract_slot_names(attr_args: &str) -> Vec<String> {
+    // 跳过 #[ 前缀，避免将属性语法的 [ 误识别为数组起始
+    let search_start = if attr_args.starts_with("#[") { 2 } else { 0 };
+    let Some(start) = attr_args[search_start..].find('[') else {
+        return Vec::new();
+    };
+    let start = start + search_start;
+    let Some(end) = attr_args[start..].find(']') else {
+        return Vec::new();
+    };
+    let array_str = &attr_args[start + 1..start + end];
+    array_str
+        .split(',')
+        .filter_map(|s| {
+            let s = s.trim();
+            (s.starts_with('"') && s.ends_with('"') && s.len() >= 2).then(|| {
+                s[1..s.len() - 1].to_string()
+            })
+        })
+        .collect()
+}
 
 /// RA Severity → LSP DiagnosticSeverity
 fn map_severity(s: ra_ap_ide::Severity) -> DiagnosticSeverity {
@@ -377,5 +501,75 @@ fn map_completion_kind(k: ra_ap_ide::CompletionItemKind) -> CompletionItemKind {
             SK::Label => CompletionItemKind::REFERENCE,
             _ => CompletionItemKind::TEXT,
         },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn extract_slot_names_basic() {
+        let names = extract_slot_names(r#"(slots = ["header", "footer"])"#);
+        assert_eq!(names, vec!["header", "footer"]);
+    }
+
+    #[test]
+    fn extract_slot_names_three_slots() {
+        let names = extract_slot_names(r#"(slots = ["header", "footer", "default"])"#);
+        assert_eq!(names, vec!["header", "footer", "default"]);
+    }
+
+    #[test]
+    fn extract_slot_names_empty_array() {
+        let names = extract_slot_names(r#"(slots = [])"#);
+        assert!(names.is_empty());
+    }
+
+    #[test]
+    fn extract_slot_names_no_array_returns_empty() {
+        let names = extract_slot_names(r#"(other = true)"#);
+        assert!(names.is_empty());
+    }
+
+    #[test]
+    fn parse_slots_from_ast_struct() {
+        use ra_ap_syntax::ast::{AstNode, HasName, Struct};
+        let source = r#"
+            #[component(slots = ["header", "footer", "default"])]
+            struct MyComponent { pub count: i32 }
+        "#;
+        let parse = ra_ap_syntax::SourceFile::parse(
+            source,
+            ra_ap_syntax::Edition::Edition2021,
+        );
+        let tree = parse.tree();
+        let s = tree
+            .syntax()
+            .descendants()
+            .filter_map(Struct::cast)
+            .find(|s| s.name().is_some_and(|n| n.text() == "MyComponent"))
+            .unwrap();
+        let slots = parse_slots_from_attrs(&s);
+        assert_eq!(slots, vec!["header", "footer", "default"]);
+    }
+
+    #[test]
+    fn parse_slots_no_component_attr_returns_empty() {
+        use ra_ap_syntax::ast::{AstNode, HasName, Struct};
+        let source = r#"struct Plain { pub v: i32 }"#;
+        let parse = ra_ap_syntax::SourceFile::parse(
+            source,
+            ra_ap_syntax::Edition::Edition2021,
+        );
+        let tree = parse.tree();
+        let s = tree
+            .syntax()
+            .descendants()
+            .filter_map(Struct::cast)
+            .find(|s| s.name().is_some_and(|n| n.text() == "Plain"))
+            .unwrap();
+        let slots = parse_slots_from_attrs(&s);
+        assert!(slots.is_empty());
     }
 }

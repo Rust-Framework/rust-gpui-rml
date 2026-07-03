@@ -76,9 +76,9 @@ pub struct MainWindow {
     active_panel_id: String,
     show_chrome: bool,
     // MVVM 控件数据
-    activity_panels: ActivityPanels,
-    menu_items: MenuItems,
-    status_items: StatusBarItems,
+    activity_panels: Vec<Arc<dyn IActivityPanel>>,
+    menu_items: Vec<Arc<dyn IMenuItem>>,
+    status_items: Vec<Arc<dyn IStatusBarItem>>,
     // Stateful 子组件
     case_activity_panel: Option<Entity<CaseActivityPanel>>,
     // 子组件 Entity

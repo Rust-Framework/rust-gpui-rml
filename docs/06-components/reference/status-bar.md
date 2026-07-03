@@ -2,7 +2,7 @@
 
 ## 概述
 
-小写标签 `<status_bar>` 路由到 `rml_ui::RmlStatusBar`，包装 gpui-component `StatusBar` 并提供 MVVM 绑定。通过 `items={status_items}` 绑定 `StatusBarItems`（`Vec<Arc<dyn IStatusBarItem>>`）。
+小写标签 `<status_bar>` 路由到 `rml_ui::RmlStatusBar`，包装 gpui-component `StatusBar` 并提供 MVVM 绑定。通过 `items={status_items}` 绑定 `Vec<Arc<dyn IStatusBarItem>>`。
 
 > 区别于 PascalCase `<StatusBar>`（gpui-component 原生容器，见 [gpui-status-bar.md](./gpui-status-bar.md)）。Shell 应用应使用 `<status_bar>`。
 
@@ -18,7 +18,7 @@
 
 | 属性 | 类型 | 绑定 | 说明 |
 |------|------|------|------|
-| `items` | `StatusBarItems` | `{status_items}` | 状态栏项列表 |
+| `items` | `Vec<Arc<dyn IStatusBarItem>>` | `{status_items}` | 状态栏项列表 |
 
 ## 事件
 
@@ -31,7 +31,7 @@
 使用 `rml_app::contribution::map_status_items(host_id, cx)`。
 
 ```rust
-pub fn status_items_from_host<C>(cx: &gpui::Context<C>, host_id: &str) -> StatusBarItems {
+pub fn status_items_from_host<C>(cx: &gpui::Context<C>, host_id: &str) -> Vec<Arc<dyn IStatusBarItem>> {
     // 读取 status host → StatusBarItem::new(name).align(Left|Right)
 }
 ```
@@ -39,7 +39,7 @@ pub fn status_items_from_host<C>(cx: &gpui::Context<C>, host_id: &str) -> Status
 ViewModel：
 
 ```rust
-status_items: StatusBarItems,
+status_items: Vec<Arc<dyn IStatusBarItem>>,
 
 fn refresh_shell_bindings(&mut self, cx: &mut Context<Self>) {
     self.status_items = bindings::status_items_from_host(cx, hosts::STATUS);

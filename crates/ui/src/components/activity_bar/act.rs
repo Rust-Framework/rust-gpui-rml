@@ -3,21 +3,28 @@
 use std::sync::Arc;
 
 use gpui::{App, SharedString, Window};
-use gpui_component::IconName;
+use rml_core::command::{CallContext, ICommand};
+use rml_core::contribution::IContribution;
 
 use super::traits::IActivityAct;
 
 /// 活动栏底部动作项
 pub struct ActivityAct {
-    icon: IconName,
+    id: String,
+    icon: SharedString,
     title: SharedString,
     on_click: Option<Arc<dyn Fn(&mut Window, &mut App) + Send + Sync>>,
 }
 
 impl ActivityAct {
-    pub fn new(icon: IconName, title: impl Into<SharedString>) -> Self {
+    pub fn new(
+        id: impl Into<String>,
+        icon: impl Into<SharedString>,
+        title: impl Into<SharedString>,
+    ) -> Self {
         Self {
-            icon,
+            id: id.into(),
+            icon: icon.into(),
             title: title.into(),
             on_click: None,
         }
@@ -36,16 +43,24 @@ impl ActivityAct {
     }
 }
 
-impl IActivityAct for ActivityAct {
-    fn icon(&self) -> IconName {
-        self.icon.clone()
+impl IContribution for ActivityAct {
+    fn id(&self) -> &str {
+        &self.id
     }
-    fn title(&self) -> SharedString {
+    fn name(&self) -> SharedString {
         self.title.clone()
     }
-    fn on_click(&self, window: &mut Window, cx: &mut App) {
+    fn icon(&self) -> Option<SharedString> {
+        Some(self.icon.clone())
+    }
+}
+
+impl ICommand for ActivityAct {
+    fn execute(&self, ctx: &mut CallContext) {
         if let Some(f) = &self.on_click {
-            f(window, cx);
+            f(ctx.window, ctx.app);
         }
     }
 }
+
+impl IActivityAct for ActivityAct {}

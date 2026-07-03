@@ -18,8 +18,8 @@
 
 | 属性 | 类型 | 绑定 | 说明 |
 |------|------|------|------|
-| `panels` | `ActivityPanels` | `{activity_panels}` | `Vec<Arc<dyn IActivityPanel>>`，面板图标与激活态 |
-| `actions` | `ActivityActs` | `{actions}` | 底部动作按钮列表（可选） |
+| `panels` | `Vec<Arc<dyn IActivityPanel>>` | `{activity_panels}` | 面板图标与激活态 |
+| `actions` | `Vec<Arc<dyn IActivityAct>>` | `{actions}` | 底部动作按钮列表（可选） |
 
 静态属性（`label`、`primary` 等通用属性）对 ActivityBar **无效**。
 
@@ -34,7 +34,7 @@
 ### ViewModel 字段
 
 ```rust
-activity_panels: ActivityPanels,
+activity_panels: Vec<Arc<dyn IActivityPanel>>,
 active_panel_id: String,
 ```
 
@@ -83,7 +83,7 @@ pub fn on_panel_change(&mut self, id: &SharedString, cx: &mut Context<Self>) {
 ## 常见错误
 
 1. **在 `panels` 里塞 UI 内容** — `panels` 只传元数据；内容放子节点。
-2. **忘记 `refresh_shell_bindings`** — 切换 `active_panel_id` 后需重建 `ActivityPanels` 以更新 `is_activated()`。
+2. **忘记 `refresh_shell_bindings`** — 切换 `active_panel_id` 后需重建 `Vec<Arc<dyn IActivityPanel>>` 以更新 `is_activated()`。
 3. **子节点始终渲染** — 未用 `if` 过滤时，所有面板内容会叠在一起。
 
 ## 相关组件

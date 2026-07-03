@@ -14,6 +14,7 @@
 //! | `semantics` | 绑定路径/命令名解析 | SemanticModel |
 //! | `features` | 补全/悬停提供器（组合 syntax + semantics + engine registry） | - |
 
+pub mod crosslang;
 pub mod features;
 pub mod handlers;
 pub mod rust;

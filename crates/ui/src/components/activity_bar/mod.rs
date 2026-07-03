@@ -10,6 +10,7 @@
 
 mod act;
 mod bar;
+mod icon;
 mod panel;
 mod traits;
 mod visual_panel;

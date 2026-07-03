@@ -9,22 +9,35 @@
 //! 持有 `WeakEntity<T>` + 闭包，用于 ViewModel 字段绑定（`command={field}`）。
 //! 不作为贡献注册（dummy `id`/`name`）。
 
+use std::any::Any;
+
 use gpui::{App, SharedString, Window};
 
 use crate::contribution::IContribution;
 
-/// 命令执行上下文——封装 `Window` + `App`，提供命令执行所需能力。
+/// 命令执行上下文——封装 `Window` + `App` + 可选 `parameter`，提供命令执行所需能力。
 ///
-/// 替代旧 `(&dyn Any, &mut App)` 弱类型参数。命令贡献 struct 通过 `self` 携带自身状态，
-/// 无需外部 parameter；`CallContext` 提供 `Window`/`App` 访问能力。
+/// 对齐 WPF `ICommand.Execute(object parameter)`：`parameter` 为 `Option<&dyn Any>`，
+/// 命令实现通过 `downcast_ref` 还原具体类型。大多数命令无需 parameter，`new()` 默认 `None`。
 pub struct CallContext<'a> {
     pub window: &'a mut Window,
     pub app: &'a mut App,
+    pub parameter: Option<&'a dyn Any>,
 }
 
 impl<'a> CallContext<'a> {
     pub fn new(window: &'a mut Window, app: &'a mut App) -> Self {
-        Self { window, app }
+        Self {
+            window,
+            app,
+            parameter: None,
+        }
+    }
+
+    /// 携带命令参数（Builder 风格，对齐 WPF `ICommand.Execute(parameter)`）。
+    pub fn with_parameter(mut self, parameter: &'a dyn Any) -> Self {
+        self.parameter = Some(parameter);
+        self
     }
 }
 
@@ -41,7 +54,7 @@ impl<'a> CallContext<'a> {
 pub trait ICommand: IContribution {
     /// 执行命令（WPF: `Execute`）。
     ///
-    /// `ctx` 提供 `Window`/`App` 访问能力。命令 struct 自身携带状态（`self`）。
+    /// `ctx` 提供 `Window`/`App` 访问能力，`ctx.parameter` 携带可选命令参数（对齐 WPF `Execute(parameter)`）。
     fn execute(&self, ctx: &mut CallContext);
 
     /// 是否可执行（WPF: `CanExecute`）。

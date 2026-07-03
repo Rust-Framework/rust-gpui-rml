@@ -1,28 +1,28 @@
-//! `ActivityPanel` —— 活动栏面板项默认实现（纯元数据，无 `panel` 内容）
+//! `ActivityPanel` —— 活动栏面板项默认实现（纯元数据，`render` 返回空内容）
 
 use std::sync::Arc;
 
-use gpui::SharedString;
-use gpui_component::IconName;
+use gpui::{AnyElement, App, IntoElement, SharedString, Window};
+use rml_core::contribution::{IContribution, IVisualContribution};
 
 use super::traits::IActivityPanel;
 
-/// 活动栏面板项（纯元数据，无 `panel` 内容）
+/// 活动栏面板项（纯元数据，`render` 返回空 div）
 pub struct ActivityPanel {
-    id: SharedString,
-    icon: IconName,
+    id: String,
+    icon: SharedString,
     title: SharedString,
 }
 
 impl ActivityPanel {
     pub fn new(
-        id: impl Into<SharedString>,
-        icon: IconName,
+        id: impl Into<String>,
+        icon: impl Into<SharedString>,
         title: impl Into<SharedString>,
     ) -> Self {
         Self {
             id: id.into(),
-            icon,
+            icon: icon.into(),
             title: title.into(),
         }
     }
@@ -32,14 +32,22 @@ impl ActivityPanel {
     }
 }
 
-impl IActivityPanel for ActivityPanel {
-    fn id(&self) -> SharedString {
-        self.id.clone()
+impl IContribution for ActivityPanel {
+    fn id(&self) -> &str {
+        &self.id
     }
-    fn icon(&self) -> IconName {
-        self.icon.clone()
-    }
-    fn title(&self) -> SharedString {
+    fn name(&self) -> SharedString {
         self.title.clone()
     }
+    fn icon(&self) -> Option<SharedString> {
+        Some(self.icon.clone())
+    }
 }
+
+impl IVisualContribution for ActivityPanel {
+    fn render(&self, _window: &mut Window, _cx: &mut App) -> AnyElement {
+        gpui::div().into_any_element()
+    }
+}
+
+impl IActivityPanel for ActivityPanel {}

@@ -1,23 +1,23 @@
-//! ActivityBar 相关 trait
+//! ActivityBar 扩展接口 —— 视觉贡献 / 命令贡献的活动栏特化
+//!
+//! 两个 trait 均为空扩展：图标沿用 `IContribution::icon`（字符串），由 `icon::resolve_icon`
+//! 在渲染时解析为 `AnyElement`（URL 文件地址 → `Svg::external_path`；非 URL → 内置 `IconName`）。
 
-use gpui::{AnyElement, App, SharedString, Window};
-use gpui_component::IconName;
+use rml_core::command::ICommand;
+use rml_core::contribution::IVisualContribution;
 
-/// 活动栏面板项接口
-pub trait IActivityPanel: Send + Sync + 'static {
-    fn id(&self) -> SharedString;
-    fn icon(&self) -> IconName;
-    fn title(&self) -> SharedString;
-    /// 面板内容。`ActivityBar` 在渲染时调用当前激活面板的 `panel`。
-    fn panel(&self, window: &mut Window, cx: &mut App) -> Option<AnyElement> {
-        let _ = (window, cx);
-        None
-    }
-}
+/// 活动栏面板扩展接口。
+///
+/// `IActivityPanel: IVisualContribution`——面板本身是视觉贡献：
+/// - `IContribution::id` / `name` 提供元数据（`name` 作按钮 tooltip）
+/// - `IContribution::icon` 提供图标字符串（URL 文件地址或内置图标名）
+/// - `IVisualContribution::render` 提供面板内容
+pub trait IActivityPanel: IVisualContribution {}
 
-/// 活动栏底部动作项接口
-pub trait IActivityAct: Send + Sync + 'static {
-    fn icon(&self) -> IconName;
-    fn title(&self) -> SharedString;
-    fn on_click(&self, window: &mut Window, cx: &mut App);
-}
+/// 活动栏底部动作扩展接口。
+///
+/// `IActivityAct: ICommand`——动作本身是命令：
+/// - `IContribution::id` / `name` 提供元数据（`name` 作按钮 tooltip）
+/// - `IContribution::icon` 提供图标字符串（URL 文件地址或内置图标名）
+/// - `ICommand::execute` 提供点击行为
+pub trait IActivityAct: ICommand {}
