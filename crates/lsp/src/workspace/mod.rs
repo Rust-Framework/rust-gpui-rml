@@ -68,6 +68,16 @@ impl Workspace {
         self.index.register_pair(rml_uri, rml_rs_uri);
     }
 
+    /// 自动配对 .rml → .rml.rs（同目录同名约定）
+    pub fn auto_pair(&mut self, rml_uri: &Url) -> Option<Url> {
+        self.index.auto_pair(rml_uri)
+    }
+
+    /// 获取 .rml 对应的 code-behind URI
+    pub fn codebehind_uri(&self, rml_uri: &Url) -> Option<&Url> {
+        self.index.codebehind_uri(rml_uri)
+    }
+
     /// 项目索引引用（供 features 查询）
     pub fn index(&self) -> &ProjectIndex {
         &self.index

@@ -3,3 +3,4 @@
 pub mod connection;
 pub mod conv;
 pub mod dispatch;
+pub mod doctype;

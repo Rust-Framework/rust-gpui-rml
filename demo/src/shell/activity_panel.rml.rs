@@ -5,7 +5,7 @@ use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::TreeState;
 
-use crate::shell::shell_chrome::{map_case_tree_items, VisualEntry};
+use crate::shell::shell_chrome::{map_case_tree_items, ContribEntry};
 use crate::shell::DemoShellHost;
 
 /// ActivityPanel 双重角色：
@@ -25,8 +25,8 @@ use crate::shell::DemoShellHost;
 #[derive(Default)]
 pub struct ActivityPanel {
     tree_state: Option<gpui::Entity<TreeState>>,
-    // 视觉贡献存储：case 贡献（视觉，由 add_visual 受理）
-    case_entries: std::sync::RwLock<Vec<VisualEntry>>,
+    // 案例贡献存储（视觉，由 add 受理）
+    case_entries: std::sync::RwLock<Vec<ContribEntry>>,
     // host handle receiver
     host_rx: Option<rml_core::flume::Receiver<rml_app::contribution::HostOp>>,
 }
@@ -48,15 +48,12 @@ impl IContributionHost for ActivityPanel {
         Self::ID
     }
 
-    fn add_visual(
-        &self,
-        contribution: Arc<dyn IVisualContribution>,
-        options: ContributionOptions,
-    ) {
+    fn add(&self, contribution: Arc<dyn IContribution>, options: Option<ContributionOptions>) {
+        let opts = options.unwrap_or_default();
         self.case_entries
             .write()
             .unwrap()
-            .push((contribution, options));
+            .push((contribution, opts));
     }
 
     fn remove(&self, contribution_id: &str) {
@@ -71,7 +68,7 @@ impl ILifecycle for ActivityPanel {
         let rx = Self::__rml_install_host(cx.entity(), cx);
         self.host_rx = Some(rx);
 
-        // 2. drain 队列中的 HostOp → 调用自身 IContributionHost::add_visual
+        // 2. drain 队列中的 HostOp → 调用自身 IContributionHost::add
         if let Some(rx) = &self.host_rx {
             rml_app::contribution::drain_host_ops(rx, self);
         }

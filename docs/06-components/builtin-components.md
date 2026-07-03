@@ -70,6 +70,7 @@ RML 组件来自两个互不混淆的层次：
 | `DropdownMenu` | [dropdown-menu.md](./reference/dropdown-menu.md) |
 | `MenuItem` / `MenuSeparator` | [menu-items.md](./reference/menu-items.md) |
 | `AppMenuBar` | [app-menu-bar.md](./reference/app-menu-bar.md) |
+| `accordion` / `Accordion` | [accordion.md](./reference/accordion.md) |
 
 ## 6.1.3 基础轨 HTML 标签
 

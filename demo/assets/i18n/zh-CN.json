@@ -47,6 +47,16 @@
 
   "case.accordion.title": "折叠面板",
 
+  "case.avatar.title": "头像",
+
+  "case.avatar.image": "图片头像",
+
+  "case.avatar.initials": "首字母回退",
+
+  "case.avatar.placeholder": "占位图标",
+
+  "case.avatar.group": "头像分组",
+
   "case.accordion.basic": "基础用法",
 
   "case.accordion.multiple": "允许多项展开",

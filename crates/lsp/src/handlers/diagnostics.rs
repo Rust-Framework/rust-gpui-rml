@@ -13,6 +13,7 @@ use lsp_types::{Diagnostic, DiagnosticSeverity, Position, Range};
 use rust_rml_engine::compiler::validator;
 use rust_rml_engine::compiler::UserComponentInfo;
 
+use crate::server::connection::ServerState;
 use crate::server::conv;
 use crate::semantics::diagnostics::Severity;
 use crate::workspace::Workspace;
@@ -93,4 +94,21 @@ fn root_span(root: &rust_rml_engine::parser::ast::Node) -> rust_rml_engine::pars
         Node::Element(e) => e.span,
         _ => rust_rml_engine::parser::Span::empty(),
     }
+}
+
+/// 收集 `.rml.rs` 代码后置文件的诊断（来自 rust-analyzer 后端）
+pub fn collect_rust(uri: &lsp_types::Url, state: &ServerState) -> Vec<Diagnostic> {
+    state
+        .rust_query
+        .diagnostics(uri)
+        .into_iter()
+        .map(|d| Diagnostic {
+            range: d.range,
+            severity: Some(d.severity),
+            message: d.message,
+            code: d.code.map(lsp_types::NumberOrString::String),
+            source: Some("rust-analyzer".to_string()),
+            ..Default::default()
+        })
+        .collect()
 }

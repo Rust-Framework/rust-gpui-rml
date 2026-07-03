@@ -226,19 +226,21 @@ gpui::div()
 
 💡 **设计要点**：生成的代码与手写代码完全等价，没有任何运行时开销。你可以用 `cargo rml-expand` 命令查看生成的完整代码，详见 [第 10 章 · 调试技巧](../10-advanced/debugging.md)。
 
-## 2.2.9 扩展组件 kebab-case 规范
+## 2.2.9 扩展组件 kebab-case 与小写别名规范
 
-扩展轨组件（gpui-component 路由表、`compiler/menu/` codegen）**推荐**在 RML 中使用 **kebab-case**，引擎通过 `normalize_component_tag()` 映射为 PascalCase：
+扩展轨组件（gpui-component 路由表、`compiler/menu/` codegen）**推荐**在 RML 中使用 **小写或 kebab-case**，引擎通过 `normalize_component_tag()` 映射为 PascalCase，通过 `canonical_tag()` 额外处理小写别名：
 
-| RML 标签（推荐） | 规范化后 |
-|------------------|----------|
-| `context-menu` | `ContextMenu` |
-| `dropdown-menu` | `DropdownMenu` |
-| `menu-bar` | `MenuBar` |
-| `menu-item` | `MenuItem` |
-| `menu-separator` | `MenuSeparator` |
-| `app-menu-bar` | `AppMenuBar` |
-| `button`（扩展轨） | `Button` |
+| RML 标签（推荐） | 规范化后 | 说明 |
+|------------------|----------|------|
+| `context-menu` | `ContextMenu` | kebab-case |
+| `dropdown-menu` | `DropdownMenu` | kebab-case |
+| `menu-bar` | `MenuBar` | kebab-case |
+| `menu-item` | `MenuItem` | kebab-case |
+| `menu-separator` | `MenuSeparator` | kebab-case |
+| `app-menu-bar` | `AppMenuBar` | kebab-case |
+| `button`（扩展轨） | `Button` | 小写 |
+| `accordion` | `Accordion` | 小写别名（非 kebab） |
+| `item` | `AccordionItem` | 仅 `<accordion>` 内上下文敏感短标签 |
 
 规则：
 
@@ -246,6 +248,8 @@ gpui::div()
 2. 已是 PascalCase 的标签原样匹配（向后兼容 `<Button>`）
 3. snake_case 特殊标签（`menu`、`status_bar`）不参与 kebab 转换，单独注册
 4. `component_lookup_resolved()` 先查原始标签，再查规范化结果
+5. `canonical_tag()` 在 `normalize_component_tag` 基础上额外处理小写别名：`accordion` → `Accordion`、`item` → `AccordionItem`。供 `props_registry` 属性查询使用，避免在 `COMPONENT_PROPS` 中重复登记
+6. `<item>` 短标签仅在 `<accordion>` / `<Accordion>` 父容器内被识别为 `AccordionItem`（由 `is_item_builder_tag` 判断）；顶层使用 `<item>` 报 "unknown tag" 错误
 
 菜单子项仅 `menu-item` 与 `menu-separator`（菜单内小写 `separator` 为分隔线别名）。
 

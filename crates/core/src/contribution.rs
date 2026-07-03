@@ -1,15 +1,14 @@
 //! 贡献点契约 —— 能力贡献 / 可视化贡献 / 受理方 / 桥接注册表
 //!
-//! 框架不存储贡献数据——host 主动受理（`add`/`add_visual`/`remove`），registry 仅按 `host_id` 路由。
-//! 视觉贡献通过独立的 `register_visual` 路径直达 host 的 `add_visual`，无需提取器转换。
+//! 框架不存储贡献数据——host 主动受理（`add`/`remove`），registry 仅按 `host_id` 路由。
+//! 能力查询（`ICommand`/`IVisualContribution`）经 `CommandAbilityExt`/`VisualAbilityExt`
+//! extension trait 实现，核心 trait 不枚举贡献类型。
 
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, SharedString, Window};
-
-use crate::command::ICommand;
 
 /// 贡献注册选项（纯数据，builder 模式）
 ///
@@ -57,7 +56,8 @@ impl ContributionOptions {
 
 /// 能力贡献点：仅元数据，不渲染。
 /// 业务贡献（菜单项、状态栏项、案例树节点等）实现此 trait。
-/// 添加 `Any` supertrait——使 `dyn IContribution` 支持 trait upcasting 到 `dyn Any`。
+/// 添加 `Any` supertrait——使 `dyn IContribution` 支持 trait upcasting 到 `dyn Any`，
+/// 供能力查询（`ability::query`）获取具体 `TypeId`。
 pub trait IContribution: Send + Sync + Any {
     fn id(&self) -> &str;
     fn name(&self) -> SharedString;
@@ -77,11 +77,30 @@ pub trait IVisualContribution: IContribution {
     fn render(&self, window: &mut Window, cx: &mut App) -> AnyElement;
 }
 
+/// 视觉能力扩展 trait —— 让 `dyn IContribution` 可查询 `IVisualContribution` 能力。
+///
+/// 框架内置：`#[contribute]` + `#[component]` 叠加时宏自动注册能力 cast 函数。
+/// 业务自定义能力 trait 时，参考此模式编写等价 extension trait。
+pub trait VisualAbilityExt {
+    /// 若此贡献实现了 `IVisualContribution`，返回视觉引用；否则 `None`。
+    fn as_visual(&self) -> Option<&dyn IVisualContribution>;
+}
+
+#[allow(unsafe_code)]
+impl VisualAbilityExt for dyn IContribution {
+    fn as_visual(&self) -> Option<&dyn IVisualContribution> {
+        let erased = crate::ability::query::<dyn IVisualContribution>(self)?;
+        Some(unsafe { crate::ability::restore::<dyn IVisualContribution>(erased) })
+    }
+}
+
 /// 贡献点主机：主动受理方。host 自行决定如何存储/映射贡献。
 ///
 /// host 直接实现此 trait（不再经由 `IHostEntity` 钩子）。
-/// `add`/`add_visual`/`remove` 均为 `&self`——host 使用 `RwLock`/`ObservableVec` 等内部可变性结构。
-/// 默认空实现：host 按业务需要 override `add`（能力贡献）或 `add_visual`（视觉贡献）。
+/// `add`/`remove` 均为 `&self`——host 使用 `RwLock`/`ObservableVec` 等内部可变性结构。
+/// 默认空实现：host 按业务需要 override `add`。
+///
+/// host 可通过 `c.as_command()`/`c.as_visual()` 查询贡献能力并分类存储。
 ///
 /// `#[contributehost]` 宏生成 `pub const ID: &'static str`（inherent impl），
 /// 实现 trait 时 `fn id()` 返回 `Self::ID` 即可。
@@ -89,21 +108,16 @@ pub trait IContributionHost: Send + Sync + 'static {
     /// 运行时获取 host ID。
     fn id(&self) -> &'static str;
 
-    /// 受理能力贡献（非视觉）。默认空实现，host 按需 override。
-    fn add(&self, _contribution: Arc<dyn IContribution>, _options: ContributionOptions) {}
-
-    /// 受理视觉贡献。默认空实现，视觉 host override。
-    fn add_visual(&self, _contribution: Arc<dyn IVisualContribution>, _options: ContributionOptions) {}
-
-    /// 受理命令贡献。默认空实现，命令 host override。
-    fn add_command(&self, _command: Arc<dyn ICommand>, _options: ContributionOptions) {}
+    /// 受理贡献（统一入口）。host 自行决定如何存储/分发。
+    /// `options` 为 `None` 时表示无元数据（order/group/kind 等），host 可按 `ContributionOptions::default()` 处理。
+    fn add(&self, _contribution: Arc<dyn IContribution>, _options: Option<ContributionOptions>) {}
 
     /// 移除贡献。默认空实现。
     fn remove(&self, _contribution_id: &str) {}
 }
 
 /// 贡献注册表接口：桥接 contribute → host。
-/// 框架内实现，按 host_id 路由 register 调用到对应 host 的 add/add_visual 方法。
+/// 框架内实现，按 host_id 路由 register 调用到对应 host 的 add 方法。
 /// 所有方法 `&self` + 无 `cx` —— 内部 `RwLock` 可变性，`host.add` 直接调用。
 ///
 /// Registry 仅存储 `IContributionHost`，不存储贡献本身。host 未注册时 `register` 直接 drop 贡献
@@ -116,30 +130,13 @@ pub trait IContributionRegistry: Send + Sync {
     /// 注销 host。
     fn remove_host(&self, host_id: &str);
 
-    /// 向 host 注册能力贡献（`#[contribute]` 宏生成代码调用）。
+    /// 向 host 注册贡献（`#[contribute]` 宏生成代码调用）。
+    /// `options` 为 `None` 时表示无元数据。
     fn register(
         &self,
         host_id: &str,
         contribution: Arc<dyn IContribution>,
-        options: ContributionOptions,
-    );
-
-    /// 向 host 注册视觉贡献（`#[contribute]` + `#[component]` 叠加时由宏生成代码调用）。
-    /// 视觉贡献直达 host 的 `add_visual`，无需 `VisualExtractor` 转换。
-    fn register_visual(
-        &self,
-        host_id: &str,
-        contribution: Arc<dyn IVisualContribution>,
-        options: ContributionOptions,
-    );
-
-    /// 向 host 注册命令贡献（`#[contribute(command, ...)]` 宏生成代码调用）。
-    /// 命令贡献直达 host 的 `add_command`。
-    fn register_command(
-        &self,
-        host_id: &str,
-        command: Arc<dyn ICommand>,
-        options: ContributionOptions,
+        options: Option<ContributionOptions>,
     );
 
     /// 从 host 注销贡献。

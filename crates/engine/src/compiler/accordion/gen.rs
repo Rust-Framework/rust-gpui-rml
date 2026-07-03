@@ -80,7 +80,7 @@ pub fn gen_accordion(
             Node::Element(child_elem) => {
                 return Err(CodegenError {
                     message: format!(
-                        "<Accordion> 仅支持 <AccordionItem> 子节点，得到 <{}>",
+                        "<accordion> 仅支持 <item> 或 <AccordionItem> 子节点，得到 <{}>",
                         child_elem.tag
                     ),
                 });
@@ -265,7 +265,7 @@ mod tests {
         assert!(result
             .unwrap_err()
             .message
-            .contains("仅支持 <AccordionItem> 子节点"));
+            .contains("仅支持 <item>"));
     }
 
     #[test]
@@ -300,5 +300,36 @@ mod tests {
         let mut id = 0;
         let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
         assert!(code.contains("rml_ui::Accordion::new"));
+    }
+
+    /// <accordion> 小写标签通过 gen_component 入口调度
+    #[test]
+    fn gen_accordion_lowercase_tag() {
+        use crate::compiler::component::gen_component;
+        let elem = make_element("accordion", vec![], vec![]);
+        let mut id = 0;
+        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
+        assert!(code.contains("rml_ui::Accordion::new"));
+    }
+
+    /// <item> 短标签作为 <accordion> 子节点
+    #[test]
+    fn gen_accordion_with_item_short_form() {
+        let item = make_element(
+            "item",
+            vec![Attribute::Static {
+                name: "title".into(),
+                value: "Section 1".into(),
+            }],
+            vec![Node::Text("Content".into())],
+        );
+        let accordion = make_element("accordion", vec![], vec![Node::Element(item)]);
+        let mut id = 0;
+        let code =
+            gen_accordion(&accordion, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+        assert!(code.contains(".item("));
+        assert!(code.contains("|__rml_item: rml_ui::AccordionItem|"));
+        assert!(code.contains(".title(\"Section 1\")"));
+        assert!(code.contains(".child(\"Content\")"));
     }
 }

@@ -5,7 +5,7 @@
 //!   `MenuBar` 的 children 传入。
 //! - **`<context-menu>` / `<dropdown-menu>`**：弹层菜单容器，仍由 engine `compiler/menu/`
 //!   直译 gpui-component `PopupMenu` API（非菜单栏）。
-//! - **MVVM**：ViewModel 提供 `MenuItems`，`MenuBar::items(...)` 在运行时翻译为按钮树。
+//! - **MVVM**：ViewModel 提供 `Vec<Arc<dyn IMenuItem>>`，`MenuBar::items(...)` 在运行时翻译为按钮树。
 
 use std::sync::Arc;
 
@@ -21,7 +21,7 @@ use gpui_component::{
     separator::Separator,
     Disableable as _,
 };
-use rml_core::command::CallContext;
+use rml_core::command::{CallContext, CommandAbilityExt};
 use smallvec::SmallVec;
 
 /// 菜单栏顶层按钮默认上下外边距（px）
@@ -89,15 +89,13 @@ pub trait IMenuItem: Send + Sync + 'static {
     fn href(&self) -> Option<SharedString> {
         None
     }
-    fn command(&self) -> Option<Arc<dyn rml_core::command::ICommand>> {
+    fn contribution(&self) -> Option<Arc<dyn rml_core::contribution::IContribution>> {
         None
     }
     fn children(&self) -> Option<Vec<Arc<dyn IMenuItem>>> {
         None
     }
 }
-
-pub type MenuItems = Vec<Arc<dyn IMenuItem>>;
 
 /// 菜单项默认实现
 pub struct MenuItem {
@@ -108,7 +106,7 @@ pub struct MenuItem {
     header: bool,
     checked: bool,
     href: Option<SharedString>,
-    command: Option<Arc<dyn rml_core::command::ICommand>>,
+    contribution: Option<Arc<dyn rml_core::contribution::IContribution>>,
     children: Vec<Arc<dyn IMenuItem>>,
 }
 
@@ -122,7 +120,7 @@ impl MenuItem {
             header: false,
             checked: false,
             href: None,
-            command: None,
+            contribution: None,
             children: Vec::new(),
         }
     }
@@ -157,8 +155,8 @@ impl MenuItem {
         self
     }
 
-    pub fn command(mut self, cmd: Arc<dyn rml_core::command::ICommand>) -> Self {
-        self.command = Some(cmd);
+    pub fn contribution(mut self, c: Arc<dyn rml_core::contribution::IContribution>) -> Self {
+        self.contribution = Some(c);
         self
     }
 
@@ -201,8 +199,8 @@ impl IMenuItem for MenuItem {
         self.href.clone()
     }
 
-    fn command(&self) -> Option<Arc<dyn rml_core::command::ICommand>> {
-        self.command.clone()
+    fn contribution(&self) -> Option<Arc<dyn rml_core::contribution::IContribution>> {
+        self.contribution.clone()
     }
 
     fn children(&self) -> Option<Vec<Arc<dyn IMenuItem>>> {
@@ -221,7 +219,7 @@ pub type Menu = MenuBar;
 #[derive(IntoElement)]
 pub struct MenuBar {
     id: ElementId,
-    items: MenuItems,
+    items: Vec<Arc<dyn IMenuItem>>,
     entry_children: SmallVec<[AnyElement; 4]>,
     gap: f32,
     button_margin_y: f32,
@@ -242,7 +240,7 @@ impl MenuBar {
         }
     }
 
-    pub fn items(mut self, items: MenuItems) -> Self {
+    pub fn items(mut self, items: Vec<Arc<dyn IMenuItem>>) -> Self {
         self.items = items;
         self
     }
@@ -298,7 +296,7 @@ impl RenderOnce for MenuBar {
                 let disabled = item.disabled();
                 let icon = item.icon();
                 let children = item.children();
-                let command = item.command();
+                let contribution = item.contribution();
 
                 if let Some(children) = children {
                     let mut btn =
@@ -327,9 +325,12 @@ impl RenderOnce for MenuBar {
                         btn = btn.icon(icon);
                     }
 
-                    if let Some(cmd) = command {
+                    if let Some(c) = contribution {
                         btn = btn.on_click(move |_, _window, cx| {
-                            cmd.execute(&mut CallContext::new(_window, cx));
+                            let contrib: &dyn rml_core::contribution::IContribution = &*c;
+                            if let Some(cmd) = contrib.as_command() {
+                                cmd.execute(&mut CallContext::new(_window, cx));
+                            }
                         });
                     }
                     bar = bar.child(btn);
@@ -343,15 +344,15 @@ impl RenderOnce for MenuBar {
     }
 }
 
-/// 从 `MenuItems` 渲染水平菜单栏（MVVM 与 `MenuBar::items` 共用）
-pub fn render_menu_bar_from_items(items: MenuItems) -> impl IntoElement {
+/// 从 `Vec<Arc<dyn IMenuItem>>` 渲染水平菜单栏（MVVM 与 `MenuBar::items` 共用）
+pub fn render_menu_bar_from_items(items: Vec<Arc<dyn IMenuItem>>) -> impl IntoElement {
     MenuBar::new("rml-menu-bar").items(items)
 }
 
 /// 从 `IMenuItem` 树递归构建 gpui-component `PopupMenu`（MVVM 子菜单路径专用）。
 fn build_popup_menu_from_items(
     mut menu: PopupMenu,
-    items: &MenuItems,
+    items: &[Arc<dyn IMenuItem>],
     window: &mut Window,
     cx: &mut Context<PopupMenu>,
 ) -> PopupMenu {
@@ -372,7 +373,7 @@ fn build_popup_menu_from_items(
         let checked = item.checked();
         let href = item.href();
         let children = item.children();
-        let command = item.command();
+        let contribution = item.contribution();
 
         if let Some(children) = children {
             let submenu_label = label;
@@ -409,9 +410,12 @@ fn build_popup_menu_from_items(
         if let Some(icon) = icon {
             pmi = pmi.icon(icon);
         }
-        if let Some(cmd) = command {
+        if let Some(c) = contribution {
             pmi = pmi.on_click(move |_, _window, cx| {
-                cmd.execute(&mut CallContext::new(_window, cx));
+                let contrib: &dyn rml_core::contribution::IContribution = &*c;
+                if let Some(cmd) = contrib.as_command() {
+                    cmd.execute(&mut CallContext::new(_window, cx));
+                }
             });
         }
         menu = menu.item(pmi);

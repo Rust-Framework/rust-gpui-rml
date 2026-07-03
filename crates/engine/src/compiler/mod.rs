@@ -3,6 +3,7 @@
 //! 串起 parse → validate → codegen，输出 Rust 源码字符串。
 
 pub mod accordion;
+pub mod avatar;
 pub mod codegen;
 pub mod component;
 pub mod event;

@@ -145,6 +145,21 @@ pub fn normalize_component_tag(tag: &str) -> String {
         .collect()
 }
 
+/// 将标签规范化为组件属性注册表中的标准名（PascalCase）。
+///
+/// 在 `normalize_component_tag`（kebab-case → PascalCase）基础上，额外处理小写别名：
+/// `accordion` → `Accordion`、`item` → `AccordionItem`。
+/// 供 `props_registry` 的属性查询使用，使 `<accordion>` / `<item>` / `<accordion-item>`
+/// 都能命中 `COMPONENT_PROPS` 中以 PascalCase 登记的条目，无需重复登记。
+pub fn canonical_tag(tag: &str) -> String {
+    let normalized = normalize_component_tag(tag);
+    match normalized.as_str() {
+        "accordion" => "Accordion".to_string(),
+        "item" => "AccordionItem".to_string(),
+        _ => normalized,
+    }
+}
+
 /// 查询扩展组件：先原始标签，再 kebab-case 规范化后查询。
 pub fn component_lookup_resolved(tag: &str) -> Option<ComponentTag> {
     component_lookup(tag).or_else(|| component_lookup(&normalize_component_tag(tag)))
@@ -164,7 +179,7 @@ pub fn is_component(tag: &str) -> bool {
         && component_lookup(&normalized).is_some()
 }
 
-/// 扩展组件中的 lowercase 标签（如 `menu`、`status_bar`），在 `component_lookup` 中注册
+/// 扩展组件中的 lowercase 标签（如 `menu`、`status_bar`、`accordion`），在 `component_lookup` 中注册
 pub fn is_special_lowercase_component(tag: &str) -> bool {
     component_lookup(tag).is_some() && !tag.contains('-') && {
         !tag
@@ -368,10 +383,20 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             ctor_path: "rml_ui::StatusBar",
             kind: ComponentKind::StatelessNoId,
         }),
-        // Accordion：闭包式 builder，子节点为 <AccordionItem>
-        "Accordion" => Some(ComponentTag {
+        // Accordion：闭包式 builder，子节点为 <AccordionItem> / <item>
+        "Accordion" | "accordion" => Some(ComponentTag {
             ctor_path: "rml_ui::Accordion",
             kind: ComponentKind::StatelessWithItems,
+        }),
+        // Avatar：无参构造 RenderOnce 叶子组件（无 ParentElement，无 .label()）
+        "Avatar" => Some(ComponentTag {
+            ctor_path: "rml_ui::Avatar",
+            kind: ComponentKind::StatelessNoId,
+        }),
+        // AvatarGroup：无参构造 RenderOnce 容器（.child(Avatar)）
+        "AvatarGroup" => Some(ComponentTag {
+            ctor_path: "rml_ui::AvatarGroup",
+            kind: ComponentKind::StatelessNoId,
         }),
         _ => None,
     }
@@ -379,11 +404,12 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
 
 /// 判断标签是否为 `StatelessWithItems` 组件的子项 builder
 ///
-/// 如 `AccordionItem` 是 `Accordion` 的子项，仅在 `<Accordion>` 内合法。
-/// 不在 `component_lookup` 中注册（避免被误用为顶层扩展组件），
-/// 但在 validator 和 codegen 中通过此函数识别。
+/// 支持三种形式：`AccordionItem`（PascalCase）、`item`（短标签）、`accordion-item`（kebab-case）。
+/// 仅在 `<accordion>` / `<Accordion>` 内合法，不在 `component_lookup` 中注册
+/// （避免被误用为顶层扩展组件），在 validator 和 codegen 中通过此函数识别。
 pub fn is_item_builder_tag(tag: &str) -> bool {
-    matches!(tag, "AccordionItem")
+    matches!(tag, "AccordionItem" | "item")
+        || normalize_component_tag(tag) == "AccordionItem"
 }
 
 #[cfg(test)]
@@ -415,5 +441,44 @@ mod normalize_tests {
             "rml_ui::MenuBar"
         );
         // gen_element 仍优先走 is_menu_container → compiler/menu/（处理 menu-item 子节点）
+    }
+
+    #[test]
+    fn canonical_tag_maps_lowercase_aliases() {
+        assert_eq!(canonical_tag("accordion"), "Accordion");
+        assert_eq!(canonical_tag("item"), "AccordionItem");
+    }
+
+    #[test]
+    fn canonical_tag_passthrough_pascal_and_kebab() {
+        assert_eq!(canonical_tag("Accordion"), "Accordion");
+        assert_eq!(canonical_tag("AccordionItem"), "AccordionItem");
+        assert_eq!(canonical_tag("accordion-item"), "AccordionItem");
+        assert_eq!(canonical_tag("Button"), "Button");
+    }
+
+    #[test]
+    fn canonical_tag_preserves_special_lowercase() {
+        assert_eq!(canonical_tag("menu"), "menu");
+        assert_eq!(canonical_tag("status_bar"), "status_bar");
+    }
+
+    #[test]
+    fn is_item_builder_tag_matches_all_forms() {
+        assert!(is_item_builder_tag("AccordionItem"));
+        assert!(is_item_builder_tag("item"));
+        assert!(is_item_builder_tag("accordion-item"));
+        assert!(!is_item_builder_tag("Accordion"));
+        assert!(!is_item_builder_tag("div"));
+    }
+
+    #[test]
+    fn component_lookup_accordion_lowercase() {
+        let tag = component_lookup("accordion").expect("accordion should be registered");
+        assert_eq!(tag.ctor_path, "rml_ui::Accordion");
+        assert_eq!(tag.kind, ComponentKind::StatelessWithItems);
+        assert!(component_lookup_resolved("accordion").is_some());
+        assert!(is_special_lowercase_component("accordion"));
+        assert!(is_extension_component("accordion"));
     }
 }

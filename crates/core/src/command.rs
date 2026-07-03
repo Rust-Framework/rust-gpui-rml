@@ -1,7 +1,7 @@
-//! `ICommand` trait + `RelayCommand` + `CallContext` —— 命令贡献系统契约
+//! `ICommand` trait + `RelayCommand` + `CallContext` + `CommandAbilityExt` —— 命令贡献系统契约
 //!
-//! `ICommand : IContribution`——命令本身即是贡献点。命令贡献经 `register_command` 路由到 host，
-//! 在 `execute`/`can_execute` 中实现点击行为。
+//! `ICommand : IContribution`——命令本身即是贡献点。命令贡献经统一 `register` 路由到 host，
+//! 在 `execute`/`can_execute` 中实现点击行为。能力查询经 `CommandAbilityExt::as_command()`。
 //!
 //! `CallContext` 封装 `Window` + `App`，替代旧 `(&dyn Any, &mut App)` 弱类型参数。
 //!
@@ -31,7 +31,8 @@ impl<'a> CallContext<'a> {
 /// 命令贡献 trait（对齐 WPF `ICommand`，继承 `IContribution`——命令本身是贡献点）。
 ///
 /// 实现方需同时实现 `IContribution`（id/name/description/icon）和 `ICommand`（execute/can_execute）。
-/// `#[contribute(command, ...)]` 宏编译期校验目标已实现 `IContribution`，路由到 `register_command`。
+/// `#[contribute(command, ...)]` 宏编译期校验目标已实现 `IContribution`，统一路由到 `register`，
+/// 并注册 `dyn ICommand` 能力 cast 函数（供 `as_command()` 查询）。
 ///
 /// # 与 `#[command]` 方法的关系
 ///
@@ -49,6 +50,23 @@ pub trait ICommand: IContribution {
     /// 默认实现返回 `true`。
     fn can_execute(&self, _ctx: &mut CallContext) -> bool {
         true
+    }
+}
+
+/// 命令能力扩展 trait —— 让 `dyn IContribution` 可查询 `ICommand` 能力。
+///
+/// 框架内置：`#[contribute(command, ...)]` 宏自动注册能力 cast 函数。
+/// 业务自定义能力 trait 时，参考此模式编写等价 extension trait。
+pub trait CommandAbilityExt {
+    /// 若此贡献实现了 `ICommand`，返回命令引用；否则 `None`。
+    fn as_command(&self) -> Option<&dyn ICommand>;
+}
+
+#[allow(unsafe_code)]
+impl CommandAbilityExt for dyn IContribution {
+    fn as_command(&self) -> Option<&dyn ICommand> {
+        let erased = crate::ability::query::<dyn ICommand>(self)?;
+        Some(unsafe { crate::ability::restore::<dyn ICommand>(erased) })
     }
 }
 

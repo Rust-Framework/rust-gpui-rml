@@ -7,9 +7,9 @@
 //! 3. 编译期断言 `T: IContributionHost`（用户必须手写 impl）
 //!
 //! 用户职责：
-//! - 手写 `impl IContributionHost`（override `add`/`add_visual`/`remove` 中需要的）
+//! - 手写 `impl IContributionHost`（override `add`/`remove` 中需要的）
 //! - 手写 `impl ILifecycle`（在 `on_loaded` 中调 `Self::__rml_install_host` + `drain_host_ops`）
-//! - 自管贡献存储（如 `RwLock<Vec<(Arc<dyn IVisualContribution>, ContributionOptions)>>`）
+//! - 自管贡献存储（如 `RwLock<Vec<(Arc<dyn IContribution>, ContributionOptions)>>`）
 //!
 //! 宏展开顺序：`#[component]`/`#[window]`（内层先）→ `#[contributehost]`（外层）→ `#[contribute]`（最外层）。
 

@@ -25,9 +25,6 @@ pub trait IStatusBarItem: Send + Sync + 'static {
     }
 }
 
-/// 状态栏项列表类型别名
-pub type StatusBarItems = Vec<Arc<dyn IStatusBarItem>>;
-
 /// 状态栏项默认实现
 pub struct StatusBarItem {
     content: SharedString,
@@ -65,7 +62,7 @@ impl IStatusBarItem for StatusBarItem {
 /// RML 状态栏（`<status_bar items={...}>`）
 #[derive(IntoElement)]
 pub struct StatusBar {
-    items: StatusBarItems,
+    items: Vec<Arc<dyn IStatusBarItem>>,
 }
 
 impl StatusBar {
@@ -73,7 +70,7 @@ impl StatusBar {
         Self { items: Vec::new() }
     }
 
-    pub fn items(mut self, items: StatusBarItems) -> Self {
+    pub fn items(mut self, items: Vec<Arc<dyn IStatusBarItem>>) -> Self {
         self.items = items;
         self
     }

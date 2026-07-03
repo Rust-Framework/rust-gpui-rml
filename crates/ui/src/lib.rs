@@ -79,9 +79,9 @@ pub use window::{
 };
 
 pub use components::{
-    ActivityAct, ActivityActs, ActivityBar, ActivityPanel, ActivityPanels, DialogDragState,
-    DialogTitleBar, IActivityAct, IActivityPanel, IMenuItem, IStatusBarItem, Menu, MenuBar,
-    MenuItem, MenuItems, NativeStatusBar, StatusBar, StatusBarAlign, StatusBarItem,
-    StatusBarItems, Tab, TabBar, TabVariant, Tree, VisualActivityPanel, configure_menu_bar_popup,
-    menu_bar_button, render_menu_bar_from_items,
+    ActivityAct, ActivityBar, ActivityPanel, AlertDialog, Avatar, AvatarGroup, DialogAction,
+    DialogButtonProps, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader,
+    DialogTitle, IActivityAct, IActivityPanel, IMenuItem, IStatusBarItem, Menu, MenuBar, MenuItem,
+    NativeStatusBar, StatusBar, StatusBarAlign, StatusBarItem, Tab, TabBar, TabVariant, Tree,
+    VisualActivityPanel, configure_menu_bar_popup, menu_bar_button, render_menu_bar_from_items,
 };

@@ -12,7 +12,11 @@
 
 ### Tag 规范化
 
-`is_prop_registered(tag, attr)` / `is_shell_prop_registered(tag, attr)` 查询时自动将 kebab-case 标签规范化为 PascalCase（如 `menu-bar` → `MenuBar`、`status_bar` → `StatusBar`）。因此在 `COMPONENT_PROPS` 中登记的 tag 用 PascalCase 即可，两种写法都能命中。
+`is_prop_registered(tag, attr)` / `is_shell_prop_registered(tag, attr)` 查询时通过 `canonical_tag()` 规范化标签：
+- kebab-case → PascalCase（如 `menu-bar` → `MenuBar`、`status_bar` → `StatusBar`）
+- 小写别名 → PascalCase（如 `accordion` → `Accordion`、`item` → `AccordionItem`）
+
+因此在 `COMPONENT_PROPS` 中登记的 tag 用 PascalCase 即可，`<accordion>` / `<item>` / `<accordion-item>` / `<Accordion>` / `<AccordionItem>` 五种写法都能命中同一注册条目，无需重复登记。
 
 ## 属性齐全性双层保障
 
@@ -74,6 +78,8 @@ RML 通过两层机制确保 codegen 属性映射齐全：
 | `Tree` | `items`, `on_activate`, `on_select` | 树数据与事件 |
 | `MenuBar` / `menu` | `items` | 菜单项数据绑定 |
 | `status_bar` | `items` | 状态栏项数据绑定 |
+| `Accordion` | `multiple`, `bordered`, `on_toggle_click` | 多选/边框/切换事件 |
+| `AccordionItem` | `title`, `open`, `icon` | 子项标题/初始展开/图标 |
 
 ## Shell 窗口属性
 

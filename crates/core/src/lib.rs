@@ -13,6 +13,7 @@ pub use ctor;
 /// （用户 crate 无需显式依赖 `flume`）。
 pub use flume;
 
+pub mod ability;
 pub mod assets;
 pub mod binding;
 pub mod i18n;

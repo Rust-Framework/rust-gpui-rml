@@ -88,9 +88,9 @@ pub(super) fn gen_window_impl(
 /// 存储父窗口句柄，供 `close()` 通过 `AnyWindowHandle::update` 调用
 /// `WindowExt::close_dialog`。
 ///
-/// 标题栏由 `rml_ui::DialogTitleBar` 组件提供，内置拖动支持 + 关闭按钮。
-/// 拖动偏移通过 `DialogDragState` 持久化，builder 闭包每帧读取 offset 并通过
-/// `Styled::style().margin` 叠加到 Dialog 定位上。
+/// 基于 gpui-component `AlertDialog` 实现：默认居中显示，内置 ESC 关闭、关闭按钮，
+/// `title` 属性映射到 `AlertDialog::title`，子元素通过 `content` 注入。
+/// `footer` 显式置空以避免 AlertDialog 默认 OK 按钮与 RML 子元素中的按钮重复。
 pub(super) fn gen_dialog_impl(elem: &Element, ctx: &CodegenCtx) -> Result<String, CodegenError> {
     let view_name = &ctx.view_struct_name;
 
@@ -98,50 +98,34 @@ pub(super) fn gen_dialog_impl(elem: &Element, ctx: &CodegenCtx) -> Result<String
     let width = extract_static_attr(elem, "width")
         .and_then(|s| s.parse::<f32>().ok())
         .unwrap_or(480.0);
-    let margin_top = extract_static_attr(elem, "margin_top")
-        .and_then(|s| s.parse::<f32>().ok());
-
-    let margin_top_expr = match margin_top {
-        Some(mt) => format!("Some(gpui::px({:?}))", mt),
-        None => "None".to_string(),
-    };
 
     let code = format!(
         r#"impl {view_name} {{
     /// 在指定父窗口上打开对话框（模态）。
     ///
-    /// 内部创建 entity + `DialogDragState`，存储父窗口句柄到 `__rml_window_handle`，
-    /// 然后调用 `WindowExt::open_dialog`。标题栏内置拖动 + 关闭按钮。
+    /// 基于 `AlertDialog` 实现，默认居中显示，内置 ESC 关闭与关闭按钮。
+    /// 标题由 RML `title` 属性映射，子元素通过 `content` 注入。
     pub fn open(self, window: &mut gpui::Window, cx: &mut gpui::App) {{
         use rml_ui::WindowExt;
-        use gpui::{{ParentElement, Styled}};
+        use gpui::ParentElement;
         let __rml_parent_handle = window.window_handle();
         let __rml_title: String = {title:?}.to_string();
         let __rml_width: gpui::Pixels = gpui::px({width:?});
-        let __rml_margin_top: Option<gpui::Pixels> = {margin_top_expr};
-        let __rml_drag_state = cx.new(|_| rml_ui::DialogDragState::default());
         let __rml_entity = cx.new(|_| {{
             let mut __rml_this = self;
             __rml_this.__rml_window_handle = Some(__rml_parent_handle);
             __rml_this
         }});
-        window.open_dialog(cx, move |__rml_d, __rml_w, __rml_cx| {{
-            let __rml_offset = {{ __rml_drag_state.read(__rml_cx).offset }};
-            let __rml_title_bar = rml_ui::DialogTitleBar::new(
-                __rml_title.clone(),
-                __rml_drag_state.clone(),
-            );
-            let mut __rml_d = __rml_d
-                .title(__rml_title_bar)
+        window.open_alert_dialog(cx, move |__rml_a, _, _| {{
+            let __rml_entity = __rml_entity.clone();
+            __rml_a
+                .title(__rml_title.clone())
                 .width(__rml_width)
-                .close_button(false)
-                .p_0();
-            if let Some(__rml_mt) = __rml_margin_top {{
-                __rml_d = __rml_d.margin_top(__rml_mt);
-            }}
-            __rml_d.style().margin.left = Some(__rml_offset.x.into());
-            __rml_d.style().margin.top = Some(__rml_offset.y.into());
-            __rml_d.child(__rml_entity.clone())
+                .close_button(true)
+                .footer(rml_ui::DialogFooter::new())
+                .content(move |__rml_content, _, _| {{
+                    __rml_content.child(__rml_entity.clone())
+                }})
         }});
     }}
 
@@ -158,7 +142,6 @@ pub(super) fn gen_dialog_impl(elem: &Element, ctx: &CodegenCtx) -> Result<String
         view_name = view_name,
         title = title,
         width = width,
-        margin_top_expr = margin_top_expr,
     );
 
     Ok(code)

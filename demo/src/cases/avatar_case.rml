@@ -1,0 +1,34 @@
+<component>
+    <div v_flex="" class="case-pane">
+        <h2>{t("case.avatar.title")}</h2>
+
+        <h3>{t("case.avatar.image")}</h3>
+        <div h_flex="" gap_4="">
+            <Avatar src="https://avatars.githubusercontent.com/u/5518?v=4" large="" />
+            <Avatar src="https://avatars.githubusercontent.com/u/28998859?v=4" />
+            <Avatar src="https://avatars.githubusercontent.com/u/20092316?v=4" small="" />
+        </div>
+
+        <h3>{t("case.avatar.initials")}</h3>
+        <div h_flex="" gap_4="">
+            <Avatar name="Jason Lee" large="" />
+            <Avatar name="Floyd Wang" />
+            <Avatar name="Alice" small="" />
+        </div>
+
+        <h3>{t("case.avatar.placeholder")}</h3>
+        <div h_flex="" gap_4="">
+            <Avatar large="" />
+            <Avatar placeholder="Building2" />
+        </div>
+
+        <h3>{t("case.avatar.group")}</h3>
+        <AvatarGroup limit="3" ellipsis="">
+            <Avatar src="https://avatars.githubusercontent.com/u/5518?v=4" />
+            <Avatar src="https://avatars.githubusercontent.com/u/28998859?v=4" />
+            <Avatar src="https://avatars.githubusercontent.com/u/20092316?v=4" />
+            <Avatar src="https://avatars.githubusercontent.com/u/22312482?v=4" />
+            <Avatar name="John Doe" />
+        </AvatarGroup>
+    </div>
+</component>

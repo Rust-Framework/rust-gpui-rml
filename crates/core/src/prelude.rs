@@ -3,12 +3,13 @@
 //! 使用方式：`use rml_core::prelude::*;`
 //! 包含所有常用 trait、类型与 GPUI 重导出。
 
+pub use crate::ability::{erase, query, register, ErasedAbility};
 pub use crate::binding::{BindingPath, IBindingContext};
-pub use crate::command::{CallContext, ICommand, RelayCommand};
+pub use crate::command::{CallContext, CommandAbilityExt, ICommand, RelayCommand};
 pub use crate::component::IComponent;
 pub use crate::contribution::{
     ContributionOptions, IContribution, IContributionHost, IContributionRegistry,
-    IVisualContribution,
+    IVisualContribution, VisualAbilityExt,
 };
 pub use crate::converter::{BoolToYesNo, Currency, IConverter, LowerCase, Percent, Trim, UpperCase};
 pub use crate::element_ref::ElementRef;

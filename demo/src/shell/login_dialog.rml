@@ -1,7 +1,6 @@
 <dialog
     title="RML Demo"
-    width="420"
-    margin_top="120">
+    width="420">
     <div class="login">
         <h1>{t("login.title")}</h1>
         <p>{t("login.hint")}</p>

@@ -76,6 +76,7 @@ impl<'a> CompletionSource<'a> {
             "Progress", "ProgressCircle", "Slider", "Switch", "Input", "TextInput",
             "TitleBar", "NativeStatusBar", "StatusBar", "ActivityBar", "Tree",
             "MenuBar", "menu", "status_bar", "Accordion", "AccordionItem",
+            "accordion", "item",
         ];
         for tag in EXTENSION_TAGS {
             let detail = if tags::component_lookup(tag).is_some() {

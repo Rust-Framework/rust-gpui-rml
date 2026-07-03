@@ -77,6 +77,10 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
     ("Accordion", &["multiple", "bordered", "on_toggle_click"]),
     // AccordionItem 专用（item builder 子标签，不在 component_lookup 中）
     ("AccordionItem", &["title", "open", "icon"]),
+    // Avatar 专用（placeholder 已在 COMMON_STATIC_PROPS）
+    ("Avatar", &["src", "name"]),
+    // AvatarGroup 专用
+    ("AvatarGroup", &["limit", "ellipsis"]),
 ];
 
 /// 查询组件的所有已注册属性（通用 + 专用）
@@ -84,20 +88,15 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
 /// 返回 (static_props, bind_props, event_props) 三元组（owned Vec）。
 /// 若组件未在 COMPONENT_PROPS 登记，仅返回通用属性。
 ///
-/// 自动处理 kebab-case → PascalCase 规范化。
+/// 通过 `canonical_tag()` 规范化标签：kebab-case → PascalCase（如 `menu-bar` → `MenuBar`），
+/// 小写别名 → PascalCase（如 `accordion` → `Accordion`、`item` → `AccordionItem`）。
 pub fn props_for(tag: &str) -> (Vec<&'static str>, Vec<&'static str>, Vec<&'static str>) {
-    // 查找专用属性（先原始 tag，再规范化 tag）
+    // 查找专用属性（canonical_tag 统一处理 kebab-case 和小写别名）
+    let canonical = crate::tags::canonical_tag(tag);
     let extra: &[&str] = COMPONENT_PROPS
         .iter()
-        .find(|(t, _)| *t == tag)
+        .find(|(t, _)| *t == canonical.as_str())
         .map(|(_, props)| *props)
-        .or_else(|| {
-            let normalized = crate::tags::normalize_component_tag(tag);
-            COMPONENT_PROPS
-                .iter()
-                .find(|(t, _)| *t == normalized)
-                .map(|(_, props)| *props)
-        })
         .unwrap_or(&[]);
 
     // 把专用属性按前缀分类（on* → event，其余 → bind）
@@ -121,7 +120,8 @@ pub fn props_for(tag: &str) -> (Vec<&'static str>, Vec<&'static str>, Vec<&'stat
 /// 供 codegen 在 bind_setter / static_setter 未命中时调用，
 /// 判断属性是"已知但未映射"（需补全 setter 逻辑）还是"完全未知"（用户拼写错误）。
 ///
-/// 自动处理 kebab-case → PascalCase 规范化（如 `menu-bar` → `MenuBar`）。
+/// 通过 `canonical_tag()` 规范化标签：kebab-case → PascalCase（如 `menu-bar` → `MenuBar`），
+/// 小写别名 → PascalCase（如 `accordion` → `Accordion`、`item` → `AccordionItem`）。
 pub fn is_prop_registered(tag: &str, attr: &str) -> bool {
     // 通用属性
     if COMMON_STATIC_PROPS.contains(&attr)
@@ -131,12 +131,9 @@ pub fn is_prop_registered(tag: &str, attr: &str) -> bool {
         return true;
     }
 
-    // 组件专用属性：先查原始 tag，再查规范化后的 tag
-    if let Some((_, props)) = COMPONENT_PROPS.iter().find(|(t, _)| *t == tag) {
-        return props.contains(&attr);
-    }
-    let normalized = crate::tags::normalize_component_tag(tag);
-    if let Some((_, props)) = COMPONENT_PROPS.iter().find(|(t, _)| *t == normalized) {
+    // 组件专用属性：canonical_tag 统一处理 kebab-case 和小写别名
+    let canonical = crate::tags::canonical_tag(tag);
+    if let Some((_, props)) = COMPONENT_PROPS.iter().find(|(t, _)| *t == canonical.as_str()) {
         return props.contains(&attr);
     }
 
@@ -225,6 +222,35 @@ mod tests {
     fn unknown_props_not_registered() {
         assert!(!is_prop_registered("Button", "nonexistent_prop"));
         assert!(!is_prop_registered("Input", "on_foo"));
+    }
+
+    #[test]
+    fn accordion_lowercase_alias_props_registered() {
+        assert!(is_prop_registered("accordion", "multiple"));
+        assert!(is_prop_registered("accordion", "bordered"));
+        assert!(is_prop_registered("accordion", "on_toggle_click"));
+    }
+
+    #[test]
+    fn item_short_form_props_registered() {
+        assert!(is_prop_registered("item", "title"));
+        assert!(is_prop_registered("item", "open"));
+        assert!(is_prop_registered("item", "icon"));
+    }
+
+    #[test]
+    fn props_for_accordion_lowercase_and_item() {
+        let (_, bind, event) = props_for("accordion");
+        assert!(bind.contains(&"multiple"));
+        assert!(bind.contains(&"bordered"));
+        assert!(event.contains(&"on_toggle_click"));
+
+        let (static_props, bind, _event) = props_for("item");
+        assert!(bind.contains(&"title"));
+        assert!(bind.contains(&"open"));
+        assert!(bind.contains(&"icon"));
+        // 通用属性仍可用
+        assert!(static_props.contains(&"disabled"));
     }
 
     #[test]

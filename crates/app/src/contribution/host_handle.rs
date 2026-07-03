@@ -8,25 +8,20 @@
 //! `#[contributehost]` 宏生成 `__rml_install_host`，内部调用 `install_entity_host`：
 //! 1. 创建 `EntityHostHandle` 并 `add_host` 到 registry
 //! 2. 调用 `bootstrap_host_contributions(cx, id)` 触发该 host_id 的所有贡献注册
-//!    （同步：register_visual → handle.add_visual → tx.send）
+//!    （同步：register → handle.add → tx.send）
 //! 3. 返回 `Receiver<HostOp>` 供 Entity drain
 
 use std::sync::Arc;
 
 use gpui::{App, WeakEntity};
-use rml_core::command::ICommand;
-use rml_core::contribution::{
-    ContributionOptions, IContribution, IContributionHost, IVisualContribution,
-};
+use rml_core::contribution::{ContributionOptions, IContribution, IContributionHost};
 use rml_core::flume;
 
 use super::global::bootstrap_host_contributions;
 
 /// Host 操作队列（Entity host 在 `on_loaded`/render 中 drain）。
 pub enum HostOp {
-    Add(Arc<dyn IContribution>, ContributionOptions),
-    AddVisual(Arc<dyn IVisualContribution>, ContributionOptions),
-    AddCommand(Arc<dyn ICommand>, ContributionOptions),
+    Add(Arc<dyn IContribution>, Option<ContributionOptions>),
     Remove(String),
 }
 
@@ -46,20 +41,12 @@ impl<T: 'static> IContributionHost for EntityHostHandle<T> {
         self.id
     }
 
-    fn add(&self, contribution: Arc<dyn IContribution>, options: ContributionOptions) {
-        let _ = self.tx.send(HostOp::Add(contribution, options));
-    }
-
-    fn add_visual(
+    fn add(
         &self,
-        contribution: Arc<dyn IVisualContribution>,
-        options: ContributionOptions,
+        contribution: Arc<dyn IContribution>,
+        options: Option<ContributionOptions>,
     ) {
-        let _ = self.tx.send(HostOp::AddVisual(contribution, options));
-    }
-
-    fn add_command(&self, command: Arc<dyn ICommand>, options: ContributionOptions) {
-        let _ = self.tx.send(HostOp::AddCommand(command, options));
+        let _ = self.tx.send(HostOp::Add(contribution, options));
     }
 
     fn remove(&self, contribution_id: &str) {
@@ -83,7 +70,7 @@ pub fn install_entity_host<T: IContributionHost + 'static>(
         tx,
     };
     cx.get_contribution_registry().add_host(Arc::new(handle));
-    // 触发该 host_id 的所有贡献注册（同步：register_visual → handle.add_visual → tx.send）
+    // 触发该 host_id 的所有贡献注册（同步：register → handle.add → tx.send）
     bootstrap_host_contributions(cx, id);
     rx
 }
@@ -95,8 +82,6 @@ pub fn drain_host_ops<T: IContributionHost>(rx: &flume::Receiver<HostOp>, host: 
     for op in rx.try_iter() {
         match op {
             HostOp::Add(c, o) => host.add(c, o),
-            HostOp::AddVisual(c, o) => host.add_visual(c, o),
-            HostOp::AddCommand(c, o) => host.add_command(c, o),
             HostOp::Remove(id) => host.remove(&id),
         }
     }

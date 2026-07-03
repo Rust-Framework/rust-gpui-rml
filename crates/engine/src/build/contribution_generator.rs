@@ -5,7 +5,7 @@
 //! - build.rs 按 `host_id` 分组，生成 `match host_id { "demo.shell" => { ... } _ => {} }`
 //! - `#[contributehost]` 宏生成的 `__rml_install_host` 调用 `bootstrap_host_contributions(cx, id)`
 //!   回调此处的 `register_rml_contributions_for(cx, host_id)`，按 host_id 路由调用 `__rml_register_*`
-//! - host 未注册时 `register`/`register_visual` 直接 drop 贡献（warn），要求 host `on_loaded`
+//! - host 未注册时 `register` 直接 drop 贡献（warn），要求 host `on_loaded`
 //!   必须先 `__rml_install_host` 再触发任何业务注册（`__rml_install_host` 内部已保证此顺序）
 
 use std::collections::BTreeMap;

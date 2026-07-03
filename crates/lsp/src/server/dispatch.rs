@@ -75,6 +75,7 @@ pub fn handle_notification(
         }
         "initialized" => {
             log::debug!("client initialized");
+            start_rust_backend(state);
         }
         _ => {
             log::debug!("unhandled notification: {}", not.method);
@@ -82,6 +83,29 @@ pub fn handle_notification(
     }
     Ok(())
 }
+
+/// 在后台线程加载 rust-analyzer workspace（不阻塞主循环）
+#[cfg(feature = "rust-backend")]
+fn start_rust_backend(state: &mut ServerState) {
+    let root_path = match state.root_path.clone() {
+        Some(p) => p,
+        None => {
+            log::warn!("root_path unavailable, rust-analyzer backend not started");
+            return;
+        }
+    };
+    let host = std::sync::Arc::clone(&state.ra_host);
+    std::thread::spawn(move || {
+        log::info!("loading rust-analyzer workspace at {:?}", root_path);
+        match host.load(root_path) {
+            Ok(()) => log::info!("rust-analyzer workspace loaded"),
+            Err(e) => log::error!("rust-analyzer workspace load failed: {}", e),
+        }
+    });
+}
+
+#[cfg(not(feature = "rust-backend"))]
+fn start_rust_backend(_state: &mut ServerState) {}
 
 /// 发送诊断通知
 pub fn send_diagnostics(

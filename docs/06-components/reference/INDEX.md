@@ -14,6 +14,7 @@
 |------|----------|----------|
 | [button.md](./button.md) | `Button` | Stateless |
 | [button-group.md](./button-group.md) | `ButtonGroup` | Stateless |
+| [avatar.md](./avatar.md) | `Avatar` / `AvatarGroup` | StatelessNoId |
 | [badge.md](./badge.md) | `Badge` | Stateless |
 | [checkbox.md](./checkbox.md) | `Checkbox` | Stateless |
 | [label.md](./label.md) | `Label` | Stateless |
@@ -46,6 +47,7 @@
 | [dropdown-menu.md](./dropdown-menu.md) | `DropdownMenu` | codegen |
 | [menu-items.md](./menu-items.md) | `MenuItem` / `MenuSeparator` | 菜单子项 |
 | [app-menu-bar.md](./app-menu-bar.md) | `AppMenuBar` | codegen |
+| [accordion.md](./accordion.md) | `accordion` / `Accordion` | StatelessWithItems（闭包 builder） |
 
 ## 内置 HTML 标签
 

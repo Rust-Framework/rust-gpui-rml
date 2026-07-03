@@ -129,7 +129,7 @@ pub fn gen_component(
             Attribute::Static { name, value } => {
                 if let Some(setter) = component_static_setter(name, value, &resolved) {
                     code.push_str(&setter);
-                    if name == "label" {
+                    if name == "label" || (resolved == "Avatar" && name == "name") {
                         label_set_by_attr = true;
                     }
                 }
@@ -138,6 +138,9 @@ pub fn gen_component(
                 let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
                 if let Some(setter) = component_bind_setter(name, expr, &lv, &computed, &resolved) {
                     code.push_str(&setter);
+                    if name == "label" || (resolved == "Avatar" && name == "name") {
+                        label_set_by_attr = true;
+                    }
                 }
             }
             Attribute::Event { name, handler } => {
@@ -160,7 +163,8 @@ pub fn gen_component(
     let is_container = matches!(component.kind, tags::ComponentKind::StatelessNoId)
         && resolved != "menu"
         && resolved != "MenuBar"
-        && resolved != "status_bar";
+        && resolved != "status_bar"
+        && resolved != "Avatar";
 
     if is_container {
         // 容器组件：所有 element/文本子节点作为 children
@@ -179,9 +183,11 @@ pub fn gen_component(
         }
     } else if !label_set_by_attr {
         // 非容器组件：仅支持单个文本子节点作为 label
+        // Avatar 无 .label() 方法，文本子节点映射到 .name()
+        let text_method = if resolved == "Avatar" { "name" } else { "label" };
         for child in &elem.children {
             if let Node::Text(text) = child {
-                code.push_str(&format!(".label({:?})", text));
+                code.push_str(&format!(".{}({:?})", text_method, text));
                 break;
             }
         }
@@ -201,6 +207,10 @@ pub fn gen_component(
 /// - `font_bold`/`font_semibold` 等 → StyledExt 字体权重
 /// - `h_flex`/`v_flex` → StyledExt 布局快捷方法
 pub fn component_static_setter(name: &str, value: &str, tag: &str) -> Option<String> {
+    // 组件专用 static setter 委托（Avatar/AvatarGroup 的 src/name/placeholder/limit/ellipsis）
+    if let Some(s) = super::avatar::static_setter(name, value, tag) {
+        return Some(s);
+    }
     match name {
         "label" => Some(format!(".label({:?})", value)),
         "placeholder" => Some(format!(".placeholder({:?})", value)),
@@ -319,6 +329,10 @@ pub fn component_bind_setter(
 ) -> Option<String> {
     // 组件专用 bind setter 委托（menu/MenuBar/status_bar 的 items 属性）
     if let Some(s) = super::menu::bind_setter(name, expr_str, loop_vars, computed, tag) {
+        return Some(s);
+    }
+    // Avatar/AvatarGroup 的 src/name/placeholder/limit 属性
+    if let Some(s) = super::avatar::bind_setter(name, expr_str, loop_vars, computed, tag) {
         return Some(s);
     }
 
@@ -1125,5 +1139,193 @@ mod tests {
         let code = gen_component(&bar, &ctx(), 0, &mut id, &Vec::new()).unwrap();
         assert!(code.contains("rml_ui::TitleBar::new()"));
         assert!(code.contains(".child("));
+    }
+
+    // ─── Avatar / AvatarGroup ───
+
+    #[test]
+    fn gen_component_avatar_minimal() {
+        // <Avatar /> → rml_ui::Avatar::new()
+        let elem = make_element("Avatar", vec![], vec![]);
+        let mut id = 0;
+        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
+        assert!(code.contains("rml_ui::Avatar::new()"));
+        // StatelessNoId 不应生成 ElementId 参数
+        assert!(!code.contains("rml_el"));
+        // Avatar 不是容器，不应生成 .child()
+        assert!(!code.contains(".child("));
+    }
+
+    #[test]
+    fn gen_component_avatar_with_src_and_name() {
+        // <Avatar src="https://..." name="John" />
+        let elem = make_element(
+            "Avatar",
+            vec![
+                Attribute::Static {
+                    name: "src".into(),
+                    value: "https://example.com/a.jpg".into(),
+                },
+                Attribute::Static {
+                    name: "name".into(),
+                    value: "John Doe".into(),
+                },
+            ],
+            vec![],
+        );
+        let mut id = 0;
+        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
+        assert!(code.contains("rml_ui::Avatar::new()"));
+        assert!(code.contains(r#".src("https://example.com/a.jpg")"#));
+        assert!(code.contains(r#".name("John Doe")"#));
+    }
+
+    #[test]
+    fn gen_component_avatar_with_placeholder() {
+        // <Avatar placeholder="UserCircle" /> → .placeholder(rml_ui::IconName::UserCircle)
+        let elem = make_element(
+            "Avatar",
+            vec![Attribute::Static {
+                name: "placeholder".into(),
+                value: "UserCircle".into(),
+            }],
+            vec![],
+        );
+        let mut id = 0;
+        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
+        assert!(code.contains(".placeholder(rml_ui::IconName::UserCircle)"));
+        // 不应生成字符串版 .placeholder("UserCircle")
+        assert!(!code.contains(r#".placeholder("UserCircle")"#));
+    }
+
+    #[test]
+    fn gen_component_avatar_with_sizable() {
+        // <Avatar name="John" large="" /> → .name("John").large()
+        let elem = make_element(
+            "Avatar",
+            vec![
+                Attribute::Static {
+                    name: "name".into(),
+                    value: "John".into(),
+                },
+                Attribute::Static {
+                    name: "large".into(),
+                    value: "".into(),
+                },
+            ],
+            vec![],
+        );
+        let mut id = 0;
+        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
+        assert!(code.contains(r#".name("John")"#));
+        assert!(code.contains(".large()"));
+    }
+
+    #[test]
+    fn gen_component_avatar_text_child_maps_to_name() {
+        // <Avatar>John Doe</Avatar> → .name("John Doe")（非 .label）
+        let elem = make_element("Avatar", vec![], vec![Node::Text("John Doe".into())]);
+        let mut id = 0;
+        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
+        assert!(code.contains(r#".name("John Doe")"#));
+        assert!(!code.contains(".label("));
+    }
+
+    #[test]
+    fn gen_component_avatar_name_attr_overrides_text_child() {
+        // 显式 name 属性优先于文本子节点
+        let elem = make_element(
+            "Avatar",
+            vec![Attribute::Static {
+                name: "name".into(),
+                value: "Explicit".into(),
+            }],
+            vec![Node::Text("Ignored".into())],
+        );
+        let mut id = 0;
+        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
+        assert!(code.contains(r#".name("Explicit")"#));
+        assert!(!code.contains("Ignored"));
+    }
+
+    #[test]
+    fn gen_component_avatar_group_minimal() {
+        // <AvatarGroup /> → rml_ui::AvatarGroup::new()
+        let elem = make_element("AvatarGroup", vec![], vec![]);
+        let mut id = 0;
+        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
+        assert!(code.contains("rml_ui::AvatarGroup::new()"));
+    }
+
+    #[test]
+    fn gen_component_avatar_group_with_limit_and_ellipsis() {
+        // <AvatarGroup limit="3" ellipsis="" />
+        let elem = make_element(
+            "AvatarGroup",
+            vec![
+                Attribute::Static {
+                    name: "limit".into(),
+                    value: "3".into(),
+                },
+                Attribute::Static {
+                    name: "ellipsis".into(),
+                    value: "".into(),
+                },
+            ],
+            vec![],
+        );
+        let mut id = 0;
+        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
+        assert!(code.contains(".limit(3)"));
+        assert!(code.contains(".ellipsis()"));
+    }
+
+    #[test]
+    fn gen_component_avatar_group_with_avatar_children() {
+        // <AvatarGroup><Avatar name="Alice" /><Avatar name="Bob" /></AvatarGroup>
+        let child1 = make_element(
+            "Avatar",
+            vec![Attribute::Static {
+                name: "name".into(),
+                value: "Alice".into(),
+            }],
+            vec![],
+        );
+        let child2 = make_element(
+            "Avatar",
+            vec![Attribute::Static {
+                name: "name".into(),
+                value: "Bob".into(),
+            }],
+            vec![],
+        );
+        let group = make_element(
+            "AvatarGroup",
+            vec![],
+            vec![Node::Element(child1), Node::Element(child2)],
+        );
+        let mut id = 0;
+        let code = gen_component(&group, &ctx(), 0, &mut id, &Vec::new()).unwrap();
+        assert!(code.contains("rml_ui::AvatarGroup::new()"));
+        // AvatarGroup 是容器，应生成 .child(rml_ui::Avatar::new()...)
+        assert!(code.contains(".child(rml_ui::Avatar::new()"));
+        assert!(code.contains(r#".name("Alice")"#));
+        assert!(code.contains(r#".name("Bob")"#));
+    }
+
+    #[test]
+    fn gen_component_avatar_with_src_bind() {
+        // <Avatar src={avatar_url} /> → .src(self.avatar_url.clone())
+        let elem = make_element(
+            "Avatar",
+            vec![Attribute::Bind {
+                name: "src".into(),
+                expr: "avatar_url".into(),
+            }],
+            vec![],
+        );
+        let mut id = 0;
+        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
+        assert!(code.contains(".src(self.avatar_url.clone())"));
     }
 }

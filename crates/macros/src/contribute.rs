@@ -1,10 +1,11 @@
-//! `#[contribute]` —— 编译期校验 + 路由注册函数生成
+//! `#[contribute]` —— 编译期校验 + 统一注册 + 能力注册函数生成
 //!
 //! 宏职责（精简后）：
 //! 1. 生成 `pub const CONTRIBUTION_ID: &str`
 //! 2. 编译期断言目标实现 `IContribution`（用户手写 impl）
-//! 3. 生成 `__rml_register_*` 函数，按 `command`/`visual` flag 路由到
-//!    `register`/`register_command`/`register_visual`
+//! 3. 生成 `__rml_register_*` 函数：
+//!    - 按 `command`/`visual` flag 调用 `ability::register` 注册能力 cast 函数
+//!    - 统一调用 `registry.register(host_id, c, Some(opts))`
 //! 4. 视觉贡献（`visual` flag 或 `#[component]` 叠加）额外生成 `impl IVisualContribution`（仅 `render`）
 //!
 //! 宏不再自动生成 `impl IContribution`——用户必须手写。
@@ -255,46 +256,54 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
         quote! {}
     };
 
-    // 注册调用：按 flag 路由
-    // - visual → register_visual
-    // - command → register_command
-    // - 默认 → register
-    let register_call = if use_visual {
+    // 能力注册：按 flag 注册到 ability registry（幂等）。
+    // cast_fn 内部用 trait upcast（&dyn IContribution → &dyn Any）+ downcast_ref::<Self>()
+    // 再 trait upcast 到目标能力 trait，最后 erase 为 ErasedAbility fat pointer。
+    let command_ability_registration = if use_command {
         quote! {
-            cx.get_contribution_registry().register_visual(
-                #host_id,
-                std::sync::Arc::new(#struct_name::default()),
-                rml_core::contribution::ContributionOptions::new()
-                    #parent_id
-                    #order
-                    #group
-                    #properties_tokens,
-            );
-        }
-    } else if use_command {
-        quote! {
-            cx.get_contribution_registry().register_command(
-                #host_id,
-                std::sync::Arc::new(#struct_name::default()),
-                rml_core::contribution::ContributionOptions::new()
-                    #parent_id
-                    #order
-                    #group
-                    #properties_tokens,
+            rml_core::ability::register::<#struct_name, dyn rml_core::command::ICommand>(
+                |c| {
+                    let any: &dyn std::any::Any = c;
+                    any.downcast_ref::<#struct_name>().map(|s| {
+                        let cmd: &dyn rml_core::command::ICommand = s;
+                        unsafe { rml_core::ability::erase(cmd) }
+                    })
+                },
             );
         }
     } else {
+        quote! {}
+    };
+
+    let visual_ability_registration = if use_visual {
         quote! {
-            cx.get_contribution_registry().register(
-                #host_id,
-                std::sync::Arc::new(#struct_name::default()),
+            rml_core::ability::register::<#struct_name, dyn rml_core::contribution::IVisualContribution>(
+                |c| {
+                    let any: &dyn std::any::Any = c;
+                    any.downcast_ref::<#struct_name>().map(|s| {
+                        let v: &dyn rml_core::contribution::IVisualContribution = s;
+                        unsafe { rml_core::ability::erase(v) }
+                    })
+                },
+            );
+        }
+    } else {
+        quote! {}
+    };
+
+    // 统一注册调用：始终 register（host 自行用 as_command()/as_visual() 分类）
+    let register_call = quote! {
+        cx.get_contribution_registry().register(
+            #host_id,
+            std::sync::Arc::new(#struct_name::default()),
+            Some(
                 rml_core::contribution::ContributionOptions::new()
                     #parent_id
                     #order
                     #group
                     #properties_tokens,
-            );
-        }
+            ),
+        );
     };
 
     // 命令贡献额外断言：目标必须实现 ICommand（用户手写）
@@ -329,6 +338,8 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
         /// 由 build.rs 生成的 `register_rml_contributions_for(cx, host_id)` 按 host_id 分组调用。
         pub fn #register_fn(cx: &mut gpui::App) {
             use rml_app::contribution::ContributionRegistryExt;
+            #command_ability_registration
+            #visual_ability_registration
             #register_call
         }
     }

@@ -2,24 +2,55 @@
 //!
 //! 单线程读消息 → 分发 → 写响应（rust-analyzer 模式，无 tokio）。
 //! MVP 阶段所有处理在主线程同步执行（.rml 文件小，解析毫秒级）。
+//! RA workspace 加载在后台线程执行（首次加载 30s+，不阻塞主循环）。
+
+use std::path::PathBuf;
+#[cfg(feature = "rust-backend")]
+use std::sync::Arc;
 
 use anyhow::Result;
 use lsp_server::{Connection, Message};
-use lsp_types::ServerCapabilities;
+use lsp_types::{InitializeParams, ServerCapabilities};
 
+use crate::rust::RustSemanticQuery;
+#[cfg(not(feature = "rust-backend"))]
+use crate::rust::NoopQuery;
+#[cfg(feature = "rust-backend")]
+use crate::rust::{RaAdapter, RaHost};
 use crate::server::dispatch;
 use crate::workspace::Workspace;
 
 /// 服务端共享状态（主线程持有，同步处理）
 pub struct ServerState {
     pub workspace: Workspace,
+    pub rust_query: Box<dyn RustSemanticQuery>,
+    /// RA 后端句柄（feature gated）：后台线程加载完成后查询自动生效
+    #[cfg(feature = "rust-backend")]
+    pub ra_host: Arc<RaHost>,
+    /// 从 initialize 参数提取的工作区根路径
+    pub root_path: Option<PathBuf>,
     pub shutdown_requested: bool,
 }
 
 impl ServerState {
     pub fn new() -> Self {
+        #[cfg(feature = "rust-backend")]
+        let host = Arc::new(RaHost::new());
         Self {
             workspace: Workspace::new(),
+            rust_query: {
+                #[cfg(feature = "rust-backend")]
+                {
+                    Box::new(RaAdapter::new(Arc::clone(&host)))
+                }
+                #[cfg(not(feature = "rust-backend"))]
+                {
+                    Box::new(NoopQuery)
+                }
+            },
+            #[cfg(feature = "rust-backend")]
+            ra_host: host,
+            root_path: None,
             shutdown_requested: false,
         }
     }
@@ -37,16 +68,40 @@ pub fn run_server() -> Result<()> {
     let (connection, io_threads) = Connection::stdio();
 
     let capabilities = build_capabilities();
-    let _params = connection.initialize(serde_json::to_value(&capabilities)?)?;
-    log::info!("initialize handshake complete");
+    let init_params_value = connection.initialize(serde_json::to_value(&capabilities)?)?;
+    let init_params: InitializeParams = serde_json::from_value(init_params_value)?;
+    let root_path = extract_root_path(&init_params);
+    log::info!(
+        "initialize handshake complete, root_path: {:?}",
+        root_path
+    );
 
     let mut state = ServerState::new();
+    state.root_path = root_path;
 
     main_loop(&connection, &mut state)?;
 
     io_threads.join()?;
     log::info!("rml-lsp stopped");
     Ok(())
+}
+
+/// 从 InitializeParams 提取工作区根路径
+#[allow(deprecated)]
+fn extract_root_path(params: &InitializeParams) -> Option<PathBuf> {
+    if let Some(uri) = &params.root_uri {
+        if let Ok(path) = uri.to_file_path() {
+            return Some(path);
+        }
+    }
+    if let Some(folders) = &params.workspace_folders {
+        if let Some(first) = folders.first() {
+            if let Ok(path) = first.uri.to_file_path() {
+                return Some(path);
+            }
+        }
+    }
+    None
 }
 
 /// 主消息循环
@@ -87,8 +142,8 @@ fn build_capabilities() -> ServerCapabilities {
             completion_item: None,
         }),
         hover_provider: Some(HoverProviderCapability::Simple(true)),
-        definition_provider: None,
-        references_provider: None,
+        definition_provider: Some(lsp_types::OneOf::Left(true)),
+        references_provider: Some(lsp_types::OneOf::Left(true)),
         document_formatting_provider: None,
         ..Default::default()
     }

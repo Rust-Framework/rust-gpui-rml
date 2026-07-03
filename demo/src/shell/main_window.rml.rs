@@ -4,13 +4,12 @@ use gpui::{BorrowAppContext, Global, IntoElement, WeakEntity, Window};
 use rml::prelude::*;
 use rml_core::i18n::I18nExt;
 use rml_core::theme::ThemeExt;
-use rml_ui::{ActivityBar, MenuItems, StatusBarItems, TabItem};
+use rml_ui::{ActivityBar, IMenuItem, IStatusBarItem, TabItem};
 
 use crate::cases::{self, OpenTab};
 use crate::shell::activity_panel::ActivityPanel;
 use crate::shell::shell_chrome::{
-    build_activity_panels_from, map_menu_items, map_status_items, CommandEntry, ContribEntry,
-    VisualEntry,
+    build_activity_panels_from, map_menu_items, map_status_items, ContribEntry,
 };
 
 /// Demo：ActivityPanel 通过它回调 MainWindow::open_case（在 `on_loaded` 中注册）。
@@ -21,12 +20,11 @@ impl Global for DemoShellHost {}
 /// MainWindow：`demo.shell` host + 视觉消费者。
 ///
 /// `#[window]` + `#[contributehost]` 叠加：用户手写 `impl IContributionHost`（override
-/// `add`/`add_visual`/`remove`）+ `impl ILifecycle`（在 `on_loaded` 中调
+/// `add`/`remove`）+ `impl ILifecycle`（在 `on_loaded` 中调
 /// `__rml_install_host` + `drain_host_ops`）。宏仅生成 `pub const ID` + `__rml_install_host`。
 ///
-/// 贡献存储分两类：
-/// - `entries`：非视觉贡献（menu/status），由 `add` 受理
-/// - `visual_entries`：视觉贡献（case/activity），由 `add_visual` 受理
+/// 贡献存储单一桶 `entries`：所有贡献（menu/status/case/activity）由 `add` 受理，
+/// 投影时经 `as_command()`/`as_visual()` 能力查询区分类型。
 #[window]
 #[contributehost(id = "demo.shell")]
 #[derive(Default)]
@@ -36,15 +34,11 @@ pub struct MainWindow {
     active_case_id: String,
     show_chrome: bool,
     activity_bar: Option<gpui::Entity<ActivityBar>>,
-    status_items: StatusBarItems,
-    menu_items: MenuItems,
+    status_items: Vec<Arc<dyn IStatusBarItem>>,
+    menu_items: Vec<Arc<dyn IMenuItem>>,
     slot_left_size: gpui::Pixels,
-    // 非视觉贡献（menu submenu root / status）
+    // 单一存储桶：所有贡献（menu/status/case/activity）
     entries: std::sync::RwLock<Vec<ContribEntry>>,
-    // 视觉贡献（case/activity）
-    visual_entries: std::sync::RwLock<Vec<VisualEntry>>,
-    // 命令贡献（menu leaf）
-    command_entries: std::sync::RwLock<Vec<CommandEntry>>,
     // host handle receiver（drain 在 on_loaded / refresh 中进行）
     host_rx: Option<rml_core::flume::Receiver<rml_app::contribution::HostOp>>,
 }
@@ -54,38 +48,13 @@ impl IContributionHost for MainWindow {
         Self::ID
     }
 
-    fn add(&self, contribution: Arc<dyn IContribution>, options: ContributionOptions) {
-        self.entries.write().unwrap().push((contribution, options));
-    }
-
-    fn add_visual(
-        &self,
-        contribution: Arc<dyn IVisualContribution>,
-        options: ContributionOptions,
-    ) {
-        self.visual_entries
-            .write()
-            .unwrap()
-            .push((contribution, options));
-    }
-
-    fn add_command(&self, command: Arc<dyn ICommand>, options: ContributionOptions) {
-        self.command_entries
-            .write()
-            .unwrap()
-            .push((command, options));
+    fn add(&self, contribution: Arc<dyn IContribution>, options: Option<ContributionOptions>) {
+        let opts = options.unwrap_or_default();
+        self.entries.write().unwrap().push((contribution, opts));
     }
 
     fn remove(&self, contribution_id: &str) {
         self.entries
-            .write()
-            .unwrap()
-            .retain(|(c, _)| c.id() != contribution_id);
-        self.visual_entries
-            .write()
-            .unwrap()
-            .retain(|(c, _)| c.id() != contribution_id);
-        self.command_entries
             .write()
             .unwrap()
             .retain(|(c, _)| c.id() != contribution_id);
@@ -98,7 +67,7 @@ impl ILifecycle for MainWindow {
         let rx = Self::__rml_install_host(cx.entity(), cx);
         self.host_rx = Some(rx);
 
-        // 2. drain 队列中的 HostOp → 调用自身 IContributionHost::add/add_visual
+        // 2. drain 队列中的 HostOp → 调用自身 IContributionHost::add
         if let Some(rx) = &self.host_rx {
             rml_app::contribution::drain_host_ops(rx, self);
         }
@@ -117,12 +86,12 @@ impl ILifecycle for MainWindow {
         let shell_weak = cx.weak_entity();
         cx.set_global(DemoShellHost(shell_weak));
 
-        // 4. 刷新 shell chrome（从 entries + command_entries 构建 menu/status items）
+        // 4. 刷新 shell chrome（从 entries 构建 menu/status items）
         self.refresh_shell_chrome();
 
-        // 5. 构建 ActivityBar：从 visual_entries 中 slot="activity" 的视觉贡献
+        // 5. 构建 ActivityBar：从 entries 中 slot="activity" 的视觉贡献
         let panels = {
-            let entries = self.visual_entries.read().unwrap();
+            let entries = self.entries.read().unwrap();
             build_activity_panels_from(&entries)
         };
         self.activity_bar = Some(cx.new(|_| ActivityBar::new(panels)));
@@ -159,9 +128,8 @@ impl ILifecycle for MainWindow {
 impl MainWindow {
     fn refresh_shell_chrome(&mut self) {
         let entries = self.entries.read().unwrap();
-        let commands = self.command_entries.read().unwrap();
         self.status_items = map_status_items(&entries);
-        self.menu_items = map_menu_items(&entries, &commands);
+        self.menu_items = map_menu_items(&entries);
     }
 
     /// 渲染当前激活的 IVisualContribution 视图。
@@ -171,12 +139,14 @@ impl MainWindow {
         window: &mut gpui::Window,
         cx: &mut gpui::Context<Self>,
     ) -> gpui::AnyElement {
-        let entries = self.visual_entries.read().unwrap();
-        if let Some((visual, _)) = entries
+        let entries = self.entries.read().unwrap();
+        if let Some((c, _)) = entries
             .iter()
             .find(|(c, _)| c.id() == self.active_case_id)
         {
-            return visual.render(window, cx);
+            if let Some(visual) = c.as_visual() {
+                return visual.render(window, cx);
+            }
         }
         gpui::div().into_any_element()
     }

@@ -16,6 +16,7 @@
 
 pub mod features;
 pub mod handlers;
+pub mod rust;
 pub mod semantics;
 pub mod server;
 pub mod syntax;

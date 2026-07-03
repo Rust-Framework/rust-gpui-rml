@@ -47,6 +47,16 @@
 
   "case.accordion.title": "Accordion",
 
+  "case.avatar.title": "Avatar",
+
+  "case.avatar.image": "Image avatar",
+
+  "case.avatar.initials": "Initials fallback",
+
+  "case.avatar.placeholder": "Placeholder icon",
+
+  "case.avatar.group": "Avatar group",
+
   "case.accordion.basic": "Basic usage",
 
   "case.accordion.multiple": "Allow multiple open",

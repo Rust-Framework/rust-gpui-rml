@@ -35,6 +35,33 @@ impl ProjectIndex {
         self.rml_to_codebehind.insert(rml_uri, rml_rs_uri);
     }
 
+    /// 自动配对：按同目录同名约定推断 .rml → .rml.rs
+    ///
+    /// `foo/bar.rml` → `foo/bar.rml.rs`。若配对已存在则不覆盖。
+    pub fn auto_pair(&mut self, rml_uri: &Url) -> Option<Url> {
+        if let Some(existing) = self.rml_to_codebehind.get(rml_uri) {
+            return Some(existing.clone());
+        }
+        let rml_rs_uri = derive_codebehind_uri(rml_uri)?;
+        self.rml_to_codebehind
+            .insert(rml_uri.clone(), rml_rs_uri.clone());
+        Some(rml_rs_uri)
+    }
+
+    /// 获取 .rml 对应 code-behind 的 URI
+    pub fn codebehind_uri(&self, rml_uri: &Url) -> Option<&Url> {
+        self.rml_to_codebehind.get(rml_uri)
+    }
+
+    /// 反向查找：给定 .rml.rs URI，返回所有配对到它的 .rml URI
+    pub fn find_rml_for_codebehind(&self, rml_rs_uri: &Url) -> Vec<Url> {
+        self.rml_to_codebehind
+            .iter()
+            .filter(|(_, rs)| *rs == rml_rs_uri)
+            .map(|(rml, _)| rml.clone())
+            .collect()
+    }
+
     /// 获取 .rml 对应 code-behind 的 StructMetadata
     ///
     /// 若无配对或未刷新，返回 None（调用方降级为空补全列表）。
@@ -56,3 +83,46 @@ impl Default for ProjectIndex {
         Self::new()
     }
 }
+
+/// 按同目录同名约定推断配对 .rml.rs URI
+///
+/// `file:///foo/bar.rml` → `file:///foo/bar.rml.rs`
+fn derive_codebehind_uri(rml_uri: &Url) -> Option<Url> {
+    let path = rml_uri.path();
+    if !path.ends_with(".rml") {
+        return None;
+    }
+    let new_path = format!("{}.rs", path);
+    let mut new_uri = rml_uri.clone();
+    new_uri.set_path(&new_path);
+    Some(new_uri)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn derive_codebehind_basic() {
+        let rml = Url::parse("file:///foo/bar.rml").unwrap();
+        let rs = derive_codebehind_uri(&rml).unwrap();
+        assert_eq!(rs.as_str(), "file:///foo/bar.rml.rs");
+    }
+
+    #[test]
+    fn derive_codebehind_not_rml() {
+        let rs = Url::parse("file:///foo/bar.rs").unwrap();
+        assert!(derive_codebehind_uri(&rs).is_none());
+    }
+
+    #[test]
+    fn auto_pair_caches() {
+        let mut idx = ProjectIndex::new();
+        let rml = Url::parse("file:///foo/bar.rml").unwrap();
+        let rs1 = idx.auto_pair(&rml).unwrap();
+        let rs2 = idx.auto_pair(&rml).unwrap();
+        assert_eq!(rs1, rs2);
+        assert_eq!(rs1.as_str(), "file:///foo/bar.rml.rs");
+    }
+}
+
