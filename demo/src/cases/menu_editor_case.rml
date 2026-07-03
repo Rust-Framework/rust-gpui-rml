@@ -1,16 +1,66 @@
 <component>
-    <div v_flex="" class="case-pane">
+    <div v_flex="" class="case-pane doc-pane">
         <h2>{t("case.menu.editor.title")}</h2>
-        <p>{editor_status}</p>
-        <dropdown-menu check_side="Right">
-            <Button label="Edit" ghost="" />
-            <menu-item label="Save" onclick={on_save} />
-            <menu-item label="Save As" onclick={on_save_as} />
-            <menu-separator />
-            <menu-item label="Find" onclick={on_find} />
-            <menu-item label="Replace" onclick={on_replace} />
-            <menu-separator />
-            <menu-item label="Word Wrap" checked={word_wrap} onclick={on_toggle_wrap} />
-        </dropdown-menu>
+
+        <Card title="组件说明">
+            <p>Editor Menu 案例演示 dropdown-menu 的 check_side 属性与勾选状态绑定。check_side="Right" 将勾选标记显示在菜单项右侧，适用于编辑器类菜单场景。</p>
+            <p>核心概念：check_side 控制勾选标记位置；menu-item checked={bool} 绑定布尔字段实现勾选状态同步；菜单项分组通过 menu-separator 实现；命令回调更新 last_action 状态。</p>
+        </Card>
+
+        <Card title="API">
+            <div class="api-table">
+                <div class="api-row api-header"><span class="api-prop-name">属性</span><span class="api-prop-type">类型</span><span>说明</span></div>
+                <div class="api-row"><span class="api-prop-name">check_side</span><span class="api-prop-type">枚举</span><span>勾选标记位置（Right/Left）</span></div>
+                <div class="api-row"><span class="api-prop-name">menu-item checked</span><span class="api-prop-type">布尔</span><span>勾选状态绑定</span></div>
+                <div class="api-row"><span class="api-prop-name">menu-item label</span><span class="api-prop-type">字符串</span><span>菜单项文案</span></div>
+                <div class="api-row"><span class="api-prop-name">menu-item onclick</span><span class="api-prop-type">事件</span><span>点击回调</span></div>
+                <div class="api-row"><span class="api-prop-name">menu-separator</span><span class="api-prop-type">标签</span><span>分组分隔线</span></div>
+            </div>
+        </Card>
+
+        <Card title="示例代码">
+            <div class="code-block">{code_sample}</div>
+        </Card>
+
+        <Card title="演示效果">
+            <p>{editor_status}</p>
+
+            <div class="demo-section">
+                <h3>编辑器菜单基础</h3>
+                <p>check_side="Right" 勾选标记在右侧，点击 Edit 触发菜单：</p>
+                <dropdown-menu check_side="Right">
+                    <Button label="Edit" ghost="" />
+                    <menu-item label="Save" onclick={on_save} />
+                    <menu-item label="Save As" onclick={on_save_as} />
+                    <menu-separator />
+                    <menu-item label="Find" onclick={on_find} />
+                    <menu-item label="Replace" onclick={on_replace} />
+                </dropdown-menu>
+            </div>
+
+            <div class="demo-section">
+                <h3>勾选状态</h3>
+                <p>checked={word_wrap} 绑定字段，点击 Word Wrap 切换状态，观察勾选标记：</p>
+                <dropdown-menu check_side="Right">
+                    <Button label="View" ghost="" />
+                    <menu-item label="Word Wrap" checked={word_wrap} onclick={on_toggle_wrap} />
+                </dropdown-menu>
+            </div>
+
+            <div class="demo-section">
+                <h3>分隔符与命令分组</h3>
+                <p>Save/Save As 一组，Find/Replace 一组，观察视觉分组：</p>
+                <dropdown-menu check_side="Right">
+                    <Button label="File" ghost="" />
+                    <menu-item label="Save" icon="Save" onclick={on_save} />
+                    <menu-item label="Save As" icon="FileText" onclick={on_save_as} />
+                    <menu-separator />
+                    <menu-item label="Find" icon="Search" onclick={on_find} />
+                    <menu-item label="Replace" icon="Replace" onclick={on_replace} />
+                    <menu-separator />
+                    <menu-item label="Word Wrap" checked={word_wrap} onclick={on_toggle_wrap} />
+                </dropdown-menu>
+            </div>
+        </Card>
     </div>
 </component>

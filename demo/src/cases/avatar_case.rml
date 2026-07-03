@@ -1,34 +1,65 @@
 <component>
-    <div v_flex="" class="case-pane">
+    <div v_flex="" class="case-pane doc-pane">
         <h2>{t("case.avatar.title")}</h2>
 
-        <h3>{t("case.avatar.image")}</h3>
-        <div h_flex="" gap_4="">
-            <Avatar src="https://avatars.githubusercontent.com/u/5518?v=4" large="" />
-            <Avatar src="https://avatars.githubusercontent.com/u/28998859?v=4" />
-            <Avatar src="https://avatars.githubusercontent.com/u/20092316?v=4" small="" />
-        </div>
+        <Card title="组件说明">
+            <p>Avatar 是 gpui-component 头像组件的 RML 封装，标签为 PascalCase Avatar。支持图片源（src）、首字母（name）、占位图标（placeholder）三种模式。</p>
+            <p>核心概念：src 优先级最高，加载失败回退到 name 首字母，再回退到 placeholder 图标；small/large 控制尺寸；AvatarGroup 分组展示并支持 limit + ellipsis 折叠溢出项。</p>
+        </Card>
 
-        <h3>{t("case.avatar.initials")}</h3>
-        <div h_flex="" gap_4="">
-            <Avatar name="Jason Lee" large="" />
-            <Avatar name="Floyd Wang" />
-            <Avatar name="Alice" small="" />
-        </div>
+        <Card title="API">
+            <div class="api-table">
+                <div class="api-row api-header"><span class="api-prop-name">属性</span><span class="api-prop-type">类型</span><span>说明</span></div>
+                <div class="api-row"><span class="api-prop-name">src</span><span class="api-prop-type">URL 字符串</span><span>图片地址</span></div>
+                <div class="api-row"><span class="api-prop-name">name</span><span class="api-prop-type">字符串</span><span>取首字母显示</span></div>
+                <div class="api-row"><span class="api-prop-name">placeholder</span><span class="api-prop-type">图标名</span><span>占位图标</span></div>
+                <div class="api-row"><span class="api-prop-name">small/large</span><span class="api-prop-type">布尔标志</span><span>尺寸变体</span></div>
+                <div class="api-row"><span class="api-prop-name">AvatarGroup limit</span><span class="api-prop-type">数字</span><span>最大显示数量</span></div>
+                <div class="api-row"><span class="api-prop-name">AvatarGroup ellipsis</span><span class="api-prop-type">布尔标志</span><span>溢出项显示 +N</span></div>
+            </div>
+        </Card>
 
-        <h3>{t("case.avatar.placeholder")}</h3>
-        <div h_flex="" gap_4="">
-            <Avatar large="" />
-            <Avatar placeholder="Building2" />
-        </div>
+        <Card title="示例代码">
+            <div class="code-block">{code_sample}</div>
+        </Card>
 
-        <h3>{t("case.avatar.group")}</h3>
-        <AvatarGroup limit="3" ellipsis="">
-            <Avatar src="https://avatars.githubusercontent.com/u/5518?v=4" />
-            <Avatar src="https://avatars.githubusercontent.com/u/28998859?v=4" />
-            <Avatar src="https://avatars.githubusercontent.com/u/20092316?v=4" />
-            <Avatar src="https://avatars.githubusercontent.com/u/22312482?v=4" />
-            <Avatar name="John Doe" />
-        </AvatarGroup>
+        <Card title="演示效果">
+            <div class="demo-section">
+                <h3>{t("case.avatar.image")}</h3>
+                <div h_flex="" gap_4="">
+                    <Avatar src="https://avatars.githubusercontent.com/u/5518?v=4" large="" />
+                    <Avatar src="https://avatars.githubusercontent.com/u/28998859?v=4" />
+                    <Avatar src="https://avatars.githubusercontent.com/u/20092316?v=4" small="" />
+                </div>
+            </div>
+
+            <div class="demo-section">
+                <h3>{t("case.avatar.initials")}</h3>
+                <div h_flex="" gap_4="">
+                    <Avatar name="Jason Lee" large="" />
+                    <Avatar name="Floyd Wang" />
+                    <Avatar name="Alice" small="" />
+                </div>
+            </div>
+
+            <div class="demo-section">
+                <h3>{t("case.avatar.placeholder")}</h3>
+                <div h_flex="" gap_4="">
+                    <Avatar large="" />
+                    <Avatar placeholder="Building2" />
+                </div>
+            </div>
+
+            <div class="demo-section">
+                <h3>{t("case.avatar.group")}</h3>
+                <AvatarGroup limit="3" ellipsis="">
+                    <Avatar src="https://avatars.githubusercontent.com/u/5518?v=4" />
+                    <Avatar src="https://avatars.githubusercontent.com/u/28998859?v=4" />
+                    <Avatar src="https://avatars.githubusercontent.com/u/20092316?v=4" />
+                    <Avatar src="https://avatars.githubusercontent.com/u/22312482?v=4" />
+                    <Avatar name="John Doe" />
+                </AvatarGroup>
+            </div>
+        </Card>
     </div>
 </component>

@@ -23,3 +23,17 @@ impl IContribution for AvatarCase {
 }
 
 impl ILifecycle for AvatarCase {}
+
+impl AvatarCase {
+    #[computed]
+    pub fn code_sample(&self) -> String {
+        r#"<Avatar src="https://..." large="" />
+<Avatar name="Jason Lee" />
+<Avatar placeholder="Building2" />
+<AvatarGroup limit="3" ellipsis="">
+    <Avatar src="..." />
+    <Avatar name="John" />
+</AvatarGroup>"#
+            .to_string()
+    }
+}

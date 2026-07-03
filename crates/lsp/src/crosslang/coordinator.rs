@@ -258,6 +258,9 @@ mod tests {
         fn command_signature(&self, _: &Url, _: &str, _: &str) -> Option<SymbolInfo> {
             None
         }
+        fn list_components(&self, _: &str) -> Vec<crate::rust::query::ComponentInfo> {
+            Vec::new()
+        }
         fn is_ready(&self) -> bool {
             false
         }

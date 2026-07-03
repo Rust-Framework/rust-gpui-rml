@@ -8,14 +8,15 @@
 use lsp_types::{CompletionItem, CompletionItemKind, CompletionResponse, InsertTextFormat};
 
 use crate::features::source::{CompletionKind, CompletionSource};
+use crate::rust::RustSemanticQuery;
 use crate::server::conv;
 use crate::workspace::Workspace;
 
 /// 补全上下文（根据光标位置推断）
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CompletionContext {
-    /// `<` 后：标签名补全
-    TagName,
+    /// `<` 后：标签名补全（携带已输入前缀，用于 RA 动态组件查询）
+    TagName { prefix: String },
     /// 标签内属性名位置
     AttributeName { tag: Option<&'static str> },
     /// `{...}` 绑定表达式内
@@ -31,6 +32,7 @@ pub fn complete(
     uri: &lsp_types::Url,
     position: lsp_types::Position,
     workspace: &Workspace,
+    rust_query: &dyn RustSemanticQuery,
 ) -> Option<CompletionResponse> {
     let doc = workspace.document(uri)?;
     let source = doc.tree.text();
@@ -41,7 +43,9 @@ pub fn complete(
     let source_provider = CompletionSource::new(workspace.index());
 
     let items: Vec<CompletionItem> = match ctx {
-        CompletionContext::TagName => collect_tag_completions(&source_provider),
+        CompletionContext::TagName { prefix } => {
+            collect_tag_completions(&source_provider, rust_query, &prefix)
+        }
         CompletionContext::AttributeName { tag } => {
             collect_attr_completions(&source_provider, tag)
         }
@@ -100,7 +104,9 @@ fn check_tag_name_context(before: &str) -> Option<CompletionContext> {
         if before[last_lt..].starts_with("</") {
             return None;
         }
-        return Some(CompletionContext::TagName);
+        return Some(CompletionContext::TagName {
+            prefix: after_lt.to_string(),
+        });
     }
     None
 }
@@ -173,8 +179,12 @@ fn check_command_context(before: &str) -> Option<CompletionContext> {
     }
 }
 
-fn collect_tag_completions(source: &CompletionSource) -> Vec<CompletionItem> {
-    source
+fn collect_tag_completions(
+    source: &CompletionSource,
+    rust_query: &dyn RustSemanticQuery,
+    prefix: &str,
+) -> Vec<CompletionItem> {
+    let mut items: Vec<CompletionItem> = source
         .tags()
         .into_iter()
         .map(|c| match c {
@@ -188,7 +198,26 @@ fn collect_tag_completions(source: &CompletionSource) -> Vec<CompletionItem> {
             },
             _ => CompletionItem::default(),
         })
-        .collect()
+        .collect();
+
+    // 追加 RA 动态查询的 `#[component]` struct（去重：跳过静态列表已有的标签名）
+    let static_names: std::collections::HashSet<String> =
+        items.iter().map(|i| i.label.clone()).collect();
+    for comp in rust_query.list_components(prefix) {
+        if static_names.contains(&comp.name) {
+            continue;
+        }
+        items.push(CompletionItem {
+            label: comp.name.clone(),
+            kind: Some(CompletionItemKind::STRUCT),
+            detail: Some("user component".to_string()),
+            insert_text: Some(comp.name),
+            insert_text_format: Some(InsertTextFormat::PLAIN_TEXT),
+            ..Default::default()
+        });
+    }
+
+    items
 }
 
 fn collect_attr_completions(source: &CompletionSource, tag: Option<&str>) -> Vec<CompletionItem> {

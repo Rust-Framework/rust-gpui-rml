@@ -1,16 +1,50 @@
 <component>
-    <div v_flex="" class="case-pane">
+    <div v_flex="" class="case-pane doc-pane">
         <h2>{t("case.slot.title")}</h2>
-        <Card>
-            <template slot="header">
-                <h3>{t("case.slot.header")}</h3>
-            </template>
 
-            <p>{t("case.slot.body")}</p>
+        <Card title="组件说明">
+            <p>Slot 案例演示框架 Card 组件的标准用法。Card 是 rml_ui 提供的 Stateless 容器组件，标签为 PascalCase Card，支持 title 属性、hoverable 悬浮效果，body 子节点直接作为卡片内容。</p>
+            <p>核心概念：Card title 绑定标题文本；hoverable 启用悬浮提升效果；children 直接作为卡片 body；与 Button 等子组件组合构建内容区块。</p>
+        </Card>
 
-            <template slot="footer">
-                <Button label={t("case.slot.footer")} primary="" />
-            </template>
+        <Card title="API">
+            <div class="api-table">
+                <div class="api-row api-header"><span class="api-prop-name">属性</span><span class="api-prop-type">类型</span><span>说明</span></div>
+                <div class="api-row"><span class="api-prop-name">title</span><span class="api-prop-type">字符串</span><span>卡片标题</span></div>
+                <div class="api-row"><span class="api-prop-name">hoverable</span><span class="api-prop-type">布尔标志</span><span>悬浮提升效果</span></div>
+                <div class="api-row"><span class="api-prop-name">children</span><span class="api-prop-type">子节点</span><span>卡片 body 内容</span></div>
+            </div>
+        </Card>
+
+        <Card title="示例代码">
+            <div class="code-block">{code_sample}</div>
+        </Card>
+
+        <Card title="演示效果">
+            <div class="demo-section">
+                <h3>标题插槽</h3>
+                <p>基础用法：title 属性绑定标题文本，body 放置内容。</p>
+                <Card title={t("case.slot.header")}>
+                    <p>{t("case.slot.body")}</p>
+                </Card>
+            </div>
+
+            <div class="demo-section">
+                <h3>悬浮效果</h3>
+                <p>hoverable 属性启用悬浮提升，鼠标悬停观察阴影变化。</p>
+                <Card title={t("case.slot.header")} hoverable="">
+                    <p>{t("case.slot.body")}</p>
+                </Card>
+            </div>
+
+            <div class="demo-section">
+                <h3>内容组合</h3>
+                <p>Card 内组合 p + Button 构建完整内容区块。</p>
+                <Card title={t("case.slot.header")} hoverable="">
+                    <p>{t("case.slot.body")}</p>
+                    <Button label={t("case.slot.footer")} primary="" />
+                </Card>
+            </div>
         </Card>
     </div>
 </component>

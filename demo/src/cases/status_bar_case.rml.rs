@@ -24,6 +24,21 @@ impl IContribution for StatusBarCase {
 
 impl ILifecycle for StatusBarCase {}
 
+impl StatusBarCase {
+    #[computed]
+    pub fn code_sample(&self) -> String {
+        r#"#[contribute(host_id = "demo.shell", id = "status.ready", kind = "status", order = 0)]
+#[derive(Default)]
+pub struct StatusReady;
+
+impl IContribution for StatusReady {
+    fn id(&self) -> &str { Self::CONTRIBUTION_ID }
+    fn name(&self) -> SharedString { t_static("shell.status_ready").into() }
+}"#
+            .to_string()
+    }
+}
+
 /// 状态栏贡献：演示 status slot（从 shell_meta.rs 迁入）
 #[contribute(host_id = "demo.shell", id = "status.ready", kind = "status", order = 0)]
 #[derive(Default)]

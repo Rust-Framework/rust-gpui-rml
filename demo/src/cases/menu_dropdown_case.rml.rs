@@ -36,6 +36,17 @@ impl MenuDropdownCase {
         }
     }
 
+    #[computed]
+    pub fn code_sample(&self) -> String {
+        r#"<dropdown-menu anchor="TopRight">
+    <Button label="Options" ghost="" />
+    <menu-item label="Custom Action" icon="Star" onclick={on_custom} />
+    <menu-separator />
+    <menu-item label="Exit" onclick={on_exit} />
+</dropdown-menu>"#
+            .to_string()
+    }
+
     #[command]
     pub fn on_custom(&mut self, _: &ClickEvent, _: &mut Context<Self>) {
         self.last_action = "Custom Action".to_string();

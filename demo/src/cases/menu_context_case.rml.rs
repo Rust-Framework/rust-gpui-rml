@@ -40,6 +40,19 @@ impl MenuContextCase {
         }
     }
 
+    #[computed]
+    pub fn code_sample(&self) -> String {
+        r#"<context-menu>
+    <div>右键目标</div>
+    <menu-item label="Open" icon="FolderOpen" onclick={on_open} />
+    <menu-separator />
+    <menu-item label="New">
+        <menu-item label="File" onclick={on_new_file} />
+    </menu-item>
+</context-menu>"#
+            .to_string()
+    }
+
     fn set_action(&mut self, name: &str) {
         self.last_action = name.to_string();
     }

@@ -8,7 +8,22 @@ use rml::prelude::*;
 use rml_core::command::{CallContext, ICommand};
 use rml_core::i18n::t_static;
 
-use crate::shell::DemoShellHost;
+use crate::shell::{DemoShellHost, MainWindow};
+
+/// 命令执行 helper：从 `DemoShellHost` 全局获取 `MainWindow` 弱引用，
+/// upgrade 后在闭包中执行 MainWindow 方法。统一 6 处 `try_global`+`upgrade`+`update` 样板。
+fn with_main_window<F>(ctx: &mut CallContext, f: F)
+where
+    F: FnOnce(&mut MainWindow, &mut gpui::Context<MainWindow>),
+{
+    if let Some(host) = ctx
+        .app
+        .try_global::<DemoShellHost>()
+        .and_then(|h| h.0.upgrade())
+    {
+        host.update(ctx.app, |this, cx| f(this, cx));
+    }
+}
 
 // ── File（二级） ──
 
@@ -47,15 +62,7 @@ impl IContribution for MenuFileNew {
 
 impl ICommand for MenuFileNew {
     fn execute(&self, ctx: &mut CallContext) {
-        if let Some(host) = ctx
-            .app
-            .try_global::<DemoShellHost>()
-            .and_then(|h| h.0.upgrade())
-        {
-            host.update(ctx.app, |this, cx| {
-                this.open_case("welcome".to_string(), cx);
-            });
-        }
+        with_main_window(ctx, |this, cx| this.open_case("welcome".to_string(), cx));
     }
 }
 
@@ -81,15 +88,9 @@ impl IContribution for MenuFileOpen {
 
 impl ICommand for MenuFileOpen {
     fn execute(&self, ctx: &mut CallContext) {
-        if let Some(host) = ctx
-            .app
-            .try_global::<DemoShellHost>()
-            .and_then(|h| h.0.upgrade())
-        {
-            host.update(ctx.app, |this, cx| {
-                this.open_case("components.button".to_string(), cx);
-            });
-        }
+        with_main_window(ctx, |this, cx| {
+            this.open_case("components.button".to_string(), cx)
+        });
     }
 }
 
@@ -156,15 +157,7 @@ impl IContribution for MenuThemeToggleContrib {
 
 impl ICommand for MenuThemeToggleContrib {
     fn execute(&self, ctx: &mut CallContext) {
-        if let Some(host) = ctx
-            .app
-            .try_global::<DemoShellHost>()
-            .and_then(|h| h.0.upgrade())
-        {
-            host.update(ctx.app, |this, cx| {
-                this.apply_toggle_theme(cx);
-            });
-        }
+        with_main_window(ctx, |this, cx| this.apply_toggle_theme(cx));
     }
 }
 
@@ -190,15 +183,7 @@ impl IContribution for MenuLangEnContrib {
 
 impl ICommand for MenuLangEnContrib {
     fn execute(&self, ctx: &mut CallContext) {
-        if let Some(host) = ctx
-            .app
-            .try_global::<DemoShellHost>()
-            .and_then(|h| h.0.upgrade())
-        {
-            host.update(ctx.app, |this, cx| {
-                this.apply_switch_en(cx);
-            });
-        }
+        with_main_window(ctx, |this, cx| this.apply_switch_en(cx));
     }
 }
 
@@ -258,15 +243,9 @@ impl IContribution for MenuHelpGuide {
 
 impl ICommand for MenuHelpGuide {
     fn execute(&self, ctx: &mut CallContext) {
-        if let Some(host) = ctx
-            .app
-            .try_global::<DemoShellHost>()
-            .and_then(|h| h.0.upgrade())
-        {
-            host.update(ctx.app, |this, cx| {
-                this.open_case("components.menu.dropdown".to_string(), cx);
-            });
-        }
+        with_main_window(ctx, |this, cx| {
+            this.open_case("components.menu.dropdown".to_string(), cx)
+        });
     }
 }
 
@@ -292,15 +271,7 @@ impl IContribution for MenuHelpAbout {
 
 impl ICommand for MenuHelpAbout {
     fn execute(&self, ctx: &mut CallContext) {
-        if let Some(host) = ctx
-            .app
-            .try_global::<DemoShellHost>()
-            .and_then(|h| h.0.upgrade())
-        {
-            host.update(ctx.app, |this, cx| {
-                this.open_case("welcome".to_string(), cx);
-            });
-        }
+        with_main_window(ctx, |this, cx| this.open_case("welcome".to_string(), cx));
     }
 }
 
@@ -345,14 +316,8 @@ impl IContribution for MenuOpenFeaturesContrib {
 
 impl ICommand for MenuOpenFeaturesContrib {
     fn execute(&self, ctx: &mut CallContext) {
-        if let Some(host) = ctx
-            .app
-            .try_global::<DemoShellHost>()
-            .and_then(|h| h.0.upgrade())
-        {
-            host.update(ctx.app, |this, cx| {
-                this.open_case("components.menu.features".to_string(), cx);
-            });
-        }
+        with_main_window(ctx, |this, cx| {
+            this.open_case("components.menu.features".to_string(), cx)
+        });
     }
 }

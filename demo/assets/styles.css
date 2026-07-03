@@ -60,6 +60,89 @@
     justify-content: center;
 }
 
+/* ── 文档格式 case 样式 ── */
+
+.doc-pane {
+    align-items: stretch;
+    text-align: left;
+    gap: 16px;
+    overflow-y: auto;
+}
+
+.doc-pane .card,
+.doc-pane .api-table,
+.doc-pane .code-block,
+.doc-pane .demo-section {
+    width: 100%;
+    max-width: 960px;
+    margin: 0 auto;
+}
+
+.api-table {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    font-size: 13px;
+}
+
+.api-row {
+    display: flex;
+    flex-direction: row;
+    gap: 12px;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border);
+}
+
+.api-row span {
+    flex: 1;
+}
+
+.api-prop-name {
+    flex: 0 0 160px;
+    font-weight: 600;
+}
+
+.api-prop-type {
+    flex: 0 0 100px;
+    color: var(--text-muted);
+}
+
+.api-header {
+    font-weight: 700;
+    background: var(--bg-color);
+}
+
+.code-block {
+    font-family: Consolas;
+    font-size: 13px;
+    line-height: 1.5;
+    background: var(--bg-color);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 16px;
+    white-space: pre;
+    overflow-x: auto;
+    color: var(--text);
+}
+
+.demo-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 0;
+    border-bottom: 1px dashed var(--border);
+}
+
+.demo-section h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.demo-section .button-row {
+    justify-content: flex-start;
+}
+
 /* 覆盖示例：自定义底部输出面板外观
 .shell-output {
     background: var(--bg-color);

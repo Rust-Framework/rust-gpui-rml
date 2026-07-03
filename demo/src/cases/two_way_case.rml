@@ -1,10 +1,45 @@
 <component>
-    <div v_flex="" class="case-pane">
+    <div v_flex="" class="case-pane doc-pane">
         <h2>{t("case.two_way.title")}</h2>
-        <div class="form">
-            <input model={name} placeholder={t("demo.name_placeholder")} />
-            <input model={age} placeholder={t("demo.age_placeholder")} />
-            <p>{profile_summary}</p>
-        </div>
+
+        <Card title="组件说明">
+            <p>双向绑定案例演示 RML 的 model 属性。通过 model={field} 将 input 与 pub 字段绑定，输入变化自动回写字段，字段变化自动触发 computed 重算与重渲。</p>
+            <p>核心概念：input model={field} 实现双向绑定；#[validate(range(min,max))] 标注数值验证规则；验证失败时框架自动显示红框 + tooltip。</p>
+        </Card>
+
+        <Card title="API">
+            <div class="api-table">
+                <div class="api-row api-header"><span class="api-prop-name">特性</span><span class="api-prop-type">类型</span><span>说明</span></div>
+                <div class="api-row"><span class="api-prop-name">model</span><span class="api-prop-type">字段引用</span><span>双向绑定到 pub 字段</span></div>
+                <div class="api-row"><span class="api-prop-name">#[validate(range(min,max))]</span><span class="api-prop-type">属性</span><span>数值范围验证</span></div>
+                <div class="api-row"><span class="api-prop-name">placeholder</span><span class="api-prop-type">字符串</span><span>占位提示</span></div>
+                <div class="api-row"><span class="api-prop-name">#[computed]</span><span class="api-prop-type">方法</span><span>依赖字段自动重算</span></div>
+            </div>
+        </Card>
+
+        <Card title="示例代码">
+            <div class="code-block">{code_sample}</div>
+        </Card>
+
+        <Card title="演示效果">
+            <div class="demo-section">
+                <h3>文本双向绑定</h3>
+                <p>输入姓名，下方文案实时更新：</p>
+                <input model={name} placeholder={t("demo.name_placeholder")} />
+                <p>当前姓名：{name}</p>
+            </div>
+            <div class="demo-section">
+                <h3>数值双向绑定</h3>
+                <p>输入年龄（0-150），下方文案实时更新：</p>
+                <input model={age} placeholder={t("demo.age_placeholder")} />
+                <p>当前年龄：{age}</p>
+            </div>
+            <div class="demo-section">
+                <h3>验证失败场景</h3>
+                <p>输入超范围值（如 200 或 -5），观察输入框红框 + tooltip：</p>
+                <input model={age} placeholder="输入 200 测试验证" />
+                <p>{profile_summary}</p>
+            </div>
+        </Card>
     </div>
 </component>

@@ -1,14 +1,56 @@
 <component>
-    <div v_flex="" class="case-pane">
+    <div v_flex="" class="case-pane doc-pane">
         <h2>{t("case.menu.dropdown.title")}</h2>
-        <p>{dropdown_status}</p>
-        <dropdown-menu anchor="TopRight">
-            <Button label="Options" ghost="" />
-            <menu-item label="Custom Action" icon="Star" onclick={on_custom} />
-            <menu-separator />
-            <menu-item label="Standard Action" onclick={on_standard} />
-            <menu-separator />
-            <menu-item label="Exit" onclick={on_exit} />
-        </dropdown-menu>
+
+        <Card title="组件说明">
+            <p>Dropdown Menu 是 gpui-component 下拉菜单的 RML 封装，标签为 dropdown-menu。第一个子元素作为触发器，点击触发弹出菜单。</p>
+            <p>核心概念：第一个子节点（通常是 Button）作为触发器；anchor 控制弹出位置（TopRight/BottomLeft 等）；menu-item 定义菜单项；menu-separator 分组分隔。</p>
+        </Card>
+
+        <Card title="API">
+            <div class="api-table">
+                <div class="api-row api-header"><span class="api-prop-name">属性</span><span class="api-prop-type">类型</span><span>说明</span></div>
+                <div class="api-row"><span class="api-prop-name">anchor</span><span class="api-prop-type">枚举</span><span>弹出锚点位置</span></div>
+                <div class="api-row"><span class="api-prop-name">第一个子节点</span><span class="api-prop-type">组件</span><span>触发器（通常 Button）</span></div>
+                <div class="api-row"><span class="api-prop-name">menu-item label</span><span class="api-prop-type">字符串</span><span>菜单项文案</span></div>
+                <div class="api-row"><span class="api-prop-name">menu-item icon</span><span class="api-prop-type">图标名</span><span>菜单项图标</span></div>
+                <div class="api-row"><span class="api-prop-name">menu-item onclick</span><span class="api-prop-type">事件</span><span>点击回调</span></div>
+                <div class="api-row"><span class="api-prop-name">menu-separator</span><span class="api-prop-type">标签</span><span>分组分隔线</span></div>
+            </div>
+        </Card>
+
+        <Card title="示例代码">
+            <div class="code-block">{code_sample}</div>
+        </Card>
+
+        <Card title="演示效果">
+            <p>{dropdown_status}</p>
+
+            <div class="demo-section">
+                <h3>基础下拉</h3>
+                <p>anchor="TopRight" 锚定右上角弹出，点击 Button 触发：</p>
+                <dropdown-menu anchor="TopRight">
+                    <Button label="Options" ghost="" />
+                    <menu-item label="Custom Action" icon="Star" onclick={on_custom} />
+                    <menu-separator />
+                    <menu-item label="Standard Action" onclick={on_standard} />
+                    <menu-separator />
+                    <menu-item label="Exit" onclick={on_exit} />
+                </dropdown-menu>
+            </div>
+
+            <div class="demo-section">
+                <h3>分隔符与图标</h3>
+                <p>menu-separator 分组，icon 添加图标，观察菜单项视觉分组：</p>
+                <dropdown-menu anchor="TopRight">
+                    <Button label="带图标的菜单" ghost="" />
+                    <menu-item label="Custom Action" icon="Star" onclick={on_custom} />
+                    <menu-separator />
+                    <menu-item label="Standard Action" icon="Check" onclick={on_standard} />
+                    <menu-separator />
+                    <menu-item label="Exit" icon="X" onclick={on_exit} />
+                </dropdown-menu>
+            </div>
+        </Card>
     </div>
 </component>

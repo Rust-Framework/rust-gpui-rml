@@ -1,6 +1,38 @@
 <component>
-    <div v_flex="" class="case-pane">
+    <div v_flex="" class="case-pane doc-pane">
         <h2>{t("case.status_bar.title")}</h2>
-        <p>{t("case.status_bar.hint")}</p>
+
+        <Card title="组件说明">
+            <p>StatusBar 案例演示 RML 的状态栏贡献机制。通过 #[contribute(kind = "status")] 将实现 IContribution 的 struct 注册到 shell 状态栏插槽，框架自动渲染到窗口底部。</p>
+            <p>核心概念：kind = "status" 标识状态栏贡献点；host_id 指向宿主 shell；order 控制排序；IContribution 提供 id 与 name（显示文案）。本案例的 StatusReady 已注册到窗口底部状态栏。</p>
+        </Card>
+
+        <Card title="API">
+            <div class="api-table">
+                <div class="api-row api-header"><span class="api-prop-name">特性</span><span class="api-prop-type">类型</span><span>说明</span></div>
+                <div class="api-row"><span class="api-prop-name">kind = "status"</span><span class="api-prop-type">贡献类型</span><span>注册到状态栏插槽</span></div>
+                <div class="api-row"><span class="api-prop-name">host_id</span><span class="api-prop-type">字符串</span><span>宿主标识</span></div>
+                <div class="api-row"><span class="api-prop-name">order</span><span class="api-prop-type">数字</span><span>状态栏排序</span></div>
+                <div class="api-row"><span class="api-prop-name">IContribution::name</span><span class="api-prop-type">方法</span><span>状态栏显示文案</span></div>
+            </div>
+        </Card>
+
+        <Card title="示例代码">
+            <div class="code-block">{code_sample}</div>
+        </Card>
+
+        <Card title="演示效果">
+            <div class="demo-section">
+                <h3>状态栏贡献说明</h3>
+                <p>{t("case.status_bar.hint")}</p>
+                <p>请查看窗口底部状态栏，左侧显示的 "就绪" 文案即由 StatusReady 贡献点渲染。</p>
+            </div>
+
+            <div class="demo-section">
+                <h3>贡献点机制</h3>
+                <p>本案例源码中定义了 StatusReady struct，通过 #[contribute] 宏注册到 demo.shell 宿主的状态栏插槽。框架在 shell 启动时收集所有 status 类型贡献点，按 order 排序后渲染到 StatusBar 组件。</p>
+                <p>扩展方式：新增 #[contribute(kind = "status")] struct 即可向状态栏添加新项，无需修改 shell 代码。</p>
+            </div>
+        </Card>
     </div>
 </component>

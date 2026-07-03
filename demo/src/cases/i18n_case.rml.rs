@@ -33,6 +33,14 @@ impl ILifecycle for I18nCase {
 }
 
 impl I18nCase {
+    #[computed]
+    pub fn code_sample(&self) -> String {
+        r#"<p>{t("demo.hello")}</p>
+<Button label={t("menu.lang_en")} onclick={on_switch_en} />
+<Button label={t("menu.theme_toggle")} onclick={on_toggle_theme} />"#
+            .to_string()
+    }
+
     #[command]
     pub fn on_switch_en(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         cx.set_i18n("en-US");

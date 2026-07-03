@@ -41,6 +41,17 @@ impl MenuEditorCase {
         }
     }
 
+    #[computed]
+    pub fn code_sample(&self) -> String {
+        r#"<dropdown-menu check_side="Right">
+    <Button label="Edit" ghost="" />
+    <menu-item label="Save" onclick={on_save} />
+    <menu-separator />
+    <menu-item label="Word Wrap" checked={word_wrap} onclick={on_toggle_wrap} />
+</dropdown-menu>"#
+            .to_string()
+    }
+
     #[command]
     pub fn on_save(&mut self, _: &ClickEvent, _: &mut Context<Self>) {
         self.last_action = "Save".to_string();

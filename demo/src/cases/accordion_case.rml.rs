@@ -36,6 +36,19 @@ impl AccordionCase {
         }
     }
 
+    #[computed]
+    pub fn code_sample(&self) -> String {
+        r#"<accordion bordered="">
+    <item title="第一项" open="">
+        <p>内容</p>
+    </item>
+    <item title="第二项">
+        <p>内容</p>
+    </item>
+</accordion>"#
+            .to_string()
+    }
+
     #[command]
     pub fn on_toggle(&mut self, open_ixs: &[usize], cx: &mut Context<Self>) {
         self.last_open = format!("{:?}", open_ixs);

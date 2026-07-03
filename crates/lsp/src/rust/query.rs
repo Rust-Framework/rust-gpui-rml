@@ -143,6 +143,12 @@ pub trait RustSemanticQuery: Send + Sync {
         method: &str,
     ) -> Option<SymbolInfo>;
 
+    /// 列出 workspace 中所有 `#[component]` 标注的 struct（按前缀过滤）
+    ///
+    /// 用于 .rml `<` 后动态补全用户自定义组件标签。
+    /// `prefix` 为空时返回全部组件（受 RA symbol_search 上限约束）。
+    fn list_components(&self, prefix: &str) -> Vec<ComponentInfo>;
+
     /// RA 后端是否已就绪（workspace 加载完成）
     ///
     /// 首次加载耗时较长（30s+），加载完成前返回 false，查询降级返回空

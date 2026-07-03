@@ -398,6 +398,11 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             ctor_path: "rml_ui::AvatarGroup",
             kind: ComponentKind::StatelessNoId,
         }),
+        // Card：Ant Design 风格卡片容器，需 id 支持 hoverable 悬浮效果
+        "Card" => Some(ComponentTag {
+            ctor_path: "rml_ui::Card",
+            kind: ComponentKind::Stateless,
+        }),
         _ => None,
     }
 }

@@ -1,21 +1,66 @@
 <component>
-    <div v_flex="" class="case-pane">
+    <div v_flex="" class="case-pane doc-pane">
         <h2>{t("case.menu.context.title")}</h2>
-        <p>{context_status}</p>
-        <context-menu>
-            <div>{t("case.menu.context.target")}</div>
-            <menu-item label="Open" icon="FolderOpen" onclick={on_open} />
-            <menu-separator />
-            <menu-item label="Copy" icon="BookOpen" onclick={on_copy} />
-            <menu-item label="Cut" onclick={on_cut} />
-            <menu-item label="Paste" onclick={on_paste} />
-            <menu-separator />
-            <menu-item label="New">
-                <menu-item label="File" icon="File" onclick={on_new_file} />
-                <menu-item label="Folder" icon="Folder" onclick={on_new_folder} />
-            </menu-item>
-            <menu-separator />
-            <menu-item label="Delete" icon="Settings" onclick={on_delete} />
-        </context-menu>
+
+        <Card title="组件说明">
+            <p>Context Menu 是 gpui-component 右键菜单的 RML 封装，标签为 context-menu。包裹目标区域后，右键点击触发菜单弹出。</p>
+            <p>核心概念：context-menu 包裹触发区域；menu-item 定义菜单项，label 显示文案，icon 添加图标，onclick 绑定命令；menu-separator 分组分隔；menu-item 内嵌 menu-item 形成子菜单。</p>
+        </Card>
+
+        <Card title="API">
+            <div class="api-table">
+                <div class="api-row api-header"><span class="api-prop-name">属性</span><span class="api-prop-type">类型</span><span>说明</span></div>
+                <div class="api-row"><span class="api-prop-name">menu-item label</span><span class="api-prop-type">字符串</span><span>菜单项文案</span></div>
+                <div class="api-row"><span class="api-prop-name">menu-item icon</span><span class="api-prop-type">图标名</span><span>菜单项图标</span></div>
+                <div class="api-row"><span class="api-prop-name">menu-item onclick</span><span class="api-prop-type">事件</span><span>点击回调</span></div>
+                <div class="api-row"><span class="api-prop-name">menu-separator</span><span class="api-prop-type">标签</span><span>分组分隔线</span></div>
+                <div class="api-row"><span class="api-prop-name">menu-item 子节点</span><span class="api-prop-type">menu-item</span><span>子菜单</span></div>
+            </div>
+        </Card>
+
+        <Card title="示例代码">
+            <div class="code-block">{code_sample}</div>
+        </Card>
+
+        <Card title="演示效果">
+            <p>{context_status}</p>
+
+            <div class="demo-section">
+                <h3>基础右键菜单</h3>
+                <p>在下方区域右键点击，触发上下文菜单：</p>
+                <context-menu>
+                    <div>{t("case.menu.context.target")}</div>
+                    <menu-item label="Open" icon="FolderOpen" onclick={on_open} />
+                    <menu-separator />
+                    <menu-item label="Copy" icon="BookOpen" onclick={on_copy} />
+                    <menu-item label="Cut" onclick={on_cut} />
+                    <menu-item label="Paste" onclick={on_paste} />
+                </context-menu>
+            </div>
+
+            <div class="demo-section">
+                <h3>子菜单</h3>
+                <p>menu-item 内嵌 menu-item 形成子菜单，右键点击展开：</p>
+                <context-menu>
+                    <div>{t("case.menu.context.target")}</div>
+                    <menu-item label="New">
+                        <menu-item label="File" icon="File" onclick={on_new_file} />
+                        <menu-item label="Folder" icon="Folder" onclick={on_new_folder} />
+                    </menu-item>
+                </context-menu>
+            </div>
+
+            <div class="demo-section">
+                <h3>图标与分隔符</h3>
+                <p>icon 属性添加图标，menu-separator 分组分隔：</p>
+                <context-menu>
+                    <div>{t("case.menu.context.target")}</div>
+                    <menu-item label="Open" icon="FolderOpen" onclick={on_open} />
+                    <menu-item label="Copy" icon="BookOpen" onclick={on_copy} />
+                    <menu-separator />
+                    <menu-item label="Delete" icon="Settings" onclick={on_delete} />
+                </context-menu>
+            </div>
+        </Card>
     </div>
 </component>

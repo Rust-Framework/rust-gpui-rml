@@ -1,6 +1,42 @@
 <component>
-    <div v_flex="" class="case-pane">
+    <div v_flex="" class="case-pane doc-pane">
         <h2>{t("case.counter.title")}</h2>
-        <p>{counter_text}</p>
+
+        <Card title="组件说明">
+            <p>计数器案例演示 RML 的命令绑定与状态更新。通过 #[command] 方法处理点击事件，修改 pub 字段后框架自动触发重渲。</p>
+            <p>核心概念：pub 字段是 observable，#[computed] 方法缓存计算结果，#[command] 方法处理事件并更新字段。</p>
+        </Card>
+
+        <Card title="API">
+            <div class="api-table">
+                <div class="api-row api-header"><span class="api-prop-name">特性</span><span class="api-prop-type">类型</span><span>说明</span></div>
+                <div class="api-row"><span class="api-prop-name">pub 字段</span><span class="api-prop-type">i32/String/bool</span><span>observable 状态</span></div>
+                <div class="api-row"><span class="api-prop-name">#[computed]</span><span class="api-prop-type">方法</span><span>缓存计算属性</span></div>
+                <div class="api-row"><span class="api-prop-name">#[command]</span><span class="api-prop-type">方法</span><span>事件处理 + 状态更新</span></div>
+                <div class="api-row"><span class="api-prop-name">onclick</span><span class="api-prop-type">事件</span><span>按钮点击回调</span></div>
+            </div>
+        </Card>
+
+        <Card title="示例代码">
+            <div class="code-block">{code_sample}</div>
+        </Card>
+
+        <Card title="演示效果">
+            <div class="demo-section">
+                <h3>基础计数</h3>
+                <p>{counter_text}</p>
+                <div class="button-row">
+                    <Button label="点击 +1" primary="" onclick={on_click} />
+                    <Button label="重置" ghost="" onclick={on_reset} />
+                </div>
+            </div>
+            <div class="demo-section">
+                <h3>步长控制</h3>
+                <p>当前步长：{step}（每次点击 +步长）</p>
+                <div class="button-row">
+                    <Button label="步长 +1" onclick={on_inc_step} />
+                </div>
+            </div>
+        </Card>
     </div>
 </component>

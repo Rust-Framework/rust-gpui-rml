@@ -211,6 +211,10 @@ pub fn component_static_setter(name: &str, value: &str, tag: &str) -> Option<Str
     if let Some(s) = super::avatar::static_setter(name, value, tag) {
         return Some(s);
     }
+    // Card 的 title/bordered/borderless/hoverable
+    if let Some(s) = super::card::static_setter(name, value, tag) {
+        return Some(s);
+    }
     match name {
         "label" => Some(format!(".label({:?})", value)),
         "placeholder" => Some(format!(".placeholder({:?})", value)),
@@ -333,6 +337,10 @@ pub fn component_bind_setter(
     }
     // Avatar/AvatarGroup 的 src/name/placeholder/limit 属性
     if let Some(s) = super::avatar::bind_setter(name, expr_str, loop_vars, computed, tag) {
+        return Some(s);
+    }
+    // Card 的 title/extra/cover/footer/bordered/hoverable 属性
+    if let Some(s) = super::card::bind_setter(name, expr_str, loop_vars, computed, tag) {
         return Some(s);
     }
 

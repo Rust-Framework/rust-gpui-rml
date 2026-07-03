@@ -174,9 +174,7 @@ impl MainWindow {
                 id: case_id.clone(),
                 title: cx.t(cases::case_title_key(&case_id)).to_string(),
             };
-            let mut tabs = std::mem::take(&mut self.open_tabs);
-            tabs.push(tab);
-            self.open_tabs = tabs;
+            self.open_tabs.push(tab);
         }
         self.selected_tab = self
             .open_tabs
@@ -209,11 +207,9 @@ impl MainWindow {
     pub(crate) fn apply_switch_en(&mut self, cx: &mut Context<Self>) {
         cx.set_i18n("en-US");
         // set_i18n 已触发 refresh_windows；手动刷新 tab 标题与 shell chrome
-        let mut tabs = std::mem::take(&mut self.open_tabs);
-        tabs.iter_mut().for_each(|tab| {
+        self.open_tabs.iter_mut().for_each(|tab| {
             tab.title = cx.t(cases::case_title_key(&tab.id)).to_string();
         });
-        self.open_tabs = tabs;
         self.refresh_shell_chrome();
         cx.notify();
     }

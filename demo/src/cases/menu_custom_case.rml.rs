@@ -42,6 +42,19 @@ impl MenuCustomCase {
         self.last_action.clone()
     }
 
+    #[computed]
+    pub fn code_sample(&self) -> String {
+        r#"<dropdown-menu>
+    <Button label="Settings" ghost="" />
+    <menu-item header="" label="Display" />
+    <menu-item label="Dark Mode" onclick={on_toggle_dark} />
+    <menu-separator />
+    <menu-item label="Help" href="https://..." icon="Info" />
+    <menu-item label="Sign Out" onclick={on_sign_out} />
+</dropdown-menu>"#
+            .to_string()
+    }
+
     #[command]
     pub fn on_toggle_dark(&mut self, _: &ClickEvent, _: &mut Context<Self>) {
         self.dark_mode = !self.dark_mode;

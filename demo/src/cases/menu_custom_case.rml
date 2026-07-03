@@ -1,14 +1,63 @@
 <component>
-    <div v_flex="" class="case-pane">
+    <div v_flex="" class="case-pane doc-pane">
         <h2>{t("case.menu.custom.title")}</h2>
-        <p>{custom_status}</p>
-        <dropdown-menu>
-            <Button label="Settings" ghost="" />
-            <menu-item header="" label="Display" />
-            <menu-item label="Dark Mode" onclick={on_toggle_dark} />
-            <menu-separator />
-            <menu-item label="Help Center" href="https://longbridge.github.io/gpui-component/" icon="Info" />
-            <menu-item label="Sign Out" onclick={on_sign_out} />
-        </dropdown-menu>
+
+        <Card title="组件说明">
+            <p>Menu Custom 案例演示自定义菜单项的典型场景：分组标题（header）、主题切换（checked 状态）、外链跳转（href）、登出操作。模拟设置类菜单的完整交互。</p>
+            <p>核心概念：menu-item header 作为分组标题不可点击；menu-item onclick 绑定命令更新状态；href 渲染为外链；dark_mode 字段记录主题状态，dark_mode_label computed 提供显示文案。</p>
+        </Card>
+
+        <Card title="API">
+            <div class="api-table">
+                <div class="api-row api-header"><span class="api-prop-name">属性</span><span class="api-prop-type">类型</span><span>说明</span></div>
+                <div class="api-row"><span class="api-prop-name">menu-item header</span><span class="api-prop-type">布尔标志</span><span>分组标题（不可点击）</span></div>
+                <div class="api-row"><span class="api-prop-name">menu-item label</span><span class="api-prop-type">字符串</span><span>菜单项文案</span></div>
+                <div class="api-row"><span class="api-prop-name">menu-item onclick</span><span class="api-prop-type">事件</span><span>点击回调</span></div>
+                <div class="api-row"><span class="api-prop-name">menu-item href</span><span class="api-prop-type">URL</span><span>外链跳转</span></div>
+                <div class="api-row"><span class="api-prop-name">menu-item icon</span><span class="api-prop-type">图标名</span><span>菜单项图标</span></div>
+                <div class="api-row"><span class="api-prop-name">menu-separator</span><span class="api-prop-type">标签</span><span>分组分隔线</span></div>
+            </div>
+        </Card>
+
+        <Card title="示例代码">
+            <div class="code-block">{code_sample}</div>
+        </Card>
+
+        <Card title="演示效果">
+            <p>{custom_status}</p>
+
+            <div class="demo-section">
+                <h3>自定义菜单项</h3>
+                <p>header="" 作为分组标题，menu-separator 分隔不同功能区：</p>
+                <dropdown-menu>
+                    <Button label="Settings" ghost="" />
+                    <menu-item header="" label="Display" />
+                    <menu-item label="Dark Mode" onclick={on_toggle_dark} />
+                    <menu-separator />
+                    <menu-item label="Help Center" href="https://longbridge.github.io/gpui-component/" icon="Info" />
+                    <menu-item label="Sign Out" onclick={on_sign_out} />
+                </dropdown-menu>
+            </div>
+
+            <div class="demo-section">
+                <h3>主题切换</h3>
+                <p>点击 Dark Mode 切换 dark_mode 字段，当前状态：{dark_mode_label}</p>
+                <dropdown-menu>
+                    <Button label="Theme" ghost="" />
+                    <menu-item label="Dark Mode" checked={dark_mode} onclick={on_toggle_dark} />
+                </dropdown-menu>
+            </div>
+
+            <div class="demo-section">
+                <h3>链接项与登出</h3>
+                <p>Help Center 为外链，Sign Out 触发命令更新状态：</p>
+                <dropdown-menu>
+                    <Button label="Account" ghost="" />
+                    <menu-item label="Help Center" href="https://longbridge.github.io/gpui-component/" icon="Info" />
+                    <menu-separator />
+                    <menu-item label="Sign Out" icon="LogOut" onclick={on_sign_out} />
+                </dropdown-menu>
+            </div>
+        </Card>
     </div>
 </component>

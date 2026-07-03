@@ -37,4 +37,12 @@ impl TwoWayCase {
             format!("你好，{}（{}岁）", self.name, self.age)
         }
     }
+
+    #[computed]
+    pub fn code_sample(&self) -> String {
+        r#"<input model={name} placeholder="姓名" />
+<input model={age} placeholder="年龄" />
+<p>{profile_summary}</p>"#
+            .to_string()
+    }
 }

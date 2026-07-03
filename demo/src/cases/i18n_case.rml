@@ -1,8 +1,45 @@
 <component>
-    <div v_flex="" class="case-pane">
+    <div v_flex="" class="case-pane doc-pane">
         <h2>{t("case.i18n.title")}</h2>
-        <p>{t("demo.hello")}</p>
-        <Button label={t("menu.lang_en")} onclick={on_switch_en} />
-        <Button label={t("menu.theme_toggle")} onclick={on_toggle_theme} />
+
+        <Card title="组件说明">
+            <p>i18n 案例演示 RML 的国际化与主题切换机制。t("key") 函数在模板中引用 i18n 资源，cx.set_i18n 切换语言，cx.set_theme 切换主题。</p>
+            <p>核心概念：on_loaded 中通过 cx.observe_global::&lt;I18nState&gt; 监听语言变化自动重渲；t("key") 在运行时解析当前 locale 对应文案；主题切换通过 cx.set_theme("dark"/"light") 即时生效。</p>
+        </Card>
+
+        <Card title="API">
+            <div class="api-table">
+                <div class="api-row api-header"><span class="api-prop-name">特性</span><span class="api-prop-type">类型</span><span>说明</span></div>
+                <div class="api-row"><span class="api-prop-name">t("key")</span><span class="api-prop-type">模板函数</span><span>引用 i18n 资源</span></div>
+                <div class="api-row"><span class="api-prop-name">cx.set_i18n</span><span class="api-prop-type">方法</span><span>切换 locale</span></div>
+                <div class="api-row"><span class="api-prop-name">cx.set_theme</span><span class="api-prop-type">方法</span><span>切换 dark/light 主题</span></div>
+                <div class="api-row"><span class="api-prop-name">cx.observe_global::&lt;I18nState&gt;</span><span class="api-prop-type">监听</span><span>语言变化触发重渲</span></div>
+                <div class="api-row"><span class="api-prop-name">cx.current_theme</span><span class="api-prop-type">方法</span><span>获取当前主题名</span></div>
+            </div>
+        </Card>
+
+        <Card title="示例代码">
+            <div class="code-block">{code_sample}</div>
+        </Card>
+
+        <Card title="演示效果">
+            <div class="demo-section">
+                <h3>静态翻译</h3>
+                <p>当前语言文案（切换语言后此处自动更新）：</p>
+                <p>{t("demo.hello")}</p>
+            </div>
+
+            <div class="demo-section">
+                <h3>切换语言</h3>
+                <p>点击按钮切换到 en-US，观察上方文案与界面语言变化：</p>
+                <Button label={t("menu.lang_en")} onclick={on_switch_en} />
+            </div>
+
+            <div class="demo-section">
+                <h3>切换主题</h3>
+                <p>点击按钮在 dark/light 间切换，观察整体外观变化：</p>
+                <Button label={t("menu.theme_toggle")} onclick={on_toggle_theme} />
+            </div>
+        </Card>
     </div>
 </component>

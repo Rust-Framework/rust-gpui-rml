@@ -1,11 +1,55 @@
 <component>
-    <div v_flex="" class="case-pane">
+    <div v_flex="" class="case-pane doc-pane">
         <h2>{t("case.button.title")}</h2>
-        <p>{button_demo_text}</p>
-        <div class="button-row">
-            <Button label={t("case.button.primary")} primary="" onclick={on_button_demo_click} />
-            <Button label={t("case.button.ghost")} ghost="" onclick={on_button_demo_click} />
-            <Button label={t("case.button.danger")} danger="" onclick={on_button_demo_click} />
-        </div>
+
+        <Card title="组件说明">
+            <p>Button 是 gpui-component 按钮的 RML 封装，标签为 PascalCase。路由表注册为 Stateless 组件，codegen 生成 rml_ui::Button::new(id) 链式调用。</p>
+            <p>小写 button 属于内置 HTML 轨，映射为 gpui::div()，不是本组件。需要按钮样式与交互时请使用 Button。</p>
+        </Card>
+
+        <Card title="API">
+            <div class="api-table">
+                <div class="api-row api-header"><span class="api-prop-name">属性</span><span class="api-prop-type">类型</span><span>说明</span></div>
+                <div class="api-row"><span class="api-prop-name">label</span><span class="api-prop-type">字符串</span><span>按钮文字</span></div>
+                <div class="api-row"><span class="api-prop-name">primary/ghost/danger</span><span class="api-prop-type">布尔标志</span><span>变体</span></div>
+                <div class="api-row"><span class="api-prop-name">disabled</span><span class="api-prop-type">布尔</span><span>禁用</span></div>
+                <div class="api-row"><span class="api-prop-name">selected</span><span class="api-prop-type">布尔</span><span>选中态</span></div>
+                <div class="api-row"><span class="api-prop-name">small/large</span><span class="api-prop-type">布尔标志</span><span>尺寸</span></div>
+                <div class="api-row"><span class="api-prop-name">onclick</span><span class="api-prop-type">事件</span><span>点击回调</span></div>
+            </div>
+        </Card>
+
+        <Card title="示例代码">
+            <div class="code-block">{code_sample}</div>
+        </Card>
+
+        <Card title="演示效果">
+            <div class="demo-section">
+                <h3>基础变体</h3>
+                <p>{button_demo_text}</p>
+                <div class="button-row">
+                    <Button label={t("case.button.primary")} primary="" onclick={on_button_demo_click} />
+                    <Button label={t("case.button.ghost")} ghost="" onclick={on_button_demo_click} />
+                    <Button label={t("case.button.danger")} danger="" onclick={on_button_demo_click} />
+                </div>
+            </div>
+            <div class="demo-section">
+                <h3>状态变体</h3>
+                <div class="button-row">
+                    <Button label="切换禁用" onclick={on_toggle_disabled_click} />
+                    <Button label="禁用按钮" disabled={is_disabled} />
+                    <Button label="切换选中" onclick={on_toggle_selected_click} />
+                    <Button label="选中按钮" selected={is_selected} />
+                </div>
+            </div>
+            <div class="demo-section">
+                <h3>尺寸变体</h3>
+                <div class="button-row">
+                    <Button label="小尺寸" small="" primary="" />
+                    <Button label="默认尺寸" primary="" />
+                    <Button label="大尺寸" large="" primary="" />
+                </div>
+            </div>
+        </Card>
     </div>
 </component>

@@ -13,6 +13,7 @@ use rml_core::i18n::t_static;
 #[derive(Default)]
 pub struct CounterCase {
     pub count: i32,
+    pub step: i32,
 }
 
 impl IContribution for CounterCase {
@@ -32,8 +33,25 @@ impl CounterCase {
         format!("点击次数：{}", self.count)
     }
 
+    #[computed]
+    pub fn code_sample(&self) -> String {
+        r#"<Button label="点击 +1" onclick={on_click} />
+<p>{counter_text}</p>"#.to_string()
+    }
+
     #[command]
     pub fn on_click(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
-        self.count += 1;
+        self.count += self.step.max(1);
+    }
+
+    #[command]
+    pub fn on_inc_step(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+        self.step += 1;
+    }
+
+    #[command]
+    pub fn on_reset(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+        self.count = 0;
+        self.step = 0;
     }
 }

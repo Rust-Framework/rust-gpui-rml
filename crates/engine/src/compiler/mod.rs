@@ -4,6 +4,7 @@
 
 pub mod accordion;
 pub mod avatar;
+pub mod card;
 pub mod codegen;
 pub mod component;
 pub mod event;

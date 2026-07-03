@@ -3,6 +3,7 @@
 pub mod activity_bar;
 pub mod alert_dialog;
 pub mod avatar;
+pub mod card;
 pub mod menu;
 pub mod status_bar;
 pub mod tab;
@@ -12,6 +13,7 @@ pub use activity_bar::{
     ActivityAct, ActivityBar, ActivityPanel, IActivityAct, IActivityPanel, VisualActivityPanel,
 };
 pub use avatar::{Avatar, AvatarGroup};
+pub use card::{Card, CardVariant};
 pub use alert_dialog::{
     AlertDialog, DialogAction, DialogButtonProps, DialogClose, DialogContent, DialogDescription,
     DialogFooter, DialogHeader, DialogTitle,

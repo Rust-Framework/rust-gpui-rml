@@ -20,7 +20,12 @@ pub fn handle_completion(
     if doctype::is_rust_codebehind(&uri) {
         Ok(complete_rust(&uri, position, state))
     } else {
-        Ok(completion::complete(&uri, position, &state.workspace))
+        Ok(completion::complete(
+            &uri,
+            position,
+            &state.workspace,
+            &*state.rust_query,
+        ))
     }
 }
 

@@ -15,8 +15,8 @@ pub mod adapter;
 pub mod host;
 
 pub use query::{
-    CompletionEntry, HoverInfo, RustDiagnostic, RustSemanticQuery, SymbolInfo, SymbolKind,
-    SymbolLocation,
+    ComponentInfo, CompletionEntry, HoverInfo, RustDiagnostic, RustSemanticQuery, SymbolInfo,
+    SymbolKind, SymbolLocation,
 };
 
 #[cfg(feature = "rust-backend")]
@@ -68,6 +68,10 @@ impl RustSemanticQuery for NoopQuery {
         _method: &str,
     ) -> Option<SymbolInfo> {
         None
+    }
+
+    fn list_components(&self, _prefix: &str) -> Vec<ComponentInfo> {
+        Vec::new()
     }
 
     fn is_ready(&self) -> bool {

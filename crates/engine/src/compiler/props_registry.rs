@@ -81,6 +81,8 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
     ("Avatar", &["src", "name"]),
     // AvatarGroup 专用
     ("AvatarGroup", &["limit", "ellipsis"]),
+    // Card 专用（Ant Design 风格卡片，title/extra/cover/footer/bordered/borderless/hoverable）
+    ("Card", &["title", "extra", "cover", "footer", "bordered", "borderless", "hoverable"]),
 ];
 
 /// 查询组件的所有已注册属性（通用 + 专用）

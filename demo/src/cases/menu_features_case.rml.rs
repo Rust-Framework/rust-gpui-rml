@@ -33,6 +33,22 @@ impl MenuFeaturesCase {
         self.last_action.clone()
     }
 
+    #[computed]
+    pub fn code_sample(&self) -> String {
+        r#"<dropdown-menu scrollable="" max_h="280">
+    <Button label="Features" ghost="" />
+    <menu-item label="Available" onclick={on_available} />
+    <menu-item label="Disabled" disabled="" onclick={on_disabled} />
+    <menu-item label="Checkable" checked={is_checked} onclick={on_toggle_check} />
+    <menu-separator />
+    <menu-item label="Docs" href="https://..." icon="Info" />
+    <menu-item label="Submenu">
+        <menu-item label="Item A" onclick={on_nested_a} />
+    </menu-item>
+</dropdown-menu>"#
+            .to_string()
+    }
+
     #[command]
     pub fn on_available(&mut self, _: &ClickEvent, _: &mut Context<Self>) {
         self.last_action = "Available".to_string();

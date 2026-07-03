@@ -11,8 +11,8 @@ use lsp_types::{CompletionItemKind, DiagnosticSeverity, Position, Range, Url};
 
 use super::host::RaHost;
 use super::query::{
-    CompletionEntry, HoverInfo, RustDiagnostic, RustSemanticQuery, SymbolInfo, SymbolKind,
-    SymbolLocation,
+    ComponentInfo, CompletionEntry, HoverInfo, RustDiagnostic, RustSemanticQuery, SymbolInfo,
+    SymbolKind, SymbolLocation,
 };
 
 /// RA 适配器：桥接 `RustSemanticQuery` 到 `ra_ap_ide::Analysis`
@@ -413,6 +413,41 @@ impl RustSemanticQuery for RaAdapter {
         self.resolve_member(rml_rs_uri, struct_name, method)
     }
 
+    fn list_components(&self, prefix: &str) -> Vec<ComponentInfo> {
+        let Some(analysis) = self.host.analysis() else {
+            return Vec::new();
+        };
+        let mut query = ra_ap_ide_db::symbol_index::Query::new(prefix.to_string());
+        query.only_types();
+        // 不调 exact()，启用前缀/模糊匹配
+        let Ok(results) = analysis.symbol_search(query, 50) else {
+            return Vec::new();
+        };
+
+        results
+            .into_iter()
+            .filter(|n| n.kind == Some(ra_ap_ide::SymbolKind::Struct))
+            .filter_map(|n| {
+                let name = n.name.to_string();
+                let Ok(source_file) = analysis.parse(n.file_id) else {
+                    return None;
+                };
+                use ra_ap_syntax::ast::{AstNode, HasName, Struct};
+                let has_component = source_file
+                    .syntax()
+                    .descendants()
+                    .filter_map(Struct::cast)
+                    .find(|s| s.name().is_some_and(|nm| nm.text() == name))
+                    .is_some_and(has_component_attr);
+                if !has_component {
+                    return None;
+                }
+                let location = range_to_location(&self.host, n.file_id, n.focus_or_full_range());
+                Some(ComponentInfo { name, location })
+            })
+            .collect()
+    }
+
     fn is_ready(&self) -> bool {
         self.host.is_ready()
     }
@@ -421,6 +456,15 @@ impl RustSemanticQuery for RaAdapter {
 // ──────────────────────────────────────────────────────────────────────────
 // 类型映射辅助
 // ──────────────────────────────────────────────────────────────────────────
+
+/// 判断 struct 是否标注了 `#[component]` 属性
+fn has_component_attr(s: ra_ap_syntax::ast::Struct) -> bool {
+    use ra_ap_syntax::ast::{AstNode, HasAttrs};
+    s.attrs().any(|attr| {
+        attr.path()
+            .is_some_and(|p| p.syntax().text() == "component")
+    })
+}
 
 /// 从 `#[component(slots = ["header", "footer"])]` 属性解析 slot 名称列表
 fn parse_slots_from_attrs(s: &ra_ap_syntax::ast::Struct) -> Vec<String> {
@@ -571,5 +615,66 @@ mod tests {
             .unwrap();
         let slots = parse_slots_from_attrs(&s);
         assert!(slots.is_empty());
+    }
+
+    #[test]
+    fn has_component_attr_detects_component() {
+        use ra_ap_syntax::ast::{AstNode, HasName, Struct};
+        let source = r#"
+            #[component(slots = ["header"])]
+            struct MyWidget { pub count: i32 }
+        "#;
+        let parse = ra_ap_syntax::SourceFile::parse(
+            source,
+            ra_ap_syntax::Edition::Edition2021,
+        );
+        let tree = parse.tree();
+        let s = tree
+            .syntax()
+            .descendants()
+            .filter_map(Struct::cast)
+            .find(|s| s.name().is_some_and(|n| n.text() == "MyWidget"))
+            .unwrap();
+        assert!(has_component_attr(s));
+    }
+
+    #[test]
+    fn has_component_attr_detects_plain_struct() {
+        use ra_ap_syntax::ast::{AstNode, HasName, Struct};
+        let source = r#"struct Plain { pub v: i32 }"#;
+        let parse = ra_ap_syntax::SourceFile::parse(
+            source,
+            ra_ap_syntax::Edition::Edition2021,
+        );
+        let tree = parse.tree();
+        let s = tree
+            .syntax()
+            .descendants()
+            .filter_map(Struct::cast)
+            .find(|s| s.name().is_some_and(|n| n.text() == "Plain"))
+            .unwrap();
+        assert!(!has_component_attr(s));
+    }
+
+    #[test]
+    fn has_component_attr_ignores_other_attrs() {
+        use ra_ap_syntax::ast::{AstNode, HasName, Struct};
+        let source = r#"
+            #[derive(Debug)]
+            #[window(title = "Main")]
+            struct WithOtherAttrs { pub v: i32 }
+        "#;
+        let parse = ra_ap_syntax::SourceFile::parse(
+            source,
+            ra_ap_syntax::Edition::Edition2021,
+        );
+        let tree = parse.tree();
+        let s = tree
+            .syntax()
+            .descendants()
+            .filter_map(Struct::cast)
+            .find(|s| s.name().is_some_and(|n| n.text() == "WithOtherAttrs"))
+            .unwrap();
+        assert!(!has_component_attr(s));
     }
 }
