@@ -70,6 +70,13 @@ pub struct RustDiagnostic {
     pub code: Option<String>,
 }
 
+/// `#[component]` 标注的 struct 信息（用于动态组件标签补全）
+#[derive(Debug, Clone)]
+pub struct ComponentInfo {
+    pub name: String,
+    pub location: Option<SymbolLocation>,
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 // 隔离 trait
 // ──────────────────────────────────────────────────────────────────────────
