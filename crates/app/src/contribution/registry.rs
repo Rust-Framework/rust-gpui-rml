@@ -6,6 +6,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
+use rml_core::command::ICommand;
 use rml_core::contribution::{
     ContributionOptions, IContribution, IContributionHost, IContributionRegistry,
     IVisualContribution,
@@ -71,6 +72,20 @@ impl IContributionRegistry for ContributionRegistry {
             host.add_visual(contribution, options);
         } else {
             let _ = (host_id, contribution, options);
+        }
+    }
+
+    fn register_command(
+        &self,
+        host_id: &str,
+        command: Arc<dyn ICommand>,
+        options: ContributionOptions,
+    ) {
+        let hosts = self.hosts.read().unwrap();
+        if let Some(host) = hosts.get(host_id) {
+            host.add_command(command, options);
+        } else {
+            let _ = (host_id, command, options);
         }
     }
 

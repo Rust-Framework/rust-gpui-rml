@@ -1,9 +1,10 @@
+use gpui::SharedString;
 use rml::prelude::*;
+use rml_core::i18n::t_static;
 
 #[contribute(
     host_id = "demo.activity",
     id = "binding.two-way",
-    name = "case.two_way.title",
     kind = "case",
     group = "binding",
     order = 2,
@@ -14,6 +15,15 @@ pub struct TwoWayCase {
     pub name: String,
     #[validate(range(min = 0, max = 150))]
     pub age: i32,
+}
+
+impl IContribution for TwoWayCase {
+    fn id(&self) -> &str {
+        Self::CONTRIBUTION_ID
+    }
+    fn name(&self) -> SharedString {
+        t_static("case.two_way.title").into()
+    }
 }
 
 impl ILifecycle for TwoWayCase {}

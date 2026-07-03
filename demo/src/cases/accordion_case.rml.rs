@@ -1,17 +1,27 @@
+use gpui::SharedString;
 use rml::prelude::*;
+use rml_core::i18n::t_static;
 
 #[contribute(
     host_id = "demo.activity",
     id = "components.accordion",
-    name = "case.accordion.title",
     kind = "case",
     group = "components",
-    order = 13,
+    order = 10,
 )]
 #[component]
 #[derive(Default)]
 pub struct AccordionCase {
     pub last_open: String,
+}
+
+impl IContribution for AccordionCase {
+    fn id(&self) -> &str {
+        Self::CONTRIBUTION_ID
+    }
+    fn name(&self) -> SharedString {
+        t_static("case.accordion.title").into()
+    }
 }
 
 impl ILifecycle for AccordionCase {}

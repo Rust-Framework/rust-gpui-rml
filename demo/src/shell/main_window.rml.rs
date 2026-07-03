@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use gpui::{BorrowAppContext, Global, IntoElement, WeakEntity, Window};
@@ -10,7 +9,8 @@ use rml_ui::{ActivityBar, MenuItems, StatusBarItems, TabItem};
 use crate::cases::{self, OpenTab};
 use crate::shell::activity_panel::ActivityPanel;
 use crate::shell::shell_chrome::{
-    build_activity_panels_from, map_menu_items, map_status_items, ContribEntry, VisualEntry,
+    build_activity_panels_from, map_menu_items, map_status_items, CommandEntry, ContribEntry,
+    VisualEntry,
 };
 
 /// Demo：ActivityPanel 通过它回调 MainWindow::open_case（在 `on_loaded` 中注册）。
@@ -38,12 +38,13 @@ pub struct MainWindow {
     activity_bar: Option<gpui::Entity<ActivityBar>>,
     status_items: StatusBarItems,
     menu_items: MenuItems,
-    menu_commands: HashMap<String, Arc<dyn ICommand>>,
     slot_left_size: gpui::Pixels,
-    // 非视觉贡献（menu/status）
+    // 非视觉贡献（menu submenu root / status）
     entries: std::sync::RwLock<Vec<ContribEntry>>,
     // 视觉贡献（case/activity）
     visual_entries: std::sync::RwLock<Vec<VisualEntry>>,
+    // 命令贡献（menu leaf）
+    command_entries: std::sync::RwLock<Vec<CommandEntry>>,
     // host handle receiver（drain 在 on_loaded / refresh 中进行）
     host_rx: Option<rml_core::flume::Receiver<rml_app::contribution::HostOp>>,
 }
@@ -68,12 +69,23 @@ impl IContributionHost for MainWindow {
             .push((contribution, options));
     }
 
+    fn add_command(&self, command: Arc<dyn ICommand>, options: ContributionOptions) {
+        self.command_entries
+            .write()
+            .unwrap()
+            .push((command, options));
+    }
+
     fn remove(&self, contribution_id: &str) {
         self.entries
             .write()
             .unwrap()
             .retain(|(c, _)| c.id() != contribution_id);
         self.visual_entries
+            .write()
+            .unwrap()
+            .retain(|(c, _)| c.id() != contribution_id);
+        self.command_entries
             .write()
             .unwrap()
             .retain(|(c, _)| c.id() != contribution_id);
@@ -105,52 +117,7 @@ impl ILifecycle for MainWindow {
         let shell_weak = cx.weak_entity();
         cx.set_global(DemoShellHost(shell_weak));
 
-        self.menu_commands.insert(
-            "menu.file.new".to_string(),
-            Arc::new(RelayCommand::new(cx, |this, cx| {
-                this.open_case("welcome".to_string(), cx);
-            })),
-        );
-        self.menu_commands.insert(
-            "menu.file.open".to_string(),
-            Arc::new(RelayCommand::new(cx, |this, cx| {
-                this.open_case("components.button".to_string(), cx);
-            })),
-        );
-        self.menu_commands.insert(
-            "menu.file.exit".to_string(),
-            Arc::new(RelayCommand::action(|cx| {
-                cx.quit();
-            })),
-        );
-        self.menu_commands.insert(
-            "menu.theme_toggle".to_string(),
-            Arc::new(RelayCommand::new(cx, |this, cx| this.apply_toggle_theme(cx))),
-        );
-        self.menu_commands.insert(
-            "menu.lang_en".to_string(),
-            Arc::new(RelayCommand::new(cx, |this, cx| this.apply_switch_en(cx))),
-        );
-        self.menu_commands.insert(
-            "menu.help.guide".to_string(),
-            Arc::new(RelayCommand::new(cx, |this, cx| {
-                this.open_case("components.menu.dropdown".to_string(), cx);
-            })),
-        );
-        self.menu_commands.insert(
-            "menu.help.about".to_string(),
-            Arc::new(RelayCommand::new(cx, |this, cx| {
-                this.open_case("welcome".to_string(), cx);
-            })),
-        );
-        self.menu_commands.insert(
-            "menu.open_features".to_string(),
-            Arc::new(RelayCommand::new(cx, |this, cx| {
-                this.open_case("components.menu.features".to_string(), cx);
-            })),
-        );
-
-        // 4. 刷新 shell chrome（从 entries 构建 menu/status items）
+        // 4. 刷新 shell chrome（从 entries + command_entries 构建 menu/status items）
         self.refresh_shell_chrome();
 
         // 5. 构建 ActivityBar：从 visual_entries 中 slot="activity" 的视觉贡献
@@ -192,8 +159,9 @@ impl ILifecycle for MainWindow {
 impl MainWindow {
     fn refresh_shell_chrome(&mut self) {
         let entries = self.entries.read().unwrap();
+        let commands = self.command_entries.read().unwrap();
         self.status_items = map_status_items(&entries);
-        self.menu_items = map_menu_items(&entries, &self.menu_commands);
+        self.menu_items = map_menu_items(&entries, &commands);
     }
 
     /// 渲染当前激活的 IVisualContribution 视图。
@@ -258,7 +226,7 @@ impl MainWindow {
         }
     }
 
-    fn apply_toggle_theme(&mut self, cx: &mut Context<Self>) {
+    pub(crate) fn apply_toggle_theme(&mut self, cx: &mut Context<Self>) {
         let next = if cx.current_theme() == "dark" {
             "light"
         } else {
@@ -268,7 +236,7 @@ impl MainWindow {
         cx.notify();
     }
 
-    fn apply_switch_en(&mut self, cx: &mut Context<Self>) {
+    pub(crate) fn apply_switch_en(&mut self, cx: &mut Context<Self>) {
         cx.set_i18n("en-US");
         // set_i18n 已触发 refresh_windows；手动刷新 tab 标题与 shell chrome
         let mut tabs = std::mem::take(&mut self.open_tabs);

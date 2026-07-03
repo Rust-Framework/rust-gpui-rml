@@ -449,6 +449,7 @@ mod tests {
             directives: vec![],
             children,
             slot_name: None,
+            ..Default::default()
         }
     }
 
@@ -464,6 +465,7 @@ mod tests {
             directives,
             children,
             slot_name: None,
+            ..Default::default()
         }
     }
 

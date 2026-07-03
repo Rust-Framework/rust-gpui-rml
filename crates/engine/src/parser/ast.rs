@@ -2,6 +2,7 @@
 //!
 //! 详见文档 §10.6.1 AST 数据结构。
 
+use crate::parser::span::Span;
 use std::fmt;
 
 /// AST 节点
@@ -27,7 +28,7 @@ pub enum TextSegment {
 }
 
 /// 元素节点
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Element {
     /// 标签名（如 "div"、"button" 或自定义组件 "MyComp"）
     pub tag: String,
@@ -43,6 +44,10 @@ pub struct Element {
     /// 声明该子节点应注入到目标组件的哪个具名插槽。
     /// codegen 据此把子节点从普通 children 中分离，路由到对应 slot setter。
     pub slot_name: Option<String>,
+    /// 源码字节区间 [start, end)，覆盖 `<tag ...>...</tag>` 整个元素
+    ///
+    /// LSP 定位用；codegen 合成的元素该字段为空区间（`Span::empty()`）。
+    pub span: Span,
 }
 
 /// 属性

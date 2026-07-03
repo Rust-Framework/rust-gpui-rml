@@ -1,11 +1,11 @@
+use gpui::SharedString;
 use rml::prelude::*;
-use rml_core::i18n::I18nState;
+use rml_core::i18n::{t_static, I18nState};
 use rml_core::theme::ThemeExt;
 
 #[contribute(
     host_id = "demo.activity",
     id = "i18n.basic",
-    name = "case.i18n.title",
     kind = "case",
     group = "i18n",
     order = 21,
@@ -13,6 +13,15 @@ use rml_core::theme::ThemeExt;
 #[component]
 #[derive(Default)]
 pub struct I18nCase {}
+
+impl IContribution for I18nCase {
+    fn id(&self) -> &str {
+        Self::CONTRIBUTION_ID
+    }
+    fn name(&self) -> SharedString {
+        t_static("case.i18n.title").into()
+    }
+}
 
 impl ILifecycle for I18nCase {
     fn on_loaded(&mut self, _window: &mut Window, cx: &mut Context<Self>) {

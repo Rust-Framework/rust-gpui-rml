@@ -1,128 +1,27 @@
-//! RML 菜单 codegen —— 将声明式 `MenuItem` / `MenuSeparator` 转译为 gpui-component PopupMenu API。
+//! RML 菜单 codegen 模块入口。
 //!
-//! 子标签仅两种：`MenuItem`、`MenuSeparator`（菜单上下文中 `Separator` 为别名）。
+//! 将声明式 `MenuItem` / `MenuSeparator` 转译为 gpui-component PopupMenu API。
+//!
+//! ## 模块结构
+//!
+//! - `dispatcher.rs`：标签识别（`is_menu_container` / `is_menu_tag`）+ 元素 codegen 分发（`gen_menu_element`）
+//! - `children.rs`：菜单子节点拆分与触发器子节点生成
+//! - `setters.rs`：menu / MenuBar / status_bar 专用 bind setter
+//! - `item.rs` / `menu_bar.rs` / `context.rs` / `dropdown.rs` / `app_menu_bar.rs` / `popup.rs` / `hoist.rs`：
+//!   各类菜单元素的具体 codegen 实现
 
 mod app_menu_bar;
+mod children;
 mod context;
+mod dispatcher;
 mod dropdown;
 mod hoist;
 mod item;
 mod menu_bar;
 mod popup;
+mod setters;
 
-use crate::compiler::codegen::gen_node;
-use crate::compiler::{CodegenCtx, CodegenError};
-use crate::parser::ast::{Element, Node};
-
-use crate::tags;
-
+pub(crate) use children::{gen_trigger_children, partition_menu_children};
+pub use dispatcher::{gen_menu_element, is_menu_container, is_menu_tag};
 pub use item::is_menu_item_tag;
-
-/// 菜单容器标签（PascalCase 或 kebab-case）
-pub fn is_menu_container(tag: &str) -> bool {
-    matches!(
-        tags::normalize_component_tag(tag).as_str(),
-        "ContextMenu" | "DropdownMenu" | "MenuBar" | "AppMenuBar" | "menu"
-    )
-}
-
-/// 菜单相关标签（容器 + 子项）
-pub fn is_menu_tag(tag: &str) -> bool {
-    is_menu_container(tag) || is_menu_item_tag(tag)
-}
-
-/// 生成菜单相关元素代码
-pub fn gen_menu_element(
-    elem: &Element,
-    ctx: &CodegenCtx,
-    depth: usize,
-    id_counter: &mut usize,
-    loop_vars: &[String],
-) -> Result<String, CodegenError> {
-    let canonical = tags::normalize_component_tag(&elem.tag);
-    match canonical.as_str() {
-        "ContextMenu" => context::gen_context_menu(elem, ctx, depth, id_counter, loop_vars),
-        "DropdownMenu" => dropdown::gen_dropdown_menu(elem, ctx, depth, id_counter, loop_vars),
-        "MenuBar" | "menu" => menu_bar::gen_menu_bar(elem, ctx, depth, id_counter, loop_vars),
-        "AppMenuBar" => app_menu_bar::gen_app_menu_bar(elem, ctx),
-        tag if is_menu_item_tag(tag) => Err(CodegenError {
-            message: format!(
-                "<{tag}> must be a child of context-menu, dropdown-menu, or menu-bar"
-            ),
-        }),
-        _ => Err(CodegenError {
-            message: format!("unknown menu tag: <{}>", elem.tag),
-        }),
-    }
-}
-
-/// 将子节点分为触发器元素与菜单项元素
-pub(crate) fn partition_menu_children(
-    children: &[Node],
-) -> (Vec<&Element>, Vec<&Element>) {
-    let mut triggers = Vec::new();
-    let mut items = Vec::new();
-    for child in children {
-        if let Node::Element(elem) = child {
-            if is_menu_item_tag(&elem.tag) {
-                items.push(elem);
-            } else {
-                triggers.push(elem);
-            }
-        }
-    }
-    (triggers, items)
-}
-
-/// 递归生成触发器子节点代码
-pub(crate) fn gen_trigger_children(
-    triggers: &[&Element],
-    ctx: &CodegenCtx,
-    depth: usize,
-    id_counter: &mut usize,
-    loop_vars: &[String],
-) -> Result<String, CodegenError> {
-    if triggers.is_empty() {
-        return Ok("gpui::div()".to_string());
-    }
-    if triggers.len() == 1 {
-        let (code, _) = gen_node(&Node::Element(triggers[0].clone()), ctx, depth, id_counter, loop_vars)?;
-        return Ok(code);
-    }
-    let mut parts = Vec::new();
-    for t in triggers {
-        let (code, _) = gen_node(&Node::Element((*t).clone()), ctx, depth, id_counter, loop_vars)?;
-        parts.push(code);
-    }
-    Ok(format!(
-        "gpui::div().flex().flex_col().children(vec![{}])",
-        parts.join(", ")
-    ))
-}
-
-/// menu / MenuBar / status_bar 专用 bind setter
-///
-/// `items={expr}` → `.items(self.<expr>.clone())`
-///
-/// 由 `component::component_bind_setter` 在 tag 匹配 menu 类标签时委托调用。
-pub fn bind_setter(
-    name: &str,
-    expr_str: &str,
-    loop_vars: &[&str],
-    computed: &[&str],
-    tag: &str,
-) -> Option<String> {
-    match name {
-        "items"
-            if matches!(
-                tags::normalize_component_tag(tag).as_str(),
-                "menu" | "MenuBar" | "status_bar"
-            ) =>
-        {
-            let rust_expr =
-                super::component::component_bind_rust_expr(expr_str, loop_vars, computed);
-            Some(format!(".items({}.clone())", rust_expr))
-        }
-        _ => None,
-    }
-}
+pub use setters::bind_setter;

@@ -1,8 +1,9 @@
 //! 贡献条目投影：将 host 受理的贡献条目投影为 Shell 控件数据。
 //!
-//! 贡献分两类存储：
-//! - **非视觉**（menu/status）：`Vec<(Arc<dyn IContribution>, ContributionOptions)>`
+//! 贡献分三类存储：
+//! - **非视觉**（menu/status submenu root）：`Vec<(Arc<dyn IContribution>, ContributionOptions)>`
 //! - **视觉**（case/activity）：`Vec<(Arc<dyn IVisualContribution>, ContributionOptions)>`
+//! - **命令**（menu leaf）：`Vec<(Arc<dyn ICommand>, ContributionOptions)>`
 //!
 //! 投影函数按 slot/order/parent_id/group 分组，供 MainWindow/ActivityPanel 在
 //! `on_loaded` / `refresh_*` 中调用。
@@ -19,6 +20,7 @@ use rml_ui::{
 
 pub type ContribEntry = (Arc<dyn IContribution>, ContributionOptions);
 pub type VisualEntry = (Arc<dyn IVisualContribution>, ContributionOptions);
+pub type CommandEntry = (Arc<dyn ICommand>, ContributionOptions);
 
 fn contribs_in_slot<'a>(entries: &'a [ContribEntry], slot: &str) -> Vec<&'a ContribEntry> {
     entries
@@ -51,36 +53,66 @@ pub fn map_status_items(entries: &[ContribEntry]) -> StatusBarItems {
         .collect()
 }
 
+/// 菜单树节点（合并 submenu root 与 leaf command）
+struct MenuNode {
+    id: String,
+    name: gpui::SharedString,
+    order: i32,
+    parent_id: Option<String>,
+    command: Option<Arc<dyn ICommand>>,
+}
+
 pub fn map_menu_items(
     entries: &[ContribEntry],
-    commands: &HashMap<String, Arc<dyn ICommand>>,
+    commands: &[CommandEntry],
 ) -> MenuItems {
-    let entries = contribs_in_slot(entries, "menu");
-    let mut by_parent: HashMap<Option<String>, Vec<&ContribEntry>> = HashMap::new();
-    for e in &entries {
+    // 合并 submenu root（IContribution only）与 leaf（ICommand）
+    let mut all: Vec<MenuNode> = Vec::new();
+
+    for (c, o) in entries.iter().filter(|(_, o)| o.effective_slot() == Some("menu")) {
+        all.push(MenuNode {
+            id: c.id().to_string(),
+            name: c.name(),
+            order: o.order,
+            parent_id: o.parent_id.as_ref().map(|s| s.to_string()),
+            command: None,
+        });
+    }
+    for (c, o) in commands.iter().filter(|(_, o)| o.effective_slot() == Some("menu")) {
+        // ICommand : IContribution，可调 IContribution 方法（trait upcasting）
+        all.push(MenuNode {
+            id: c.id().to_string(),
+            name: c.name(),
+            order: o.order,
+            parent_id: o.parent_id.as_ref().map(|s| s.to_string()),
+            command: Some(c.clone()),
+        });
+    }
+
+    // 按 parent_id 建树
+    let mut by_parent: HashMap<Option<String>, Vec<&MenuNode>> = HashMap::new();
+    for node in &all {
         by_parent
-            .entry(e.1.parent_id.as_ref().map(|s| s.to_string()))
+            .entry(node.parent_id.clone())
             .or_default()
-            .push(e);
+            .push(node);
     }
 
     fn build_children(
         parent_id: Option<&str>,
-        by_parent: &HashMap<Option<String>, Vec<&ContribEntry>>,
-        commands: &HashMap<String, Arc<dyn ICommand>>,
+        by_parent: &HashMap<Option<String>, Vec<&MenuNode>>,
     ) -> MenuItems {
         let key = parent_id.map(|s| s.to_string());
         let mut siblings = by_parent.get(&key).cloned().unwrap_or_default();
-        siblings.sort_by_key(|(_, o)| o.order);
+        siblings.sort_by_key(|n| n.order);
         siblings
             .into_iter()
-            .map(|(c, _)| {
-                let id = c.id();
-                let mut item = MenuItem::new(c.name());
-                if let Some(cmd) = commands.get(id) {
+            .map(|node| {
+                let mut item = MenuItem::new(node.name.clone());
+                if let Some(cmd) = &node.command {
                     item = item.command(cmd.clone());
                 }
-                let children = build_children(Some(id), by_parent, commands);
+                let children = build_children(Some(&node.id), by_parent);
                 if !children.is_empty() {
                     item = item.children(children);
                 }
@@ -89,7 +121,7 @@ pub fn map_menu_items(
             .collect()
     }
 
-    build_children(None, &by_parent, commands)
+    build_children(None, &by_parent)
 }
 
 pub fn map_case_tree_items(entries: &[VisualEntry]) -> Vec<TreeItem> {

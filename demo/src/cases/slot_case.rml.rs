@@ -1,4 +1,6 @@
+use gpui::SharedString;
 use rml::prelude::*;
+use rml_core::i18n::t_static;
 use crate::components::card::Card;
 
 /// 案例组件 —— 演示自定义组件插槽的填充。
@@ -8,7 +10,6 @@ use crate::components::card::Card;
 #[contribute(
     host_id = "demo.activity",
     id = "components.slot",
-    name = "case.slot.title",
     kind = "case",
     group = "components",
     order = 12,
@@ -17,6 +18,15 @@ use crate::components::card::Card;
 #[derive(Default)]
 pub struct SlotCase {
     card: Option<gpui::Entity<Card>>,
+}
+
+impl IContribution for SlotCase {
+    fn id(&self) -> &str {
+        Self::CONTRIBUTION_ID
+    }
+    fn name(&self) -> SharedString {
+        t_static("case.slot.title").into()
+    }
 }
 
 impl ILifecycle for SlotCase {

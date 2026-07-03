@@ -77,27 +77,38 @@ pub struct StructMetadata {
     /// build.rs 据此填充 `UserComponentInfo.slots`，供 codegen 在父视图中
     /// 分离 `<template slot="x">` 子节点并校验 slot 名合法性。
     pub slots: Vec<String>,
+    /// 所有 `#[command]` 标注方法名（供 LSP 命令补全/诊断）
+    pub commands: Vec<String>,
 }
 
 /// 扫描 `.rml.rs` code-behind 文件，提取所有 `#[window]`/`#[component]` 标注 struct 的元信息。
 ///
 /// 返回 `HashMap<struct_name, StructMetadata>`。如果文件不存在或解析失败，返回空 map。
 ///
+/// 文件读取后委托给 [`parse_struct_metadata`]，后者为纯函数，可处理内存中的源码字符串
+/// （供 LSP 处理未保存缓冲区）。
+pub fn scan_struct_metadata(rml_rs_path: &Path) -> HashMap<String, StructMetadata> {
+    let source = match std::fs::read_to_string(rml_rs_path) {
+        Ok(s) => s,
+        Err(_) => return HashMap::new(),
+    };
+    parse_struct_metadata(&source)
+}
+
+/// 从 `.rml.rs` 源码字符串解析 `StructMetadata`（不读磁盘）。
+///
+/// 返回 `HashMap<struct_name, StructMetadata>`。解析失败返回空 map。
+///
 /// # 流程
 ///
 /// 1. 解析 `.rml.rs` 为 `syn::File`
 /// 2. 第一遍：收集所有 `#[window]`/`#[component]` 标注的 struct 的 pub 字段名
-/// 3. 第二遍：扫描 impl 块中的 `#[computed]` 方法，用 `syn::visit::Visit` 提取方法体内的
-///    `self.<ident>` 访问作为依赖
-pub fn scan_struct_metadata(rml_rs_path: &Path) -> HashMap<String, StructMetadata> {
+/// 3. 第二遍：扫描 impl 块中的 `#[computed]` / `#[command]` 方法，用 `syn::visit::Visit`
+///    提取 `#[computed]` 方法体内的 `self.<ident>` 访问作为依赖
+pub fn parse_struct_metadata(source: &str) -> HashMap<String, StructMetadata> {
     let mut result: HashMap<String, StructMetadata> = HashMap::new();
 
-    let source = match std::fs::read_to_string(rml_rs_path) {
-        Ok(s) => s,
-        Err(_) => return result,
-    };
-
-    let file: File = match syn::parse_str(&source) {
+    let file: File = match syn::parse_str(source) {
         Ok(f) => f,
         Err(_) => return result,
     };
@@ -170,7 +181,7 @@ pub fn scan_struct_metadata(rml_rs_path: &Path) -> HashMap<String, StructMetadat
         }
     }
 
-    // 第二遍：扫描 impl 块中的 #[computed] 方法
+    // 第二遍：扫描 impl 块中的 #[computed] / #[command] 方法
     for item in &file.items {
         if let Item::Impl(impl_block) = item {
             // 获取 impl 的目标类型名（如 MainWindow）
@@ -181,27 +192,34 @@ pub fn scan_struct_metadata(rml_rs_path: &Path) -> HashMap<String, StructMetadat
             for impl_item in &impl_block.items {
                 if let ImplItem::Fn(method) = impl_item {
                     let is_computed = method.attrs.iter().any(|a| a.path().is_ident("computed"));
-                    if !is_computed {
+                    let is_command = method.attrs.iter().any(|a| a.path().is_ident("command"));
+                    // 既非 computed 也非 command：跳过
+                    if !is_computed && !is_command {
                         continue;
                     }
                     let method_name = method.sig.ident.to_string();
-                    // 提取返回类型字符串（codegen 包装方法需显式标注）
-                    let return_type = return_type_str(&method.sig.output);
-                    // 收集方法体的 self.<ident> 依赖
-                    let mut visitor = ComputedDepVisitor::default();
-                    visitor.visit_block(&method.block);
-                    let mut deps = visitor.deps;
-                    if visitor.uses_i18n
-                        && (meta.observable_fields.contains(&"i18n_version".to_string())
-                            || meta.is_contributehost)
-                    {
-                        if !deps.contains(&"i18n_version".to_string()) {
-                            deps.push("i18n_version".to_string());
-                        }
+                    // #[command]：仅收集方法名（供 LSP 命令补全/诊断），无需依赖分析
+                    if is_command {
+                        meta.commands.push(method_name.clone());
                     }
-                    meta.computed_methods.push(method_name.clone());
-                    meta.computed_deps.insert(method_name.clone(), deps);
-                    meta.computed_returns.insert(method_name, return_type);
+                    // #[computed]：提取返回类型 + 收集方法体依赖
+                    if is_computed {
+                        let return_type = return_type_str(&method.sig.output);
+                        let mut visitor = ComputedDepVisitor::default();
+                        visitor.visit_block(&method.block);
+                        let mut deps = visitor.deps;
+                        if visitor.uses_i18n
+                            && (meta.observable_fields.contains(&"i18n_version".to_string())
+                                || meta.is_contributehost)
+                        {
+                            if !deps.contains(&"i18n_version".to_string()) {
+                                deps.push("i18n_version".to_string());
+                            }
+                        }
+                        meta.computed_methods.push(method_name.clone());
+                        meta.computed_deps.insert(method_name.clone(), deps);
+                        meta.computed_returns.insert(method_name, return_type);
+                    }
                 }
             }
         }
@@ -783,5 +801,53 @@ pub struct MyWidget {
             m.field_types.get("optional"),
             Some(&"Option<i32>".to_string())
         );
+    }
+
+    #[test]
+    fn extracts_command_methods() {
+        // 验证 #[command] 方法名收集 + 与 #[computed] 独立共存
+        // 使用 parse_struct_metadata 纯函数入口（LSP 未保存缓冲区场景）
+        let source = r#"
+#[window]
+#[derive(Default)]
+pub struct MainWindow {
+    pub count: i32,
+}
+
+impl MainWindow {
+    #[command]
+    pub fn on_click(&mut self, cx: &mut Context<Self>) {
+        self.count += 1;
+    }
+
+    #[command]
+    pub fn on_save(&mut self, cx: &mut Context<Self>) {
+    }
+
+    #[computed]
+    pub fn counter_text(&self) -> String {
+        format!("{}", self.count)
+    }
+
+    pub fn helper(&self) -> i32 {
+        0
+    }
+}
+        "#;
+        let meta = parse_struct_metadata(source);
+        let m = meta.get("MainWindow").unwrap();
+        // 两个 #[command] 方法均被收集
+        assert_eq!(m.commands, vec!["on_click", "on_save"]);
+        // #[computed] 仍正常工作，未受影响
+        assert_eq!(m.computed_methods, vec!["counter_text"]);
+        // 无标注的方法不被收集到 commands
+        assert!(!m.commands.contains(&"helper".to_string()));
+    }
+
+    #[test]
+    fn parse_struct_metadata_handles_invalid_source() {
+        // 语法错误的源码：返回空 map，不 panic
+        let meta = parse_struct_metadata("this is not rust code {{{");
+        assert!(meta.is_empty());
     }
 }

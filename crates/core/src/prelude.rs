@@ -4,7 +4,7 @@
 //! 包含所有常用 trait、类型与 GPUI 重导出。
 
 pub use crate::binding::{BindingPath, IBindingContext};
-pub use crate::command::{ICommand, RelayCommand};
+pub use crate::command::{CallContext, ICommand, RelayCommand};
 pub use crate::component::IComponent;
 pub use crate::contribution::{
     ContributionOptions, IContribution, IContributionHost, IContributionRegistry,

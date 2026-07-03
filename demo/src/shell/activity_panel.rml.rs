@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
-use gpui::Window;
+use gpui::{SharedString, Window};
 use rml::prelude::*;
+use rml_core::i18n::t_static;
 use rml_ui::TreeState;
 
 use crate::shell::shell_chrome::{map_case_tree_items, VisualEntry};
@@ -16,8 +17,6 @@ use crate::shell::DemoShellHost;
 #[contribute(
     host_id = "demo.shell",
     id = "samples",
-    name = "shell.samples",
-    icon = IconName::BookOpen,
     kind = "activity",
     order = 0
 )]
@@ -30,6 +29,18 @@ pub struct ActivityPanel {
     case_entries: std::sync::RwLock<Vec<VisualEntry>>,
     // host handle receiver
     host_rx: Option<rml_core::flume::Receiver<rml_app::contribution::HostOp>>,
+}
+
+impl IContribution for ActivityPanel {
+    fn id(&self) -> &str {
+        Self::CONTRIBUTION_ID
+    }
+    fn name(&self) -> SharedString {
+        t_static("shell.samples").into()
+    }
+    fn icon(&self) -> Option<SharedString> {
+        Some("BookOpen".into())
+    }
 }
 
 impl IContributionHost for ActivityPanel {

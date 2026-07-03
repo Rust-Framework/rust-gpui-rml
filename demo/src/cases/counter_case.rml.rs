@@ -1,9 +1,10 @@
+use gpui::SharedString;
 use rml::prelude::*;
+use rml_core::i18n::t_static;
 
 #[contribute(
     host_id = "demo.activity",
     id = "binding.counter",
-    name = "case.counter.title",
     kind = "case",
     group = "binding",
     order = 1,
@@ -12,6 +13,15 @@ use rml::prelude::*;
 #[derive(Default)]
 pub struct CounterCase {
     pub count: i32,
+}
+
+impl IContribution for CounterCase {
+    fn id(&self) -> &str {
+        Self::CONTRIBUTION_ID
+    }
+    fn name(&self) -> SharedString {
+        t_static("case.counter.title").into()
+    }
 }
 
 impl ILifecycle for CounterCase {}

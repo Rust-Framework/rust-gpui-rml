@@ -21,6 +21,7 @@ use gpui_component::{
     separator::Separator,
     Disableable as _,
 };
+use rml_core::command::CallContext;
 use smallvec::SmallVec;
 
 /// 菜单栏顶层按钮默认上下外边距（px）
@@ -327,7 +328,9 @@ impl RenderOnce for MenuBar {
                     }
 
                     if let Some(cmd) = command {
-                        btn = btn.on_click(move |_, _window, cx| cmd.execute(&(), cx));
+                        btn = btn.on_click(move |_, _window, cx| {
+                            cmd.execute(&mut CallContext::new(_window, cx));
+                        });
                     }
                     bar = bar.child(btn);
                 }
@@ -407,7 +410,9 @@ fn build_popup_menu_from_items(
             pmi = pmi.icon(icon);
         }
         if let Some(cmd) = command {
-            pmi = pmi.on_click(move |_, _window, cx| cmd.execute(&(), cx));
+            pmi = pmi.on_click(move |_, _window, cx| {
+                cmd.execute(&mut CallContext::new(_window, cx));
+            });
         }
         menu = menu.item(pmi);
     }

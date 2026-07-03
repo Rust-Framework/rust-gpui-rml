@@ -9,16 +9,18 @@ use std::sync::Arc;
 
 use gpui::{AnyElement, App, SharedString, Window};
 
+use crate::command::ICommand;
+
 /// 贡献注册选项（纯数据，builder 模式）
+///
+/// `slot` 字段已移除——挂载点统一走 `properties["kind"]`。
 #[derive(Debug, Clone, Default)]
 pub struct ContributionOptions {
     pub order: i32,
     /// 父贡献 id（树形菜单、案例分类等）
     pub parent_id: Option<SharedString>,
     pub group: Option<SharedString>,
-    /// Shell 挂载点（开放字符串，语义由应用定义）
-    pub slot: Option<SharedString>,
-    /// 扩展元数据（如 `align=right`）
+    /// 扩展元数据（如 `kind=menu`、`align=right`）
     pub properties: HashMap<SharedString, SharedString>,
 }
 
@@ -42,21 +44,14 @@ impl ContributionOptions {
         self
     }
 
-    pub fn slot(mut self, slot: impl Into<SharedString>) -> Self {
-        self.slot = Some(slot.into());
-        self
-    }
-
     pub fn property(mut self, key: impl Into<SharedString>, value: impl Into<SharedString>) -> Self {
         self.properties.insert(key.into(), value.into());
         self
     }
 
-    /// 有效挂载点：`slot` 优先，兼容旧 `properties["kind"]`
+    /// 有效挂载点：读 `properties["kind"]`
     pub fn effective_slot(&self) -> Option<&str> {
-        self.slot
-            .as_deref()
-            .or_else(|| self.properties.get("kind").map(|s| s.as_ref()))
+        self.properties.get("kind").map(|s| s.as_ref())
     }
 }
 
@@ -100,6 +95,9 @@ pub trait IContributionHost: Send + Sync + 'static {
     /// 受理视觉贡献。默认空实现，视觉 host override。
     fn add_visual(&self, _contribution: Arc<dyn IVisualContribution>, _options: ContributionOptions) {}
 
+    /// 受理命令贡献。默认空实现，命令 host override。
+    fn add_command(&self, _command: Arc<dyn ICommand>, _options: ContributionOptions) {}
+
     /// 移除贡献。默认空实现。
     fn remove(&self, _contribution_id: &str) {}
 }
@@ -132,6 +130,15 @@ pub trait IContributionRegistry: Send + Sync {
         &self,
         host_id: &str,
         contribution: Arc<dyn IVisualContribution>,
+        options: ContributionOptions,
+    );
+
+    /// 向 host 注册命令贡献（`#[contribute(command, ...)]` 宏生成代码调用）。
+    /// 命令贡献直达 host 的 `add_command`。
+    fn register_command(
+        &self,
+        host_id: &str,
+        command: Arc<dyn ICommand>,
         options: ContributionOptions,
     );
 

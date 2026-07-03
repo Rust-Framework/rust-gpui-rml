@@ -204,6 +204,7 @@ fn template_block_content(elem: &Element) -> Option<Node> {
             directives: vec![],
             children: elem.children.clone(),
             slot_name: None,
+            ..Default::default()
         })),
     }
 }

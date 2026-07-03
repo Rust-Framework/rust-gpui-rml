@@ -1,9 +1,10 @@
+use gpui::SharedString;
 use rml::prelude::*;
+use rml_core::i18n::t_static;
 
 #[contribute(
     host_id = "demo.activity",
     id = "components.menu.editor",
-    name = "case.menu.editor.title",
     kind = "case",
     group = "menu",
     order = 18,
@@ -13,6 +14,15 @@ use rml::prelude::*;
 pub struct MenuEditorCase {
     pub word_wrap: bool,
     pub last_action: String,
+}
+
+impl IContribution for MenuEditorCase {
+    fn id(&self) -> &str {
+        Self::CONTRIBUTION_ID
+    }
+    fn name(&self) -> SharedString {
+        t_static("case.menu.editor.title").into()
+    }
 }
 
 impl ILifecycle for MenuEditorCase {}

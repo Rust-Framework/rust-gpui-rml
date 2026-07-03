@@ -14,6 +14,7 @@
 use std::sync::Arc;
 
 use gpui::{App, WeakEntity};
+use rml_core::command::ICommand;
 use rml_core::contribution::{
     ContributionOptions, IContribution, IContributionHost, IVisualContribution,
 };
@@ -25,6 +26,7 @@ use super::global::bootstrap_host_contributions;
 pub enum HostOp {
     Add(Arc<dyn IContribution>, ContributionOptions),
     AddVisual(Arc<dyn IVisualContribution>, ContributionOptions),
+    AddCommand(Arc<dyn ICommand>, ContributionOptions),
     Remove(String),
 }
 
@@ -54,6 +56,10 @@ impl<T: 'static> IContributionHost for EntityHostHandle<T> {
         options: ContributionOptions,
     ) {
         let _ = self.tx.send(HostOp::AddVisual(contribution, options));
+    }
+
+    fn add_command(&self, command: Arc<dyn ICommand>, options: ContributionOptions) {
+        let _ = self.tx.send(HostOp::AddCommand(command, options));
     }
 
     fn remove(&self, contribution_id: &str) {
@@ -90,6 +96,7 @@ pub fn drain_host_ops<T: IContributionHost>(rx: &flume::Receiver<HostOp>, host: 
         match op {
             HostOp::Add(c, o) => host.add(c, o),
             HostOp::AddVisual(c, o) => host.add_visual(c, o),
+            HostOp::AddCommand(c, o) => host.add_command(c, o),
             HostOp::Remove(id) => host.remove(&id),
         }
     }

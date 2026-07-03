@@ -1,9 +1,10 @@
+use gpui::SharedString;
 use rml::prelude::*;
+use rml_core::i18n::t_static;
 
 #[contribute(
     host_id = "demo.activity",
     id = "components.menu.dropdown",
-    name = "case.menu.dropdown.title",
     kind = "case",
     group = "menu",
     order = 17,
@@ -12,6 +13,15 @@ use rml::prelude::*;
 #[derive(Default)]
 pub struct MenuDropdownCase {
     pub last_action: String,
+}
+
+impl IContribution for MenuDropdownCase {
+    fn id(&self) -> &str {
+        Self::CONTRIBUTION_ID
+    }
+    fn name(&self) -> SharedString {
+        t_static("case.menu.dropdown.title").into()
+    }
 }
 
 impl ILifecycle for MenuDropdownCase {}

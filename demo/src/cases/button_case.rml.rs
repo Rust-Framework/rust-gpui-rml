@@ -1,9 +1,10 @@
+use gpui::SharedString;
 use rml::prelude::*;
+use rml_core::i18n::t_static;
 
 #[contribute(
     host_id = "demo.activity",
     id = "components.button",
-    name = "case.button.title",
     kind = "case",
     group = "components",
     order = 11,
@@ -12,6 +13,15 @@ use rml::prelude::*;
 #[derive(Default)]
 pub struct ButtonCase {
     pub button_clicks: i32,
+}
+
+impl IContribution for ButtonCase {
+    fn id(&self) -> &str {
+        Self::CONTRIBUTION_ID
+    }
+    fn name(&self) -> SharedString {
+        t_static("case.button.title").into()
+    }
 }
 
 impl ILifecycle for ButtonCase {}

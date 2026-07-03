@@ -4,11 +4,14 @@
 //! 详见文档 §2 RML 标记语言。
 
 pub mod ast;
+pub mod span;
 pub mod tokenizer;
 
 use crate::parser::ast::{Attribute, Directive, EachClause, Element, EventHandler, Node, TextSegment};
 use crate::parser::tokenizer::{AttrValue, RawAttribute, Token, TokenKind};
 use std::fmt;
+
+pub use span::Span;
 
 /// 解析错误
 #[derive(Debug, Clone)]
@@ -87,13 +90,16 @@ impl Parser {
                     let attrs_owned = attributes.clone();
                     let line = tok.line;
                     let col = tok.column;
+                    let start_byte = tok.span.start;
                     self.advance();
                     // 递归解析子节点，期望遇到匹配的 TagEnd
                     let children = self.parse_children()?;
                     // 期望下一个是 TagEnd
-                    match self.peek().map(|t| &t.kind) {
+                    let end_byte = match self.peek().map(|t| &t.kind) {
                         Some(TokenKind::TagEnd { tag: end_tag }) if *end_tag == tag_owned => {
+                            let end_span = self.peek().unwrap().span;
                             self.advance();
+                            end_span.end
                         }
                         _ => {
                             return Err(ParseError {
@@ -102,15 +108,21 @@ impl Parser {
                                 column: col,
                             });
                         }
-                    }
-                    let element = self.build_element(tag_owned, attrs_owned, children)?;
+                    };
+                    let element = self.build_element(
+                        tag_owned,
+                        attrs_owned,
+                        children,
+                        Span::new(start_byte, end_byte),
+                    )?;
                     nodes.push(Node::Element(element));
                 }
                 TokenKind::SelfClosingTag { tag, attributes } => {
                     let tag_owned = tag.clone();
                     let attrs_owned = attributes.clone();
+                    let span = tok.span;
                     self.advance();
-                    let element = self.build_element(tag_owned, attrs_owned, Vec::new())?;
+                    let element = self.build_element(tag_owned, attrs_owned, Vec::new(), span)?;
                     nodes.push(Node::Element(element));
                 }
                 TokenKind::TagEnd { .. } => {
@@ -140,6 +152,7 @@ impl Parser {
         tag: String,
         raw_attrs: Vec<RawAttribute>,
         children: Vec<Node>,
+        span: Span,
     ) -> Result<Element, ParseError> {
         let mut attributes = Vec::new();
         let mut directives = Vec::new();
@@ -221,6 +234,7 @@ impl Parser {
             directives,
             children,
             slot_name,
+            span,
         })
     }
 }

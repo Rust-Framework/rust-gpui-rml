@@ -82,6 +82,7 @@ mod tests {
             directives: vec![],
             children,
             slot_name: None,
+            ..Default::default()
         }
     }
 

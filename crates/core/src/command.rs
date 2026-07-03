@@ -1,48 +1,53 @@
-//! `ICommand` trait + `RelayCommand` —— 命令系统契约与 WPF 风格命令对象
+//! `ICommand` trait + `RelayCommand` + `CallContext` —— 命令贡献系统契约
 //!
-//! 对齐 WPF `ICommand`：`execute` + `can_execute`，接口纯净无编译器元信息。
+//! `ICommand : IContribution`——命令本身即是贡献点。命令贡献经 `register_command` 路由到 host，
+//! 在 `execute`/`can_execute` 中实现点击行为。
 //!
-//! `#[command]` 标记的方法可被 `.rml` 中的 `on*` 事件绑定调用。
-//! 命令方法签名：`fn(&mut self, ev: &Event, cx: &mut Context<Self>)`
-//! 或带参数：`fn(&mut self, param: T, ev: &Event, cx: &mut Context<Self>)`
+//! `CallContext` 封装 `Window` + `App`，替代旧 `(&dyn Any, &mut App)` 弱类型参数。
 //!
-//! `#[command]` 宏是 pass-through（仅校验签名），codegen 直接调用命令方法保留事件类型安全。
-//!
-//! `ICommand` trait 是 object-safe 的，可作为 ViewModel 字段类型（`Arc<dyn ICommand>`），
-//! 用于声明式 `<MenuItem command={field} />` 绑定等 MVVM 场景。
-//! `RelayCommand` 是框架提供的默认 `ICommand` 实现（WPF `RelayCommand`/`DelegateCommand` 等价物），
-//! 持有 `WeakEntity<T>` + 闭包，在 `execute` 时 upgrade 并 update ViewModel。
+//! `RelayCommand` 是框架提供的 `ICommand` 默认实现（WPF `RelayCommand` 等价物），
+//! 持有 `WeakEntity<T>` + 闭包，用于 ViewModel 字段绑定（`command={field}`）。
+//! 不作为贡献注册（dummy `id`/`name`）。
 
-use gpui::{App, Context};
+use gpui::{App, SharedString, Window};
 
-/// 命令基础 trait（对齐 WPF `ICommand`）。
+use crate::contribution::IContribution;
+
+/// 命令执行上下文——封装 `Window` + `App`，提供命令执行所需能力。
 ///
-/// Object-safe：可存储为 `Arc<dyn ICommand>` / `Box<dyn ICommand>`，
-/// 作为 ViewModel 字段在 RML 中通过 `command={field}` 绑定到控件 click。
+/// 替代旧 `(&dyn Any, &mut App)` 弱类型参数。命令贡献 struct 通过 `self` 携带自身状态，
+/// 无需外部 parameter；`CallContext` 提供 `Window`/`App` 访问能力。
+pub struct CallContext<'a> {
+    pub window: &'a mut Window,
+    pub app: &'a mut App,
+}
+
+impl<'a> CallContext<'a> {
+    pub fn new(window: &'a mut Window, app: &'a mut App) -> Self {
+        Self { window, app }
+    }
+}
+
+/// 命令贡献 trait（对齐 WPF `ICommand`，继承 `IContribution`——命令本身是贡献点）。
 ///
-/// 命令对象需自行持有 `WeakEntity<T>` 来更新 ViewModel 状态（参见 `RelayCommand`）。
-///
-/// `parameter` 类型擦除为 `&dyn Any`，实现方按需 downcast。
+/// 实现方需同时实现 `IContribution`（id/name/description/icon）和 `ICommand`（execute/can_execute）。
+/// `#[contribute(command, ...)]` 宏编译期校验目标已实现 `IContribution`，路由到 `register_command`。
 ///
 /// # 与 `#[command]` 方法的关系
 ///
 /// - `#[command]` 方法：codegen 生成的事件绑定直接调用强类型方法（绕过 trait，保留类型安全）
-/// - `ICommand` trait：用于声明式 `command={field}` 绑定、快捷键、命令面板等动态调度场景
-pub trait ICommand: Send + Sync + 'static {
-    /// 执行命令（WPF: `Execute`）
+/// - `ICommand` trait：用于贡献点注册、`command={field}` 绑定、快捷键、命令面板等动态调度场景
+pub trait ICommand: IContribution {
+    /// 执行命令（WPF: `Execute`）。
     ///
-    /// `parameter` 类型擦除，实现方按需 `downcast_ref`/`downcast_mut`。
-    /// 无参数命令可忽略 `parameter`。
-    fn execute(&self, parameter: &dyn std::any::Any, cx: &mut App);
+    /// `ctx` 提供 `Window`/`App` 访问能力。命令 struct 自身携带状态（`self`）。
+    fn execute(&self, ctx: &mut CallContext);
 
-    /// 是否可执行（WPF: `CanExecute`）
+    /// 是否可执行（WPF: `CanExecute`）。
     ///
     /// 返回 `false` 时 UI 层应禁用对应控件（如按钮 disabled）。
     /// 默认实现返回 `true`。
-    ///
-    /// 简单状态检查可直接在此返回；需要访问 ViewModel 状态的命令
-    /// 可在 `execute` 内通过 `WeakEntity::upgrade()` 检查并提前返回。
-    fn can_execute(&self, _parameter: &dyn std::any::Any) -> bool {
+    fn can_execute(&self, _ctx: &mut CallContext) -> bool {
         true
     }
 }
@@ -52,6 +57,9 @@ pub trait ICommand: Send + Sync + 'static {
 /// 持有 `WeakEntity<T>` + 闭包，在 `execute` 时 upgrade 弱引用并 `update` ViewModel。
 /// 适用于 MVVM 声明式绑定：ViewModel 持有 `Arc<dyn ICommand>` 字段，
 /// 在 RML 中通过 `command={field}` 绑定到 `<MenuItem>` 等控件。
+///
+/// **不作为贡献注册**——`id()`/`name()` 返回 dummy 值。需注册命令贡献时手写 struct
+/// 实现 `IContribution` + `ICommand`，用 `#[contribute(command, ...)]` 标记。
 ///
 /// # 用法
 ///
@@ -68,11 +76,6 @@ pub trait ICommand: Send + Sync + 'static {
 ///     }
 /// }
 /// ```
-///
-/// RML 声明式绑定：
-/// ```xml
-/// <MenuItem label="Save" command={save_command} />
-/// ```
 pub struct RelayCommand {
     action: Box<dyn Fn(&mut App) + Send + Sync + 'static>,
     can_run: Option<Box<dyn Fn() -> bool + Send + Sync + 'static>>,
@@ -83,10 +86,10 @@ impl RelayCommand {
     ///
     /// 内部捕获 `WeakEntity<T>`，`execute` 时 upgrade 并 `update`。
     /// 闭包签名为 `Fn(&mut T, &mut Context<T>)`，与 `#[command]` 方法体一致。
-    pub fn new<T, F>(cx: &Context<T>, f: F) -> Self
+    pub fn new<T, F>(cx: &gpui::Context<T>, f: F) -> Self
     where
         T: Send + Sync + 'static,
-        F: Fn(&mut T, &mut Context<T>) + Send + Sync + 'static,
+        F: Fn(&mut T, &mut gpui::Context<T>) + Send + Sync + 'static,
     {
         let weak = cx.weak_entity();
         Self {
@@ -111,9 +114,6 @@ impl RelayCommand {
     }
 
     /// 设置 `can_execute` 谓词（Builder 风格）。
-    ///
-    /// 谓词不接收上下文参数；需要检查 ViewModel 状态时，
-    /// 可在闭包中捕获 `Arc<Mutex<...>>` 或使用 `Rc<RefCell<...>>`。
     pub fn can_when<F>(mut self, f: F) -> Self
     where
         F: Fn() -> bool + Send + Sync + 'static,
@@ -123,12 +123,22 @@ impl RelayCommand {
     }
 }
 
-impl ICommand for RelayCommand {
-    fn execute(&self, _parameter: &dyn std::any::Any, cx: &mut App) {
-        (self.action)(cx);
+impl IContribution for RelayCommand {
+    fn id(&self) -> &str {
+        "__relay__"
     }
 
-    fn can_execute(&self, _parameter: &dyn std::any::Any) -> bool {
+    fn name(&self) -> SharedString {
+        SharedString::default()
+    }
+}
+
+impl ICommand for RelayCommand {
+    fn execute(&self, ctx: &mut CallContext) {
+        (self.action)(ctx.app);
+    }
+
+    fn can_execute(&self, _ctx: &mut CallContext) -> bool {
         self.can_run.as_ref().map_or(true, |f| f())
     }
 }
@@ -140,48 +150,72 @@ impl ICommand for RelayCommand {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use gpui::SharedString;
 
     struct AlwaysEnabled;
     struct AlwaysDisabled;
 
+    impl IContribution for AlwaysEnabled {
+        fn id(&self) -> &str {
+            "always_enabled"
+        }
+        fn name(&self) -> SharedString {
+            SharedString::default()
+        }
+    }
+
+    impl IContribution for AlwaysDisabled {
+        fn id(&self) -> &str {
+            "always_disabled"
+        }
+        fn name(&self) -> SharedString {
+            SharedString::default()
+        }
+    }
+
     impl ICommand for AlwaysEnabled {
-        fn execute(&self, _parameter: &dyn std::any::Any, _cx: &mut App) {}
+        fn execute(&self, _ctx: &mut CallContext) {}
     }
 
     impl ICommand for AlwaysDisabled {
-        fn execute(&self, _parameter: &dyn std::any::Any, _cx: &mut App) {}
+        fn execute(&self, _ctx: &mut CallContext) {}
 
-        fn can_execute(&self, _parameter: &dyn std::any::Any) -> bool {
+        fn can_execute(&self, _ctx: &mut CallContext) -> bool {
             false
         }
     }
 
+    // CallContext 测试需要 Window/App，仅验证 trait 层级关系
     #[test]
-    fn default_can_execute_is_true() {
-        let cmd = AlwaysEnabled;
-        assert!(cmd.can_execute(&42_i32));
+    fn icommand_extends_icontribution() {
+        // 类型级验证：ICommand: IContribution，可 upcast
+        fn assert_contribution<T: IContribution>() {}
+        assert_contribution::<AlwaysEnabled>();
+        assert_contribution::<AlwaysDisabled>();
+        assert_contribution::<RelayCommand>();
     }
 
     #[test]
-    fn custom_can_execute_false() {
-        let cmd = AlwaysDisabled;
-        assert!(!cmd.can_execute(&42_i32));
+    fn relay_command_implements_icontribution() {
+        let cmd = RelayCommand::action(|_cx: &mut App| {});
+        assert_eq!(cmd.id(), "__relay__");
+        assert_eq!(cmd.name(), SharedString::default());
     }
 
     #[test]
-    fn can_execute_accepts_any_parameter_type() {
-        let cmd = AlwaysEnabled;
-        assert!(cmd.can_execute(&"string"));
-        assert!(cmd.can_execute(&42_i64));
-        assert!(cmd.can_execute(&true));
-        assert!(cmd.can_execute(&vec![1, 2, 3]));
+    fn relay_command_as_arc_dyn_i_command() {
+        use std::sync::Arc;
+        let cmd: Arc<dyn ICommand> = Arc::new(RelayCommand::action(|_cx: &mut App| {}));
+        assert_eq!(Arc::strong_count(&cmd), 1);
     }
 
     #[test]
-    fn can_execute_disabled_regardless_of_parameter() {
-        let cmd = AlwaysDisabled;
-        assert!(!cmd.can_execute(&"text"));
-        assert!(!cmd.can_execute(&42));
+    fn relay_command_as_arc_dyn_icontribution_via_upcast() {
+        use std::sync::Arc;
+        // trait upcasting：Arc<dyn ICommand> → Arc<dyn IContribution>
+        let cmd: Arc<dyn ICommand> = Arc::new(RelayCommand::action(|_cx: &mut App| {}));
+        let contrib: Arc<dyn IContribution> = cmd;
+        assert_eq!(contrib.id(), "__relay__");
     }
 
     #[test]
@@ -189,32 +223,5 @@ mod tests {
         use std::sync::Arc;
         let cmd: Arc<dyn ICommand> = Arc::new(AlwaysEnabled);
         assert!(Arc::strong_count(&cmd) >= 1);
-    }
-
-    #[test]
-    fn relay_command_default_can_execute_true() {
-        let cmd = RelayCommand::action(|_cx: &mut App| {});
-        assert!(cmd.can_execute(&()));
-    }
-
-    #[test]
-    fn relay_command_can_when_predicate() {
-        let cmd = RelayCommand::action(|_cx: &mut App| {}).can_when(|| false);
-        assert!(!cmd.can_execute(&()));
-    }
-
-    #[test]
-    fn relay_command_can_when_true() {
-        let cmd = RelayCommand::action(|_cx: &mut App| {}).can_when(|| true);
-        assert!(cmd.can_execute(&()));
-    }
-
-    #[test]
-    fn relay_command_as_arc_dyn_i_command() {
-        use std::sync::Arc;
-        // 类型级验证：RelayCommand 可转为 Arc<dyn ICommand>
-        let cmd: Arc<dyn ICommand> = Arc::new(RelayCommand::action(|_cx: &mut App| {}));
-        assert!(cmd.can_execute(&()));
-        assert_eq!(Arc::strong_count(&cmd), 1);
     }
 }

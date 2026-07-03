@@ -1,8 +1,19 @@
-//! `#[contribute]` —— 为类型生成 `IContribution`、`IVisualContribution`（视觉贡献）impl +
-//! 单行注册函数。build.rs 扫描汇总为 `register_rml_contributions_for`。
+//! `#[contribute]` —— 编译期校验 + 路由注册函数生成
 //!
-//! 视觉贡献（`#[contribute]` + `#[component]` 叠加）通过 `register_visual` 直达 host 的 `add_visual`，
-//! 无需 `VisualExtractor` 转换。
+//! 宏职责（精简后）：
+//! 1. 生成 `pub const CONTRIBUTION_ID: &str`
+//! 2. 编译期断言目标实现 `IContribution`（用户手写 impl）
+//! 3. 生成 `__rml_register_*` 函数，按 `command`/`visual` flag 路由到
+//!    `register`/`register_command`/`register_visual`
+//! 4. 视觉贡献（`visual` flag 或 `#[component]` 叠加）额外生成 `impl IVisualContribution`（仅 `render`）
+//!
+//! 宏不再自动生成 `impl IContribution`——用户必须手写。
+//!
+//! 参数：
+//! - 固定：`host_id`/`id`/`parent_id`/`order`/`group`
+//! - flag：`command`/`visual`
+//! - 任意 `key = "string"` → `ContributionOptions.properties`
+//! - `name`/`description`/`icon` 被拒绝（compile_error，提示手写 impl）
 
 use proc_macro2::TokenStream;
 
@@ -12,45 +23,42 @@ use syn::{
     parse::{Parse, ParseStream, Parser},
     punctuated::Punctuated,
     spanned::Spanned,
-    Expr, Item, LitStr, Token,
+    Item, LitStr, Token,
 };
 
 struct ContributeArgs {
-    host_id: Expr,
+    host_id: LitStr,
     id: LitStr,
-    name: LitStr,
-    description: Option<LitStr>,
-    icon: Option<Expr>,
+    parent_id: Option<LitStr>,
     order: Option<syn::LitInt>,
     group: Option<LitStr>,
-    slot: Option<LitStr>,
-    parent_id: Option<LitStr>,
+    command: bool,
     visual: bool,
-    align_right: bool,
+    properties: Vec<(String, LitStr)>,
 }
 
 impl Parse for ContributeArgs {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut host_id = None;
         let mut id = None;
-        let mut name = None;
-        let mut description = None;
-        let mut icon = None;
+        let mut parent_id = None;
         let mut order = None;
         let mut group = None;
-        let mut slot = None;
-        let mut kind = None;
-        let mut parent_id = None;
+        let mut command = false;
         let mut visual = false;
-        let mut align_right = false;
+        let mut properties: Vec<(String, LitStr)> = Vec::new();
 
         let fields: Punctuated<syn::Meta, Token![,]> =
             input.parse_terminated(syn::Meta::parse, Token![,])?;
 
         for meta in fields {
             match &meta {
-                syn::Meta::Path(path) if path.is_ident("visual") => {
-                    visual = true;
+                syn::Meta::Path(path) => {
+                    if path.is_ident("command") {
+                        command = true;
+                    } else if path.is_ident("visual") {
+                        visual = true;
+                    }
                 }
                 syn::Meta::NameValue(nv) => {
                     let key = nv.path.get_ident().map(|i| i.to_string());
@@ -67,14 +75,8 @@ impl Parse for ContributeArgs {
                         Some("id") => {
                             id = Some(syn::parse2(nv.value.clone().into_token_stream())?);
                         }
-                        Some("name") => {
-                            name = Some(syn::parse2(nv.value.clone().into_token_stream())?);
-                        }
-                        Some("description") => {
-                            description = Some(syn::parse2(nv.value.clone().into_token_stream())?);
-                        }
-                        Some("icon") => {
-                            icon = Some(syn::parse2(nv.value.clone().into_token_stream())?);
+                        Some("parent_id") => {
+                            parent_id = Some(syn::parse2(nv.value.clone().into_token_stream())?);
                         }
                         Some("order") => {
                             order = Some(syn::parse2(nv.value.clone().into_token_stream())?);
@@ -82,30 +84,61 @@ impl Parse for ContributeArgs {
                         Some("group") => {
                             group = Some(syn::parse2(nv.value.clone().into_token_stream())?);
                         }
-                        Some("slot") => {
-                            slot = Some(syn::parse2(nv.value.clone().into_token_stream())?);
+                        Some("name") => {
+                            return Err(syn::Error::new(
+                                nv.path.span(),
+                                "`name` must be hand-written in `impl IContribution` (dynamic i18n supported)",
+                            ));
                         }
-                        Some("kind") => {
-                            kind = Some(syn::parse2(nv.value.clone().into_token_stream())?);
+                        Some("description") => {
+                            return Err(syn::Error::new(
+                                nv.path.span(),
+                                "`description` must be hand-written in `impl IContribution`",
+                            ));
                         }
-                        Some("parent_id") => {
-                            parent_id = Some(syn::parse2(nv.value.clone().into_token_stream())?);
+                        Some("icon") => {
+                            return Err(syn::Error::new(
+                                nv.path.span(),
+                                "`icon` must be hand-written in `impl IContribution::icon()`",
+                            ));
                         }
-                        Some("placement") => {
-                            if let Expr::Path(p) = &nv.value {
-                                if p.path.is_ident("Right") {
-                                    align_right = true;
-                                }
+                        Some("slot") | Some("kind") => {
+                            // `slot`/`kind` 统一进 properties["kind"]
+                            if let syn::Expr::Lit(syn::ExprLit {
+                                lit: syn::Lit::Str(s),
+                                ..
+                            }) = &nv.value
+                            {
+                                properties.push(("kind".to_string(), s.clone()));
+                            } else {
+                                return Err(syn::Error::new(
+                                    nv.value.span(),
+                                    "`kind`/`slot` must be a string literal",
+                                ));
                             }
                         }
-                        Some("mode") => {
-                            if let Expr::Path(p) = &nv.value {
-                                if p.path.is_ident("Panel") {
-                                    visual = true;
-                                }
+                        Some("placement") | Some("mode") => {
+                            return Err(syn::Error::new(
+                                nv.path.span(),
+                                "`placement`/`mode` removed: use `visual` flag or `align = \"right\"`",
+                            ));
+                        }
+                        Some(other) => {
+                            // 任意扩展属性：必须是字符串字面量
+                            if let syn::Expr::Lit(syn::ExprLit {
+                                lit: syn::Lit::Str(s),
+                                ..
+                            }) = &nv.value
+                            {
+                                properties.push((other.to_string(), s.clone()));
+                            } else {
+                                return Err(syn::Error::new(
+                                    nv.value.span(),
+                                    "extra properties must be string literals",
+                                ));
                             }
                         }
-                        _ => {}
+                        None => {}
                     }
                 }
                 _ => {}
@@ -117,33 +150,19 @@ impl Parse for ContributeArgs {
                 syn::Error::new(input.span(), "missing host_id (e.g. host_id = \"demo.shell\")")
             })?,
             id: id.ok_or_else(|| syn::Error::new(input.span(), "missing id"))?,
-            name: name.ok_or_else(|| syn::Error::new(input.span(), "missing name"))?,
-            description,
-            icon,
+            parent_id,
             order,
             group,
-            slot: slot.or(kind),
-            parent_id,
+            command,
             visual,
-            align_right,
+            properties,
         })
     }
 }
 
 /// `host_id` 只接受字符串字面量（如 `"demo.shell"`），彻底解耦贡献点与宿主类型
-fn host_id_tokens(host_id: &Expr) -> TokenStream {
-    match host_id {
-        Expr::Lit(syn::ExprLit {
-            lit: syn::Lit::Str(s),
-            ..
-        }) => quote! { #s },
-        _ => quote! {
-            compile_error!(
-                "host_id must be a string literal (e.g. host_id = \"demo.shell\"). \
-                 The host = Type form is removed to decouple contributions from host types."
-            )
-        },
-    }
+fn host_id_tokens(host_id: &LitStr) -> TokenStream {
+    quote! { #host_id }
 }
 
 pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
@@ -186,28 +205,12 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
 
     let host_id = host_id_tokens(&args.host_id);
     let id = &args.id;
-    let name_key = &args.name;
 
-    let description_impl = if let Some(desc) = &args.description {
-        quote! { rml_core::i18n::t_static(#desc).into() }
-    } else {
-        quote! { gpui::SharedString::default() }
-    };
-
-    let icon_impl = if let Some(icon_expr) = &args.icon {
-        if let Expr::Path(path) = icon_expr {
-            if let Some(seg) = path.path.segments.last() {
-                let icon_name = seg.ident.to_string();
-                quote! { Some(gpui::SharedString::from(#icon_name)) }
-            } else {
-                quote! { None }
-            }
-        } else {
-            quote! { None }
-        }
-    } else {
-        quote! { None }
-    };
+    let parent_id = args
+        .parent_id
+        .as_ref()
+        .map(|p| quote! { .parent_id(#p) })
+        .unwrap_or_default();
 
     let order = args
         .order
@@ -221,23 +224,10 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
         .map(|g| quote! { .group(#g) })
         .unwrap_or_default();
 
-    let slot = args
-        .slot
-        .as_ref()
-        .map(|s| quote! { .slot(#s) })
-        .unwrap_or_default();
-
-    let parent_id = args
-        .parent_id
-        .as_ref()
-        .map(|p| quote! { .parent_id(#p) })
-        .unwrap_or_default();
-
-    let align = if args.align_right {
-        quote! { .property("align", "right") }
-    } else {
-        TokenStream::new()
-    };
+    let properties = args.properties.iter().map(|(k, v)| {
+        quote! { .property(#k, #v) }
+    }).collect::<Vec<_>>();
+    let properties_tokens = quote! { #(#properties)* };
 
     let has_component = items.iter().any(|item| {
         matches!(
@@ -245,12 +235,12 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
             Item::Struct(s) if s.attrs.iter().any(|a| a.path().is_ident("component"))
         )
     });
-    let use_component_visual = args.visual || has_component;
+    let use_visual = args.visual || has_component;
+    let use_command = args.command;
 
-    // 视觉贡献契约：`#[contribute]` + `#[component]` 叠加时自动实现。
-    // `render` 通过框架实体缓存复用 Entity——避免每次渲染创建新实例导致状态丢失。
-    // host 通过 `add_visual` 直接收到 `Arc<dyn IVisualContribution>`，无需 `VisualExtractor` 转换。
-    let visual_impl = if use_component_visual {
+    // 视觉贡献契约：`#[contribute]` + `#[component]` 叠加时自动实现 `IVisualContribution::render`。
+    // 用户仍需手写 `impl IContribution`。
+    let visual_impl = if use_visual {
         quote! {
             impl rml_core::contribution::IVisualContribution for #struct_name {
                 fn render(&self, window: &mut gpui::Window, cx: &mut gpui::App) -> gpui::AnyElement {
@@ -265,19 +255,32 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
         quote! {}
     };
 
-    // 注册调用：视觉贡献走 register_visual，能力贡献走 register。
-    // register/register_visual 同步路由到 host.add/add_visual（host 未注册时 drop）。
-    let register_call = if use_component_visual {
+    // 注册调用：按 flag 路由
+    // - visual → register_visual
+    // - command → register_command
+    // - 默认 → register
+    let register_call = if use_visual {
         quote! {
             cx.get_contribution_registry().register_visual(
                 #host_id,
                 std::sync::Arc::new(#struct_name::default()),
                 rml_core::contribution::ContributionOptions::new()
-                    #slot
                     #parent_id
                     #order
                     #group
-                    #align,
+                    #properties_tokens,
+            );
+        }
+    } else if use_command {
+        quote! {
+            cx.get_contribution_registry().register_command(
+                #host_id,
+                std::sync::Arc::new(#struct_name::default()),
+                rml_core::contribution::ContributionOptions::new()
+                    #parent_id
+                    #order
+                    #group
+                    #properties_tokens,
             );
         }
     } else {
@@ -286,35 +289,40 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
                 #host_id,
                 std::sync::Arc::new(#struct_name::default()),
                 rml_core::contribution::ContributionOptions::new()
-                    #slot
                     #parent_id
                     #order
                     #group
-                    #align,
+                    #properties_tokens,
             );
         }
+    };
+
+    // 命令贡献额外断言：目标必须实现 ICommand（用户手写）
+    let command_assert = if use_command {
+        quote! {
+            const _: () = {
+                fn assert_command<T: rml_core::command::ICommand>() {}
+                fn check_command() { assert_command::<#struct_name>(); }
+            };
+        }
+    } else {
+        quote! {}
     };
 
     quote! {
         #(#items)*
 
-        impl rml_core::contribution::IContribution for #struct_name {
-            fn id(&self) -> &str {
-                #id
-            }
-
-            fn name(&self) -> gpui::SharedString {
-                rml_core::i18n::t_static(#name_key).into()
-            }
-
-            fn description(&self) -> gpui::SharedString {
-                #description_impl
-            }
-
-            fn icon(&self) -> Option<gpui::SharedString> {
-                #icon_impl
-            }
+        impl #struct_name {
+            pub const CONTRIBUTION_ID: &'static str = #id;
         }
+
+        // 编译期断言：目标必须实现 IContribution（用户手写）
+        const _: () = {
+            fn assert_contribution<T: rml_core::contribution::IContribution>() {}
+            fn check() { assert_contribution::<#struct_name>(); }
+        };
+
+        #command_assert
 
         #visual_impl
 
