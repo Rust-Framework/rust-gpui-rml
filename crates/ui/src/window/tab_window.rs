@@ -77,7 +77,7 @@ fn control_button(
     div()
         .id(id)
         .flex()
-        .w(TITLE_BAR_HEIGHT)
+        .w(px(45.))
         .h_full()
         .flex_shrink_0()
         .justify_center()
