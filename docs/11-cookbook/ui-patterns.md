@@ -1,4 +1,4 @@
-# 11.1 常见 UI 模式
+﻿# 11.1 常见 UI 模式
 
 > **本节目标**：把绑定、组件、样式组合成可复用的 UI 解决方案，覆盖表单、列表、对话框、抽屉、Tab、向导六大模式。
 
@@ -25,7 +25,7 @@
 ```
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 pub struct FormViewModel {
     pub email: SharedString,
     pub password: SharedString,
@@ -124,7 +124,7 @@ pub fn remove_field(&mut self, ev: &ClickEvent, cx: &mut ViewContext<Self>) {
 ```
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 pub struct ListViewModel {
     pub items: Vec<Item>,
     pub filter: SharedString,
@@ -152,7 +152,7 @@ impl ListViewModel {
 ### 分页列表
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 pub struct PagedViewModel {
     pub items: Vec<Item>,
     pub page: usize,
@@ -299,14 +299,14 @@ pub fn switch_tab(&mut self, ev: &ClickEvent, cx: &mut ViewContext<Self>) {
 #[derive(Model, Clone, PartialEq)]
 pub enum Tab { Profile, Settings }
 
-#[derive(Model)]
+#[derive(IModel)]
 pub struct TabsVM { pub active: Tab }
 ```
 
 ## 11.1.6 向导模式（多步表单）
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 pub struct WizardViewModel {
     pub step: usize,
     pub total_steps: usize,

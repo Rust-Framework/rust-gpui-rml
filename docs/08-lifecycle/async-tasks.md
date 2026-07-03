@@ -1,4 +1,4 @@
-# 8.4 异步任务管理
+﻿# 8.4 异步任务管理
 
 > **本节目标**：掌握 RML 中异步任务的启动、取消、错误处理和生命周期管理。
 
@@ -21,7 +21,7 @@ RML 应用中常见的异步任务：
 ```rust
 use rml::prelude::*;
 
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct DataView {
     pub data: Vec<Item>,
@@ -91,7 +91,7 @@ if let Some(task) = self.task.take() {
 ### 基本取消
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct SearchView {
     pub search_text: SharedString,
@@ -328,7 +328,7 @@ cx.spawn(|this, mut cx| async move {
 ```rust
 use std::time::Duration;
 
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct ClockView {
     pub current_time: SharedString,
@@ -392,7 +392,7 @@ self.timer = Some(cx.spawn(|this, mut cx| async move {
 ## 8.4.7 进度跟踪
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct UploadView {
     pub upload_progress: f64,
@@ -512,7 +512,7 @@ cx.spawn(|this, mut cx| async move {
 use std::time::Duration;
 use rml::prelude::*;
 
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct DataLoader {
     pub data: Vec<Item>,

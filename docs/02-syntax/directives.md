@@ -1,4 +1,4 @@
-# 2.4 指令系统
+﻿# 2.4 指令系统
 
 > **本节目标**：完整掌握 RML 的 10 个指令——`if`、`else`、`each`、`key`、`model`、`show`、`once`、`html`、`ref`、`slot`。这是 RML 区别于 HTML 的核心能力。
 
@@ -198,7 +198,7 @@ pub fn pending_todos(&self) -> Vec<&TodoItem> {
 被 `model` 绑定的字段必须是 `pub` 且类型可赋值：
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct MyView {
     pub user_name: SharedString,  // ✅ 可以双向绑定
@@ -286,7 +286,7 @@ pub fn user_bio_text(&self) -> SharedString {
 ```
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct MyView {
     pub user_name: SharedString,

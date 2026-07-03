@@ -1,4 +1,4 @@
-# 2.6 完整示例：Todo 应用
+﻿# 2.6 完整示例：Todo 应用
 
 > **本节目标**：用一个完整的 Todo 应用串起本章所有语法点——标签映射、属性系统、指令系统、插值表达式。
 
@@ -130,14 +130,14 @@ key={todo.id}                 <!-- 列表唯一标识 -->
 // todo.rml.rs
 use rml::prelude::*;
 
-#[derive(Model)]
+#[derive(IModel)]
 pub struct TodoItem {
     pub id: u64,
     pub text: SharedString,
     pub done: bool,
 }
 
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct TodoViewModel {
     pub new_todo_text: SharedString,

@@ -1,4 +1,4 @@
-# 11.4 常见问题 FAQ
+﻿# 11.4 常见问题 FAQ
 
 > **本节目标**：给出高频问题的标准答案，省去反复踩坑的时间。
 
@@ -182,7 +182,7 @@ pub fn on_unloaded(&mut self, _cx: &mut ViewContext<Self>) {
 ### Q24：LSP 补全不出现？
 
 1. 等待索引完成（首次 10-30s）
-2. 检查 ViewModel 是否有 `#[derive(Model)]`
+2. 检查 ViewModel 是否有 `#[derive(IModel)]`
 3. 检查字段是否 `pub`
 4. 重启 LSP：`Ctrl+Shift+P` → `RML: Restart Server`
 

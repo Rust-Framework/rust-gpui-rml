@@ -1,4 +1,4 @@
-# 9.6 反模式与代码异味
+﻿# 9.6 反模式与代码异味
 
 > **本节目标**：识别 RML 项目中的常见反模式，给出诊断信号与重构处方。
 
@@ -20,7 +20,7 @@
 
 ```rust
 // ❌ 胖 ViewModel
-#[derive(Model)]
+#[derive(IModel)]
 pub struct AppViewModel {
     pub user: User,
     pub todos: Vec<Todo>,
@@ -31,9 +31,9 @@ pub struct AppViewModel {
 }
 
 // ✅ 拆分为多个 ViewModel，每个视图一个
-#[derive(Model)] pub struct ProfileViewModel { pub user: User, ... }
-#[derive(Model)] pub struct TodoListViewModel { pub todos: Vec<Todo>, ... }
-#[derive(Model)] pub struct CartViewModel { pub cart: Cart, ... }
+#[derive(IModel)] pub struct ProfileViewModel { pub user: User, ... }
+#[derive(IModel)] pub struct TodoListViewModel { pub todos: Vec<Todo>, ... }
+#[derive(IModel)] pub struct CartViewModel { pub cart: Cart, ... }
 ```
 
 跨视图共享的状态用 Context / 全局 Model，而非塞进一个 ViewModel。
@@ -157,7 +157,7 @@ pub fn formatted_date(&self) -> SharedString {
 
 ```rust
 // ❌ 隐式状态
-#[derive(Model)]
+#[derive(IModel)]
 pub struct BadVM {
     pub is_loading: bool,
     pub is_error: bool,
@@ -174,7 +174,7 @@ pub enum LoadState {
     Error(SharedString),
 }
 
-#[derive(Model)]
+#[derive(IModel)]
 pub struct GoodVM {
     pub state: LoadState,
 }

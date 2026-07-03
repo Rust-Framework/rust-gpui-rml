@@ -1,4 +1,4 @@
-# 4.3 元素引用
+﻿# 4.3 元素引用
 
 > **本节目标**：掌握 `ref` 属性与 `ElementRef<T>` 的命令式访问能力，在需要直接操作 DOM 元素时游刃有余。
 
@@ -21,7 +21,7 @@
 
 ```rust
 // .rml.rs 中用 ElementRef 访问
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct MyView {
     pub user_name: SharedString,
@@ -76,7 +76,7 @@ impl MyView {
 ```rust
 use rml::prelude::*;
 
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct MyView {
     #[element]
@@ -107,7 +107,7 @@ pub struct MyView {
 `#[element]` 标记字段为元素引用，让 RML 编译器自动关联 `ref` 名称与字段名：
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct MyView {
     #[element]
@@ -332,7 +332,7 @@ self.username_input.set_value(self.user_name.clone(), cx);
 // views/login.rml.rs
 use rml::prelude::*;
 
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct LoginView {
     pub username: SharedString,

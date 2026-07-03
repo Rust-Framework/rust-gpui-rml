@@ -318,7 +318,7 @@ pub trait Event {
 ## 5.2.10 完整示例：键盘快捷键
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct EditorView {
     pub content: SharedString,

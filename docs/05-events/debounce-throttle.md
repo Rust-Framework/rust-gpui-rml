@@ -1,4 +1,4 @@
-# 5.5 防抖与节流
+﻿# 5.5 防抖与节流
 
 > **本节目标**：掌握高频事件的性能优化策略——防抖（Debounce）与节流（Throttle）。
 
@@ -42,7 +42,7 @@
 use std::time::Duration;
 use gpui::Timer;
 
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct SearchView {
     pub search_text: SharedString,
@@ -141,7 +141,7 @@ impl SearchView {
 ```rust
 use std::time::{Duration, Instant};
 
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct DragView {
     pub drag_position: Point<Pixels>,
@@ -266,7 +266,7 @@ impl Debounce {
 ### 使用防抖工具
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct SearchView {
     pub search_text: SharedString,
@@ -301,7 +301,7 @@ impl SearchView {
 use std::time::Duration;
 use rml::prelude::*;
 
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct SearchView {
     pub search_text: SharedString,
@@ -398,7 +398,7 @@ async fn fetch_search_results(query: &str) -> Result<Vec<SearchResult>, String> 
     Ok(Vec::new())
 }
 
-#[derive(Model)]
+#[derive(IModel)]
 pub struct SearchResult {
     pub id: u64,
     pub title: SharedString,

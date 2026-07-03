@@ -1,4 +1,4 @@
-# 8.3 on_unloaded 与清理
+﻿# 8.3 on_unloaded 与清理
 
 > **本节目标**：深入掌握 `#[on_unloaded]` 回调的使用场景和资源清理最佳实践。
 
@@ -26,7 +26,7 @@
 ```rust
 use std::time::Duration;
 
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct DataView {
     pub data: Vec<Item>,
@@ -82,7 +82,7 @@ impl DataView {
 ### 用途二：取消订阅
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct NotificationView {
     pub notifications: Vec<Notification>,
@@ -111,7 +111,7 @@ impl NotificationView {
 ### 用途三：保存状态
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct EditorView {
     pub content: SharedString,
@@ -140,7 +140,7 @@ impl EditorView {
 ### 用途四：释放资源
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct VideoPlayerView {
     pub video_url: SharedString,
@@ -168,7 +168,7 @@ impl VideoPlayerView {
 ### 用途五：通知其他视图
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct ChatView {
     pub is_active: bool,
@@ -303,7 +303,7 @@ pub fn on_unloaded(&mut self, cx: &mut ViewContext<Self>) {
 use std::time::Duration;
 use rml::prelude::*;
 
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct ChatView {
     pub messages: Vec<Message>,

@@ -1,4 +1,4 @@
-# 第 4 章 · Code-Behind 业务逻辑
+﻿# 第 4 章 · Code-Behind 业务逻辑
 
 > **本章目标**：完整掌握 `.rml.rs` 文件的全部能力——ViewModel 结构、宏属性、元素引用、命令系统、状态管理。
 
@@ -22,7 +22,7 @@
 
 `.rml.rs` 文件是 ViewModel 的载体，承担三类职责：
 
-1. **状态持有**：通过 `#[derive(Model)]` 成为 GPUI Entity
+1. **状态持有**：通过 `#[derive(IModel)]` 成为 GPUI Entity
 2. **命令暴露**：通过 `#[command]` 让 UI 可调用方法
 3. **生命周期管理**：通过 `#[on_loaded]`、`#[on_unloaded]` 响应视图事件
 

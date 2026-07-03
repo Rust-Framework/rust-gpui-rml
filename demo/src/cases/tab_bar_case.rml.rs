@@ -37,6 +37,16 @@ impl TabBarCase {
         r#"<TabBar selected_index={active_tab} on_click={on_tab_select}>
     <Tab label="Account" />
     <Tab label="Profile" />
+</TabBar>
+
+<!-- TabItem (WPF TabControl 模式)：title + body -->
+<TabBar selected_index={active_tab} on_click={on_tab_select}>
+    <tab-item title="Account">
+        <div>Account settings panel</div>
+    </tab-item>
+    <tab-item title="Profile">
+        <div>User profile panel</div>
+    </tab-item>
 </TabBar>"#
             .to_string()
     }

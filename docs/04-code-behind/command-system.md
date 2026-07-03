@@ -1,4 +1,4 @@
-# 4.4 命令系统
+﻿# 4.4 命令系统
 
 > **本节目标**：完整掌握 RML 的命令系统——ICommand trait、`#[command]` 宏、命令参数、命令的启用条件。
 
@@ -348,7 +348,7 @@ mod tests {
 ## 4.4.11 完整示例：购物车
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 pub struct CartItem {
     pub id: u64,
     pub name: SharedString,
@@ -356,7 +356,7 @@ pub struct CartItem {
     pub quantity: u32,
 }
 
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct CartView {
     pub items: Vec<CartItem>,

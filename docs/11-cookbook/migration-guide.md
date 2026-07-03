@@ -1,4 +1,4 @@
-# 11.3 迁移指南
+﻿# 11.3 迁移指南
 
 > **本节目标**：帮助从原生 GPUI、gpui-rsx、WPF、Vue 迁移到 RML 的开发者快速建立映射。
 
@@ -110,7 +110,7 @@ Vue 与 RML 在声明式理念上高度相似。
 | Vue                               | RML                              |
 | --------------------------------- | -------------------------------- |
 | `<template>` SFC                  | `.rml` 文件                        |
-| `ref()` / `reactive()`            | `#[derive(Model)]` 字段            |
+| `ref()` / `reactive()`            | `#[derive(IModel)]` 字段            |
 | `v-if`                            | `r:if`                           |
 | `v-for`                           | `r:each`                         |
 | `v-model`                         | `r:model`                        |
@@ -157,7 +157,7 @@ const increment = () => count.value++;
 ```
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 pub struct CounterVM { pub count: i32 }
 
 impl CounterVM {

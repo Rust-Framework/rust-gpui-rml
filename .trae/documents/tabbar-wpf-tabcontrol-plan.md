@@ -378,11 +378,20 @@ case 分支从 `open_tabs` 直接取贡献（可选优化，当前 `entries` 查
 
 ***
 
-### Phase 3: RML Codegen — `<tab-item>` 直接嵌套模式
+### Phase 3: RML Codegen — `<tab-item>` 直接嵌套模式 ✅ 已完成
 
 **目标**：支持 `<tab-bar><tab-item title="...">body</tab-item></tab-bar>`
 
 > 注：此 Phase 针对 **TabBar 组件**（非 TabWindowShell），与 Phase 2 的 IContribution 重构独立。
+
+**执行结果**：
+- ✅ tags.rs：`canonical_tag()` + `is_item_builder_tag()` 新增 TabItem/tab_item
+- ✅ props_registry.rs：TabItem 条目登记（title/title_icon/disabled/on_click）
+- ✅ setters.rs：TabItem 专用 static/bind setter（title bind 含 `.clone()` 防 each 循环 partial move）
+- ✅ tab_item.rs：新建 codegen 模块 `gen_tab_item_child()` + 9 单元测试
+- ✅ gen.rs：子节点分发按 `canonical_tag()` 路由 TabItem vs Tab，支持 `is_iter` 切换 `.children()` / `.child()`
+- ✅ 修复 `component_event_setter` 接受 `on_click` 别名（与 props_registry 登记形式一致，也修复了 Tab 的 on_click 静默丢弃问题）
+- ✅ 全 workspace 编译通过，625 测试通过（含 47 tab_bar 测试 + 9 tab_item 测试）
 
 #### 3.1 `crates/engine/src/tags.rs`
 
@@ -605,7 +614,22 @@ mod tab_item;
 
 ***
 
-### Phase 5: Demo + 回归测试
+### Phase 5: Demo + 回归测试 ✅ 已完成
+
+**执行结果**：
+- ✅ `demo/src/cases/tab_bar_case.rml`：新增 TabItem demo section（3 个 tab-item，各含 body 内容）
+- ✅ `demo/src/cases/tab_bar_case.rml.rs`：code_sample 更新含 TabItem 示例
+- ✅ i18n：zh-CN/en-US 新增 `case.tab_bar.tab_item` 键
+- ✅ `crates/engine/src/compiler/tab_bar/gen.rs`：新增 2 个集成测试
+  - `gen_tab_bar_with_tab_item_child`：混合 `<Tab>` + `<tab-item>` 子节点
+  - `gen_tab_bar_with_tab_item_each`：each 循环模式生成 `.children(...)`
+- ✅ `crates/engine/src/compiler/tab_bar/tab_item.rs`：9 个单元测试（Phase 3 已完成）
+- ✅ 全 workspace 编译通过，627 测试通过（0 failed, 27 ignored）
+
+> **注**：UI 交互行为未手动验证（桌面 GPUI 应用，非 Web）。
+> 建议本地运行 `cargo run -p rust-rml-demo` 打开 TabBar case 页面验证：
+> - TabItem demo section 的 3 个 tab 切换时 body 内容正确显示
+> - main_window 的 tab_window 标题栏 tabs 正常（IContribution 路径）
 
 #### 5.1 `demo/src/cases/tab_bar_case.rml`
 

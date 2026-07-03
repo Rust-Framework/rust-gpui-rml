@@ -109,7 +109,7 @@ pub fn gen_tab_bar(
 mod tests {
     use super::*;
     use crate::compiler::CodegenCtx;
-    use crate::parser::ast::{Attribute, Directive, Element, EventHandler, Node};
+    use crate::parser::ast::{Attribute, Directive, EachClause, Element, EventHandler, Node};
 
     fn ctx() -> CodegenCtx {
         CodegenCtx {
@@ -408,5 +408,68 @@ mod tests {
         assert!(code.contains(".child("));
         assert!(code.contains("rml_ui::Tab::new()"));
         assert!(code.contains(".label(\"Account\")"));
+    }
+
+    /// 混合 <Tab> 与 <tab-item> 子节点 —— 验证分派逻辑同时处理两种 item builder
+    #[test]
+    fn gen_tab_bar_with_tab_item_child() {
+        // <TabBar><Tab label="A" /><tab-item title="B"><div>body</div></tab-item></TabBar>
+        let tab = make_element(
+            "Tab",
+            vec![Attribute::Static {
+                name: "label".into(),
+                value: "A".into(),
+            }],
+            vec![],
+        );
+        let body_div = make_element("div", vec![], vec![Node::Text("body".into())]);
+        let item = make_element(
+            "tab-item",
+            vec![Attribute::Static {
+                name: "title".into(),
+                value: "B".into(),
+            }],
+            vec![Node::Element(body_div)],
+        );
+        let bar = make_element("TabBar", vec![], vec![Node::Element(tab), Node::Element(item)]);
+        let mut id = 0;
+        let code = gen_tab_bar(&bar, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+        // Tab 走 .child(rml_ui::Tab::new()...)
+        assert!(code.contains(".child(rml_ui::Tab::new()"));
+        assert!(code.contains(".label(\"A\")"));
+        // TabItem 走 .child(rml_ui::TabItem::new()...)
+        assert!(code.contains(".child(rml_ui::TabItem::new()"));
+        assert!(code.contains(".title(\"B\")"));
+        assert!(code.contains(".body("));
+    }
+
+    /// <tab-item each={tab in tabs} title={tab.title}> —— each 循环模式生成 .children(...)
+    #[test]
+    fn gen_tab_bar_with_tab_item_each() {
+        // <TabBar><tab-item each={tab in tabs} title={tab.title} /></TabBar>
+        let item = make_element_with_directives(
+            "tab-item",
+            vec![Attribute::Bind {
+                name: "title".into(),
+                expr: "tab.title".into(),
+            }],
+            vec![Directive::Each(EachClause {
+                item: "tab".into(),
+                index: None,
+                iterable: "tabs".into(),
+            })],
+            vec![],
+        );
+        let bar = make_element("TabBar", vec![], vec![Node::Element(item)]);
+        let mut id = 0;
+        let code = gen_tab_bar(&bar, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+        // each 模式生成 .children(self.tabs.iter().map(...))
+        assert!(code.contains(".children("));
+        assert!(code.contains("self.tabs.iter().map(|tab|"));
+        assert!(code.contains("let tab = tab.clone();"));
+        assert!(code.contains("rml_ui::TabItem::new()"));
+        assert!(code.contains(".title(tab.title.clone())"));
+        // 不应出现 .child( （each 用 .children）
+        assert!(!code.contains("\n            .child("));
     }
 }

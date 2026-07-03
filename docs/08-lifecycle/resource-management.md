@@ -1,4 +1,4 @@
-# 8.5 资源管理
+﻿# 8.5 资源管理
 
 > **本节目标**：掌握 RML 应用中各类资源的管理——文件、网络、订阅、缓存的生命周期管理。
 
@@ -28,7 +28,7 @@ RML 应用中需要管理的资源：
 ### 1. 谁获取谁释放
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct DataView {
     file_handle: Option<FileHandle>,  // 我获取的，我负责释放
@@ -101,7 +101,7 @@ pub fn load_data(&mut self, cx: &mut Context<Self>) {
 use std::fs::File;
 use std::io::Read;
 
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct FileView {
     pub content: SharedString,
@@ -176,7 +176,7 @@ pub fn save_file(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
 ### HTTP 请求
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct ApiView {
     pub data: Option<ApiResponse>,
@@ -230,7 +230,7 @@ impl ApiView {
 ### WebSocket 连接
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct ChatView {
     pub messages: Vec<Message>,
@@ -279,7 +279,7 @@ impl ChatView {
 ## 8.5.5 数据库连接管理
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 pub struct DatabaseManager {
     connection: Option<DbConnection>,
 }
@@ -329,7 +329,7 @@ impl DatabaseManager {
 ### 订阅全局状态
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct NotificationView {
     pub notifications: Vec<Notification>,
@@ -367,7 +367,7 @@ impl NotificationView {
 ### 订阅多个源
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct DashboardView {
     pub user_updates: Vec<UserUpdate>,
@@ -421,7 +421,7 @@ impl DashboardView {
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
-#[derive(Model)]
+#[derive(IModel)]
 pub struct Cache<K, V>
 where
     K: std::hash::Hash + Eq + Clone,
@@ -481,7 +481,7 @@ where
 ### 在视图中使用缓存
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct CachedDataView {
     pub data: Option<Data>,
@@ -582,7 +582,7 @@ impl Drop for FileHandle {
 ### 2. 集中管理资源
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 pub struct ResourceManager {
     connections: HashMap<String, Connection>,
     file_handles: HashMap<String, FileHandle>,
@@ -669,7 +669,7 @@ use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use rml::prelude::*;
 
-#[derive(Model)]
+#[derive(IModel)]
 pub struct ImageCache {
     entries: HashMap<String, CacheEntry>,
     max_size: usize,
@@ -722,7 +722,7 @@ impl ImageCache {
     }
 }
 
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct ImageViewer {
     pub current_image: Option<ImageData>,

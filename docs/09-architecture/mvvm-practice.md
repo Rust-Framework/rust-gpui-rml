@@ -75,7 +75,7 @@ Model crate 应当能脱离 GPUI 独立编译。这样它可被 CLI、测试、�
 
 ```rust
 // ❌ 反例：Model 里出现 gpui 类型
-#[derive(Model)]
+#[derive(IModel)]
 pub struct BadModel {
     pub cx: ViewContext<Self>, // 编译错误：Model 不能持有 context
     pub color: gpui::Rgb,      // 应改用领域类型（如 hex 字符串）
@@ -101,7 +101,8 @@ impl TodoItem {
 ViewModel 持有 Model，但对外只暴露**视图需要的字段**。这层翻译是 ViewModel 的核心价值。
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
+#[component]
 pub struct TodoListViewModel {
     // 内部持有完整 Model
     items: Vec<TodoItem>,
@@ -214,9 +215,10 @@ pub fn refresh(&mut self, _ev: &ClickEvent, cx: &mut Context<Self>) {
 
 `.rml` 模板中只能出现：
 
-- ViewModel 的 `pub` 字段
+- ViewModel 的 `pub` 字段（含 `Arc<RelayCommand>` 命令字段）
 - ViewModel 的 `#[computed]` 方法
-- ViewModel 的 `#[command]` 方法名
+- ViewModel 的 `#[command]` 方法名（`onclick={method}`）
+- ViewModel 的命令字段（`command={field}` 声明式绑定）
 
 模板**不应**直接访问 Service、全局变量、或 ViewModel 的私有字段。
 
@@ -241,7 +243,7 @@ View(state) = UI
 **Model**：
 
 ```rust
-#[derive(Model, Clone, Debug)]
+#[derive(IModel, Clone, Debug)]
 pub struct SearchResult {
     pub id: u64,
     pub title: SharedString,
@@ -258,7 +260,8 @@ pub async fn search(query: &str, cx: &mut AsyncApp) -> Result<Vec<SearchResult>>
 **ViewModel**：
 
 ```rust
-#[derive(Model)]
+#[derive(Default)]
+#[component]
 pub struct SearchViewModel {
     pub query: SharedString,
     pub results: Vec<SearchResult>,

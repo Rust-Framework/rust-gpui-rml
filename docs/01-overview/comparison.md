@@ -1,4 +1,4 @@
-# 1.4 与原生 GPUI 的对比
+﻿# 1.4 与原生 GPUI 的对比
 
 > **本节目标**：用同一个 Todo 应用，横向对比原生 GPUI、gpui-rsx、RML 三种方案的代码量、可维护性与团队协作能力，建立"为什么选 RML"的直观认知。
 
@@ -125,7 +125,7 @@ impl Render for Counter {
 // counter.rml.rs：纯业务逻辑
 use rml::prelude::*;
 
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct Counter {
     pub count: i32,

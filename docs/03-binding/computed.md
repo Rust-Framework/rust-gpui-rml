@@ -1,4 +1,4 @@
-# 3.4 计算属性
+﻿# 3.4 计算属性
 
 > **本节目标**：完整掌握 `#[computed]` 宏的依赖追踪、缓存机制、使用场景与最佳实践。
 
@@ -10,7 +10,7 @@
 2. **结果缓存**：依赖字段未变化时，不重新计算，直接返回缓存值
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct TodoViewModel {
     pub todos: Vec<TodoItem>,

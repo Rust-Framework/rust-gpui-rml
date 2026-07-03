@@ -112,6 +112,8 @@
 
   "case.tab_bar.template": "Template customization (advanced)",
 
+  "case.tab_bar.tab_item": "TabItem (WPF TabControl pattern)",
+
   "case.tab_bar.status": "Event callback state",
 
   "case.i18n.title": "i18n with t()",

@@ -1,4 +1,4 @@
-# 11.2 案例研究：从零到一的 Todo 应用
+﻿# 11.2 案例研究：从零到一的 Todo 应用
 
 > **本节目标**：用一个中等复杂度的 Todo 应用串起全书知识点，演示完整的项目结构与开发流程。
 
@@ -125,7 +125,7 @@ Service 只做 I/O，返回 `Result`，错误由 ViewModel 处理。
 use crate::models::*;
 use crate::services::TodoStore;
 
-#[derive(Model)]
+#[derive(IModel)]
 pub struct TodoListViewModel {
     pub todos: Vec<Todo>,
     pub filter: TodoFilter,
@@ -298,7 +298,7 @@ impl TodoListViewModel {
 
 ```rust
 // src/components/todo_item/todo_item.rml.rs
-#[derive(Model)]
+#[derive(IModel)]
 pub struct TodoItem {
     pub todo: Todo,
     on_toggle: Option<Command>,

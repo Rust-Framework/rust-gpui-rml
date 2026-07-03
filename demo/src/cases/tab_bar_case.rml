@@ -122,6 +122,28 @@
                     </Tab>
                 </TabBar>
             </div>
+
+            <div class="demo-section">
+                <h3>{t("case.tab_bar.tab_item")}</h3>
+                <p>TabItem 同时承载 title (header) 与 body (选中时渲染的内容)，对应 WPF TabControl/TabItem 模式：</p>
+                <TabBar selected_index={active_tab} on_click={on_tab_select}>
+                    <tab-item title="Account">
+                        <div class="tab-body">
+                            <p>Account settings panel</p>
+                        </div>
+                    </tab-item>
+                    <tab-item title="Profile">
+                        <div class="tab-body">
+                            <p>User profile panel</p>
+                        </div>
+                    </tab-item>
+                    <tab-item title="Settings">
+                        <div class="tab-body">
+                            <p>System settings panel</p>
+                        </div>
+                    </tab-item>
+                </TabBar>
+            </div>
         </Card>
     </div>
 </component>

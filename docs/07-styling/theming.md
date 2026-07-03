@@ -201,7 +201,7 @@ impl Theme {
     }
 }
 
-#[derive(Model)]
+#[derive(IModel)]
 pub struct ThemeManager {
     pub current_theme: Theme,
 }
@@ -235,7 +235,7 @@ impl ThemeManager {
 use rml::prelude::*;
 use crate::theme::{ThemeManager, Theme};
 
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct App {
     pub theme_manager: Entity<ThemeManager>,
@@ -340,7 +340,7 @@ impl ThemeManager {
 ### 用户自定义颜色
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 pub struct ThemeManager {
     pub current_theme: Theme,
     pub custom_primary_color: Option<SharedString>,
@@ -535,7 +535,7 @@ impl Theme {
     }
 }
 
-#[derive(Model)]
+#[derive(IModel)]
 pub struct ThemeManager {
     pub current_theme: Theme,
     pub is_following_system: bool,

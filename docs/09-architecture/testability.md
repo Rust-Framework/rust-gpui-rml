@@ -1,4 +1,4 @@
-# 9.5 可测试性设计
+﻿# 9.5 可测试性设计
 
 > **本节目标**：让 RML 代码可被高效测试——ViewModel 纯逻辑单测、组件快照测试、跨模块集成测试。
 
@@ -30,7 +30,7 @@ ViewModel 难测的根因是它依赖 `ViewContext`。可单测的 ViewModel 遵
 ### 反例：不可测的 ViewModel
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 pub struct UserViewModel {
     pub user: User,
 }
@@ -56,7 +56,7 @@ pub trait UserRepo: 'static {
     fn save(&self, user: &User) -> Task<Result<()>>;
 }
 
-#[derive(Model)]
+#[derive(IModel)]
 pub struct UserViewModel {
     pub user: User,
     pub is_saving: bool,

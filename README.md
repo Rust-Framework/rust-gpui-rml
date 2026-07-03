@@ -162,7 +162,7 @@ rml-framework/
 │   │   ├── Cargo.toml
 │   │   └── src/
 │   │       ├── lib.rs                  # 宏导出入口
-│   │       ├── view.rs                 # #[view] 属性宏
+│   │       ├── view.rs                 # #[window] 属性宏（窗口入口）
 │   │       ├── component.rs            # #[component] 组件宏
 │   │       ├── command.rs              # #[command] 命令宏
 │   │       ├── computed.rs             # #[computed] 计算属性宏
@@ -506,8 +506,8 @@ impl TodoViewModel {
 
 ```rust
 // 在 .rml.rs 中
-#[derive(Model)]
-#[view]
+#[derive(IModel)]
+#[component]
 pub struct MyView {
     #[element]
     pub username_input: ElementRef<Input>,

@@ -19,7 +19,7 @@
 绑定源是数据的提供者，在 RML 中始终是当前的 ViewModel：
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct MyView {
     pub user_name: SharedString,  // ← 绑定源
@@ -126,14 +126,14 @@ RML 绑定系统由三个角色协作：
 RML 的 ViewModel 是 GPUI 的 Entity。理解这一点对掌握绑定至关重要：
 
 ```rust
-#[derive(Model)]  // ← 使结构体成为 GPUI Entity
+#[derive(IModel)]  // ← 使结构体成为 GPUI Entity
 #[component]
 pub struct MyView {
     pub count: i32,
 }
 ```
 
-- `#[derive(Model)]` 让 `MyView` 成为 GPUI 管理的 Entity
+- `#[derive(IModel)]` 让 `MyView` 成为 GPUI 管理的 Entity
 - 字段 `count` 自动成为响应式状态
 - `cx.notify()` 通知 GPUI 该 Entity 已变化，需要重新渲染
 - GPUI 调用 `Render::render`，RML 生成的代码重新读取绑定值

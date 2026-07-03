@@ -1,4 +1,4 @@
-# 3.6 绑定引擎原理
+﻿# 3.6 绑定引擎原理
 
 > **本节目标**：深入理解 RML 绑定引擎的编译期路径解析与运行时订阅机制，掌握性能优化的底层依据。
 
@@ -51,7 +51,7 @@ div(class="counter")
 
 ```rust
 // ViewModel 定义
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct Counter {
     pub count: i32,
@@ -279,7 +279,7 @@ pub fn batch_update(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
 
 ```rust
 // ❌ 单一巨型 ViewModel，任何 notify 都触发全量重绘
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct MegaView {
     pub header_data: HeaderData,

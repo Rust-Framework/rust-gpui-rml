@@ -112,6 +112,8 @@
 
   "case.tab_bar.template": "模板定制（高级）",
 
+  "case.tab_bar.tab_item": "TabItem（WPF TabControl 模式）",
+
   "case.tab_bar.status": "事件回调状态",
 
   "case.i18n.title": "国际化 t()",

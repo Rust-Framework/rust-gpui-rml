@@ -34,18 +34,18 @@
 ### 嵌套字段
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct MyView {
     pub user: User,
 }
 
-#[derive(Model)]
+#[derive(IModel)]
 pub struct User {
     pub profile: UserProfile,
 }
 
-#[derive(Model)]
+#[derive(IModel)]
 pub struct UserProfile {
     pub name: SharedString,
     pub email: SharedString,
@@ -277,7 +277,7 @@ pub fn greeting(&self) -> SharedString {
 3. 字段类型是否可渲染
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct MyView {
     pub user_name: SharedString,  // ✅ pub

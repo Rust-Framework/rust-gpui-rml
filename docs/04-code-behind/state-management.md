@@ -1,4 +1,4 @@
-# 4.5 状态管理
+﻿# 4.5 状态管理
 
 > **本节目标**：完整掌握 RML 的状态管理——`cx.notify()` 的触发机制、Entity 模型、跨视图状态共享、异步状态更新。
 
@@ -97,14 +97,14 @@ cx.spawn(|this, mut cx| async move {
 
 ### Entity 是什么
 
-ViewModel 通过 `#[derive(Model)]` 成为 GPUI 管理的 Entity。Entity 是 GPUI 的状态管理单元：
+ViewModel 通过 `#[derive(IModel)]` 成为 GPUI 管理的 Entity。Entity 是 GPUI 的状态管理单元：
 
 - 每个 Entity 有唯一的 `EntityId`
 - Entity 由 `App` 统一管理
 - 通过 `Entity<T>` 句柄引用
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct MyView {
     pub count: i32,
@@ -134,7 +134,7 @@ fn main() {
 ```rust
 use gpui::Entity;
 
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct ParentView {
     pub child: Entity<ChildView>,
@@ -148,7 +148,7 @@ pub struct ParentView {
 父视图持有子视图的 `Entity` 句柄：
 
 ```rust
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct ParentView {
     pub child: Entity<ChildView>,
@@ -205,7 +205,7 @@ fn main() {
 
 ```rust
 // 在 ViewModel 中访问全局状态
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct MyView {
     pub theme: AppTheme,
@@ -407,14 +407,14 @@ pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
 
 ```rust
 // ✅ 单一职责
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct UserListView {
     pub users: Vec<User>,
     pub selected_user: Option<u64>,
 }
 
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct UserDetailView {
     pub user: User,
@@ -422,7 +422,7 @@ pub struct UserDetailView {
 }
 
 // ❌ 上帝 ViewModel
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct MegaView {
     pub users: Vec<User>,
@@ -441,7 +441,7 @@ pub struct MegaView {
 
 ```rust
 // ✅ 最小状态 + 计算属性
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct CartView {
     pub items: Vec<CartItem>,  // 唯一状态
@@ -460,7 +460,7 @@ impl CartView {
 }
 
 // ❌ 冗余状态
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct BadCartView {
     pub items: Vec<CartItem>,
@@ -475,7 +475,7 @@ pub struct BadCartView {
 
 ```rust
 // ✅ 字段 pub 但通过命令修改
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct Counter {
     pub count: i32,
@@ -494,7 +494,7 @@ impl Counter {
 
 ```rust
 // ❌ 深度嵌套，难以维护
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct DeepView {
     pub data: Outer,
@@ -507,7 +507,7 @@ pub struct Inner { pub value: i32 }
 // .rml: {data.middle.inner.value}
 
 // ✅ 扁平化结构
-#[derive(Model)]
+#[derive(IModel)]
 #[component]
 pub struct FlatView {
     pub value: i32,
