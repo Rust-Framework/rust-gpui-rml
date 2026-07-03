@@ -10,7 +10,7 @@
 pub trait IModel: 'static + Send + Sync {
     /// 返回字段元信息（名称、类型），供绑定引擎在编译期/运行期使用。
     /// MVP 阶段返回空切片，阶段二由派生宏生成实际元信息。
-    fn rml_fields(&self) -> &'static [FieldMeta] {
+    fn fields(&self) -> &'static [FieldMeta] {
         &[]
     }
 }

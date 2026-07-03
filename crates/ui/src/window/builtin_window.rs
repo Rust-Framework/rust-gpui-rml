@@ -80,10 +80,10 @@ impl IModel for Window {}
 impl ILifecycle for Window {}
 impl IViewModel for Window {}
 impl IComponent for Window {
-    fn rml_template() -> &'static str {
+    fn template() -> &'static str {
         ""
     }
-    fn rml_tag() -> &'static str {
+    fn tag() -> &'static str {
         "Window"
     }
 }
@@ -167,10 +167,10 @@ impl IModel for ModernWindow {}
 impl ILifecycle for ModernWindow {}
 impl IViewModel for ModernWindow {}
 impl IComponent for ModernWindow {
-    fn rml_template() -> &'static str {
+    fn template() -> &'static str {
         ""
     }
-    fn rml_tag() -> &'static str {
+    fn tag() -> &'static str {
         "ModernWindow"
     }
 }

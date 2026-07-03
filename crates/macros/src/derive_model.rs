@@ -1,7 +1,7 @@
 //! `#[derive(IModel)]` 实现
 //!
 //! 为结构体的所有 `pub` 字段生成 `FieldMeta`，
-//! 实现 `IModel::rml_fields()` 返回字段元信息。
+//! 实现 `IModel::fields()` 返回字段元信息。
 
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -49,7 +49,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
 
     let expanded = quote! {
         impl rml_core::model::IModel for #struct_name {
-            fn rml_fields(&self) -> &'static [rml_core::model::FieldMeta] {
+            fn fields(&self) -> &'static [rml_core::model::FieldMeta] {
                 static FIELDS: [rml_core::model::FieldMeta; #field_count] = [
                     #(#field_metas),*
                 ];
@@ -62,7 +62,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
     if field_count == 0 {
         return quote! {
             impl rml_core::model::IModel for #struct_name {
-                fn rml_fields(&self) -> &'static [rml_core::model::FieldMeta] {
+                fn fields(&self) -> &'static [rml_core::model::FieldMeta] {
                     &[]
                 }
             }

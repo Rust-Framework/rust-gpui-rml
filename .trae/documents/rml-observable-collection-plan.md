@@ -6,54 +6,64 @@
 
 ### 迭代目标
 
-| 迭代 | 目标 | 交付物 |
-|------|------|--------|
-| Phase A | 集合响应式核心类型 | `ObservableVec<T>` |
-| Phase B | 版本系统集成 | `#[computed]`/`#[command]` 自动感知 ObservableVec |
-| Phase C | 贡献点架构重构（核心） | `IContributionHost`（受理方）+ `IContributionRegistry`（桥接器） |
-| Phase D | RML keyed diffing | `each=` + `key=` 元素复用 |
-| Phase E | Demo 样板消除 | 受理代码替代 `refresh_shell_chrome`/`map_shell_chrome` |
+| 迭代      | 目标                | 交付物                                                    |
+| ------- | ----------------- | ------------------------------------------------------ |
+| Phase A | 集合响应式核心类型         | `ObservableVec<T>`                                     |
+| Phase B | 版本系统集成            | `#[computed]`/`#[command]` 自动感知 ObservableVec          |
+| Phase C | 贡献点架构重构（核心）       | `IContributionHost`（受理方）+ `IContributionRegistry`（桥接器） |
+| Phase D | RML keyed diffing | `each=` + `key=` 元素复用                                  |
+| Phase E | Demo 样板消除         | 受理代码替代 `refresh_shell_chrome`/`map_shell_chrome`       |
 
----
+***
 
 ## 用户决策
 
-| # | 决策 | 影响 |
-|---|------|------|
-| 1 | Phase C 否决，不增加新宏，`contribution_entries` 不出现在业务代码 | 移除 `#[computed_with_cx]`；数据存储下沉到 host |
-| 2 | `IContributionHost` 含 `id`/`add`/`remove`，业务编写受理代码 | host 主动处置贡献，框架不代劳 |
-| 3 | `ContributedEntry` 无必要性 | 框架不存储贡献条目，host 自管存储 |
-| 4 | `ComponentEntityCache` 无必要性 | 框架不缓存组件 Entity，host 自管缓存 |
-| 5 | `IContributionRegistry` 定义 `add`/`remove`/`register`/`unregister` | 框架实现桥接 contribute → host |
-| 6 | 扩展 App/Context 提供 `get_contribution_registry()` | 宏生成代码通过接口操作 |
+| # | 决策                                                                | 影响                                    |
+| - | ----------------------------------------------------------------- | ------------------------------------- |
+| 1 | Phase C 否决，不增加新宏，`contribution_entries` 不出现在业务代码                  | 移除 `#[computed_with_cx]`；数据存储下沉到 host |
+| 2 | `IContributionHost` 含 `id`/`add`/`remove`，业务编写受理代码                | host 主动处置贡献，框架不代劳                     |
+| 3 | `ContributedEntry` 无必要性                                           | 框架不存储贡献条目，host 自管存储                   |
+| 4 | `ComponentEntityCache` 无必要性                                       | 框架不缓存组件 Entity，host 自管缓存              |
+| 5 | `IContributionRegistry` 定义 `add`/`remove`/`register`/`unregister` | 框架实现桥接 contribute → host              |
+| 6 | 扩展 App/Context 提供 `get_contribution_registry()`                   | 宏生成代码通过接口操作                           |
 
----
+***
 
 ## 当前状态分析
 
 ### 框架侧（将被重构）
 
-- **`crates/core/src/contribution.rs`**：`IContributionHost` 仅有 `const ID`（无 add/remove）；存在 `ContributedEntry`、`ComponentEntityCache` trait、`VisualRenderer` 类型
-- **`crates/core/src/contribution_cache.rs`**：`ComponentEntityCacheImpl` 框架侧 Entity 缓存实现
-- **`crates/app/src/contribution/host.rs`**：`ContributionHost` 框架存储 `Vec<ContributedEntry>` + `revision: AtomicU64`
-- **`crates/app/src/contribution/registry.rs`**：`ContributionRegistry` 框架集中存储 hosts + entity_cache + listeners
-- **`crates/app/src/contribution/entry.rs`**：`data_entry`/`component_entry` 构建 `ContributedEntry`
-- **`crates/app/src/contribution/render.rs`**：`render_component_view` 通过全局 registry entity_cache 渲染
-- **`crates/app/src/contribution/global.rs`**：`ContributionExt` 扩展 App，`contribution_entries`/`contribution_revision`/`subscribe_host_changes` 读框架存储
+* **`crates/core/src/contribution.rs`**：`IContributionHost` 仅有 `const ID`（无 add/remove）；存在 `ContributedEntry`、`ComponentEntityCache` trait、`VisualRenderer` 类型
+
+* **`crates/core/src/contribution_cache.rs`**：`ComponentEntityCacheImpl` 框架侧 Entity 缓存实现
+
+* **`crates/app/src/contribution/host.rs`**：`ContributionHost` 框架存储 `Vec<ContributedEntry>` + `revision: AtomicU64`
+
+* **`crates/app/src/contribution/registry.rs`**：`ContributionRegistry` 框架集中存储 hosts + entity\_cache + listeners
+
+* **`crates/app/src/contribution/entry.rs`**：`data_entry`/`component_entry` 构建 `ContributedEntry`
+
+* **`crates/app/src/contribution/render.rs`**：`render_component_view` 通过全局 registry entity\_cache 渲染
+
+* **`crates/app/src/contribution/global.rs`**：`ContributionExt` 扩展 App，`contribution_entries`/`contribution_revision`/`subscribe_host_changes` 读框架存储
 
 ### 业务侧（将被简化）
 
-- **`demo/src/shell/main_window.rml.rs`**：`refresh_shell_chrome` 手动桥接 + `subscribe_host_changes` 回调
-- **`demo/src/shell/shell_chrome.rs`**：`map_shell_chrome`/`map_menu_items`/`map_status_items` 从 `contribution_entries` 投影
-- **`demo/src/shell/activity_panel.rml.rs`**：`ActivityPanel` 通过 `subscribe_host_changes` + `map_case_tree_items` 刷新树
+* **`demo/src/shell/main_window.rml.rs`**：`refresh_shell_chrome` 手动桥接 + `subscribe_host_changes` 回调
+
+* **`demo/src/shell/shell_chrome.rs`**：`map_shell_chrome`/`map_menu_items`/`map_status_items` 从 `contribution_entries` 投影
+
+* **`demo/src/shell/activity_panel.rml.rs`**：`ActivityPanel` 通过 `subscribe_host_changes` + `map_case_tree_items` 刷新树
 
 ### 宏侧（将调整）
 
-- **`crates/macros/src/contribute.rs`**：生成 `Registerable` impl + `register_contribution` 调用
-- **`crates/macros/src/contributehost.rs`**：生成 `ID` const + `cx.add(ID)` 注册
-- **`crates/engine/src/build/contribution_generator.rs`**：build.rs 扫描生成 `register_rml_contributions`
+* **`crates/macros/src/contribute.rs`**：生成 `Registerable` impl + `register_contribution` 调用
 
----
+* **`crates/macros/src/contributehost.rs`**：生成 `ID` const + `cx.add(ID)` 注册
+
+* **`crates/engine/src/build/contribution_generator.rs`**：build.rs 扫描生成 `register_rml_contributions`
+
+***
 
 ## 新架构概览
 
@@ -97,7 +107,7 @@ EntityCache（host 拥有的工具结构，非 trait）
    → cx.notify() → 重渲
 ```
 
----
+***
 
 ## Phase A：`ObservableVec<T>` 核心类型
 
@@ -114,16 +124,19 @@ pub struct ObservableVec<T> {
 }
 ```
 
-- 无 `DerefMut`：强制通过 mutation 方法修改，确保 version bump
-- `AtomicU64` version：lock-free 读取
-- mutation 方法（push/insert/remove/swap/clear/replace_range/retain/sort_by_mut）自动 bump
-- 只读方法（iter/get/as_slice/len/is_empty/version）
+* 无 `DerefMut`：强制通过 mutation 方法修改，确保 version bump
+
+* `AtomicU64` version：lock-free 读取
+
+* mutation 方法（push/insert/remove/swap/clear/replace\_range/retain/sort\_by\_mut）自动 bump
+
+* 只读方法（iter/get/as\_slice/len/is\_empty/version）
 
 **`sort_by_mut`**：为 `ContributionHost::add` 的 dedup+sort 需求提供有意 mutation 入口。
 
 **导出**：`crates/core/src/lib.rs` 添加 `pub mod observable;` + `pub use observable::ObservableVec;`，`prelude.rs` 导出。
 
----
+***
 
 ## Phase B：版本系统 + `#[computed]` 集成
 
@@ -131,15 +144,17 @@ pub struct ObservableVec<T> {
 
 ### 修改要点
 
-- **`crates/engine/src/build/scanner.rs`**：检测 `ObservableVec<...>` 字段类型，记入 `observable_vec_fields`
-- **`crates/engine/src/compiler/codegen/observable.rs`**：`get_arms` 对 ObservableVec 字段路由到 `self.field.version()`；`bump_arms` 跳过（no-op）
-- **`crates/macros/src/component.rs`**：跳过 ObservableVec 字段的 `__rml_<field>_version` 注入（ObservableVec 内部已有 version）
+* **`crates/engine/src/build/scanner.rs`**：检测 `ObservableVec<...>` 字段类型，记入 `observable_vec_fields`
+
+* **`crates/engine/src/compiler/codegen/observable.rs`**：`get_arms` 对 ObservableVec 字段路由到 `self.field.version()`；`bump_arms` 跳过（no-op）
+
+* **`crates/macros/src/component.rs`**：跳过 ObservableVec 字段的 `__rml_<field>_version` 注入（ObservableVec 内部已有 version）
 
 ### 效果
 
-`#[computed]` 方法依赖 `ObservableVec` 字段时，缓存键自动包含集合版本。`#[command]` 中的 `__rml_bump_version` 对 ObservableVec 字段为 no-op。**无需 `#[computed_with_cx]`**——computed 方法通过 `&self` 读取 host 自身字段即可。
+`#[computed]` 方法依赖 `ObservableVec` 字段时，缓存键自动包含集合版本。`#[command]` 中的 `__rml_bump_version` 对 ObservableVec 字段为 no-op。**无需** **`#[computed_with_cx]`**——computed 方法通过 `&self` 读取 host 自身字段即可。
 
----
+***
 
 ## Phase C：贡献点架构重构（核心）
 
@@ -162,9 +177,12 @@ pub trait IContributionHost: Send + Sync + 'static {
 ```
 
 **设计要点**：
-- `const ID`：编译期已知，宏生成代码使用（`#[contributehost]` 生成 `Self::ID`）
-- `add`/`remove`：业务实现的受理代码，接收 `Arc<dyn IContribution>` + `ContributionOptions`，按 slot/group 等分发到 host 自有数据结构
-- `&mut App`（非 `&mut Context<Self>`）：host 通过 `ObservableVec::push` 的 version bump 驱动响应式，`HostHandle` 在 `entity.update` 后自动调用 `cx.notify()`
+
+* `const ID`：编译期已知，宏生成代码使用（`#[contributehost]` 生成 `Self::ID`）
+
+* `add`/`remove`：业务实现的受理代码，接收 `Arc<dyn IContribution>` + `ContributionOptions`，按 slot/group 等分发到 host 自有数据结构
+
+* `&mut App`（非 `&mut Context<Self>`）：host 通过 `ObservableVec::push` 的 version bump 驱动响应式，`HostHandle` 在 `entity.update` 后自动调用 `cx.notify()`
 
 ### C2：`IContribution` trait 扩展
 
@@ -187,7 +205,7 @@ pub trait IVisualContribution: IContribution {
 }
 ```
 
-**`#[contribute] + #[component]` 宏生成覆盖**：
+**`#[contribute] + #[component]`** **宏生成覆盖**：
 
 ```rust
 impl IContribution for MyCase {
@@ -235,9 +253,12 @@ impl EntityCache {
 ```
 
 **设计要点**：
-- `EntityCache` 是普通结构体（非 trait），host 直接作为字段持有
-- `RenderContext` 包含 `&mut EntityCache`，视觉贡献通过 `ctx.entity_cache` 复用 Entity
-- **框架不存储** EntityCache——它由 host 创建并拥有
+
+* `EntityCache` 是普通结构体（非 trait），host 直接作为字段持有
+
+* `RenderContext` 包含 `&mut EntityCache`，视觉贡献通过 `ctx.entity_cache` 复用 Entity
+
+* **框架不存储** EntityCache——它由 host 创建并拥有
 
 ### C4：`IContributionRegistry` trait 定义
 
@@ -261,7 +282,7 @@ pub trait IContributionRegistry: Send + Sync {
 }
 ```
 
-**`HostHandle` trait（内部，`#[doc(hidden)]`）**：
+**`HostHandle`** **trait（内部，`#[doc(hidden)]`）**：
 
 ```rust
 /// 类型擦除的 host 句柄，包装 WeakEntity<T>
@@ -363,7 +384,7 @@ impl IContributionRegistry for ContributionRegistry {
 }
 ```
 
-**修正：`add` 需要 `cx` 参数以重放 pending**。调整 trait 签名：
+**修正：`add`** **需要** **`cx`** **参数以重放 pending**。调整 trait 签名：
 
 ```rust
 pub trait IContributionRegistry: Send + Sync {
@@ -374,7 +395,7 @@ pub trait IContributionRegistry: Send + Sync {
 }
 ```
 
-**`add` 实现（重放 pending）**：
+**`add`** **实现（重放 pending）**：
 
 ```rust
 fn add(&self, host: Box<dyn HostHandle>, cx: &mut App) {
@@ -397,7 +418,7 @@ fn add(&self, host: Box<dyn HostHandle>, cx: &mut App) {
 }
 ```
 
-**`register` 实现（路由到 host 或入队 pending）**：
+**`register`** **实现（路由到 host 或入队 pending）**：
 
 ```rust
 fn register(&self, host_id: &str, contribution: Arc<dyn IContribution>, options: ContributionOptions, cx: &mut App) {
@@ -415,7 +436,7 @@ fn register(&self, host_id: &str, contribution: Arc<dyn IContribution>, options:
 }
 ```
 
-**`unregister` 实现**：
+**`unregister`** **实现**：
 
 ```rust
 fn unregister(&self, host_id: &str, contribution_id: &str, cx: &mut App) -> bool {
@@ -599,19 +620,19 @@ where
 
 ### C10：移除的文件/类型
 
-| 文件 | 操作 | 原因 |
-|------|------|------|
-| `crates/core/src/contribution_cache.rs` | 重写为 `entity_cache.rs`（`EntityCache` 结构体） | `ComponentEntityCache` trait + `ComponentEntityCacheImpl` → 简化为工具结构 |
-| `crates/app/src/contribution/host.rs` | **删除** | 框架不再存储 `ContributionHost`（host 自管存储） |
-| `crates/app/src/contribution/entry.rs` | **删除** | `ContributedEntry` 类型移除，`data_entry`/`component_entry` 不再需要 |
-| `crates/app/src/contribution/registerable.rs` | **删除** | `Registerable` trait 移除 |
-| `crates/app/src/contribution/activity_panel.rs` | **移至 demo** | `map_activity_panels` 是业务投影代码 |
-| `VisualRenderer` 类型 | **删除** | `IContribution::render_view` 替代 |
-| `ContributedEntry` 类型 | **删除** | host 自管存储格式 |
-| `ComponentEntityCache` trait | **删除** | `EntityCache` 工具结构替代 |
-| `contribution_entries` 函数 | **删除** | 业务代码不读框架存储 |
-| `contribution_revision` 函数 | **删除** | ObservableVec::version() 替代 |
-| `subscribe_host_changes` 函数 | **删除** | host ObservableVec version bump + `#[computed]` 替代；跨 Entity 用 `cx.observe` |
+| 文件                                              | 操作                                       | 原因                                                                         |
+| ----------------------------------------------- | ---------------------------------------- | -------------------------------------------------------------------------- |
+| `crates/core/src/contribution_cache.rs`         | 重写为 `entity_cache.rs`（`EntityCache` 结构体） | `ComponentEntityCache` trait + `ComponentEntityCacheImpl` → 简化为工具结构        |
+| `crates/app/src/contribution/host.rs`           | **删除**                                   | 框架不再存储 `ContributionHost`（host 自管存储）                                       |
+| `crates/app/src/contribution/entry.rs`          | **删除**                                   | `ContributedEntry` 类型移除，`data_entry`/`component_entry` 不再需要                |
+| `crates/app/src/contribution/registerable.rs`   | **删除**                                   | `Registerable` trait 移除                                                    |
+| `crates/app/src/contribution/activity_panel.rs` | **移至 demo**                              | `map_activity_panels` 是业务投影代码                                              |
+| `VisualRenderer` 类型                             | **删除**                                   | `IContribution::render_view` 替代                                            |
+| `ContributedEntry` 类型                           | **删除**                                   | host 自管存储格式                                                                |
+| `ComponentEntityCache` trait                    | **删除**                                   | `EntityCache` 工具结构替代                                                       |
+| `contribution_entries` 函数                       | **删除**                                   | 业务代码不读框架存储                                                                 |
+| `contribution_revision` 函数                      | **删除**                                   | ObservableVec::version() 替代                                                |
+| `subscribe_host_changes` 函数                     | **删除**                                   | host ObservableVec version bump + `#[computed]` 替代；跨 Entity 用 `cx.observe` |
 
 ### C11：`crates/app/src/contribution/mod.rs` 更新
 
@@ -633,7 +654,7 @@ pub use registry::ContributionRegistry;
 pub use render::render_component_view;
 ```
 
----
+***
 
 ## Phase D：RML `each=` + `key=` keyed diffing
 
@@ -641,18 +662,23 @@ pub use render::render_component_view;
 
 ### 修改文件
 
-- **`crates/core/src/observable.rs`**：`reconcile` 辅助函数（keyed reconciliation）
-- **`crates/engine/src/compiler/codegen/mod.rs`**：`gen_node` each= 分支，ObservableVec + key= 时生成 keyed diffing
-- **`crates/macros/src/component.rs`**：注入 `__rml_{field}_children: Vec<(K, AnyElement)>` 字段
-- **`crates/engine/src/parser/ast.rs`**：`Directive::Key` 已解析，codegen 消费
+* **`crates/core/src/observable.rs`**：`reconcile` 辅助函数（keyed reconciliation）
+
+* **`crates/engine/src/compiler/codegen/mod.rs`**：`gen_node` each= 分支，ObservableVec + key= 时生成 keyed diffing
+
+* **`crates/macros/src/component.rs`**：注入 `__rml_{field}_children: Vec<(K, AnyElement)>` 字段
+
+* **`crates/engine/src/parser/ast.rs`**：`Directive::Key` 已解析，codegen 消费
 
 ### 性能特性
 
-- Element 复用：相同 key 跨 render 复用，保留内部状态
-- 增量构建：仅新 key 触发 builder
-- O(n) reconcile
+* Element 复用：相同 key 跨 render 复用，保留内部状态
 
----
+* 增量构建：仅新 key 触发 builder
+
+* O(n) reconcile
+
+***
 
 ## Phase E：Demo 样板代码消除
 
@@ -851,45 +877,57 @@ impl ActivityPanel {
 ```
 
 **关键变化**：
-- `subscribe_host_changes` → `cx.observe(&host_entity, ...)` 直接 observe MainWindow Entity
-- `map_case_tree_items(MainWindow::ID, cx)` → `host.read(cx).case_tree_items()` 读 host 自身 computed
-- 无 `contribution_entries` 调用
+
+* `subscribe_host_changes` → `cx.observe(&host_entity, ...)` 直接 observe MainWindow Entity
+
+* `map_case_tree_items(MainWindow::ID, cx)` → `host.read(cx).case_tree_items()` 读 host 自身 computed
+
+* 无 `contribution_entries` 调用
 
 ### E3：`shell_chrome.rs` 调整
 
 **文件**：`demo/src/shell/shell_chrome.rs`
 
-- `map_shell_chrome` / `ShellChromeBindings` **删除**（不再需要投影层）
-- `map_menu_items` / `map_status_items` / `map_case_tree_items` 逻辑移入 `MainWindow` 的 `#[computed]` 方法（`build_menu_tree` / `build_status_items` / `build_case_tree`）
-- `map_activity_panels` 移入 `demo/src/shell/`（业务投影代码，从 `rml_app` 移出）
+* `map_shell_chrome` / `ShellChromeBindings` **删除**（不再需要投影层）
+
+* `map_menu_items` / `map_status_items` / `map_case_tree_items` 逻辑移入 `MainWindow` 的 `#[computed]` 方法（`build_menu_tree` / `build_status_items` / `build_case_tree`）
+
+* `map_activity_panels` 移入 `demo/src/shell/`（业务投影代码，从 `rml_app` 移出）
 
 ### E4：`#[contribute]` 声明保留
 
 `demo/src/shell/menu_shell_contribs.rs` 的 `#[contribute]` 声明不变——贡献点声明本身是数据驱动的，宏自动注册。变化在于注册路由：`register_contribution` → `registry.register` → `host.add`（受理代码分发到对应 ObservableVec）。
 
----
+***
 
 ## 验证步骤
 
 ### Phase A 验证
+
 ```bash
 cargo test -p rust-rml-core -- observable
 ```
+
 ObservableVec mutation 后 version 递增、`Deref<[T]>` 读取、无 `DerefMut`。
 
 ### Phase B 验证
+
 ```bash
 cargo build -p rust-rml-engine -p rust-rml-macros
 cargo test -p rust-rml-engine -- codegen::observable
 ```
+
 `__rml_get_version` 对 ObservableVec 字段路由到 `self.field.version()`。
 
 ### Phase C 验证
+
 ```bash
 cargo build -p rust-rml-core -p rust-rml-app -p rust-rml-macros
 cargo test -p rust-rml-app -- contribution
 ```
+
 验证：
+
 1. `IContributionHost::add`/`remove` 受理代码正确分发
 2. `IContributionRegistry::register` 路由到 host.add（host 存在时）
 3. pending 队列：host 未注册时入队，`add` 后重放
@@ -897,55 +935,60 @@ cargo test -p rust-rml-app -- contribution
 5. `ContributedEntry`/`ComponentEntityCache`/`VisualRenderer` 已删除，编译无引用
 
 ### Phase D 验证
+
 ```bash
 cargo test -p rust-rml-engine -- codegen::each_key
 cargo run -p rust-rml-demo
 ```
+
 `each=` + `key=` 生成 keyed diffing 代码，element 复用。
 
 ### Phase E 验证
+
 ```bash
 cargo build -p rust-rml-demo
 cargo run -p rust-rml-demo
 ```
+
 验证：
+
 1. Demo 启动后 menu/status/activity 面板正确显示
 2. 通过菜单打开 case → tab 新增 → UI 更新（无 `refresh_shell_chrome` 调用）
 3. ActivityPanel 案例树正确显示，observe MainWindow 自动刷新
 4. 切换语言 → 菜单标题更新
-5. **无 `contribution_entries` 调用出现在 demo 代码中**
+5. **无** **`contribution_entries`** **调用出现在 demo 代码中**
 
----
+***
 
 ## 关键文件清单
 
-| 文件 | Phase | 操作 |
-|------|-------|------|
-| `crates/core/src/observable.rs` | A | 新建 |
-| `crates/core/src/lib.rs` | A, C | 导出 observable + 调整 contribution 模块 |
-| `crates/core/src/prelude.rs` | A, C | 导出 ObservableVec，移除旧类型导出 |
-| `crates/core/src/contribution.rs` | C | 重写：IContributionHost add/remove + IContributionRegistry + HostHandle + IContribution::render_view + EntityCache + RenderContext |
-| `crates/core/src/contribution_cache.rs` | C | 重写为 `entity_cache.rs`（EntityCache 结构体） |
-| `crates/engine/src/build/scanner.rs` | B | 检测 ObservableVec 字段 |
-| `crates/engine/src/compiler/codegen/observable.rs` | B | 版本路由 |
-| `crates/macros/src/component.rs` | B, D | 跳过 ObservableVec version 注入 + children 字段注入 |
-| `crates/macros/src/contributehost.rs` | C | 移除 __rml_register_* 函数，仅生成 ID + 断言 |
-| `crates/macros/src/contribute.rs` | C | 移除 Registerable，生成 render_view 覆盖，调用 register_contribution |
-| `crates/engine/src/build/contribution_generator.rs` | C | 移除 host 扫描，只保留 contribute 扫描 |
-| `crates/app/src/contribution/mod.rs` | C | 更新模块声明与导出 |
-| `crates/app/src/contribution/global.rs` | C | 重写：ContributionRegistryExt + register_host + register_contribution |
-| `crates/app/src/contribution/registry.rs` | C | 重写：ContributionRegistry 实现 IContributionRegistry |
-| `crates/app/src/contribution/render.rs` | C | 重写：render_component_view 使用 ctx.entity_cache |
-| `crates/app/src/contribution/host.rs` | C | **删除** |
-| `crates/app/src/contribution/entry.rs` | C | **删除** |
-| `crates/app/src/contribution/registerable.rs` | C | **删除** |
-| `crates/app/src/contribution/activity_panel.rs` | C | **移至 demo** |
-| `crates/engine/src/compiler/codegen/mod.rs` | D | each= + key= keyed diffing |
-| `demo/src/shell/main_window.rml.rs` | E | 受理代码 + ObservableVec + #[computed] + register_host |
-| `demo/src/shell/shell_chrome.rs` | E | 删除 map_shell_chrome，投影逻辑移入 MainWindow |
-| `demo/src/shell/activity_panel.rml.rs` | E | observe MainWindow 替代 subscribe_host_changes |
+| 文件                                                  | Phase | 操作                                                                                                                               |
+| --------------------------------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `crates/core/src/observable.rs`                     | A     | 新建                                                                                                                               |
+| `crates/core/src/lib.rs`                            | A, C  | 导出 observable + 调整 contribution 模块                                                                                               |
+| `crates/core/src/prelude.rs`                        | A, C  | 导出 ObservableVec，移除旧类型导出                                                                                                         |
+| `crates/core/src/contribution.rs`                   | C     | 重写：IContributionHost add/remove + IContributionRegistry + HostHandle + IContribution::render\_view + EntityCache + RenderContext |
+| `crates/core/src/contribution_cache.rs`             | C     | 重写为 `entity_cache.rs`（EntityCache 结构体）                                                                                           |
+| `crates/engine/src/build/scanner.rs`                | B     | 检测 ObservableVec 字段                                                                                                              |
+| `crates/engine/src/compiler/codegen/observable.rs`  | B     | 版本路由                                                                                                                             |
+| `crates/macros/src/component.rs`                    | B, D  | 跳过 ObservableVec version 注入 + children 字段注入                                                                                      |
+| `crates/macros/src/contributehost.rs`               | C     | 移除 \__rml\_register_\* 函数，仅生成 ID + 断言                                                                                            |
+| `crates/macros/src/contribute.rs`                   | C     | 移除 Registerable，生成 render\_view 覆盖，调用 register\_contribution                                                                     |
+| `crates/engine/src/build/contribution_generator.rs` | C     | 移除 host 扫描，只保留 contribute 扫描                                                                                                     |
+| `crates/app/src/contribution/mod.rs`                | C     | 更新模块声明与导出                                                                                                                        |
+| `crates/app/src/contribution/global.rs`             | C     | 重写：ContributionRegistryExt + register\_host + register\_contribution                                                             |
+| `crates/app/src/contribution/registry.rs`           | C     | 重写：ContributionRegistry 实现 IContributionRegistry                                                                                 |
+| `crates/app/src/contribution/render.rs`             | C     | 重写：render\_component\_view 使用 ctx.entity\_cache                                                                                  |
+| `crates/app/src/contribution/host.rs`               | C     | **删除**                                                                                                                           |
+| `crates/app/src/contribution/entry.rs`              | C     | **删除**                                                                                                                           |
+| `crates/app/src/contribution/registerable.rs`       | C     | **删除**                                                                                                                           |
+| `crates/app/src/contribution/activity_panel.rs`     | C     | **移至 demo**                                                                                                                      |
+| `crates/engine/src/compiler/codegen/mod.rs`         | D     | each= + key= keyed diffing                                                                                                       |
+| `demo/src/shell/main_window.rml.rs`                 | E     | 受理代码 + ObservableVec + #\[computed] + register\_host                                                                             |
+| `demo/src/shell/shell_chrome.rs`                    | E     | 删除 map\_shell\_chrome，投影逻辑移入 MainWindow                                                                                          |
+| `demo/src/shell/activity_panel.rml.rs`              | E     | observe MainWindow 替代 subscribe\_host\_changes                                                                                   |
 
----
+***
 
 ## 假设与决策
 
@@ -959,11 +1002,11 @@ cargo run -p rust-rml-demo
 
 ### 设计决策
 
-1. **`const ID` 而非 `fn id()`**：编译期常量，宏生成代码可直接引用 `Self::ID`，无需 trait 对象。`HostHandle::id()` 方法返回 `T::ID` 供 registry 运行时查询。
-2. **`HostHandle` 为内部 trait**：`#[doc(hidden)]`，用户不直接接触。通过 `entity_host_handle(weak)` 构造，`register_host` 封装调用。
-3. **`EntityCache` 为结构体而非 trait**：简化设计，host 直接持有，无需实现 trait。原 `ComponentEntityCache` trait 的"可替换实现"需求在实际中不存在。
-4. **`IContribution::render_view` 默认 None**：非视觉贡献返回 None，视觉贡献由宏覆盖为 `Some(self.render(ctx))`。消除 `VisualRenderer` 闭包类型。
-5. **`register_host` 需要 `Render` bound**：`EntityHostHandle<T>` 调用 `entity.update(cx, |host, ctx| ...)` 需要 `T: Render`（GPUI `Context<T>` 约束）。host 本身是可渲染 Entity，自然满足。
+1. **`const ID`** **而非** **`fn id()`**：编译期常量，宏生成代码可直接引用 `Self::ID`，无需 trait 对象。`HostHandle::id()` 方法返回 `T::ID` 供 registry 运行时查询。
+2. **`HostHandle`** **为内部 trait**：`#[doc(hidden)]`，用户不直接接触。通过 `entity_host_handle(weak)` 构造，`register_host` 封装调用。
+3. **`EntityCache`** **为结构体而非 trait**：简化设计，host 直接持有，无需实现 trait。原 `ComponentEntityCache` trait 的"可替换实现"需求在实际中不存在。
+4. **`IContribution::render_view`** **默认 None**：非视觉贡献返回 None，视觉贡献由宏覆盖为 `Some(self.render(ctx))`。消除 `VisualRenderer` 闭包类型。
+5. **`register_host`** **需要** **`Render`** **bound**：`EntityHostHandle<T>` 调用 `entity.update(cx, |host, ctx| ...)` 需要 `T: Render`（GPUI `Context<T>` 约束）。host 本身是可渲染 Entity，自然满足。
 6. **build.rs 移除 host 扫描**：host 不再需要 bootstrap 时预注册 slot（无框架侧存储）。只有 `#[contribute]` 需要扫描生成注册函数。
 
 ### 风险
@@ -972,3 +1015,4 @@ cargo run -p rust-rml-demo
 2. **pending 队列内存**：若 host 永不注册，pending 队列永久持有贡献引用。缓解：调试模式下日志告警；生产环境 host 通常在窗口创建时即注册。
 3. **EntityCache 生命周期**：host 拥有 EntityCache，视觉贡献 Entity 生命周期绑定 host。host 销毁时 EntityCache 自动释放。`remove` 时调用 `entity_cache.clear(id)` 清理单个贡献。
 4. **跨 Entity observe**：`ActivityPanel` observe `MainWindow` 需要通过 `DemoShellHost` 全局获取 WeakEntity。若 MainWindow 先于 ActivityPanel 销毁，observe 自动失效（WeakEntity upgrade 返回 None）。
+

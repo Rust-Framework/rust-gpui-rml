@@ -41,7 +41,7 @@ fn gen_impl_i_model(struct_name: &Ident, fields: &Fields) -> TokenStream {
     if field_count == 0 {
         return quote! {
             impl rml_core::model::IModel for #struct_name {
-                fn rml_fields(&self) -> &'static [rml_core::model::FieldMeta] {
+                fn fields(&self) -> &'static [rml_core::model::FieldMeta] {
                     &[]
                 }
             }
@@ -50,7 +50,7 @@ fn gen_impl_i_model(struct_name: &Ident, fields: &Fields) -> TokenStream {
 
     quote! {
         impl rml_core::model::IModel for #struct_name {
-            fn rml_fields(&self) -> &'static [rml_core::model::FieldMeta] {
+            fn fields(&self) -> &'static [rml_core::model::FieldMeta] {
                 static FIELDS: [rml_core::model::FieldMeta; #field_count] = [
                     #(#field_metas),*
                 ];
@@ -78,7 +78,7 @@ fn gen_impl_i_model(struct_name: &Ident, fields: &Fields) -> TokenStream {
 /// 注意：`cx.subscribe` 返回的 `Subscription` 调用 `.detach()` 后随 entity 生命周期存活，
 /// 不存储在结构体中（`Subscription` 非 `Sync`，存储会导致视图不满足 `Send + Sync`）。
 ///
-/// 注入字段为私有，不会进入 `IModel::rml_fields()`（其只收集 pub 字段）。
+/// 注入字段为私有，不会进入 `IModel::fields()`（其只收集 pub 字段）。
 /// `AtomicU64: Default = 0`，`ComputedCache::default() = 空 map`，
 /// `HashMap::default() = 空 map`，`Vec::default() = 空 vec`，
 /// `Option::default() = None`，`#[derive(Default)]` 兼容。
@@ -196,10 +196,10 @@ pub fn expand_component_impls(
 
     let impl_i_component = quote! {
         impl rml_core::component::IComponent for #struct_name {
-            fn rml_template() -> &'static str {
+            fn template() -> &'static str {
                 #template_path
             }
-            fn rml_tag() -> &'static str {
+            fn tag() -> &'static str {
                 #struct_name_str
             }
             #slots_override

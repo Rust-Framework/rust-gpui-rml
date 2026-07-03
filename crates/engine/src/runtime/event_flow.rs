@@ -117,7 +117,7 @@ pub mod convert {
     // 这些函数保留作为 codegen 统一入口（Phase B-2 数据绑定补全）。
 
     /// 占位：RML `InputEvent` 由 codegen 直接构造（GPUI 无 `InputEvent` 结构体，仅有同名 trait）。
-    pub fn rml_input(
+    pub fn input(
         value: gpui::SharedString,
         prev: gpui::SharedString,
     ) -> rml_core::events::InputEvent {
@@ -128,29 +128,29 @@ pub mod convert {
     }
 
     /// 占位：RML `ChangeEvent` 由 codegen 直接构造。
-    pub fn rml_change(value: gpui::SharedString) -> rml_core::events::ChangeEvent {
+    pub fn change(value: gpui::SharedString) -> rml_core::events::ChangeEvent {
         let mut out = rml_core::events::ChangeEvent::default();
         out.value = value;
         out
     }
 
     /// 占位：RML `FocusEvent`（获得焦点）由 codegen 直接构造。
-    pub fn rml_focus_in() -> rml_core::events::FocusEvent {
+    pub fn focus_in() -> rml_core::events::FocusEvent {
         rml_core::events::FocusEvent::default()
     }
 
     /// 占位：RML `SubmitEvent` 由 codegen 直接构造。
-    pub fn rml_submit() -> rml_core::events::SubmitEvent {
+    pub fn submit() -> rml_core::events::SubmitEvent {
         rml_core::events::SubmitEvent::default()
     }
 
     /// 占位：RML `LoadEvent` 由 codegen 直接构造。
-    pub fn rml_load() -> rml_core::events::LoadEvent {
+    pub fn load() -> rml_core::events::LoadEvent {
         rml_core::events::LoadEvent::default()
     }
 
     /// 占位：RML `ResizeEvent` 由 codegen 直接构造。
-    pub fn rml_resize(width: gpui::Pixels, height: gpui::Pixels) -> rml_core::events::ResizeEvent {
+    pub fn resize(width: gpui::Pixels, height: gpui::Pixels) -> rml_core::events::ResizeEvent {
         let mut out = rml_core::events::ResizeEvent::default();
         out.width = width;
         out.height = height;
@@ -158,7 +158,7 @@ pub mod convert {
     }
 
     /// 占位：RML `ScrollEvent` 由 codegen 直接构造。
-    pub fn rml_scroll(
+    pub fn scroll(
         scroll_x: gpui::Pixels,
         scroll_y: gpui::Pixels,
     ) -> rml_core::events::ScrollEvent {

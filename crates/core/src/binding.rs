@@ -56,5 +56,5 @@ impl BindingPath {
 /// MVP 阶段为标记 trait，阶段二扩展为完整的订阅管理接口。
 pub trait IBindingContext {
     /// 标记绑定已建立
-    fn rml_bind(&mut self, path: &BindingPath);
+    fn bind(&mut self, path: &BindingPath);
 }

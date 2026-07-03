@@ -3,7 +3,7 @@
 //! 所有可在 `.rml` 中使用的 UI 类型均实现此 trait。
 //! `#[component]` 宏自动实现。
 //!
-//! 合并自旧 `IRmlView`（`rml_template()`）+ 旧 `IComponent`（`rml_tag()`）。
+//! 合并自旧 `IRmlView`（`template()`）+ 旧 `IComponent`（`tag()`）。
 
 use crate::view_model::IViewModel;
 
@@ -23,11 +23,11 @@ use crate::view_model::IViewModel;
 pub trait IComponent: IViewModel {
     /// 关联的 `.rml` 模板路径（相对于 `src` 目录）。
     /// 由 `#[component]` 宏根据命名约定或 `template=` 参数生成。
-    fn rml_template() -> &'static str;
+    fn template() -> &'static str;
 
     /// 组件标签名（PascalCase），用于 `.rml` 中的 `<MyComponent>`。
     /// 默认返回结构体名，由 `#[component]` 宏生成。
-    fn rml_tag() -> &'static str;
+    fn tag() -> &'static str;
 
     /// 组件声明的具名插槽列表（Vue 风格 `<slot name="...">`）。
     ///
