@@ -1,20 +1,22 @@
-//! `#[contributehost]` —— Host 自动化标记宏
+//! `#[contributehost]` —— Host 标记宏（精简版）
 //!
-//! 宏负责：
-//! 1. 向 struct 注入 `entries: ObservableVec<ContributionEntry>` + `i18n_version: u32` 字段
-//! 2. 生成 `pub const ID: &'static str`
-//! 3. 自动生成 `impl IContributionHost`（add/remove 操作 entries）
-//! 4. 自动生成 `impl ILifecycle`（channel + spawn + take_pending + i18n observe + IHostEntity 委托）
-//! 5. 编译期断言目标类型实现 `IHostEntity`
+//! 宏仅负责：
+//! 1. 生成 `pub const ID: &'static str`
+//! 2. 生成 `pub fn __rml_install_host(this: &Entity<Self>, cx: &mut App) -> flume::Receiver<HostOp>`
+//!    （内部调 `rml_app::contribution::install_entity_host`：注册 handle + 触发 host_id 的贡献注册）
+//! 3. 编译期断言 `T: IContributionHost`（用户必须手写 impl）
 //!
-//! 业务代码只需实现 `IHostEntity` trait 提供 host 特有逻辑（`host_on_loaded`/`on_locale_changed`）。
-//! 宏展开顺序：`#[component]`/`#[window]`（内层先）→ `#[contributehost]`（注入字段）→ `#[contribute]`（最外层）。
+//! 用户职责：
+//! - 手写 `impl IContributionHost`（override `add`/`add_visual`/`remove` 中需要的）
+//! - 手写 `impl ILifecycle`（在 `on_loaded` 中调 `Self::__rml_install_host` + `drain_host_ops`）
+//! - 自管贡献存储（如 `RwLock<Vec<(Arc<dyn IVisualContribution>, ContributionOptions)>>`）
+//!
+//! 宏展开顺序：`#[component]`/`#[window]`（内层先）→ `#[contributehost]`（外层）→ `#[contribute]`（最外层）。
 
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens};
-use syn::parse::Parser;
 use syn::{
-    parse::{Parse, ParseStream},
+    parse::{Parse, ParseStream, Parser},
     punctuated::Punctuated,
     Item, LitStr, Token,
 };
@@ -41,7 +43,7 @@ impl Parse for ContributeHostArgs {
                 Some("bindings") | Some("on_changed") => {
                     return Err(syn::Error::new(
                         Span::call_site(),
-                        "bindings/on_changed is removed: host 自动化由宏生成",
+                        "bindings/on_changed is removed: host 直接实现 IContributionHost",
                     ));
                 }
                 _ => {}
@@ -67,30 +69,18 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
         }
         Ok(items)
     };
-    let mut items: Vec<Item> = match parse_items.parse2(input) {
+    let items: Vec<Item> = match parse_items.parse2(input) {
         Ok(items) => items,
         Err(e) => return e.to_compile_error(),
     };
 
-    // 找到 struct 并注入 entries + i18n_version 字段
-    let mut struct_name = None;
-    for item in items.iter_mut() {
+    let struct_name = items.iter().find_map(|item| {
         if let Item::Struct(s) = item {
-            if struct_name.is_none() {
-                struct_name = Some(s.ident.clone());
-            }
-            if let syn::Fields::Named(named) = &mut s.fields {
-                named.named.push(syn::parse_quote! {
-                    #[allow(non_snake_case, dead_code)]
-                    entries: rml_core::observable::ObservableVec<rml_core::contribution::ContributionEntry>
-                });
-                named.named.push(syn::parse_quote! {
-                    #[allow(non_snake_case, dead_code)]
-                    i18n_version: u32
-                });
-            }
+            Some(s.ident.clone())
+        } else {
+            None
         }
-    }
+    });
     let Some(struct_name) = struct_name else {
         return syn::Error::new(
             Span::call_site(),
@@ -106,67 +96,32 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
 
         impl #struct_name {
             pub const ID: &'static str = #id;
+
+            /// 注册 host handle + 触发该 host_id 的所有贡献注册。
+            ///
+            /// 由用户在 `impl ILifecycle::on_loaded` 中调用：
+            /// ```rust,ignore
+            /// fn on_loaded(&mut self, _: &mut Window, cx: &mut Context<Self>) {
+            ///     let rx = Self::__rml_install_host(cx.entity(), cx);
+            ///     self.host_rx = Some(rx);
+            ///     if let Some(rx) = &self.host_rx {
+            ///         rml_app::contribution::drain_host_ops(rx, self);
+            ///     }
+            ///     cx.notify();
+            /// }
+            /// ```
+            pub fn __rml_install_host(
+                this: gpui::Entity<Self>,
+                cx: &mut gpui::App,
+            ) -> rml_core::flume::Receiver<rml_app::contribution::HostOp> {
+                rml_app::contribution::install_entity_host(Self::ID, this, cx)
+            }
         }
 
-        // 编译期断言：目标类型必须实现 IHostEntity（业务钩子）
+        // 编译期断言：目标类型必须实现 IContributionHost（用户手写）
         const _: () = {
-            fn assert_host_entity<T: rml_core::contribution::IHostEntity>() {}
-            fn check() { assert_host_entity::<#struct_name>(); }
+            fn assert_host<T: rml_core::contribution::IContributionHost>() {}
+            fn check() { assert_host::<#struct_name>(); }
         };
-
-        // 自动生成 IContributionHost：add/remove 操作 entries
-        impl rml_core::contribution::IContributionHost for #struct_name {
-            fn id(&self) -> &'static str {
-                Self::ID
-            }
-            fn add(
-                &self,
-                contribution: std::sync::Arc<dyn rml_core::contribution::IContribution>,
-                options: rml_core::contribution::ContributionOptions,
-            ) {
-                self.entries.push(rml_core::contribution::ContributionEntry {
-                    contribution,
-                    options,
-                });
-            }
-            fn remove(&self, contribution_id: &str) {
-                self.entries
-                    .retain(|e| e.contribution.id() != contribution_id);
-            }
-        }
-
-        // 自动生成 ILifecycle：框架标准 setup + IHostEntity 钩子委托
-        impl rml_core::lifecycle::ILifecycle for #struct_name {
-            fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut gpui::Context<Self>) {
-                use rml_app::contribution::ContributionRegistryExt;
-
-                // 1. channel + spawn：ObservableVec 变更 → cx.notify()
-                let (tx, rx) = rml_core::flume::unbounded::<()>();
-                self.entries = rml_core::observable::ObservableVec::with_notifier(tx);
-                cx.spawn(async move |this, cx| {
-                    while rx.recv_async().await.is_ok() {
-                        let _ = this.update(cx, |_, cx| cx.notify());
-                    }
-                })
-                .detach();
-
-                // 2. take_pending → self.add 受理
-                let pending = cx.get_contribution_registry().take_pending(Self::ID);
-                for (c, o) in pending {
-                    self.add(c, o);
-                }
-
-                // 3. i18n observe：locale 变更 → bump i18n_version + on_locale_changed + cx.notify
-                cx.observe_global::<rml_core::i18n::I18nState>(|this, cx| {
-                    this.i18n_version = this.i18n_version.wrapping_add(1);
-                    rml_core::contribution::IHostEntity::on_locale_changed(this, cx);
-                    cx.notify();
-                })
-                .detach();
-
-                // 4. 委托 IHostEntity 钩子（业务代码的 host 特有逻辑）
-                rml_core::contribution::IHostEntity::host_on_loaded(self, _window, cx);
-            }
-        }
     }
 }

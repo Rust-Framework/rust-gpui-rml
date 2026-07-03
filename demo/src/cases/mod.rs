@@ -9,6 +9,8 @@ pub mod counter_case;
 pub mod two_way_case;
 #[path = "button_case.rml.rs"]
 pub mod button_case;
+#[path = "accordion_case.rml.rs"]
+pub mod accordion_case;
 #[path = "i18n_case.rml.rs"]
 pub mod i18n_case;
 #[path = "menu_context_case.rml.rs"]

@@ -252,6 +252,14 @@ pub enum ComponentKind {
     /// 配合 `ref="field_name"` 指令指定字段名
     /// 生成 `self.<field>.as_ref().expect("init in on_loaded").clone()`
     EntityRef,
+    /// 无状态组件，子节点通过 `.item(|item| ...)` 闭包式 builder 注入。
+    ///
+    /// 构造调用形如 `Accordion::new(id)`，与 `Stateless` 一致；
+    /// 但子节点处理不同：每个 `<AccordionItem>` 子节点生成
+    /// `.item(|__rml_item: rml_ui::AccordionItem| __rml_item.<setters>.child(...))`。
+    /// 子节点 tag 名（如 `AccordionItem`）由 codegen 在 `StatelessWithItems` 分支
+    /// 通过 `is_item_builder_tag` 识别。
+    StatelessWithItems,
 }
 
 /// 扩展组件的元信息
@@ -360,8 +368,22 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             ctor_path: "rml_ui::StatusBar",
             kind: ComponentKind::StatelessNoId,
         }),
+        // Accordion：闭包式 builder，子节点为 <AccordionItem>
+        "Accordion" => Some(ComponentTag {
+            ctor_path: "rml_ui::Accordion",
+            kind: ComponentKind::StatelessWithItems,
+        }),
         _ => None,
     }
+}
+
+/// 判断标签是否为 `StatelessWithItems` 组件的子项 builder
+///
+/// 如 `AccordionItem` 是 `Accordion` 的子项，仅在 `<Accordion>` 内合法。
+/// 不在 `component_lookup` 中注册（避免被误用为顶层扩展组件），
+/// 但在 validator 和 codegen 中通过此函数识别。
+pub fn is_item_builder_tag(tag: &str) -> bool {
+    matches!(tag, "AccordionItem")
 }
 
 #[cfg(test)]

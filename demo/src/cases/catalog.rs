@@ -14,6 +14,7 @@ pub fn case_title_key(id: &str) -> &'static str {
         "binding.counter" => "case.counter.title",
         "binding.two-way" => "case.two_way.title",
         "components.button" => "case.button.title",
+        "components.accordion" => "case.accordion.title",
         "components.slot" => "case.slot.title",
         "components.menu.context" => "case.menu.context.title",
         "components.menu.dropdown" => "case.menu.dropdown.title",

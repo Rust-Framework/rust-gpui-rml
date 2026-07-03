@@ -31,7 +31,7 @@ fn bootstrap_runtime(cx: &mut App) {
     gpui_component::init(cx);
     gpui_component::Theme::global_mut(cx).font_size = px(14.);
     crate::contribution::ensure_contribution_registry(cx);
-    crate::contribution::bootstrap_contributions(cx);
+    // 贡献注册由 host 在 on_loaded 中触发（__rml_install_host → bootstrap_host_contributions）
 }
 
 /// 标记：未设置主窗口

@@ -2,12 +2,16 @@
 //!
 //! 串起 parse → validate → codegen，输出 Rust 源码字符串。
 
+pub mod accordion;
 pub mod codegen;
 pub mod component;
 pub mod event;
 pub mod expr;
+pub mod input;
 pub mod menu;
 pub mod props_registry;
+pub mod tree;
+pub mod user_component;
 pub mod validator;
 
 use crate::css::StyleSheet;

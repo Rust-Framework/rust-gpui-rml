@@ -45,6 +45,44 @@
 
   "case.button.danger": "危险按钮",
 
+  "case.accordion.title": "折叠面板",
+
+  "case.accordion.basic": "基础用法",
+
+  "case.accordion.multiple": "允许多项展开",
+
+  "case.accordion.sizes": "不同尺寸",
+
+  "case.accordion.with_icon": "带图标与禁用",
+
+  "case.accordion.nested": "嵌套折叠面板",
+
+  "case.accordion.section1": "第一部分",
+
+  "case.accordion.section2": "第二部分",
+
+  "case.accordion.section3": "第三部分",
+
+  "case.accordion.content1": "这是第一部分的内容。",
+
+  "case.accordion.content2": "这是第二部分的内容。",
+
+  "case.accordion.content3": "这是第三部分的内容。",
+
+  "case.accordion.small": "小尺寸项",
+
+  "case.accordion.large": "大尺寸项",
+
+  "case.accordion.settings": "设置",
+
+  "case.accordion.disabled": "禁用项",
+
+  "case.accordion.parent": "父级（含嵌套）",
+
+  "case.accordion.child1": "子项 1",
+
+  "case.accordion.child2": "子项 2",
+
   "case.i18n.title": "国际化 t()",
 
   "case.status_bar.title": "状态栏",

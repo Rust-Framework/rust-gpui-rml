@@ -14,7 +14,7 @@
 
 use crate::compiler::expr;
 use crate::compiler::codegen::gen_node;
-use crate::compiler::{CodegenCtx, CodegenError, UserComponentInfo};
+use crate::compiler::{CodegenCtx, CodegenError};
 use crate::parser::ast::{Attribute, Directive, Element, EventHandler, Node};
 use crate::tags;
 
@@ -41,7 +41,9 @@ pub fn gen_component(
         None => {
             // 内置路由表未命中：检查用户组件注册表
             if let Some(info) = ctx.user_components.get(tag) {
-                return gen_user_component(info, elem, ctx, id_counter, loop_vars);
+                return crate::compiler::user_component::gen_user_component(
+                    info, elem, ctx, id_counter, loop_vars,
+                );
             }
             return Err(CodegenError {
                 message: format!(
@@ -71,14 +73,32 @@ pub fn gen_component(
                 format!("{}::new((\"rml_el\", {}usize))", component.ctor_path, id_val)
             }
         }
+        tags::ComponentKind::StatelessWithItems => {
+            // 闭包式 builder 组件（如 Accordion）：整个 codegen 流程委托到专属模块
+            return crate::compiler::accordion::gen_accordion(
+                elem,
+                ref_name,
+                id_val,
+                ctx,
+                id_counter,
+                loop_vars,
+            );
+        }
         tags::ComponentKind::StatelessNoId => {
             // 无参构造：TitleBar::new() / StatusBar::new()
             format!("{}::new()", component.ctor_path)
         }
-        tags::ComponentKind::Stateful { state_field } if tag == "Tree" => format!(
-            "{}::new(self.{}.as_ref())",
-            component.ctor_path, state_field
-        ),
+        tags::ComponentKind::Stateful { state_field: _ } if tag == "Tree" => {
+            // Tree 构造器使用 as_ref()，与其他 Stateful 组件不同，委托到独立模块
+            return crate::compiler::tree::gen_tree(
+                elem,
+                component,
+                ctx,
+                _depth,
+                id_counter,
+                loop_vars,
+            );
+        }
         tags::ComponentKind::Stateful { state_field } => format!(
             "{}::new(&self.{})",
             component.ctor_path, state_field
@@ -167,151 +187,6 @@ pub fn gen_component(
         }
     }
 
-    Ok(code)
-}
-
-/// 生成用户自定义组件嵌入代码
-///
-/// 无 slot 子节点时：直接 clone entity
-/// ```text
-/// self.counter_case.as_ref().expect("init CounterCase in on_loaded").clone()
-/// ```
-///
-/// 有 slot 子节点时：clone entity 后通过 `entity.update(cx, |this, _cx| { ... })` 注入 slot 内容
-/// ```text
-/// {
-///     let __rml_entity = self.card.as_ref().expect("init Card in on_loaded").clone();
-///     __rml_entity.update(cx, |this, _cx| { this.__rml_set_slot_header(...); });
-///     __rml_entity
-/// }
-/// ```
-///
-/// 返回 `Entity<T>`，因 `T: Render`（由 `#[component]` 生成），
-/// `Entity<T: Render>: IntoElement`，可直接作为子元素。
-fn gen_user_component(
-    info: &UserComponentInfo,
-    elem: &Element,
-    ctx: &CodegenCtx,
-    id_counter: &mut usize,
-    loop_vars: &[String],
-) -> Result<String, CodegenError> {
-    let entity_expr = format!(
-        "self.{}.as_ref().expect(\"init {} in on_loaded\").clone()",
-        info.entity_field, info.struct_name
-    );
-
-    // 组件未声明任何插槽：保持原行为（直接 clone entity）
-    if info.slots.is_empty() {
-        return Ok(entity_expr);
-    }
-
-    // 分离 slot 子节点与 default 子节点
-    let (slot_children, default_children) = partition_user_component_children(elem);
-
-    // 父视图未提供任何 slot 内容：保持原行为
-    if slot_children.is_empty() && default_children.is_empty() {
-        return Ok(entity_expr);
-    }
-
-    let mut code = String::new();
-    code.push_str("{\n");
-    code.push_str(&format!("    let __rml_entity = {};\n", entity_expr));
-
-    // 为每个具名 slot 生成渲染闭包 + 注入
-    //
-    // slot 字段类型为 `Option<SlotRenderer>`（`Box<dyn Fn(&mut Window, &mut App) -> AnyElement + Send + Sync>`）。
-    // 把 slot 内容表达式包装为闭包：
-    //   - 闭包内 cx 是参数（&mut App），不捕获外部 cx，避免借用冲突
-    //   - 闭包是 `move`，捕获 slot 内容中引用的外部变量（应为字面量或 Send + Sync 数据）
-    //   - 闭包不捕获父视图的 `self`（生命周期不允许，slot 内容应通过子组件 props 传数据）
-    //
-    // 在 `update(cx, ...)` 闭包外构造闭包，再传入 setter，避免 cx 借用冲突。
-    for (slot_name, slot_nodes) in &slot_children {
-        let slot_code = gen_slot_content(slot_nodes, ctx, id_counter, loop_vars)?;
-        let binding = format!("__rml_slot_{}_value", slot_name);
-        code.push_str(&format!(
-            "    let {}: rml_core::slot::SlotRenderer = Box::new(move |_window: &mut gpui::Window, cx: &mut gpui::App| -> gpui::AnyElement {{ ({}).into_any_element() }});\n",
-            binding, slot_code
-        ));
-        code.push_str(&format!(
-            "    __rml_entity.update(cx, |this, _cx| {{ this.__rml_set_slot_{}({}); }});\n",
-            slot_name, binding
-        ));
-    }
-
-    // default 插槽（无 slot 属性的子节点）
-    if !default_children.is_empty() && info.slots.iter().any(|s| s == "default") {
-        let default_code = gen_slot_content(&default_children, ctx, id_counter, loop_vars)?;
-        code.push_str("    let __rml_slot_default_value: rml_core::slot::SlotRenderer = Box::new(move |_window: &mut gpui::Window, cx: &mut gpui::App| -> gpui::AnyElement { (");
-        code.push_str(&default_code);
-        code.push_str(").into_any_element() });\n");
-        code.push_str(
-            "    __rml_entity.update(cx, |this, _cx| { this.__rml_set_slot_default(__rml_slot_default_value); });\n",
-        );
-    }
-
-    code.push_str("    __rml_entity\n");
-    code.push_str("}");
-    Ok(code)
-}
-
-/// 将用户组件的子节点分离为具名插槽内容与默认插槽内容
-///
-/// - `<template slot="name">...</template>` → slot_children[name]
-/// - 其他子节点 → default_children
-///
-/// 返回 (slot_children: HashMap<slot_name, Vec<Node>>, default_children: Vec<Node>)
-fn partition_user_component_children(
-    elem: &Element,
-) -> (std::collections::HashMap<String, Vec<crate::parser::ast::Node>>, Vec<crate::parser::ast::Node>) {
-    let mut slot_children: std::collections::HashMap<String, Vec<crate::parser::ast::Node>> = std::collections::HashMap::new();
-    let mut default_children: Vec<crate::parser::ast::Node> = Vec::new();
-
-    for child in &elem.children {
-        if let crate::parser::ast::Node::Element(child_elem) = child {
-            if child_elem.tag == "template" {
-                if let Some(slot_name) = &child_elem.slot_name {
-                    slot_children
-                        .entry(slot_name.clone())
-                        .or_default()
-                        .extend(child_elem.children.clone());
-                    continue;
-                }
-            }
-        }
-        default_children.push(child.clone());
-    }
-
-    (slot_children, default_children)
-}
-
-/// 为 slot 内容子节点列表生成构建代码
-///
-/// - 空列表：返回 `gpui::Empty`（不渲染）
-/// - 单节点：直接生成节点代码
-/// - 多节点：包裹 `gpui::div().child(...).child(...)` 容器
-fn gen_slot_content(
-    nodes: &[crate::parser::ast::Node],
-    ctx: &CodegenCtx,
-    id_counter: &mut usize,
-    loop_vars: &[String],
-) -> Result<String, CodegenError> {
-    if nodes.is_empty() {
-        return Ok("gpui::Empty".to_string());
-    }
-    if nodes.len() == 1 {
-        let (code, _) = crate::compiler::codegen::gen_node(&nodes[0], ctx, 0, id_counter, loop_vars)?;
-        return Ok(code);
-    }
-    let mut code = String::from("gpui::div()");
-    for node in nodes {
-        let (node_code, is_iter) = crate::compiler::codegen::gen_node(node, ctx, 0, id_counter, loop_vars)?;
-        if is_iter {
-            code.push_str(&format!(".children({})", node_code));
-        } else {
-            code.push_str(&format!(".child({})", node_code));
-        }
-    }
     Ok(code)
 }
 
@@ -442,6 +317,11 @@ pub fn component_bind_setter(
     computed: &[&str],
     tag: &str,
 ) -> Option<String> {
+    // 组件专用 bind setter 委托（menu/MenuBar/status_bar 的 items 属性）
+    if let Some(s) = super::menu::bind_setter(name, expr_str, loop_vars, computed, tag) {
+        return Some(s);
+    }
+
     match name {
         // content={expr}：直接嵌入表达式作为 child（与原生 div 的 content 分支一致）
         // 表达式可引用 _window/cx，不经 component_bind_rust_expr 解析
@@ -466,10 +346,6 @@ pub fn component_bind_setter(
             let rust_expr = component_bind_rust_expr(expr_str, loop_vars, computed);
             Some(format!(".label({}.clone())", rust_expr))
         }
-        "items" if tag == "menu" || tag == "MenuBar" || tag == "status_bar" => {
-            let rust_expr = component_bind_rust_expr(expr_str, loop_vars, computed);
-            Some(format!(".items({}.clone())", rust_expr))
-        }
         _ => {
             // 未命中：若属性在 props_registry 中已登记但此处无 match 分支，
             // 说明 codegen 映射缺失，输出 warning 提示框架开发者补全。
@@ -486,15 +362,21 @@ pub fn component_bind_setter(
     }
 }
 
-/// 事件属性 → 组件事件方法映射
+/// 事件属性 → 组件事件方法映射（dispatcher）
 ///
 /// 与原生 div 的事件不同，gpui-component 组件的 on_* 方法接受 3 参闭包
 /// `Fn(&ClickEvent, &mut Window, &mut App)`。通过 `cx.listener` 包装后可访问 `this`。
 ///
-/// 支持的事件：
-/// - `onclick`：所有组件通用，回调接收 `&gpui::ClickEvent`
-/// - `onchange`：Input/TextInput 专用，回调接收 `&rml_ui::InputState`
+/// 组件专用事件（Input/TextInput 的 onchange、Tree 的 on_activate、Accordion 的 on_toggle_click）
+/// 已迁移到各自的组件模块，本函数仅处理通用 `onclick` 事件并作为回退入口。
 pub fn component_event_setter(name: &str, handler: &EventHandler, tag: &str) -> Option<String> {
+    // 组件专用事件 setter 委托（Input/TextInput 的 onchange）
+    if tag == "Input" || tag == "TextInput" {
+        if let Some(s) = super::input::event_setter(name, handler, tag) {
+            return Some(s);
+        }
+    }
+
     match name {
         "onclick" => {
             let method = match handler {
@@ -528,33 +410,6 @@ pub fn component_event_setter(name: &str, handler: &EventHandler, tag: &str) -> 
                     }
                 }
             }
-        }
-        "onchange" if tag == "Input" || tag == "TextInput" => {
-            // Input 组件的 on_change 回调接收 &InputState，而非标准事件
-            let method = match handler {
-                EventHandler::Ident(m) | EventHandler::MethodName(m) => m,
-                EventHandler::WithArgs(m, _) => m,
-            };
-            Some(format!(
-                ".on_change(cx.listener(move |this, state: &rml_ui::InputState, _window, cx| {{\n                    \
-                 this.{}(state, cx);\n                }}))",
-                method
-            ))
-        }
-        "on_activate" if tag == "Tree" => {
-            let method = match handler {
-                EventHandler::Ident(m) | EventHandler::MethodName(m) => m,
-                EventHandler::WithArgs(m, _) => m,
-            };
-            Some(format!(
-                ".on_activate_rc(std::rc::Rc::new({{\n                    \
-                 let weak = cx.weak_entity();\n                    \
-                 move |item: rml_ui::TreeItem, _window: &mut gpui::Window, app: &mut gpui::App| {{\n                        \
-                 if let Some(entity) = weak.upgrade() {{\n                            \
-                 entity.update(app, |this, cx| {{ this.{}(&item.id, cx); }});\n                        \
-                 }}\n                    }}\n                }}))",
-                method
-            ))
         }
         _ => None,
     }

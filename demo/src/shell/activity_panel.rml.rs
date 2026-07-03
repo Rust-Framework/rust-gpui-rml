@@ -1,13 +1,15 @@
+use std::sync::Arc;
+
 use gpui::Window;
 use rml::prelude::*;
 use rml_ui::TreeState;
 
-use crate::shell::shell_chrome::map_case_tree_items;
+use crate::shell::shell_chrome::{map_case_tree_items, VisualEntry};
 use crate::shell::DemoShellHost;
 
 /// ActivityPanel 双重角色：
 /// - 视觉贡献（`#[contribute]`）：为 MainWindow 贡献活动栏面板
-/// - Host（`#[contributehost]`）：接收案例贡献（kind="case"）
+/// - Host（`#[contributehost]`）：接收案例贡献（kind="case"，视觉贡献）
 ///
 /// `#[contribute]` + `#[contributehost]` + `#[component]` 叠加使用：
 /// Entity 由框架实体缓存复用（`get_or_create_entity`），状态持久。
@@ -24,26 +26,55 @@ use crate::shell::DemoShellHost;
 #[derive(Default)]
 pub struct ActivityPanel {
     tree_state: Option<gpui::Entity<TreeState>>,
-    // entries, i18n_version ← #[contributehost] 自动注入
+    // 视觉贡献存储：case 贡献（视觉，由 add_visual 受理）
+    case_entries: std::sync::RwLock<Vec<VisualEntry>>,
+    // host handle receiver
+    host_rx: Option<rml_core::flume::Receiver<rml_app::contribution::HostOp>>,
 }
 
-// 无 impl IContributionHost —— #[contributehost] 宏自动生成
-// 无 impl ILifecycle —— #[contributehost] 宏自动生成
-
-impl IHostEntity for ActivityPanel {
-    fn host_on_loaded(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
-        self.refresh_tree(cx);
+impl IContributionHost for ActivityPanel {
+    fn id(&self) -> &'static str {
+        Self::ID
     }
 
-    fn on_locale_changed(&mut self, cx: &mut Context<Self>) {
+    fn add_visual(
+        &self,
+        contribution: Arc<dyn IVisualContribution>,
+        options: ContributionOptions,
+    ) {
+        self.case_entries
+            .write()
+            .unwrap()
+            .push((contribution, options));
+    }
+
+    fn remove(&self, contribution_id: &str) {
+        let mut entries = self.case_entries.write().unwrap();
+        entries.retain(|(c, _)| c.id() != contribution_id);
+    }
+}
+
+impl ILifecycle for ActivityPanel {
+    fn on_loaded(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
+        // 1. 注册 host handle + 触发 demo.activity 的所有案例贡献注册（同步入队）
+        let rx = Self::__rml_install_host(cx.entity(), cx);
+        self.host_rx = Some(rx);
+
+        // 2. drain 队列中的 HostOp → 调用自身 IContributionHost::add_visual
+        if let Some(rx) = &self.host_rx {
+            rml_app::contribution::drain_host_ops(rx, self);
+        }
+
+        // 3. 从 case_entries 构建树
         self.refresh_tree(cx);
+        cx.notify();
     }
 }
 
 impl ActivityPanel {
     fn refresh_tree(&mut self, cx: &mut Context<Self>) {
         let items = {
-            let entries = self.entries.read();
+            let entries = self.case_entries.read().unwrap();
             map_case_tree_items(&entries)
         };
         self.set_tree_items(items, cx);

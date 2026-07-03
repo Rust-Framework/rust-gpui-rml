@@ -45,6 +45,44 @@
 
   "case.button.danger": "Danger",
 
+  "case.accordion.title": "Accordion",
+
+  "case.accordion.basic": "Basic usage",
+
+  "case.accordion.multiple": "Allow multiple open",
+
+  "case.accordion.sizes": "Different sizes",
+
+  "case.accordion.with_icon": "With icon and disabled",
+
+  "case.accordion.nested": "Nested accordion",
+
+  "case.accordion.section1": "Section 1",
+
+  "case.accordion.section2": "Section 2",
+
+  "case.accordion.section3": "Section 3",
+
+  "case.accordion.content1": "Content for section 1.",
+
+  "case.accordion.content2": "Content for section 2.",
+
+  "case.accordion.content3": "Content for section 3.",
+
+  "case.accordion.small": "Small item",
+
+  "case.accordion.large": "Large item",
+
+  "case.accordion.settings": "Settings",
+
+  "case.accordion.disabled": "Disabled item",
+
+  "case.accordion.parent": "Parent (nested)",
+
+  "case.accordion.child1": "Child 1",
+
+  "case.accordion.child2": "Child 2",
+
   "case.i18n.title": "i18n with t()",
 
   "case.status_bar.title": "Status Bar",

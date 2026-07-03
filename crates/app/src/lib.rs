@@ -14,8 +14,7 @@ pub mod resources;
 
 pub use application::{NoWindow, RmlApplication};
 pub use contribution::{
-    build_activity_panels, bootstrap_contributions, ensure_contribution_registry, extract_visual,
-    get_or_create_entity, visual_entity, ContributionRegistryExt,
+    ensure_contribution_registry, get_or_create_entity, visual_entity, ContributionRegistryExt,
 };
 pub use lifecycle::IAppLifecycle;
 pub use resources::{

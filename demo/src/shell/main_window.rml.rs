@@ -9,17 +9,24 @@ use rml_ui::{ActivityBar, MenuItems, StatusBarItems, TabItem};
 
 use crate::cases::{self, OpenTab};
 use crate::shell::activity_panel::ActivityPanel;
-use crate::shell::shell_chrome::{map_menu_items, map_status_items};
+use crate::shell::shell_chrome::{
+    build_activity_panels_from, map_menu_items, map_status_items, ContribEntry, VisualEntry,
+};
 
-/// Demo：ActivityPanel 通过它回调 MainWindow::open_case（在 `host_on_loaded` 中注册）。
+/// Demo：ActivityPanel 通过它回调 MainWindow::open_case（在 `on_loaded` 中注册）。
 pub struct DemoShellHost(pub WeakEntity<MainWindow>);
 
 impl Global for DemoShellHost {}
 
 /// MainWindow：`demo.shell` host + 视觉消费者。
 ///
-/// `#[window]` + `#[contributehost]` 叠加：宏自动注入 `entries`/`i18n_version` 字段 +
-/// 生成 `IContributionHost`/`ILifecycle` impl。业务代码只实现 `IHostEntity` 钩子。
+/// `#[window]` + `#[contributehost]` 叠加：用户手写 `impl IContributionHost`（override
+/// `add`/`add_visual`/`remove`）+ `impl ILifecycle`（在 `on_loaded` 中调
+/// `__rml_install_host` + `drain_host_ops`）。宏仅生成 `pub const ID` + `__rml_install_host`。
+///
+/// 贡献存储分两类：
+/// - `entries`：非视觉贡献（menu/status），由 `add` 受理
+/// - `visual_entries`：视觉贡献（case/activity），由 `add_visual` 受理
 #[window]
 #[contributehost(id = "demo.shell")]
 #[derive(Default)]
@@ -33,14 +40,58 @@ pub struct MainWindow {
     menu_items: MenuItems,
     menu_commands: HashMap<String, Arc<dyn ICommand>>,
     slot_left_size: gpui::Pixels,
-    // entries, i18n_version ← #[contributehost] 自动注入
+    // 非视觉贡献（menu/status）
+    entries: std::sync::RwLock<Vec<ContribEntry>>,
+    // 视觉贡献（case/activity）
+    visual_entries: std::sync::RwLock<Vec<VisualEntry>>,
+    // host handle receiver（drain 在 on_loaded / refresh 中进行）
+    host_rx: Option<rml_core::flume::Receiver<rml_app::contribution::HostOp>>,
 }
 
-// 无 impl IContributionHost —— #[contributehost] 宏自动生成
-// 无 impl ILifecycle —— #[contributehost] 宏自动生成
+impl IContributionHost for MainWindow {
+    fn id(&self) -> &'static str {
+        Self::ID
+    }
 
-impl IHostEntity for MainWindow {
-    fn host_on_loaded(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
+    fn add(&self, contribution: Arc<dyn IContribution>, options: ContributionOptions) {
+        self.entries.write().unwrap().push((contribution, options));
+    }
+
+    fn add_visual(
+        &self,
+        contribution: Arc<dyn IVisualContribution>,
+        options: ContributionOptions,
+    ) {
+        self.visual_entries
+            .write()
+            .unwrap()
+            .push((contribution, options));
+    }
+
+    fn remove(&self, contribution_id: &str) {
+        self.entries
+            .write()
+            .unwrap()
+            .retain(|(c, _)| c.id() != contribution_id);
+        self.visual_entries
+            .write()
+            .unwrap()
+            .retain(|(c, _)| c.id() != contribution_id);
+    }
+}
+
+impl ILifecycle for MainWindow {
+    fn on_loaded(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
+        // 1. 注册 host handle + 触发 demo.shell 的所有贡献注册（同步入队）
+        let rx = Self::__rml_install_host(cx.entity(), cx);
+        self.host_rx = Some(rx);
+
+        // 2. drain 队列中的 HostOp → 调用自身 IContributionHost::add/add_visual
+        if let Some(rx) = &self.host_rx {
+            rml_app::contribution::drain_host_ops(rx, self);
+        }
+
+        // 3. 初始化 welcome tab / DemoShellHost / menu_commands
         if self.open_tabs.is_empty() {
             self.open_tabs.push(OpenTab {
                 id: "welcome".to_string(),
@@ -54,7 +105,6 @@ impl IHostEntity for MainWindow {
         let shell_weak = cx.weak_entity();
         cx.set_global(DemoShellHost(shell_weak));
 
-        // menu_commands 初始化
         self.menu_commands.insert(
             "menu.file.new".to_string(),
             Arc::new(RelayCommand::new(cx, |this, cx| {
@@ -100,11 +150,14 @@ impl IHostEntity for MainWindow {
             })),
         );
 
-        // 刷新 shell chrome（从 self.entries 构建 menu/status items）
+        // 4. 刷新 shell chrome（从 entries 构建 menu/status items）
         self.refresh_shell_chrome();
 
-        // 构建 ActivityBar：从 entries 中 kind="activity" 的视觉贡献自动提取
-        let panels = rml_app::contribution::build_activity_panels(&*self.entries.read());
+        // 5. 构建 ActivityBar：从 visual_entries 中 slot="activity" 的视觉贡献
+        let panels = {
+            let entries = self.visual_entries.read().unwrap();
+            build_activity_panels_from(&entries)
+        };
         self.activity_bar = Some(cx.new(|_| ActivityBar::new(panels)));
 
         // observe ActivityPanel Entity（框架缓存）→ ActivityBar 重渲
@@ -131,12 +184,14 @@ impl IHostEntity for MainWindow {
             })
             .detach();
         }
+
+        cx.notify();
     }
 }
 
 impl MainWindow {
     fn refresh_shell_chrome(&mut self) {
-        let entries = self.entries.read();
+        let entries = self.entries.read().unwrap();
         self.status_items = map_status_items(&entries);
         self.menu_items = map_menu_items(&entries, &self.menu_commands);
     }
@@ -148,22 +203,18 @@ impl MainWindow {
         window: &mut gpui::Window,
         cx: &mut gpui::Context<Self>,
     ) -> gpui::AnyElement {
-        use rml_app::contribution::extract_visual;
-        let entries = self.entries.read();
-        if let Some(entry) = entries
+        let entries = self.visual_entries.read().unwrap();
+        if let Some((visual, _)) = entries
             .iter()
-            .find(|e| e.contribution.id() == self.active_case_id)
+            .find(|(c, _)| c.id() == self.active_case_id)
         {
-            if let Some(visual) = extract_visual(&entry.contribution) {
-                return visual.render(window, cx);
-            }
+            return visual.render(window, cx);
         }
         gpui::div().into_any_element()
     }
 
     #[computed]
     pub fn tab_bar_items(&self) -> Vec<TabItem> {
-        let _ = self.i18n_version;
         self.open_tabs
             .iter()
             .map(|tab| TabItem::new(tab.title.as_str()))
@@ -219,8 +270,7 @@ impl MainWindow {
 
     fn apply_switch_en(&mut self, cx: &mut Context<Self>) {
         cx.set_i18n("en-US");
-        // I18nState 变化触发 observe_global → 自动 bump i18n_version + on_locale_changed
-        // 手动刷新 tab 标题（on_locale_changed 不处理 tab 标题）
+        // set_i18n 已触发 refresh_windows；手动刷新 tab 标题与 shell chrome
         let mut tabs = std::mem::take(&mut self.open_tabs);
         tabs.iter_mut().for_each(|tab| {
             tab.title = cx.t(cases::case_title_key(&tab.id)).to_string();

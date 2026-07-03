@@ -9,8 +9,6 @@ use std::collections::HashMap;
 use std::sync::{OnceLock, RwLock};
 
 use gpui::{App, AppContext};
-use rml_core::contribution::ContributionEntry;
-use rml_ui::{ActivityPanels, IActivityPanel, VisualActivityPanel};
 
 type CacheMap = HashMap<TypeId, Box<dyn Any + Send + Sync>>;
 
@@ -51,19 +49,4 @@ where
     T: 'static + Send + Sync + Default,
 {
     get_or_create_entity::<T>(cx)
-}
-
-/// 从 host entries 构建 `ActivityPanels`（`kind="activity"` 的视觉贡献）。
-///
-/// 过滤 `effective_slot() == "activity"` 的贡献，经 `extract_visual` 提取视觉贡献，
-/// 包装为 `VisualActivityPanel`。供 MainWindow 在 `host_on_loaded` 中调用。
-pub fn build_activity_panels(entries: &[ContributionEntry]) -> ActivityPanels {
-    entries
-        .iter()
-        .filter(|e| e.options.effective_slot() == Some("activity"))
-        .filter_map(|e| super::extract_visual(&e.contribution))
-        .filter_map(VisualActivityPanel::new)
-        .map(std::sync::Arc::new)
-        .map(|p| p as std::sync::Arc<dyn IActivityPanel>)
-        .collect()
 }

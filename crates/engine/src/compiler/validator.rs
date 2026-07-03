@@ -143,7 +143,9 @@ fn validate_unknown_props(elem: &Element) -> Result<(), ValidationError> {
     }
 
     // 扩展组件（PascalCase / kebab-case / 特殊小写如 menu/status_bar）
-    if tags::is_extension_component(tag) {
+    // 或 item builder 子标签（如 AccordionItem，不在 component_lookup 中，
+    // 通过 is_item_builder_tag 识别）
+    if tags::is_extension_component(tag) || tags::is_item_builder_tag(tag) {
         for attr in &elem.attributes {
             if let Attribute::Bind { name, .. } | Attribute::Event { name, .. } = attr {
                 if !crate::compiler::props_registry::is_prop_registered(tag, name) {

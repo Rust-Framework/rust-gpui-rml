@@ -73,6 +73,10 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
     ("MenuBar", &["items"]),
     ("menu", &["items"]),
     ("status_bar", &["items"]),
+    // Accordion 专用
+    ("Accordion", &["multiple", "bordered", "on_toggle_click"]),
+    // AccordionItem 专用（item builder 子标签，不在 component_lookup 中）
+    ("AccordionItem", &["title", "open", "icon"]),
 ];
 
 /// 查询组件的所有已注册属性（通用 + 专用）
@@ -248,10 +252,16 @@ mod tests {
 
     /// 验证 COMPONENT_PROPS 中的每个 tag 都在 tags::component_lookup 中注册
     /// （避免注册表与路由表不一致）
+    ///
+    /// 例外：item builder 子标签（如 `AccordionItem`）通过 `is_item_builder_tag`
+    /// 识别，不在 `component_lookup` 中注册——避免被误用为顶层扩展组件。
     #[test]
     fn component_props_tags_align_with_routing_table() {
         use crate::tags;
         for (tag, _) in COMPONENT_PROPS {
+            if tags::is_item_builder_tag(tag) {
+                continue;
+            }
             assert!(
                 tags::component_lookup(tag).is_some(),
                 "COMPONENT_PROPS contains tag '{}' but tags::component_lookup returns None",

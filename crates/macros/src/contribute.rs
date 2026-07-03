@@ -1,5 +1,8 @@
 //! `#[contribute]` —— 为类型生成 `IContribution`、`IVisualContribution`（视觉贡献）impl +
-//! 视觉提取器注册 + 单行注册函数。build.rs 扫描汇总为 `register_rml_contributions`。
+//! 单行注册函数。build.rs 扫描汇总为 `register_rml_contributions_for`。
+//!
+//! 视觉贡献（`#[contribute]` + `#[component]` 叠加）通过 `register_visual` 直达 host 的 `add_visual`，
+//! 无需 `VisualExtractor` 转换。
 
 use proc_macro2::TokenStream;
 
@@ -180,10 +183,6 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
         "__rml_register_{}",
         struct_name.to_string().to_lowercase()
     );
-    let visual_extractor_fn = format_ident!(
-        "__rml_register_visual_extractor_{}",
-        struct_name.to_string().to_lowercase()
-    );
 
     let host_id = host_id_tokens(&args.host_id);
     let id = &args.id;
@@ -250,7 +249,7 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
 
     // 视觉贡献契约：`#[contribute]` + `#[component]` 叠加时自动实现。
     // `render` 通过框架实体缓存复用 Entity——避免每次渲染创建新实例导致状态丢失。
-    // host 通过 `extract_visual` 获取 `Arc<dyn IVisualContribution>` 后直接调 `render(window, cx)`。
+    // host 通过 `add_visual` 直接收到 `Arc<dyn IVisualContribution>`，无需 `VisualExtractor` 转换。
     let visual_impl = if use_component_visual {
         quote! {
             impl rml_core::contribution::IVisualContribution for #struct_name {
@@ -266,28 +265,34 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
         quote! {}
     };
 
-    // 视觉提取器注册：`#[ctor::ctor]` 在进程启动期将 `TypeId::of::<T>()` → 提取器
-    // 写入进程级静态表。利用 `Any` supertrait + trait upcasting coercion 实现
-    // `Arc<dyn IContribution>` → `Arc<dyn Any + Send + Sync>` → `Arc::downcast::<T>()` → `Arc<dyn IVisualContribution>`。
-    let visual_extractor = if use_component_visual {
+    // 注册调用：视觉贡献走 register_visual，能力贡献走 register。
+    // register/register_visual 同步路由到 host.add/add_visual（host 未注册时 drop）。
+    let register_call = if use_component_visual {
         quote! {
-            #[rml_core::ctor::ctor]
-            fn #visual_extractor_fn() {
-                rml_app::contribution::register_visual_extractor(
-                    std::any::TypeId::of::<#struct_name>(),
-                    |contrib: &std::sync::Arc<dyn rml_core::contribution::IContribution>|
-                        -> Option<std::sync::Arc<dyn rml_core::contribution::IVisualContribution>>
-                    {
-                        let any: std::sync::Arc<dyn std::any::Any + Send + Sync> = contrib.clone();
-                        any.downcast::<#struct_name>()
-                            .ok()
-                            .map(|a| a as std::sync::Arc<dyn rml_core::contribution::IVisualContribution>)
-                    },
-                );
-            }
+            cx.get_contribution_registry().register_visual(
+                #host_id,
+                std::sync::Arc::new(#struct_name::default()),
+                rml_core::contribution::ContributionOptions::new()
+                    #slot
+                    #parent_id
+                    #order
+                    #group
+                    #align,
+            );
         }
     } else {
-        quote! {}
+        quote! {
+            cx.get_contribution_registry().register(
+                #host_id,
+                std::sync::Arc::new(#struct_name::default()),
+                rml_core::contribution::ContributionOptions::new()
+                    #slot
+                    #parent_id
+                    #order
+                    #group
+                    #align,
+            );
+        }
     };
 
     quote! {
@@ -313,21 +318,10 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
 
         #visual_impl
 
-        #visual_extractor
-
-        /// 由 build.rs 生成的 `register_rml_contributions` 统一调用；用户无需手写清单。
+        /// 由 build.rs 生成的 `register_rml_contributions_for(cx, host_id)` 按 host_id 分组调用。
         pub fn #register_fn(cx: &mut gpui::App) {
             use rml_app::contribution::ContributionRegistryExt;
-            cx.get_contribution_registry().register(
-                #host_id,
-                std::sync::Arc::new(#struct_name::default()),
-                rml_core::contribution::ContributionOptions::new()
-                    #slot
-                    #parent_id
-                    #order
-                    #group
-                    #align,
-            );
+            #register_call
         }
     }
 }

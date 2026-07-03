@@ -1,0 +1,65 @@
+<component>
+    <div v_flex="" class="case-pane">
+        <h2>{t("case.accordion.title")}</h2>
+        <p>{status_text}</p>
+
+        <h3>{t("case.accordion.basic")}</h3>
+        <Accordion bordered="">
+            <AccordionItem title={t("case.accordion.section1")} open="">
+                <p>{t("case.accordion.content1")}</p>
+            </AccordionItem>
+            <AccordionItem title={t("case.accordion.section2")}>
+                <p>{t("case.accordion.content2")}</p>
+            </AccordionItem>
+            <AccordionItem title={t("case.accordion.section3")}>
+                <p>{t("case.accordion.content3")}</p>
+            </AccordionItem>
+        </Accordion>
+
+        <h3>{t("case.accordion.multiple")}</h3>
+        <Accordion multiple="" bordered="">
+            <AccordionItem title={t("case.accordion.section1")} open="">
+                <p>{t("case.accordion.content1")}</p>
+            </AccordionItem>
+            <AccordionItem title={t("case.accordion.section2")} open="">
+                <p>{t("case.accordion.content2")}</p>
+            </AccordionItem>
+        </Accordion>
+
+        <h3>{t("case.accordion.sizes")}</h3>
+        <Accordion small="" bordered="" on_toggle_click={on_toggle}>
+            <AccordionItem title={t("case.accordion.small")}>
+                <p>{t("case.accordion.content1")}</p>
+            </AccordionItem>
+        </Accordion>
+        <Accordion large="" bordered="" on_toggle_click={on_toggle}>
+            <AccordionItem title={t("case.accordion.large")}>
+                <p>{t("case.accordion.content1")}</p>
+            </AccordionItem>
+        </Accordion>
+
+        <h3>{t("case.accordion.with_icon")}</h3>
+        <Accordion bordered="" on_toggle_click={on_toggle}>
+            <AccordionItem title={t("case.accordion.settings")} icon="Settings">
+                <p>{t("case.accordion.content1")}</p>
+            </AccordionItem>
+            <AccordionItem title={t("case.accordion.disabled")} icon="Bell" disabled="true">
+                <p>{t("case.accordion.content2")}</p>
+            </AccordionItem>
+        </Accordion>
+
+        <h3>{t("case.accordion.nested")}</h3>
+        <Accordion bordered="">
+            <AccordionItem title={t("case.accordion.parent")}>
+                <Accordion bordered="" multiple="">
+                    <AccordionItem title={t("case.accordion.child1")}>
+                        <p>{t("case.accordion.content1")}</p>
+                    </AccordionItem>
+                    <AccordionItem title={t("case.accordion.child2")}>
+                        <p>{t("case.accordion.content2")}</p>
+                    </AccordionItem>
+                </Accordion>
+            </AccordionItem>
+        </Accordion>
+    </div>
+</component>

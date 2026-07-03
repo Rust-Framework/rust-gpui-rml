@@ -41,6 +41,7 @@ pub fn init(cx: &mut gpui::App) {
 // 直接 re-export 高频组件，避免在每个使用点写完整路径
 pub use gpui_component::{
     Icon, IconName, Root, TitleBar, WindowExt,
+    accordion::{Accordion, AccordionItem},
     badge::Badge,
     button::{Button, ButtonGroup},
     checkbox::Checkbox,
