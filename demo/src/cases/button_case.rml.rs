@@ -26,8 +26,6 @@ impl IContribution for ButtonCase {
     }
 }
 
-impl ILifecycle for ButtonCase {}
-
 impl ButtonCase {
     #[computed]
     pub fn button_demo_text(&self) -> String {

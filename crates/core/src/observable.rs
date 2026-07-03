@@ -19,6 +19,10 @@ use flume::Sender;
 /// - `read()` 返回 `RwLockReadGuard`，`version()` 为 lock-free 读取
 ///
 /// 不实现 `DerefMut`——强制通过 mutation 方法修改，确保 version bump。
+#[deprecated(
+    since = "0.2.0",
+    note = "ObservableVec 与框架版本号机制脱节，请使用 Vec<T> + #[command] 自动 bump_version + cx.notify()"
+)]
 pub struct ObservableVec<T> {
     inner: RwLock<Vec<T>>,
     version: AtomicU64,
@@ -26,6 +30,7 @@ pub struct ObservableVec<T> {
 }
 
 impl<T> ObservableVec<T> {
+    #[deprecated(since = "0.2.0", note = "使用 Vec<T> + #[command] 替代")]
     pub fn new() -> Self {
         Self {
             inner: RwLock::new(Vec::new()),
@@ -36,6 +41,7 @@ impl<T> ObservableVec<T> {
 
     /// 创建带通知 channel 的 `ObservableVec`。
     /// mutation 方法会发送 `()` 到 channel，供后台任务接收后调用 `cx.notify()`。
+    #[deprecated(since = "0.2.0", note = "使用 Vec<T> + #[command] + cx.notify() 替代")]
     pub fn with_notifier(notify: Sender<()>) -> Self {
         Self {
             inner: RwLock::new(Vec::new()),
@@ -124,11 +130,13 @@ impl<T> ObservableVec<T> {
 
 impl<T> Default for ObservableVec<T> {
     fn default() -> Self {
+        #[allow(deprecated)]
         Self::new()
     }
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
 

@@ -92,10 +92,12 @@ pub fn apply_event(name: &str, handler: &EventHandler, _ctx: &CodegenCtx) -> Str
             // .on_click(cx.listener(move |this, ev: &gpui::ClickEvent, _window, cx| {
             //     let rml_ev = rml_convert::from_gpui_click(ev);
             //     this.increment(&rml_ev, cx);
+            //     if rml_ev.is_propagation_stopped() { cx.stop_propagation(); }
             // }))
             format!(
                 ".{}(cx.listener(move |this, ev: &{}, _window, cx| {{\n                    \
-                 let rml_ev = {};\n                    this.{}(&rml_ev, cx);\n                }}))",
+                 let rml_ev = {};\n                    this.{}(&rml_ev, cx);\n                    \
+                 if rml_ev.is_propagation_stopped() {{ cx.stop_propagation(); }}\n                }}))",
                 on_method, gpui_type, convert_expr, method
             )
         }
@@ -103,7 +105,8 @@ pub fn apply_event(name: &str, handler: &EventHandler, _ctx: &CodegenCtx) -> Str
             if args.is_empty() {
                 format!(
                     ".{}(cx.listener(move |this, ev: &{}, _window, cx| {{\n                    \
-                     let rml_ev = {};\n                    this.{}(&rml_ev, cx);\n                }}))",
+                     let rml_ev = {};\n                    this.{}(&rml_ev, cx);\n                    \
+                     if rml_ev.is_propagation_stopped() {{ cx.stop_propagation(); }}\n                }}))",
                     on_method, gpui_type, convert_expr, method
                 )
             } else {
@@ -112,7 +115,8 @@ pub fn apply_event(name: &str, handler: &EventHandler, _ctx: &CodegenCtx) -> Str
                 format!(
                     ".{}(cx.listener(move |this, ev: &{}, _window, cx| {{\n                    \
                      let p0 = {}.clone();\n                    let rml_ev = {};\n                    \
-                     this.{}(p0, &rml_ev, cx);\n                }}))",
+                     this.{}(p0, &rml_ev, cx);\n                    \
+                     if rml_ev.is_propagation_stopped() {{ cx.stop_propagation(); }}\n                }}))",
                     on_method, gpui_type, arg, convert_expr, method
                 )
             }
@@ -336,6 +340,50 @@ mod tests {
         assert_eq!(apply_event("oninput", &handler, &ctx()), "");
         assert_eq!(apply_event("onblur", &handler, &ctx()), "");
         assert_eq!(apply_event("oncustom", &handler, &ctx()), "");
+    }
+
+    // ─── stop_propagation 检查注入 ───
+
+    #[test]
+    fn stop_propagation_check_injected_ident() {
+        // Ident handler 的闭包末尾应注入 stop_propagation 检查
+        let handler = EventHandler::Ident("increment".into());
+        let code = apply_event("onclick", &handler, &ctx());
+        assert!(
+            code.contains("if rml_ev.is_propagation_stopped() { cx.stop_propagation(); }"),
+            "Ident handler 应注入 stop_propagation 检查，实际：\n{}",
+            code
+        );
+    }
+
+    #[test]
+    fn stop_propagation_check_injected_method_name() {
+        let handler = EventHandler::MethodName("handle_click".into());
+        let code = apply_event("onclick", &handler, &ctx());
+        assert!(
+            code.contains("if rml_ev.is_propagation_stopped() { cx.stop_propagation(); }"),
+            "MethodName handler 应注入 stop_propagation 检查"
+        );
+    }
+
+    #[test]
+    fn stop_propagation_check_injected_with_args_empty() {
+        let handler = EventHandler::WithArgs("increment".into(), vec![]);
+        let code = apply_event("onclick", &handler, &ctx());
+        assert!(
+            code.contains("if rml_ev.is_propagation_stopped() { cx.stop_propagation(); }"),
+            "WithArgs(空) handler 应注入 stop_propagation 检查"
+        );
+    }
+
+    #[test]
+    fn stop_propagation_check_injected_with_args_single() {
+        let handler = EventHandler::WithArgs("set_value".into(), vec!["42".into()]);
+        let code = apply_event("onclick", &handler, &ctx());
+        assert!(
+            code.contains("if rml_ev.is_propagation_stopped() { cx.stop_propagation(); }"),
+            "WithArgs(单参) handler 应注入 stop_propagation 检查"
+        );
     }
 
     // ─── apply_hover_event ───

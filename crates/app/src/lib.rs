@@ -11,12 +11,14 @@ pub mod application;
 pub mod contribution;
 pub mod lifecycle;
 pub mod resources;
+pub mod workbench;
 
 pub use application::{NoWindow, RmlApplication};
 pub use contribution::{
     ensure_contribution_registry, get_or_create_entity, visual_entity, ContributionRegistryExt,
 };
 pub use lifecycle::IAppLifecycle;
+pub use workbench::WorkbenchManagerExt;
 pub use resources::{
     load_i18n_catalog, load_i18n_from_json, load_theme_colors, load_theme_css,
     DEFAULT_I18N_DIR, DEFAULT_THEMES_DIR,

@@ -13,6 +13,10 @@ pub use ctor;
 /// （用户 crate 无需显式依赖 `flume`）。
 pub use flume;
 
+/// 重导出 `url` crate,供工作台 Uri 类型使用
+/// （用户 crate 无需显式依赖 `url`）。
+pub use url;
+
 pub mod ability;
 pub mod assets;
 pub mod binding;
@@ -23,6 +27,7 @@ pub mod component;
 pub mod computed_cache;
 pub mod contribution;
 pub mod converter;
+pub mod workbench;
 pub mod element_ref;
 pub mod event;
 pub mod events;

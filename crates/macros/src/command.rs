@@ -2,6 +2,7 @@
 //!
 //! Phase B-2：自动注入字段版本号 bump 与 `cx.notify()`，用户无需手写。
 //! Phase B-3：支持 `no_notify` 参数，让用户控制 notify 时机。
+//! Phase B-3：支持 `debounce = "100ms"` 参数，窗口内重复调用只触发一次。
 //!
 //! ## 行为
 //!
@@ -17,7 +18,7 @@
 //!
 //! - 无参数：默认行为（注入 notify）
 //! - `no_notify`：不注入 notify（仍注入 bump_version）
-//! - `debounce = "100ms"`：预留，本版本不实现逻辑
+//! - `debounce = "100ms"`：debounce 时间窗口（支持 ms/s 后缀），窗口内重复调用只触发一次
 //!
 //! ## 限制
 //!
@@ -36,6 +37,8 @@ use syn::{
 #[derive(Default)]
 struct CommandArgs {
     no_notify: bool,
+    /// debounce 时间窗口（毫秒）。None 表示不启用 debounce。
+    debounce_ms: Option<u64>,
 }
 
 impl syn::parse::Parse for CommandArgs {
@@ -46,9 +49,18 @@ impl syn::parse::Parse for CommandArgs {
             match ident.to_string().as_str() {
                 "no_notify" => args.no_notify = true,
                 "debounce" => {
-                    // debounce = "100ms"（预留，解析但不使用）
                     let _: Token![=] = input.parse()?;
-                    let _: LitStr = input.parse()?;
+                    let lit: LitStr = input.parse()?;
+                    let s = lit.value();
+                    args.debounce_ms = Some(parse_duration_ms(&s).ok_or_else(|| {
+                        syn::Error::new(
+                            lit.span(),
+                            format!(
+                                "invalid debounce duration: {:?} (expected like \"100ms\" or \"2s\")",
+                                s
+                            ),
+                        )
+                    })?);
                 }
                 other => {
                     return Err(syn::Error::new(
@@ -119,6 +131,33 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
         }
     }
     item.block.stmts = new_stmts;
+
+    // 若指定了 debounce，在方法体开头注入时间窗口检查
+    // 仅对返回 () 的方法生效（return; 需要 () 返回类型）
+    // 实现说明：用函数局部 static AtomicU64 持久化上次调用时间戳。
+    //   - `#[command]` 是方法级宏，无法向结构体注入字段；
+    //   - 函数局部 static 跨调用持久化、天然 Send+Sync；
+    //   - 代价：同一 ViewModel 类型的多个实例共享 debounce 状态（典型 UI 单窗口场景无影响）。
+    if let Some(window_ms) = cmd_args.debounce_ms {
+        if let ReturnType::Default = item.sig.output {
+            let debounce_check: Stmt = parse_quote! {
+                {
+                    static __RML_DEBOUNCE_LAST: ::std::sync::atomic::AtomicU64 =
+                        ::std::sync::atomic::AtomicU64::new(0);
+                    let __rml_now: u64 = ::std::time::SystemTime::now()
+                        .duration_since(::std::time::UNIX_EPOCH)
+                        .map(|d| d.as_millis() as u64)
+                        .unwrap_or(0);
+                    let __rml_last: u64 = __RML_DEBOUNCE_LAST.load(::std::sync::atomic::Ordering::Relaxed);
+                    __RML_DEBOUNCE_LAST.store(__rml_now, ::std::sync::atomic::Ordering::Relaxed);
+                    if __rml_last != 0 && __rml_now >= __rml_last && __rml_now - __rml_last < #window_ms {
+                        return;
+                    }
+                }
+            };
+            item.block.stmts.insert(0, debounce_check);
+        }
+    }
 
     // 若检测到字段修改且有 Context 参数且方法返回 () 且未指定 no_notify，末尾追加 cx.notify()
     // 返回类型非 () 时不注入（避免改变返回值类型，用户需手动调用）
@@ -244,6 +283,23 @@ fn extract_context_param(inputs: &syn::punctuated::Punctuated<FnArg, syn::token:
     None
 }
 
+/// 解析 debounce 时间字符串为毫秒数
+///
+/// 支持后缀：
+/// - `"100ms"` → 100
+/// - `"2s"` → 2000
+/// - `"500"` → 500（无后缀视为毫秒）
+fn parse_duration_ms(s: &str) -> Option<u64> {
+    let s = s.trim();
+    if let Some(num) = s.strip_suffix("ms") {
+        num.trim().parse().ok()
+    } else if let Some(num) = s.strip_suffix('s') {
+        num.trim().parse::<u64>().ok().map(|n| n * 1000)
+    } else {
+        s.parse().ok()
+    }
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 //  以下函数保留供未来元信息生成使用（当前未使用，标记 #[allow(dead_code)]）
 // ──────────────────────────────────────────────────────────────────────────
@@ -299,4 +355,81 @@ fn extract_params(
         }
     }
     params
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_duration_ms_suffix() {
+        assert_eq!(parse_duration_ms("100ms"), Some(100));
+        assert_eq!(parse_duration_ms("2s"), Some(2000));
+        assert_eq!(parse_duration_ms("500"), Some(500));
+        assert_eq!(parse_duration_ms("1ms"), Some(1));
+        assert_eq!(parse_duration_ms("0ms"), Some(0));
+        assert_eq!(parse_duration_ms("0s"), Some(0));
+    }
+
+    #[test]
+    fn parse_duration_ms_with_spaces() {
+        assert_eq!(parse_duration_ms(" 100ms "), Some(100));
+        assert_eq!(parse_duration_ms("2 s"), Some(2000));
+        assert_eq!(parse_duration_ms("  500  "), Some(500));
+    }
+
+    #[test]
+    fn parse_duration_ms_invalid() {
+        assert_eq!(parse_duration_ms("abc"), None);
+        assert_eq!(parse_duration_ms("ms"), None);
+        assert_eq!(parse_duration_ms("-1ms"), None);
+        assert_eq!(parse_duration_ms(""), None);
+        assert_eq!(parse_duration_ms("s"), None);
+    }
+
+    #[test]
+    fn command_args_default_no_debounce() {
+        let args = CommandArgs::default();
+        assert_eq!(args.debounce_ms, None);
+        assert!(!args.no_notify);
+    }
+
+    #[test]
+    fn command_args_parse_no_notify() {
+        let args: CommandArgs = syn::parse_str("no_notify").unwrap();
+        assert!(args.no_notify);
+        assert_eq!(args.debounce_ms, None);
+    }
+
+    #[test]
+    fn command_args_parse_debounce_ms() {
+        let args: CommandArgs = syn::parse_str("debounce = \"100ms\"").unwrap();
+        assert_eq!(args.debounce_ms, Some(100));
+        assert!(!args.no_notify);
+    }
+
+    #[test]
+    fn command_args_parse_debounce_seconds() {
+        let args: CommandArgs = syn::parse_str("debounce = \"2s\"").unwrap();
+        assert_eq!(args.debounce_ms, Some(2000));
+    }
+
+    #[test]
+    fn command_args_parse_debounce_and_no_notify() {
+        let args: CommandArgs = syn::parse_str("no_notify, debounce = \"50ms\"").unwrap();
+        assert!(args.no_notify);
+        assert_eq!(args.debounce_ms, Some(50));
+    }
+
+    #[test]
+    fn command_args_parse_debounce_invalid_errors() {
+        let result: syn::Result<CommandArgs> = syn::parse_str("debounce = \"abc\"");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn command_args_parse_unknown_arg_errors() {
+        let result: syn::Result<CommandArgs> = syn::parse_str("unknown_arg");
+        assert!(result.is_err());
+    }
 }

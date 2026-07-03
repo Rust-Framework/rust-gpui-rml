@@ -62,6 +62,18 @@ pub struct ValidationRuleSet {
     pub validator_type: Option<String>,
 }
 
+/// `<input model={field} oninput={fn} onchange={fn} />` 的 handler 映射（Phase B-3）
+///
+/// 由 `collect_model_input_handlers` 从 AST 收集，codegen 在 `gen_input_state_impl`
+/// 的 `cx.subscribe` 回调内，model 反向同步之后、`cx.notify()` 之前调用 handler。
+#[derive(Debug, Clone, Default)]
+pub struct InputHandlers {
+    /// `oninput={method}` 的方法名
+    pub on_input: Option<String>,
+    /// `onchange={method}` 的方法名
+    pub on_change: Option<String>,
+}
+
 /// 用户自定义组件信息（`#[component]` 标注的 struct）
 ///
 /// 由 build.rs 从所有 `.rml.rs` 文件扫描收集，注入 `CodegenCtx.user_components`。
@@ -131,6 +143,17 @@ pub struct CodegenCtx {
     pub field_validations: HashMap<String, ValidationRuleSet>,
     /// RML 中声明 `model={field}` 的字段名（双向绑定 input 专用）
     pub model_fields: Vec<String>,
+    /// `model={field | Converter}` 的 converter 映射（Phase B-2：双向绑定 convert_back）
+    ///
+    /// key 为字段名，value 为 converter 类型名（如 "Currency"）。
+    /// codegen 的 `gen_field_assign_expr` 据此在反向绑定时调用
+    /// `ConverterName::default().convert_back(&value)` 替代裸 `parse`。
+    pub model_converters: HashMap<String, String>,
+    /// `<input model={field} oninput={fn} onchange={fn} />` 的 handler 映射（Phase B-3）
+    ///
+    /// 由 `collect_model_input_handlers` 从 AST 收集。codegen 的 `gen_input_state_impl`
+    /// 据此在 `cx.subscribe` 回调内、model 反向同步之后、`cx.notify()` 之前调用用户 handler。
+    pub model_input_handlers: HashMap<String, InputHandlers>,
     /// 用户自定义组件注册表（`#[component]` 标注的 struct）
     ///
     /// 由 build.rs 从所有 `.rml.rs` 文件扫描收集，key 为 struct 名（如 "CounterCase"）。
@@ -141,6 +164,16 @@ pub struct CodegenCtx {
     pub is_contributehost: bool,
     /// `#[contributehost(bindings = "...")]` — 首次 render 自动 attach Shell 订阅
     pub contribution_bindings: bool,
+    /// 生命周期钩子（Phase B-3：`#[on_loaded]`/`#[on_unloaded]` 自动联动）
+    ///
+    /// 由 build.rs 扫描 `.rml.rs` impl 块中的 `#[on_loaded]`/`#[on_unloaded]` 标注方法收集，
+    /// codegen 据此生成 `impl ILifecycle for <View>` 自动联动。
+    pub lifecycle_hooks: crate::build::scanner::LifecycleHooks,
+    /// 是否已存在手动 `impl ILifecycle for <Type>` 块
+    ///
+    /// 若为 `true` 且 `lifecycle_hooks` 非空：codegen 跳过自动生成并发出 warning
+    /// （避免重复 impl 导致编译错误）。
+    pub has_manual_lifecycle_impl: bool,
 }
 
 /// 代码生成错误
@@ -208,6 +241,8 @@ pub fn compile(source: &str, ctx: &CodegenCtx) -> Result<String, CompileError> {
     validator::validate(&root, &ctx.user_components)?;
     let mut ctx = ctx.clone();
     ctx.model_fields = codegen::collect_model_fields(&root);
+    ctx.model_converters = codegen::collect_model_converters(&root);
+    ctx.model_input_handlers = codegen::collect_model_input_handlers(&root);
     let code = codegen::codegen(&root, &ctx)?;
     Ok(code)
 }

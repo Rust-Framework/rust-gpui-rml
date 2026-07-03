@@ -136,6 +136,7 @@ fn make_ctx_with_validator(field: &str, ty: &str, validator_type: &str) -> Codeg
         user_components: HashMap::new(),
         is_contributehost: false,
         contribution_bindings: false,
+        ..Default::default()
     }
 }
 

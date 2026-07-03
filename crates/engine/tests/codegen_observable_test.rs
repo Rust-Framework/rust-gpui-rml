@@ -30,6 +30,7 @@ fn make_ctx() -> CodegenCtx {
         user_components: HashMap::new(),
         is_contributehost: false,
         contribution_bindings: false,
+        ..Default::default()
     }
 }
 

@@ -91,11 +91,17 @@ pub(super) fn gen_field_value_expr(field: &str, ty: &str) -> String {
 /// 生成反向赋值代码块：`value: SharedString` → `this.field = ...`
 ///
 /// 返回完整代码块（含 parse + 赋值 + 错误处理 + bump_version），调用方不再追加 bump_version。
+///
+/// 当 `converter` 为 `Some` 时，使用 `ConverterName.convert_back(&value.to_string())` 替代裸 `parse`。
 pub(super) fn gen_field_assign_expr(
     field: &str,
     ty: &str,
     validation: Option<&ValidationRuleSet>,
+    converter: Option<&str>,
 ) -> String {
+    if let Some(conv) = converter {
+        return gen_field_assign_with_converter(field, conv);
+    }
     if let Some(v) = validation {
         if let Some(validator_type) = &v.validator_type {
             return gen_field_assign_with_validator(field, ty, validator_type);
@@ -114,6 +120,38 @@ pub(super) fn gen_field_assign_expr(
         "bool" => gen_field_assign_expr_default(field, ty),
         _ => gen_string_field_assign_with_validation(field, rules, custom_msg),
     }
+}
+
+/// Converter 反向转换生成（Phase B-2：`model={field | Converter}`）
+///
+/// 生成 `ConverterName.convert_back(&value.to_string())` 调用：
+/// ```text
+/// match ConverterName.convert_back(&value.to_string()) {
+///     Some(v) => {
+///         this.field = v;
+///         this.__rml_field_errors.insert("field".to_string(), None);
+///         this.__rml_bump_version("field");
+///     }
+///     None => {
+///         this.__rml_field_errors.insert("field".to_string(), Some("转换失败".into()));
+///     }
+/// }
+/// ```
+fn gen_field_assign_with_converter(field: &str, converter: &str) -> String {
+    format!(
+        r#"match {converter}.convert_back(&value.to_string()) {{
+    Some(v) => {{
+        this.{field} = v;
+        this.__rml_field_errors.insert({field:?}.to_string(), None);
+        this.__rml_bump_version({field:?});
+    }}
+    None => {{
+        this.__rml_field_errors.insert({field:?}.to_string(), Some("转换失败".into()));
+    }}
+}}"#,
+        converter = converter,
+        field = field,
+    )
 }
 
 /// IValidate 接口式校验生成（Phase B-3.3）

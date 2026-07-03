@@ -79,6 +79,35 @@ pub struct StructMetadata {
     pub slots: Vec<String>,
     /// 所有 `#[command]` 标注方法名（供 LSP 命令补全/诊断）
     pub commands: Vec<String>,
+    /// 生命周期钩子（Phase B-3：`#[on_loaded]`/`#[on_unloaded]` 自动联动）
+    ///
+    /// scanner 扫描 impl 块中的 `#[on_loaded]`/`#[on_unloaded]` 标注方法，
+    /// codegen 据此生成 `impl ILifecycle` 自动联动，无需用户手动 impl。
+    pub lifecycle_hooks: LifecycleHooks,
+    /// 是否已存在手动 `impl ILifecycle for <Type>` 块
+    ///
+    /// 若为 `true` 且 `lifecycle_hooks` 非空：codegen 跳过自动生成并发出 warning
+    /// （避免重复 impl 导致编译错误）。若为 `true` 且 `lifecycle_hooks` 为空：无操作。
+    pub has_manual_lifecycle_impl: bool,
+}
+
+/// 生命周期钩子元信息（Phase B-3：`#[on_loaded]`/`#[on_unloaded]` 自动联动）
+///
+/// scanner 扫描 `.rml.rs` impl 块中标注 `#[on_loaded]`/`#[on_unloaded]` 的方法名，
+/// codegen 据此生成 `impl ILifecycle for <View>`，在 trait 方法中调用用户方法。
+#[derive(Debug, Default, Clone)]
+pub struct LifecycleHooks {
+    /// `#[on_loaded]` 标注的方法名（至多一个；多次标注以最后一个为准）
+    pub on_loaded: Option<String>,
+    /// `#[on_unloaded]` 标注的方法名（至多一个；多次标注以最后一个为准）
+    pub on_unloaded: Option<String>,
+}
+
+impl LifecycleHooks {
+    /// 是否存在任何钩子（决定 codegen 是否生成 `impl ILifecycle`）
+    pub fn has_any(&self) -> bool {
+        self.on_loaded.is_some() || self.on_unloaded.is_some()
+    }
 }
 
 /// 扫描 `.rml.rs` code-behind 文件，提取所有 `#[window]`/`#[component]` 标注 struct 的元信息。
@@ -181,7 +210,8 @@ pub fn parse_struct_metadata(source: &str) -> HashMap<String, StructMetadata> {
         }
     }
 
-    // 第二遍：扫描 impl 块中的 #[computed] / #[command] 方法
+    // 第二遍：扫描 impl 块中的 #[computed] / #[command] / #[on_loaded] / #[on_unloaded]
+    //         + 检测手动 `impl ILifecycle for <Type>` 块
     for item in &file.items {
         if let Item::Impl(impl_block) = item {
             // 获取 impl 的目标类型名（如 MainWindow）
@@ -189,12 +219,29 @@ pub fn parse_struct_metadata(source: &str) -> HashMap<String, StructMetadata> {
             let Some(meta) = result.get_mut(&ty_name) else {
                 continue;
             };
+
+            // 检测手动 `impl ILifecycle for <Type>` 块
+            // impl_block.trait_ 是 Option<(Option<Not>, Path, For)>，元组 .1 为 Path
+            if let Some((_, trait_path, _)) = &impl_block.trait_ {
+                let trait_name = trait_path
+                    .segments
+                    .last()
+                    .map(|seg| seg.ident.to_string())
+                    .unwrap_or_default();
+                if trait_name == "ILifecycle" {
+                    meta.has_manual_lifecycle_impl = true;
+                }
+            }
+
             for impl_item in &impl_block.items {
                 if let ImplItem::Fn(method) = impl_item {
                     let is_computed = method.attrs.iter().any(|a| a.path().is_ident("computed"));
                     let is_command = method.attrs.iter().any(|a| a.path().is_ident("command"));
-                    // 既非 computed 也非 command：跳过
-                    if !is_computed && !is_command {
+                    let is_on_loaded = method.attrs.iter().any(|a| a.path().is_ident("on_loaded"));
+                    let is_on_unloaded =
+                        method.attrs.iter().any(|a| a.path().is_ident("on_unloaded"));
+                    // 无任何相关属性：跳过
+                    if !is_computed && !is_command && !is_on_loaded && !is_on_unloaded {
                         continue;
                     }
                     let method_name = method.sig.ident.to_string();
@@ -218,7 +265,14 @@ pub fn parse_struct_metadata(source: &str) -> HashMap<String, StructMetadata> {
                         }
                         meta.computed_methods.push(method_name.clone());
                         meta.computed_deps.insert(method_name.clone(), deps);
-                        meta.computed_returns.insert(method_name, return_type);
+                        meta.computed_returns.insert(method_name.clone(), return_type);
+                    }
+                    // #[on_loaded] / #[on_unloaded]：记录方法名供 codegen 生成 impl ILifecycle
+                    if is_on_loaded {
+                        meta.lifecycle_hooks.on_loaded = Some(method_name.clone());
+                    }
+                    if is_on_unloaded {
+                        meta.lifecycle_hooks.on_unloaded = Some(method_name.clone());
                     }
                 }
             }
@@ -228,10 +282,12 @@ pub fn parse_struct_metadata(source: &str) -> HashMap<String, StructMetadata> {
     result
 }
 
-/// 从 `ReturnType` 提取类型字符串（去除 `->` 与空格）
+/// 从 `ReturnType` 提取类型字符串（去除 `->` 与符号周围空格）
 ///
 /// - `-> i32` → `"i32"`
 /// - `-> Vec<TabItem>` → `"Vec<TabItem>"`
+/// - `-> Vec<Arc<dyn IContribution>>` → `"Vec<Arc<dyn IContribution>>"`
+///   （保留 `dyn` 与 trait 名之间的空格，仅清理符号周围空格）
 /// - 无返回类型（`-> ()` 隐式）→ `"()"`
 fn return_type_str(output: &ReturnType) -> String {
     match output {
@@ -239,10 +295,91 @@ fn return_type_str(output: &ReturnType) -> String {
         ReturnType::Type(_, ty) => {
             // 用 quote!.to_string() 保留源码形式（含泛型参数）
             let s = quote!(#ty).to_string();
-            // 清理 token 间空格：`Vec < TabItem >` → `Vec<TabItem>`
-            s.split_whitespace().collect::<String>()
+            normalize_type_whitespace(&s)
         }
     }
+}
+
+/// 规范化类型字符串：移除符号周围的空格，但保留标识符之间的空格
+///
+/// `quote!(#ty).to_string()` 会在 token 间插入空格（如 `Vec < Arc < dyn IContribution > >`）。
+/// 简单的 `split_whitespace().collect()` 会错误合并 `dyn IContribution` → `dynIContribution`。
+/// 本函数仅清理符号（`<` `>` `&` `,` `;` `(` `)` `[` `]` `+` `::`）周围的空格，
+/// 当空格两侧均为标识符字符时保留空格（如 `dyn Trait`、`impl Trait`）。
+///
+/// 此外，`proc_macro2::TokenStream::to_string()` 在某些版本下不会在 `dyn`/`impl` 关键字
+/// 与紧跟的 trait 名之间插入空格（如 `dynIContribution`），本函数会补上缺失的空格。
+fn normalize_type_whitespace(s: &str) -> String {
+    let chars: Vec<char> = s.chars().collect();
+    let mut result = String::with_capacity(chars.len());
+    let mut i = 0;
+    while i < chars.len() {
+        if chars[i].is_whitespace() {
+            // 跳过连续空格，找到下一个非空字符
+            let prev = result.chars().last();
+            let mut j = i;
+            while j < chars.len() && chars[j].is_whitespace() {
+                j += 1;
+            }
+            let next = chars.get(j).copied();
+            // 仅当两侧均为标识符字符时保留空格（如 `dyn IContribution`）
+            let keep = matches!((prev, next),
+                (Some(p), Some(n)) if is_ident_char(p) && is_ident_char(n));
+            if keep {
+                result.push(' ');
+            }
+            i = j;
+        } else {
+            result.push(chars[i]);
+            i += 1;
+        }
+    }
+    insert_keyword_spaces(&result)
+}
+
+/// 在 `dyn`/`impl` 等 type-position 关键字与紧跟的标识符之间补上缺失的空格。
+///
+/// `proc_macro2::TokenStream::to_string()` 可能在 `dyn` 关键字与 trait 名之间
+/// 省略空格（如 `dynIContribution`），导致生成的代码无效。本函数扫描已规范化的
+/// 字符串，在关键字后紧跟标识符字符处插入空格。
+fn insert_keyword_spaces(s: &str) -> String {
+    const KEYWORDS: &[&str] = &["dyn", "impl"];
+    let chars: Vec<char> = s.chars().collect();
+    let mut result = String::with_capacity(s.len());
+    let mut i = 0;
+    let mut prev_char: Option<char> = None;
+    while i < chars.len() {
+        let matched = KEYWORDS.iter().find_map(|kw| {
+            let kw_chars: Vec<char> = kw.chars().collect();
+            if i + kw_chars.len() > chars.len() {
+                return None;
+            }
+            if chars[i..i + kw_chars.len()] != kw_chars[..] {
+                return None;
+            }
+            // 关键字前必须是词边界（非标识符字符）
+            if prev_char.map_or(false, is_ident_char) {
+                return None;
+            }
+            // 关键字后必须紧跟标识符字符（说明缺少空格）
+            let next = chars.get(i + kw_chars.len()).copied();
+            if !next.map_or(false, is_ident_char) {
+                return None;
+            }
+            Some(*kw)
+        });
+        if let Some(kw) = matched {
+            result.push_str(kw);
+            result.push(' ');
+            i += kw.chars().count();
+            prev_char = Some(' ');
+        } else {
+            result.push(chars[i]);
+            prev_char = Some(chars[i]);
+            i += 1;
+        }
+    }
+    result
 }
 
 /// 从 `Type` 提取最内层类型名（如 `MainWindow`、`MyWidget`）
@@ -757,6 +894,34 @@ impl MainWindow {
     }
 
     #[test]
+    fn extracts_computed_return_type_with_dyn_trait() {
+        // `Vec<Arc<dyn IContribution>>` 必须保留 `dyn` 与 `IContribution` 之间的空格
+        // 旧实现 split_whitespace().collect() 会错误合并为 `dynIContribution`
+        let path = write_temp_rml_rs(
+            r#"
+#[window]
+#[derive(Default)]
+pub struct MainWindow {
+    pub count: i32,
+}
+
+impl MainWindow {
+    #[computed]
+    pub fn items(&self) -> Vec<Arc<dyn IContribution>> {
+        Vec::new()
+    }
+}
+        "#,
+        );
+        let meta = scan_struct_metadata(&path);
+        let m = meta.get("MainWindow").unwrap();
+        assert_eq!(
+            m.computed_returns.get("items"),
+            Some(&"Vec<Arc<dyn IContribution>>".to_string())
+        );
+    }
+
+    #[test]
     fn scans_field_types() {
         let path = write_temp_rml_rs(
             r#"
@@ -849,5 +1014,117 @@ impl MainWindow {
         // 语法错误的源码：返回空 map，不 panic
         let meta = parse_struct_metadata("this is not rust code {{{");
         assert!(meta.is_empty());
+    }
+
+    #[test]
+    fn scans_on_loaded_on_unloaded_hooks() {
+        let source = r#"
+#[window]
+#[derive(Default)]
+pub struct MainWindow {
+    pub count: i32,
+}
+
+impl MainWindow {
+    #[on_loaded]
+    pub fn init(&mut self, window: &mut gpui::Window, cx: &mut gpui::Context<Self>) {
+        self.count = 0;
+    }
+
+    #[on_unloaded]
+    pub fn cleanup(&mut self, cx: &mut gpui::Context<Self>) {
+        // 释放资源
+    }
+}
+        "#;
+        let meta = parse_struct_metadata(source);
+        let m = meta.get("MainWindow").unwrap();
+        assert_eq!(m.lifecycle_hooks.on_loaded, Some("init".to_string()));
+        assert_eq!(m.lifecycle_hooks.on_unloaded, Some("cleanup".to_string()));
+        assert!(!m.has_manual_lifecycle_impl);
+    }
+
+    #[test]
+    fn scans_partial_hooks_only_on_loaded() {
+        let source = r#"
+#[component]
+#[derive(Default)]
+pub struct MyWidget {
+    pub label: String,
+}
+
+impl MyWidget {
+    #[on_loaded]
+    pub fn setup(&mut self, cx: &mut gpui::Context<Self>) {}
+}
+        "#;
+        let meta = parse_struct_metadata(source);
+        let m = meta.get("MyWidget").unwrap();
+        assert_eq!(m.lifecycle_hooks.on_loaded, Some("setup".to_string()));
+        assert_eq!(m.lifecycle_hooks.on_unloaded, None);
+        assert!(!m.has_manual_lifecycle_impl);
+    }
+
+    #[test]
+    fn detects_manual_impl_lifecycle() {
+        let source = r#"
+#[component]
+#[derive(Default)]
+pub struct ManualCase {
+    pub x: i32,
+}
+
+impl ManualCase {
+    #[on_loaded]
+    pub fn my_load(&mut self, cx: &mut gpui::Context<Self>) {}
+}
+
+impl rml_core::lifecycle::ILifecycle for ManualCase {
+    fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut gpui::Context<Self>) where Self: Sized {
+        self.my_load(_cx);
+    }
+}
+        "#;
+        let meta = parse_struct_metadata(source);
+        let m = meta.get("ManualCase").unwrap();
+        // 手动 impl + 标注同时存在：scanner 同时记录两者，codegen 负责冲突处理
+        assert!(m.has_manual_lifecycle_impl);
+        assert_eq!(m.lifecycle_hooks.on_loaded, Some("my_load".to_string()));
+    }
+
+    #[test]
+    fn detects_manual_impl_lifecycle_without_hooks() {
+        let source = r#"
+#[component]
+#[derive(Default)]
+pub struct EmptyManualCase {
+    pub x: i32,
+}
+
+impl rml_core::lifecycle::ILifecycle for EmptyManualCase {}
+        "#;
+        let meta = parse_struct_metadata(source);
+        let m = meta.get("EmptyManualCase").unwrap();
+        assert!(m.has_manual_lifecycle_impl);
+        assert!(!m.lifecycle_hooks.has_any());
+    }
+
+    #[test]
+    fn no_lifecycle_hooks_when_unmarked() {
+        let source = r#"
+#[component]
+#[derive(Default)]
+pub struct PlainCase {
+    pub x: i32,
+}
+
+impl PlainCase {
+    pub fn helper(&mut self) {}
+}
+        "#;
+        let meta = parse_struct_metadata(source);
+        let m = meta.get("PlainCase").unwrap();
+        assert!(!m.has_manual_lifecycle_impl);
+        assert!(!m.lifecycle_hooks.has_any());
     }
 }

@@ -25,8 +25,6 @@ impl IContribution for CounterCase {
     }
 }
 
-impl ILifecycle for CounterCase {}
-
 impl CounterCase {
     #[computed]
     pub fn counter_text(&self) -> String {

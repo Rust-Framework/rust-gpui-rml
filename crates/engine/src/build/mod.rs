@@ -300,9 +300,13 @@ impl Builder {
                 field_types: struct_meta.field_types.clone(),
                 field_validations: struct_meta.field_validations.clone(),
                 model_fields: Vec::new(),
+                model_converters: Default::default(),
+                model_input_handlers: Default::default(),
                 user_components: user_components.clone(),
                 is_contributehost: struct_meta.is_contributehost,
                 contribution_bindings: struct_meta.contribution_bindings,
+                lifecycle_hooks: struct_meta.lifecycle_hooks.clone(),
+                has_manual_lifecycle_impl: struct_meta.has_manual_lifecycle_impl,
             };
 
             match compile(&source, &ctx) {

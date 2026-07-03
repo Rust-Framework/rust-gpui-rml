@@ -25,8 +25,6 @@ impl IContribution for MenuCustomCase {
     }
 }
 
-impl ILifecycle for MenuCustomCase {}
-
 impl MenuCustomCase {
     #[computed]
     pub fn dark_mode_label(&self) -> String {

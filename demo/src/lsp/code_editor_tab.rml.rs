@@ -26,8 +26,6 @@ pub struct CodeEditorTab {
     lsp_client: Option<Arc<LspClient>>,
 }
 
-impl ILifecycle for CodeEditorTab {}
-
 impl CodeEditorTab {
     pub fn new(
         file_path: &str,

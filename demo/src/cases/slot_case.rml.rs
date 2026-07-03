@@ -28,8 +28,6 @@ impl IContribution for SlotCase {
     }
 }
 
-impl ILifecycle for SlotCase {}
-
 impl SlotCase {
     #[computed]
     pub fn code_sample(&self) -> String {

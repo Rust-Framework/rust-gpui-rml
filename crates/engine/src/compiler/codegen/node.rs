@@ -115,7 +115,7 @@ fn gen_element(
 
     // model 指令：input/textarea 的双向绑定
     let model_field = elem.directives.iter().find_map(|d| match d {
-        Directive::Model(f) => Some(f.clone()),
+        Directive::Model { field: f, .. } => Some(f.clone()),
         _ => None,
     });
 

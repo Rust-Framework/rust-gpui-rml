@@ -6,8 +6,6 @@ pub struct LoginDialog {
     pub username: String,
 }
 
-impl ILifecycle for LoginDialog {}
-
 impl LoginDialog {
     #[command]
     pub fn on_login(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {

@@ -39,6 +39,15 @@
             </div>
 
             <div class="demo-section">
+                <h3>声明式命令绑定（B-1）</h3>
+                <p><code>command=&#123;save_command&#125;</code> 绑定 <code>Arc&lt;dyn ICommand&gt;</code> 字段，点击经 <code>ICommand::execute</code> 调度：</p>
+                <dropdown-menu>
+                    <Button label="Command" ghost="" />
+                    <menu-item label="Save (Command)" command={save_command} />
+                </dropdown-menu>
+            </div>
+
+            <div class="demo-section">
                 <h3>勾选项</h3>
                 <p>checked={is_checked} 绑定字段，点击切换勾选状态：</p>
                 <dropdown-menu>

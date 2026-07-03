@@ -24,8 +24,6 @@ impl IContribution for MenuContextCase {
     }
 }
 
-impl ILifecycle for MenuContextCase {}
-
 impl MenuContextCase {
     #[computed]
     pub fn context_status(&self) -> String {

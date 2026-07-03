@@ -51,8 +51,8 @@ fn bind_element(elem: &Element, meta: Option<&StructMetadata>, diags: &mut Vec<S
             Directive::If(expr) | Directive::Show(expr) | Directive::Key(expr) => {
                 check_binding_expr(expr, elem.span, meta, diags);
             }
-            Directive::Model(expr) => {
-                check_binding_expr(expr, elem.span, meta, diags);
+            Directive::Model { field, .. } => {
+                check_binding_expr(field, elem.span, meta, diags);
             }
             Directive::Html(expr) => {
                 check_binding_expr(expr, elem.span, meta, diags);

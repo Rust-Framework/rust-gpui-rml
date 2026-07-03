@@ -31,6 +31,7 @@ pub(super) fn gen_render_impl_from_children(
     out.push_str(
         "    fn render(&mut self, _window: &mut gpui::Window, cx: &mut gpui::Context<Self>) -> impl gpui::IntoElement {\n",
     );
+    out.push_str("        let _rml_render_guard = rml_core::computed_cache::RenderThreadGuard::enter();\n");
     out.push_str("        if !self.__rml_loaded {\n");
     out.push_str("            self.__rml_loaded = true;\n");
     out.push_str("            rml_core::lifecycle::ILifecycle::on_loaded(self, _window, cx);\n");

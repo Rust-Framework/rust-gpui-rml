@@ -26,7 +26,7 @@ pub use menu::{
 pub use status_bar::{
     IStatusBarItem, NativeStatusBar, StatusBar, StatusBarAlign, StatusBarItem,
 };
-pub use tab::{Tab, TabBar, TabVariant};
+pub use tab::{Tab, TabBar, TabItem, TabVariant};
 pub use table::{
     CellTemplate, DefaultTableDelegate, FooterTemplate, HeaderTemplate, Table, TableColumn,
     TableDelegate, TableRow,

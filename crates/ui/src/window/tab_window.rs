@@ -7,8 +7,11 @@
 //! - `left` / `right` / `bottom`（可 resize，空则隐藏）
 //! - `footer` → `status_slot`（状态栏，空则隐藏）
 //! - `menu` / `title`（标题栏内插槽）
+//! - `tabs` → `Vec<Arc<dyn IContribution>>`（业务数据，由 IContribution::name() 提供 title，
+//!   IVisualContribution::render() 提供 body）
 
 use std::rc::Rc;
+use std::sync::Arc;
 
 use gpui::{
     AnyElement, App, InteractiveElement, IntoElement, MouseButton, ParentElement, RenderOnce,
@@ -22,33 +25,13 @@ use gpui_component::{
     resizable::{h_resizable, resizable_panel, v_resizable},
     v_flex, TITLE_BAR_HEIGHT,
 };
-use crate::components::tab::{Tab, TabBar, TabVariant};
+use rml_core::contribution::{IContribution, VisualAbilityExt};
+use crate::components::tab::{TabBar, TabItem, TabVariant};
 use smallvec::SmallVec;
 
 /// Slot 尺寸低于此阈值视为折叠：移出 resizable group，改用普通 div 渲染，
 /// 从而隐藏 resize handle 且不污染 ResizableState 的 panel_ix 映射。
 const SLOT_COLLAPSED_THRESHOLD: gpui::Pixels = px(60.);
-
-/// Tab 页签数据
-#[derive(Clone)]
-pub struct TabItem {
-    pub label: SharedString,
-    pub icon: Option<IconName>,
-}
-
-impl TabItem {
-    pub fn new(label: impl Into<SharedString>) -> Self {
-        Self {
-            label: label.into(),
-            icon: None,
-        }
-    }
-
-    pub fn icon(mut self, icon: IconName) -> Self {
-        self.icon = Some(icon);
-        self
-    }
-}
 
 /// 渲染单个窗口控件按钮（最小化/最大化/关闭）。
 fn control_button(
@@ -156,11 +139,10 @@ pub struct TabWindowShell {
     show_chrome: bool,
     menu_slot: Option<AnyElement>,
     title_ext_slot: Option<AnyElement>,
-    tabs: Vec<TabItem>,
-    /// 模板定制模式：直接注入 Tab 列表，绕过 TabItem 的 label/icon 限制。
-    /// 与 `tabs` 互斥；非空时优先使用（由 codegen 在编译期校验二者不并存）。
-    tab_children: Vec<Tab>,
-    selected_tab: usize,
+    /// 业务数据载体（实现 IContribution 的任意类型）。
+    /// `IContribution::name()` 提供 tab title，`IVisualContribution::render()` 提供 tab body。
+    tabs: Vec<Arc<dyn IContribution>>,
+    selected_index: usize,
     on_tab_click: Option<Rc<dyn Fn(usize, &mut Window, &mut App) + 'static>>,
     on_chrome_toggle: Option<Rc<dyn Fn(&mut Window, &mut App) + 'static>>,
     slot_left: Option<AnyElement>,
@@ -182,8 +164,7 @@ impl TabWindowShell {
             menu_slot: None,
             title_ext_slot: None,
             tabs: Vec::new(),
-            tab_children: Vec::new(),
-            selected_tab: 0,
+            selected_index: 0,
             on_tab_click: None,
             on_chrome_toggle: None,
             slot_left: None,
@@ -222,21 +203,22 @@ impl TabWindowShell {
         self
     }
 
-    pub fn tabs(mut self, tabs: Vec<TabItem>) -> Self {
+    pub fn tabs(mut self, tabs: Vec<Arc<dyn IContribution>>) -> Self {
         self.tabs = tabs;
         self
     }
 
-    /// 模板定制模式：直接注入 Tab 列表，绕过 TabItem 的 label/icon 限制。
-    /// 与 `tabs(Vec<TabItem>)` 互斥；非空时优先使用。
-    pub fn tab_children(mut self, children: Vec<Tab>) -> Self {
-        self.tab_children = children;
+    pub fn selected_index(mut self, index: usize) -> Self {
+        self.selected_index = index;
         self
     }
 
-    pub fn selected_tab(mut self, index: usize) -> Self {
-        self.selected_tab = index;
-        self
+    /// 获取当前选中 tab 对应的业务数据项。
+    ///
+    /// 返回 `tabs[selected_index]` 的引用；若索引越界返回 None。
+    /// 与 `selected_index`（索引）对应，参照 WPF TabControl.SelectedItem。
+    pub fn selected_item(&self) -> Option<&Arc<dyn IContribution>> {
+        self.tabs.get(self.selected_index)
     }
 
     pub fn on_tab_click(
@@ -320,7 +302,7 @@ impl ParentElement for TabWindowShell {
 }
 
 impl RenderOnce for TabWindowShell {
-    fn render(mut self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let show_chrome = self.show_chrome;
 
         let on_chrome_toggle = self.on_chrome_toggle.clone();
@@ -358,7 +340,7 @@ impl RenderOnce for TabWindowShell {
             .menu(true)
             .flat()
             .with_size(Size::default())
-            .selected_index(self.selected_tab)
+            .selected_index(self.selected_index)
             .w_full()
             .min_w_0();
 
@@ -401,20 +383,18 @@ impl RenderOnce for TabWindowShell {
             }
         }
 
-        if !self.tab_children.is_empty() {
-            // 模板定制模式：直接注入 Tab，绕过 TabItem 限制
-            for tab in self.tab_children.drain(..) {
-                tab_bar = tab_bar.child(tab);
-            }
-        } else {
-            // 简单模式：沿用 TabItem → Tab::new().label().icon()
-            for tab in &self.tabs {
-                let mut t = Tab::new().label(tab.label.clone());
-                if let Some(icon) = tab.icon.clone() {
-                    t = t.icon(icon);
+        // 从 tabs（IContribution）构建 TabItem 注入 TabBar
+        // IContribution::name() 提供 title，IVisualContribution::render() 提供 body
+        for contribution in &self.tabs {
+            let c = Arc::clone(contribution);
+            let item = TabItem::new().title(c.name()).body(move |window, cx| {
+                if let Some(visual) = c.as_visual() {
+                    visual.render(window, cx)
+                } else {
+                    gpui::div().into_any_element()
                 }
-                tab_bar = tab_bar.child(t);
-            }
+            });
+            tab_bar = tab_bar.child(item);
         }
 
         if let Some(suffix) = self.title_ext_slot {

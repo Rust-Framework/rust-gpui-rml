@@ -72,8 +72,12 @@ pub enum Directive {
     Each(EachClause),
     /// `key={expr}` 列表项唯一标识
     Key(String),
-    /// `model={field}` 双向绑定
-    Model(String),
+    /// `model={field}` 或 `model={field | Converter}` 双向绑定
+    Model {
+        field: String,
+        /// 可选 converter 名（`| Converter` 语法），codegen 反向绑定时调用 `Converter::convert_back`
+        converter: Option<String>,
+    },
     /// `show={cond}` 显示/隐藏
     Show(String),
     /// `once` 仅首次渲染

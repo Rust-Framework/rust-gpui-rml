@@ -26,6 +26,7 @@
 
 mod attribute;
 mod binding;
+mod lifecycle;
 mod model;
 mod node;
 mod observable;
@@ -37,7 +38,7 @@ mod window;
 use crate::compiler::{CodegenCtx, CodegenError};
 use crate::tags;
 
-pub use model::collect_model_fields;
+pub use model::{collect_model_converters, collect_model_fields, collect_model_input_handlers};
 pub use node::{gen_node, GenResult};
 pub(crate) use text::{gen_expr_code, try_gen_i18n_call};
 
@@ -110,6 +111,9 @@ pub fn codegen(root: &crate::parser::ast::Node, ctx: &CodegenCtx) -> Result<Stri
 
     // 4. InputState 惰性初始化方法
     out.push_str(&observable::gen_input_state_impl(ctx));
+
+    // 5. 生命周期钩子自动联动（#[on_loaded]/#[on_unloaded] → impl ILifecycle）
+    out.push_str(&lifecycle::gen_lifecycle_impl(ctx));
 
     Ok(out)
 }

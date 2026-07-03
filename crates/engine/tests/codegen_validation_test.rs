@@ -47,6 +47,7 @@ fn make_ctx_with_range_validation() -> CodegenCtx {
         user_components: HashMap::new(),
         is_contributehost: false,
         contribution_bindings: false,
+        ..Default::default()
     }
 }
 
@@ -130,6 +131,7 @@ fn length_validation_generates_len_check() {
         user_components: HashMap::new(),
         is_contributehost: false,
         contribution_bindings: false,
+        ..Default::default()
     };
     let source = r#"
 <component>
@@ -184,6 +186,7 @@ fn required_validation_generates_empty_check() {
         user_components: HashMap::new(),
         is_contributehost: false,
         contribution_bindings: false,
+        ..Default::default()
     };
     let source = r#"
 <component>
@@ -240,6 +243,7 @@ fn regex_validation_generates_pattern_match() {
         user_components: HashMap::new(),
         is_contributehost: false,
         contribution_bindings: false,
+        ..Default::default()
     };
     let source = r#"
 <component>
@@ -299,6 +303,7 @@ fn custom_validation_generates_function_call() {
         user_components: HashMap::new(),
         is_contributehost: false,
         contribution_bindings: false,
+        ..Default::default()
     };
     let source = r#"
 <component>
@@ -359,6 +364,7 @@ fn multiple_rules_executed_in_order() {
         user_components: HashMap::new(),
         is_contributehost: false,
         contribution_bindings: false,
+        ..Default::default()
     };
     let source = r#"
 <component>
@@ -460,6 +466,7 @@ fn no_validation_falls_back_to_default() {
         user_components: HashMap::new(),
         is_contributehost: false,
         contribution_bindings: false,
+        ..Default::default()
     };
     let code = compile(RML_SOURCE_WITH_AGE, &ctx).expect("compile failed");
 

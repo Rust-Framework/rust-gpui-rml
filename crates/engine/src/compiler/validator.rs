@@ -59,7 +59,7 @@ fn validate_element(
 
     for d in &elem.directives {
         match d {
-            Directive::Model(_) => has_model = true,
+            Directive::Model { .. } => has_model = true,
             Directive::Ref(name) => {
                 if !ctx.ref_names.insert(name.clone()) {
                     return Err(ValidationError {

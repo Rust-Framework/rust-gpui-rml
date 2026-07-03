@@ -435,14 +435,14 @@ impl Default for TabStyle {
 /// A Tab element for the [`super::TabBar`].
 #[derive(IntoElement)]
 pub struct Tab {
-    ix: usize,
+    pub(super) ix: usize,
     base: Div,
     pub(super) label: Option<SharedString>,
     pub(super) icon: Option<Icon>,
     prefix: Option<AnyElement>,
     pub(super) tab_bar_prefix: Option<bool>,
     suffix: Option<AnyElement>,
-    children: Vec<AnyElement>,
+    pub(super) children: Vec<AnyElement>,
     variant: TabVariant,
     size: Size,
     pub(super) disabled: bool,
@@ -453,7 +453,7 @@ pub struct Tab {
     /// tab switch. Used to key the selected tab's text color fade so it
     /// restarts in sync with the indicator slide.
     pub(super) indicator_epoch: u64,
-    on_click: Option<Rc<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>>,
+    pub(super) on_click: Option<Rc<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>>,
 }
 
 impl From<&'static str> for Tab {

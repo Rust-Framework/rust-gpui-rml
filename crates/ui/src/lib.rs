@@ -73,8 +73,8 @@ pub use gpui_component::{
 
 // 窗口组件：ModernWindowShell 内置封装 + 内置 Window/ModernWindow + 助手 trait
 pub use window::{
-    IWindowActions, IWindowExt, ModernWindow, ModernWindowShell, NotificationKind, TabItem,
-    TabWindowShell, Window,
+    IWindowActions, IWindowExt, ModernWindow, ModernWindowShell, NotificationKind, TabWindowShell,
+    Window,
 };
 
 pub use components::{
@@ -82,7 +82,7 @@ pub use components::{
     CellTemplate, DefaultTableDelegate, DialogAction, DialogButtonProps, DialogClose,
     DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, FooterTemplate,
     HeaderTemplate, IActivityAct, IActivityPanel, IMenuItem, IStatusBarItem, Menu, MenuBar,
-    MenuItem, NativeStatusBar, StatusBar, StatusBarAlign, StatusBarItem, Tab, TabBar, Table,
-    TableColumn, TableDelegate, TableRow, TabVariant, Tree, VisualActivityPanel,
+    MenuItem, NativeStatusBar, StatusBar, StatusBarAlign, StatusBarItem, Tab, TabBar, TabItem,
+    Table, TableColumn, TableDelegate, TableRow, TabVariant, Tree, VisualActivityPanel,
     configure_menu_bar_popup, menu_bar_button, render_menu_bar_from_items,
 };

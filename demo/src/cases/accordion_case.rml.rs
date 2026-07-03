@@ -24,8 +24,6 @@ impl IContribution for AccordionCase {
     }
 }
 
-impl ILifecycle for AccordionCase {}
-
 impl AccordionCase {
     #[computed]
     pub fn status_text(&self) -> String {

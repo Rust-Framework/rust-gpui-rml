@@ -167,7 +167,7 @@ pub fn is_prop_registered(tag: &str, attr: &str) -> bool {
 pub static SHELL_PROPS: &[(&str, &[&str])] = &[
     ("tab_window", &[
         "title", "width", "height", "startup", "icon",
-        "tabs", "selected_tab", "show_chrome",
+        "tabs", "selected_index", "show_chrome",
         "left_size", "right_size", "bottom_size",
         "on_tab_click", "on_chrome_toggle",
     ]),

@@ -178,7 +178,12 @@ impl Parser {
                 }
                 "model" => {
                     if let AttrValue::Binding(expr) = attr.value {
-                        directives.push(Directive::Model(expr));
+                        let (field, converter) = if let Some((f, c)) = expr.split_once('|') {
+                            (f.trim().to_string(), Some(c.trim().to_string()))
+                        } else {
+                            (expr, None)
+                        };
+                        directives.push(Directive::Model { field, converter });
                     }
                 }
                 "show" => {

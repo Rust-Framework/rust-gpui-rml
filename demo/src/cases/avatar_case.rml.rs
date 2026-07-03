@@ -22,8 +22,6 @@ impl IContribution for AvatarCase {
     }
 }
 
-impl ILifecycle for AvatarCase {}
-
 impl AvatarCase {
     #[computed]
     pub fn code_sample(&self) -> String {

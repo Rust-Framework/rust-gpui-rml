@@ -13,17 +13,63 @@
 //!
 //! **安全性保证**：
 //! - `Mutex` 确保同一时刻只有一个线程访问缓存内容
-//! - `#[computed]` 方法仅在 GPUI render 线程调用
+//! - `#[computed]` 方法仅在 GPUI render 线程调用（由 `RenderThreadGuard` 标记）
 //! - 缓存值不会被移动到其他线程（仅克隆返回）
+//! - `get_or_compute` 包含 `debug_assert!` 验证调用线程为 render 线程
 //!
 //! ## 嵌套调用安全
 //!
 //! `get_or_compute` 在调用 `compute` 前释放 `MutexGuard`，
-//! 支持 `#[computed] A` 调用 `#[computed] B` 的嵌套场景，避免死锁。
+//! 支持 `#[computed]` A 调用 `#[computed]` B 的嵌套场景，避免死锁。
 
 use std::any::Any;
+use std::cell::Cell;
 use std::collections::HashMap;
 use std::sync::Mutex;
+
+thread_local! {
+    /// 标记当前线程是否为 GPUI render 线程
+    ///
+    /// 由 codegen 生成的 `Render::render` 方法入口通过 `RenderThreadGuard::enter()` 设置为 true，
+    /// 方法退出时通过 `Drop` 恢复为 false。`get_or_compute` 在 debug 构建中检查此标记，
+    /// 用于捕获 #[computed] 方法在非 render 线程被调用的误用。
+    static IS_RENDER_THREAD: Cell<bool> = Cell::new(false);
+}
+
+/// 查询当前线程是否为 render 线程
+pub fn is_render_thread() -> bool {
+    IS_RENDER_THREAD.with(|f| f.get())
+}
+
+/// Render 线程标记守卫
+///
+/// 由 codegen 生成的 `Render::render` 方法入口创建：
+/// ```rust,ignore
+/// fn render(&mut self, _window: &mut gpui::Window, cx: &mut gpui::Context<Self>) -> impl gpui::IntoElement {
+///     let _rml_render_guard = rml_core::computed_cache::RenderThreadGuard::enter();
+///     // ... render body ...
+/// }
+/// ```
+///
+/// `Drop` 实现确保即使 render 方法 panic 也能恢复标记，避免后续 `get_or_compute` 的
+/// `debug_assert!` 误报。
+pub struct RenderThreadGuard {
+    prev: bool,
+}
+
+impl RenderThreadGuard {
+    /// 标记当前线程为 render 线程，返回守卫
+    pub fn enter() -> Self {
+        let prev = IS_RENDER_THREAD.with(|f| f.replace(true));
+        Self { prev }
+    }
+}
+
+impl Drop for RenderThreadGuard {
+    fn drop(&mut self) {
+        IS_RENDER_THREAD.with(|f| f.set(self.prev));
+    }
+}
 
 /// `#[computed]` 方法的运行时缓存
 ///
@@ -63,6 +109,12 @@ impl ComputedCache {
     /// 关键：`compute` 在 `MutexGuard` 释放后执行，避免 `#[computed]`
     /// 嵌套调用导致死锁（A 调 B 时 B 再次 `get_or_compute` 同一缓存）。
     ///
+    /// # 安全约定
+    ///
+    /// 调用方必须位于 GPUI render 线程（由 `RenderThreadGuard::enter()` 标记）。
+    /// debug 构建中通过 `debug_assert!` 检查此约定，捕获 `#[computed]` 方法在
+    /// 非 render 线程被调用的误用（会导致缓存值跨线程移动，违反 `unsafe Send/Sync` 前提）。
+    ///
     /// # 类型约束
     ///
     /// - `T: Clone`：缓存命中时返回克隆值（避免返回引用穿过 `MutexGuard`）
@@ -73,6 +125,12 @@ impl ComputedCache {
         version: u64,
         compute: impl FnOnce() -> T,
     ) -> T {
+        debug_assert!(
+            is_render_thread() || std::thread::panicking(),
+            "ComputedCache::get_or_compute must be called from render thread \
+             (via #[computed] wrapper inside Render::render); \
+             call from non-render thread violates unsafe Send/Sync safety invariant"
+        );
         // 1. 尝试命中（锁内只读）
         {
             let inner = self.inner.lock().unwrap();
@@ -118,8 +176,14 @@ mod tests {
     use super::*;
     use std::sync::atomic::{AtomicU64, Ordering};
 
+    /// 测试辅助：模拟进入 render 线程，使 `get_or_compute` 的 debug_assert 通过
+    fn enter_render() -> RenderThreadGuard {
+        RenderThreadGuard::enter()
+    }
+
     #[test]
     fn cache_miss_computes_and_stores() {
+        let _g = enter_render();
         let cache = ComputedCache::new();
         let call_count = AtomicU64::new(0);
 
@@ -133,6 +197,7 @@ mod tests {
 
     #[test]
     fn cache_hit_returns_clone_without_recompute() {
+        let _g = enter_render();
         let cache = ComputedCache::new();
         let call_count = AtomicU64::new(0);
 
@@ -154,6 +219,7 @@ mod tests {
 
     #[test]
     fn version_change_triggers_recompute() {
+        let _g = enter_render();
         let cache = ComputedCache::new();
         let call_count = AtomicU64::new(0);
 
@@ -183,6 +249,7 @@ mod tests {
 
     #[test]
     fn different_keys_independent() {
+        let _g = enter_render();
         let cache = ComputedCache::new();
 
         let a: i32 = cache.get_or_compute("a", 1, || 1);
@@ -201,6 +268,7 @@ mod tests {
 
     #[test]
     fn invalidate_forces_recompute() {
+        let _g = enter_render();
         let cache = ComputedCache::new();
         let call_count = AtomicU64::new(0);
 
@@ -222,6 +290,7 @@ mod tests {
 
     #[test]
     fn clear_wipes_all_entries() {
+        let _g = enter_render();
         let cache = ComputedCache::new();
 
         let _: i32 = cache.get_or_compute("a", 1, || 1);
@@ -240,6 +309,7 @@ mod tests {
 
     #[test]
     fn works_with_clone_types() {
+        let _g = enter_render();
         let cache = ComputedCache::new();
 
         let v1: Vec<String> =
@@ -253,6 +323,7 @@ mod tests {
 
     #[test]
     fn nested_get_or_compute_no_deadlock() {
+        let _g = enter_render();
         // 模拟 #[computed] A 调用 #[computed] B 的场景
         let cache = ComputedCache::new();
         let inner_cache = &cache;
@@ -271,6 +342,7 @@ mod tests {
 
     #[test]
     fn default_is_empty() {
+        let _g = enter_render();
         let cache = ComputedCache::default();
         let call_count = AtomicU64::new(0);
         let v: i32 = cache.get_or_compute("x", 1, || {
@@ -287,4 +359,49 @@ mod tests {
         fn assert_send_sync<T: Send + Sync>() {}
         assert_send_sync::<ComputedCache>();
     }
+
+    #[test]
+    fn render_thread_guard_sets_and_restores() {
+        // 初始：非 render 线程
+        assert!(!is_render_thread());
+
+        // 进入 guard：标记为 render 线程
+        {
+            let _g = enter_render();
+            assert!(is_render_thread());
+
+            // 嵌套：保留前一个状态（true）
+            {
+                let _g2 = enter_render();
+                assert!(is_render_thread());
+            }
+            // 内层 guard drop 后仍为 true（恢复到外层状态）
+            assert!(is_render_thread());
+        }
+        // 外层 guard drop 后恢复为 false
+        assert!(!is_render_thread());
+    }
+
+    #[test]
+    fn render_thread_guard_restores_on_panic() {
+        use std::panic;
+        assert!(!is_render_thread());
+
+        let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+            let _g = enter_render();
+            assert!(is_render_thread());
+            panic!("simulated render panic");
+        }));
+        assert!(result.is_err());
+        // panic 后 guard 的 Drop 应已恢复标记为 false
+        assert!(!is_render_thread());
+    }
 }
+
+// 编译期静态断言：ComputedCache 与 RenderThreadGuard 满足 Send + Sync
+// （验证 unsafe impl Send/Sync 仍然有效；RenderThreadGuard 仅含 bool 字段，自动 Send+Sync）
+const _: fn() = || {
+    fn assert_send_sync<T: Send + Sync>() {}
+    assert_send_sync::<ComputedCache>();
+    assert_send_sync::<RenderThreadGuard>();
+};

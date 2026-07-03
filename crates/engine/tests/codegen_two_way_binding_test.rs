@@ -33,6 +33,7 @@ fn make_ctx_with_field_types() -> CodegenCtx {
         user_components: HashMap::new(),
         is_contributehost: false,
         contribution_bindings: false,
+        ..Default::default()
     }
 }
 
@@ -208,6 +209,7 @@ fn gen_model_input_floating_point_types() {
         user_components: HashMap::new(),
         is_contributehost: false,
         contribution_bindings: false,
+        ..Default::default()
     };
     let source = r#"
 <component>
@@ -415,5 +417,139 @@ fn gen_input_state_impl_clears_error_on_forward_sync() {
         forward_section.contains("__rml_field_errors.insert(field.to_string(), None)"),
         "正向同步 set_value 后应清除错误状态，实际：\n{}",
         forward_section
+    );
+}
+
+// ─── Phase B-2: convert_back 双向绑定测试 ───
+
+#[test]
+fn model_with_converter_generates_convert_back_call() {
+    // model={price | Currency} 应生成 Currency.convert_back(&value.to_string()) 调用
+    let ctx = CodegenCtx {
+        view_struct_name: "TestView".to_string(),
+        view_module_path: "test".to_string(),
+        stylesheet: None,
+        computed_methods: Vec::new(),
+        observable_fields: vec!["price".to_string()],
+        version_fields: vec!["price".to_string()],
+        computed_deps: HashMap::new(),
+        computed_returns: HashMap::new(),
+        field_types: {
+            let mut m = HashMap::new();
+            m.insert("price".to_string(), "f64".to_string());
+            m
+        },
+        field_validations: HashMap::new(),
+        model_fields: Vec::new(),
+        user_components: HashMap::new(),
+        is_contributehost: false,
+        contribution_bindings: false,
+        ..Default::default()
+    };
+    let source = r#"
+<component>
+    <input model={price | Currency} />
+</component>
+"#;
+    let code = compile(source, &ctx).expect("compile failed");
+
+    // 应生成 Currency.convert_back(&value.to_string()) 调用
+    assert!(
+        code.contains("Currency.convert_back(&value.to_string())"),
+        "有 converter 时应生成 convert_back 调用，实际：\n{}",
+        code
+    );
+    // 成功分支应赋值 + bump_version
+    assert!(
+        code.contains("this.price = v"),
+        "convert_back 成功时应赋值 this.price = v"
+    );
+    assert!(
+        code.contains("__rml_bump_version(\"price\")"),
+        "convert_back 成功时应调用 __rml_bump_version"
+    );
+    // 失败分支应设置 "转换失败" 错误消息
+    assert!(
+        code.contains("转换失败"),
+        "convert_back 失败时应设置错误消息"
+    );
+    // 不应生成裸 parse 路径（被 converter 路径劫持）
+    assert!(
+        !code.contains("match value.parse::<f64>()"),
+        "有 converter 时不应再生成 parse 路径"
+    );
+}
+
+#[test]
+fn model_without_converter_keeps_parse_behavior() {
+    // 无 converter 的数字字段仍走 parse 路径
+    let ctx = make_ctx_with_field_types();
+    let code = compile(RML_SOURCE_WITH_MODEL, &ctx).expect("compile failed");
+
+    // i32 字段仍走 match value.parse::<i32>()
+    assert!(
+        code.contains("match value.parse::<i32>()"),
+        "无 converter 的 i32 字段应仍走 parse 路径，实际：\n{}",
+        code
+    );
+    // 不应出现 convert_back 调用
+    assert!(
+        !code.contains("convert_back"),
+        "无 converter 时不应生成 convert_back 调用"
+    );
+}
+
+// ─── Phase B-3: oninput/onchange handler 注入测试 ───
+
+#[test]
+fn oninput_handler_injected_into_subscribe_callback() {
+    // <input model={name} oninput={handle_input} /> 应在 cx.subscribe 回调内注入 handler 调用
+    let ctx = make_ctx_with_field_types();
+    let source = r#"
+<component>
+    <input model={name} oninput={handle_input} />
+</component>
+"#;
+    let code = compile(source, &ctx).expect("compile failed");
+
+    // 应生成 InputEvent 构造 + handler 调用
+    assert!(
+        code.contains("rml_convert::convert::input(value.clone(), gpui::SharedString::default())"),
+        "应构造 InputEvent，实际：\n{}",
+        code
+    );
+    assert!(
+        code.contains("this.handle_input(&__rml_input_ev, cx)"),
+        "应调用 this.handle_input，实际：\n{}",
+        code
+    );
+}
+
+#[test]
+fn onchange_handler_separate_from_oninput() {
+    // oninput 和 onchange 可独立声明
+    let ctx = make_ctx_with_field_types();
+    let source = r#"
+<component>
+    <input model={count} onchange={handle_change} />
+</component>
+"#;
+    let code = compile(source, &ctx).expect("compile failed");
+
+    // 应生成 ChangeEvent 构造 + handler 调用
+    assert!(
+        code.contains("rml_convert::convert::change(value.clone())"),
+        "应构造 ChangeEvent，实际：\n{}",
+        code
+    );
+    assert!(
+        code.contains("this.handle_change(&__rml_change_ev, cx)"),
+        "应调用 this.handle_change，实际：\n{}",
+        code
+    );
+    // 未声明 oninput 时不应生成 InputEvent 构造
+    assert!(
+        !code.contains("convert::input("),
+        "未声明 oninput 时不应生成 InputEvent 构造"
     );
 }

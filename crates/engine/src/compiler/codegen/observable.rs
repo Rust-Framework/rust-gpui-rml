@@ -3,6 +3,31 @@
 use crate::compiler::CodegenCtx;
 use super::binding::{gen_field_assign_expr, gen_field_value_expr};
 
+/// 生成 oninput/onchange handler 调用代码（Phase B-3）
+///
+/// 在 `cx.subscribe` 回调的 `InputEvent::Change` 分支内、model 反向同步之后、`cx.notify()` 之前调用。
+/// 无 handler 时返回空字符串。
+fn gen_input_handler_call(field: &str, ctx: &CodegenCtx) -> String {
+    let handlers = match ctx.model_input_handlers.get(field) {
+        Some(h) => h,
+        None => return String::new(),
+    };
+    let mut calls = Vec::new();
+    if let Some(method) = &handlers.on_input {
+        calls.push(format!(
+            "let __rml_input_ev = rml_convert::convert::input(value.clone(), gpui::SharedString::default());\n                    this.{}(&__rml_input_ev, cx);",
+            method
+        ));
+    }
+    if let Some(method) = &handlers.on_change {
+        calls.push(format!(
+            "let __rml_change_ev = rml_convert::convert::change(value.clone());\n                    this.{}(&__rml_change_ev, cx);",
+            method
+        ));
+    }
+    calls.join("\n                    ")
+}
+
 /// 生成 observable 字段版本管理方法 + 计算属性依赖版本方法
 ///
 /// 生成一个 `impl <View> { ... }` 块，包含四个方法：
@@ -152,8 +177,14 @@ pub(super) fn gen_input_state_impl(ctx: &CodegenCtx) -> String {
     for field in &input_fields {
         let ty = ctx.field_types.get(field).cloned().unwrap_or_default();
         let validation = ctx.field_validations.get(field);
-        let assign = gen_field_assign_expr(field, &ty, validation);
-        reverse_arms.push_str(&format!("                \"{}\" => {{ {} }}\n", field, assign));
+        let converter = ctx.model_converters.get(field).map(|s| s.as_str());
+        let assign = gen_field_assign_expr(field, &ty, validation, converter);
+        // Phase B-3：model 反向同步后追加 oninput/onchange handler 调用（cx.notify 之前）
+        let handler_call = gen_input_handler_call(field, ctx);
+        reverse_arms.push_str(&format!(
+            "                \"{}\" => {{\n                    {}\n                    {}\n                }}\n",
+            field, assign, handler_call
+        ));
     }
 
     let mut out = String::new();

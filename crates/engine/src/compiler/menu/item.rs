@@ -95,7 +95,11 @@ pub(crate) fn gen_menu_item_stmt(
     }
 
     if !custom_children.is_empty() {
-        let onclick = gen_onclick_closure(elem, ctx)?;
+        let onclick = if let Some(cmd_expr) = command_bind_expr(elem) {
+            gen_command_closure(&cmd_expr, ctx)?
+        } else {
+            gen_onclick_closure(elem, ctx)?
+        };
         let disabled = bind_or_static_bool(elem, "disabled", loop_vars, ctx, hoist, false);
         let checked = bind_or_static_bool(elem, "checked", loop_vars, ctx, hoist, false);
         let mut custom_parts = Vec::new();
@@ -139,7 +143,11 @@ pub(crate) fn gen_menu_item_stmt(
     let disabled = bind_or_static_bool(elem, "disabled", loop_vars, ctx, hoist, false);
     let checked = bind_or_static_bool(elem, "checked", loop_vars, ctx, hoist, false);
     let icon = static_attr(elem, "icon");
-    let onclick = gen_onclick_closure(elem, ctx)?;
+    let onclick = if let Some(cmd_expr) = command_bind_expr(elem) {
+        gen_command_closure(&cmd_expr, ctx)?
+    } else {
+        gen_onclick_closure(elem, ctx)?
+    };
 
     let mut stmt = format!(
         "menu = menu.item(\n                rml_ui::PopupMenuItem::new({label_expr})\n                    .disabled({disabled})\n                    .checked({checked})"
@@ -181,6 +189,35 @@ fn gen_onclick_closure(elem: &Element, ctx: &CodegenCtx) -> Result<String, Codeg
     let _ = ctx;
     Ok(format!(
         ".on_click({{\n                        let weak = __rml_menu_weak.clone();\n                        move |ev, _window, app| {{\n                            if let Some(entity) = weak.upgrade() {{\n                                entity.update(app, |this, cx| {{\n                                    let rml_ev = rml_convert::from_gpui_click(ev);\n                                    this.{method}(&rml_ev, cx);\n                                }});\n                            }}\n                        }}\n                    }})"
+    ))
+}
+
+/// 检测 `command={field}` 绑定属性，返回原始表达式（未经 self. 前缀处理）
+fn command_bind_expr(elem: &Element) -> Option<String> {
+    elem.attributes.iter().find_map(|a| match a {
+        Attribute::Bind { name, expr } if name == "command" => Some(expr.clone()),
+        _ => None,
+    })
+}
+
+/// 生成声明式命令绑定闭包（Phase B-1：`command={field}`）
+///
+/// 生成 `.on_click` 闭包，闭包内：
+/// 1. 通过 `entity.update` 克隆出 `Arc<dyn ICommand>`（释放 app 借用）
+/// 2. 构造 `CallContext`（持有外层 window + app）
+/// 3. `can_execute` 判断后 `execute`
+///
+/// `cmd_expr` 为 ViewModel 字段名（如 `save_command`），根据 `computed_methods`
+/// 判断是否为计算属性方法调用。
+fn gen_command_closure(cmd_expr: &str, ctx: &CodegenCtx) -> Result<String, CodegenError> {
+    let is_computed = ctx.computed_methods.iter().any(|c| c == cmd_expr);
+    let field_access = if is_computed {
+        format!("this.{}()", cmd_expr)
+    } else {
+        format!("this.{}", cmd_expr)
+    };
+    Ok(format!(
+        ".on_click({{\n                        let weak = __rml_menu_weak.clone();\n                        move |_ev, window, app| {{\n                            if let Some(entity) = weak.upgrade() {{\n                                let __rml_cmd = entity.update(app, |this, _cx| {{\n                                    {field_access}.clone()\n                                }});\n                                let mut __rml_ctx = rml_core::command::CallContext::new(window, app);\n                                if __rml_cmd.can_execute(&mut __rml_ctx) {{\n                                    __rml_cmd.execute(&mut __rml_ctx);\n                                }}\n                            }}\n                        }}\n                    }})"
     ))
 }
 
@@ -287,5 +324,99 @@ mod tests {
         let hoist = MenuHoist::default();
         let code = gen_menu_item_stmt(&elem, &ctx, 0, &mut id, &[], &hoist).unwrap();
         assert!(code.contains("menu.separator()"));
+    }
+
+    // ─── Phase B-1: command={field} 声明式命令绑定 ───
+
+    fn make_menu_ctx() -> CodegenCtx {
+        CodegenCtx {
+            view_struct_name: "TestView".to_string(),
+            ..CodegenCtx::default()
+        }
+    }
+
+    #[test]
+    fn command_attr_generates_execute_call() {
+        let src = r#"<MenuItem command={save_command} label="Save" />"#;
+        let root = parser::parse(src).unwrap();
+        let Node::Element(elem) = root else {
+            panic!("expected element");
+        };
+        let ctx = make_menu_ctx();
+        let mut id = 0usize;
+        let hoist = MenuHoist::default();
+        let code = gen_menu_item_stmt(&elem, &ctx, 0, &mut id, &[], &hoist).unwrap();
+        assert!(
+            code.contains("this.save_command"),
+            "command={{save_command}} 应生成 this.save_command 访问，实际：\n{}",
+            code
+        );
+        assert!(
+            code.contains("CallContext::new(window, app)"),
+            "应构造 CallContext"
+        );
+        assert!(
+            code.contains("can_execute(&mut __rml_ctx)"),
+            "应调用 can_execute 判断"
+        );
+        assert!(
+            code.contains("__rml_cmd.execute(&mut __rml_ctx)"),
+            "应调用 execute 执行命令"
+        );
+    }
+
+    #[test]
+    fn command_takes_precedence_over_onclick() {
+        // command 与 onclick 同时存在时，command 优先，不生成 onclick 的 method 调用
+        let src = r#"<MenuItem command={save} onclick={legacy} label="Save" />"#;
+        let root = parser::parse(src).unwrap();
+        let Node::Element(elem) = root else {
+            panic!("expected element");
+        };
+        let ctx = make_menu_ctx();
+        let mut id = 0usize;
+        let hoist = MenuHoist::default();
+        let code = gen_menu_item_stmt(&elem, &ctx, 0, &mut id, &[], &hoist).unwrap();
+        assert!(
+            code.contains("this.save"),
+            "command 优先，应生成 this.save 访问"
+        );
+        assert!(
+            code.contains("execute(&mut __rml_ctx)"),
+            "应走命令执行路径"
+        );
+        // 不应出现 legacy 方法的直接调用（this.legacy 在 rml_convert 路径中）
+        assert!(
+            !code.contains("rml_convert::from_gpui_click"),
+            "command 优先时不应生成 onclick 的 rml_convert 路径"
+        );
+    }
+
+    #[test]
+    fn menu_item_without_command_uses_onclick() {
+        // 无 command 属性时仍走 gen_onclick_closure
+        let src = r#"<MenuItem onclick={do_click} label="Click" />"#;
+        let root = parser::parse(src).unwrap();
+        let Node::Element(elem) = root else {
+            panic!("expected element");
+        };
+        let ctx = make_menu_ctx();
+        let mut id = 0usize;
+        let hoist = MenuHoist::default();
+        let code = gen_menu_item_stmt(&elem, &ctx, 0, &mut id, &[], &hoist).unwrap();
+        assert!(
+            code.contains("rml_convert::from_gpui_click"),
+            "无 command 时应走 onclick 路径，实际：\n{}",
+            code
+        );
+        assert!(
+            code.contains("this.do_click"),
+            "应生成 this.do_click 方法调用"
+        );
+        // 不应出现命令执行路径
+        assert!(
+            !code.contains("CallContext::new"),
+            "无 command 时不应生成 CallContext"
+        );
     }
 }

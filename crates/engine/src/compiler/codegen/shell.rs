@@ -283,12 +283,32 @@ pub(super) fn gen_tab_window_wrapper(
                     code.push_str(&format!(".icon({icon_expr})"));
                     continue;
                 }
+                if name == "tab_item_template" {
+                    // `tab_item_template={method}` 是方法名（非字段），
+                    // 需包装为 4 参闭包：把业务数据 &Box<dyn Any> 渲染为 TabItem。
+                    // setter 签名 `tab_item_template<F: Fn(...) -> TabItem + Send + Sync + 'static>`
+                    // 内部已做 Arc::new，这里传裸闭包即可。
+                    let method = expr.trim();
+                    code.push_str(&format!(
+                        ".tab_item_template({{\n                    \
+                         let weak = cx.weak_entity();\n                    \
+                         move |ix: usize, data: &Box<dyn std::any::Any>, \
+                         window: &mut gpui::Window, app: &mut gpui::App| {{\n                        \
+                         if let Some(entity) = weak.upgrade() {{\n                            \
+                         entity.update(app, |this, cx| this.{}(ix, data, window, cx))\n                        \
+                         }} else {{\n                            \
+                         rml_ui::TabItem::new()\n                        \
+                         }}\n                    }})\n                }})",
+                        method
+                    ));
+                    continue;
+                }
                 let rust_expr = shell_bind_expr(expr, &computed, &empty);
                 match name.as_str() {
                     "menu" => code.push_str(&format!(".menu_slot({})", rust_expr)),
                     "footer" => code.push_str(&format!(".status_slot(Some({}))", rust_expr)),
-                    "tabs" => code.push_str(&format!(".tabs({}.clone())", rust_expr)),
-                    "selected_tab" => code.push_str(&format!(".selected_tab({})", rust_expr)),
+                    "tabs" => code.push_str(&format!(".tabs({})", rust_expr)),
+                    "selected_index" => code.push_str(&format!(".selected_index({})", rust_expr)),
                     "show_chrome" => code.push_str(&format!(".show_chrome({})", rust_expr)),
                     "left_size" => code.push_str(&format!(".left_size({})", rust_expr)),
                     "right_size" => code.push_str(&format!(".right_size({})", rust_expr)),
@@ -562,6 +582,82 @@ mod tests {
         )
         .unwrap();
         assert!(!code.contains(".tab_children"));
+    }
+
+    /// `tab_item_template={render_tab_item}` 生成 4 参裸闭包（无 Arc::new 双重包裹）
+    #[test]
+    fn tab_item_template_generates_bare_closure_without_arc() {
+        let elem = Element {
+            tag: "tab_window".into(),
+            attributes: vec![Attribute::Bind {
+                name: "tab_item_template".into(),
+                expr: "render_tab_item".into(),
+            }],
+            directives: vec![],
+            children: vec![],
+            slot_name: None,
+            ..Default::default()
+        };
+        let code = gen_tab_window_wrapper(
+            &elem,
+            &ctx(),
+            "gpui::div()",
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap();
+        // 应生成 .tab_item_template({ let weak = cx.weak_entity(); move |ix...| ... })
+        assert!(code.contains(".tab_item_template("), "missing tab_item_template call");
+        assert!(code.contains("move |ix: usize"), "missing 4-param closure");
+        assert!(
+            !code.contains("std::sync::Arc::new"),
+            "must not double-wrap with Arc::new (setter does it internally)"
+        );
+        // 闭包体内应调用 render_tab_item 方法
+        assert!(code.contains("this.render_tab_item(ix, data, window, cx)"));
+        // else 分支应回退到 TabItem::new()
+        assert!(code.contains("rml_ui::TabItem::new()"));
+    }
+
+    /// `tabs={tab_bar_items}` 当 tab_bar_items 是 #[computed] 方法时生成方法调用
+    #[test]
+    fn shell_bind_tabs_computed_method_generates_call() {
+        let mut c = ctx();
+        c.computed_methods = vec!["tab_bar_items".to_string()];
+        let elem = Element {
+            tag: "tab_window".into(),
+            attributes: vec![Attribute::Bind {
+                name: "tabs".into(),
+                expr: "tab_bar_items".into(),
+            }],
+            directives: vec![],
+            children: vec![],
+            slot_name: None,
+            ..Default::default()
+        };
+        let code = gen_tab_window_wrapper(
+            &elem,
+            &c,
+            "gpui::div()",
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap();
+        // computed 方法应生成 self.tab_bar_items()（带括号）
+        assert!(
+            code.contains(".tabs(self.tab_bar_items())"),
+            "computed method must generate call with (), got: {code}"
+        );
     }
 }
 

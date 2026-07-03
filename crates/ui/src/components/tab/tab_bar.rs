@@ -8,12 +8,12 @@ use gpui::{
 };
 use smallvec::SmallVec;
 
-use super::{Tab, TabVariant};
+use super::{TabItem, TabVariant};
 use gpui_component::animation::{Lerp, ease_in_out_cubic};
 use gpui_component::button::{Button, ButtonVariants as _};
 use gpui_component::menu::{DropdownMenu as _, PopupMenuItem};
 use gpui_component::{
-    ActiveTheme, ElementExt, Icon, IconName, Selectable, Sizable, Size, StyledExt, h_flex,
+    ActiveTheme, ElementExt, Icon, IconName, Selectable, Sizable, Size, StyledExt, h_flex, v_flex,
 };
 
 struct TabIndicatorBounds {
@@ -43,7 +43,7 @@ pub struct TabBar {
     scroll_handle: Option<ScrollHandle>,
     prefix: Option<AnyElement>,
     suffix: Option<AnyElement>,
-    children: SmallVec<[Tab; 2]>,
+    children: SmallVec<[TabItem; 2]>,
     last_empty_space: AnyElement,
     selected_index: Option<usize>,
     variant: TabVariant,
@@ -134,13 +134,13 @@ impl TabBar {
     }
 
     /// Add children of the TabBar, all children will inherit the variant.
-    pub fn children(mut self, children: impl IntoIterator<Item = impl Into<Tab>>) -> Self {
+    pub fn children(mut self, children: impl IntoIterator<Item = impl Into<TabItem>>) -> Self {
         self.children.extend(children.into_iter().map(Into::into));
         self
     }
 
     /// Add child of the TabBar, tab will inherit the variant.
-    pub fn child(mut self, child: impl Into<Tab>) -> Self {
+    pub fn child(mut self, child: impl Into<TabItem>) -> Self {
         self.children.push(child.into());
         self
     }
@@ -344,6 +344,13 @@ impl Sizable for TabBar {
 
 impl RenderOnce for TabBar {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        // WPF TabControl 模式：提取选中 TabItem 的 body 闭包并立即渲染
+        let body_element: Option<AnyElement> = self
+            .selected_index
+            .and_then(|ix| self.children.get(ix))
+            .and_then(|item| item.body.clone())
+            .map(|f| f(window, cx));
+
         let default_gap = match self.size {
             Size::Small | Size::XSmall => px(8.),
             Size::Large => px(16.),
@@ -472,7 +479,7 @@ impl RenderOnce for TabBar {
         let selected_index = self.selected_index;
         let on_click = self.on_click.clone();
 
-        self.base
+        let header = self.base
             .group("tab-bar")
             .relative()
             .flex()
@@ -528,16 +535,17 @@ impl RenderOnce for TabBar {
                                             *cw_rc.borrow_mut() = bounds.size.width;
                                         })
                                     })
-                                    .children(self.children.into_iter().enumerate().map(|(ix, child)| {
+                                    .children(self.children.into_iter().enumerate().map(|(ix, item)| {
                                         item_metas.push((
-                                            child.label.clone(),
-                                            child.icon.clone(),
-                                            child.disabled,
+                                            item.title_label.clone(),
+                                            item.title_icon.clone(),
+                                            item.disabled,
                                         ));
-                                        let tab_bar_prefix = child.tab_bar_prefix.unwrap_or(true);
-                                        let mut tab = child
+                                        let tab_bar_prefix = item.tab_bar_prefix.unwrap_or(true);
+                                        let mut tab = item
                                             .ix(ix)
                                             .tab_bar_prefix(tab_bar_prefix)
+                                            .into_header_tab()
                                             .with_variant(self.variant)
                                             .with_size(self.size);
                                         tab.indicator_active = has_indicator;
@@ -601,6 +609,16 @@ impl RenderOnce for TabBar {
                         .anchor(Anchor::TopRight),
                 )
             })
-            .when_some(self.suffix, |this, suffix| this.child(suffix))
+            .when_some(self.suffix, |this, suffix| this.child(suffix));
+
+        // WPF TabControl 模式：当存在 body 时，垂直堆叠 header + body
+        match body_element {
+            Some(body) => v_flex()
+                .size_full()
+                .child(header)
+                .child(div().flex_1().min_h_0().child(body))
+                .into_any_element(),
+            None => header.into_any_element(),
+        }
     }
 }

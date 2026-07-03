@@ -19,4 +19,4 @@ pub use actions::{IWindowActions, NotificationKind};
 pub use builtin_window::{ModernWindow, Window};
 pub use ext::IWindowExt;
 pub use modern_window::ModernWindowShell;
-pub use tab_window::{TabItem, TabWindowShell};
+pub use tab_window::TabWindowShell;

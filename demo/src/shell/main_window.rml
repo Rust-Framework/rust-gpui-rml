@@ -5,7 +5,7 @@
     startup="CenterScreen"
     icon={IconName::Frame}
     tabs={tab_bar_items}
-    selected_tab={selected_tab}
+    selected_index={selected_tab}
     on_tab_click="on_tab_click"
     show_chrome={show_chrome}
     on_chrome_toggle="on_chrome_toggle"
