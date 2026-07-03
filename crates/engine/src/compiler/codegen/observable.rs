@@ -139,11 +139,7 @@ impl {view_name} {{{methods}}}
 /// 生成 InputState 惰性初始化 + 双向同步方法（Phase B-3：双向绑定）
 pub(super) fn gen_input_state_impl(ctx: &CodegenCtx) -> String {
     let view_name = &ctx.view_struct_name;
-    let input_fields: Vec<String> = if ctx.model_fields.is_empty() {
-        ctx.observable_fields.clone()
-    } else {
-        ctx.model_fields.clone()
-    };
+    let input_fields: Vec<String> = ctx.model_fields.clone();
 
     let mut forward_arms = String::new();
     for field in &input_fields {
