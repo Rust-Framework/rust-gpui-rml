@@ -159,7 +159,11 @@ impl Parser {
         let mut slot_name: Option<String> = None;
 
         for attr in raw_attrs {
-            match attr.name.as_str() {
+            // RML 强制 kebab-case：解析器在入口处将 `-` 规范化为 `_`
+            // 用户写 `label-width` → 内部存储 `label_width`，命中 snake_case setter
+            // 单词属性（如 `onclick`/`bordered`）无 `-`，不受影响
+            let name = normalize_attr_name(&attr.name);
+            match name.as_str() {
                 "if" => {
                     if let AttrValue::Binding(expr) = attr.value {
                         directives.push(Directive::If(expr));
@@ -222,11 +226,11 @@ impl Parser {
                 }
                 _ => match attr.value {
                     AttrValue::Static(v) => attributes.push(Attribute::Static {
-                        name: attr.name,
+                        name,
                         value: v,
                     }),
                     AttrValue::Binding(expr) => attributes.push(Attribute::Bind {
-                        name: attr.name,
+                        name,
                         expr,
                     }),
                 },
@@ -334,4 +338,13 @@ fn parse_text_segments(raw: &str) -> Vec<TextSegment> {
         segments.push(TextSegment::Literal(current));
     }
     segments
+}
+
+/// 将 RML 属性名从 kebab-case 规范化为内部 snake_case
+///
+/// RML 强制 kebab-case 命名规范：用户写 `label-width`、`on-activate`、`v-flex`，
+/// 解析器在入口处将 `-` 转换为 `_`，使命中现有 snake_case 的 setter 与注册表。
+/// 单词属性（如 `onclick`、`bordered`、`columns`）无 `-`，原样返回。
+fn normalize_attr_name(name: &str) -> String {
+    name.replace('-', "_")
 }

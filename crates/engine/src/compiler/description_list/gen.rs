@@ -324,11 +324,11 @@ mod tests {
 
     #[test]
     fn gen_description_list_with_sizable() {
-        // <descriptions small vertical> → .small() + .layout(Vertical)
+        // <descriptions size="small" vertical> → .with_size(Size::Small) + .layout(Vertical)
         let elem = make_element(
             "descriptions",
             vec![
-                Attribute::Static { name: "small".into(), value: "".into() },
+                Attribute::Static { name: "size".into(), value: "small".into() },
                 Attribute::Static { name: "vertical".into(), value: "".into() },
             ],
             vec![],
@@ -336,7 +336,7 @@ mod tests {
         let mut id = 0;
         let code =
             gen_description_list(&elem, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
-        assert!(code.contains(".small()"));
+        assert!(code.contains(".with_size(rml_ui::Size::Small)"));
         assert!(code.contains(".layout(gpui::Axis::Vertical)"));
     }
 

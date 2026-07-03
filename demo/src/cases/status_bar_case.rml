@@ -1,5 +1,5 @@
 <component>
-    <div v_flex="" class="case-pane doc-pane">
+    <div v-flex="" class="case-pane doc-pane">
         <h2>{t("case.status_bar.title")}</h2>
 
         <Card title="组件说明">

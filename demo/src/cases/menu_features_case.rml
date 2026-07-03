@@ -1,17 +1,17 @@
 <component>
-    <div v_flex="" class="case-pane doc-pane">
+    <div v-flex="" class="case-pane doc-pane">
         <h2>{t("case.menu.features.title")}</h2>
 
         <Card title="组件说明">
-            <p>Menu Features 案例综合演示 dropdown-menu 的核心特性：禁用项、勾选项、链接项、子菜单、可滚动。通过 scrollable + max_h 实现长菜单滚动。</p>
-            <p>核心概念：disabled 禁用菜单项（点击不触发）；checked 绑定布尔字段显示勾选；href 渲染为外链；menu-item 内嵌形成子菜单；scrollable + max_h 限制高度并启用滚动。</p>
+            <p>Menu Features 案例综合演示 dropdown-menu 的核心特性：禁用项、勾选项、链接项、子菜单、可滚动。通过 scrollable + max-h 实现长菜单滚动。</p>
+            <p>核心概念：disabled 禁用菜单项（点击不触发）；checked 绑定布尔字段显示勾选；href 渲染为外链；menu-item 内嵌形成子菜单；scrollable + max-h 限制高度并启用滚动。</p>
         </Card>
 
         <Card title="API">
             <div class="api-table">
                 <div class="api-row api-header"><span class="api-prop-name">属性</span><span class="api-prop-type">类型</span><span>说明</span></div>
                 <div class="api-row"><span class="api-prop-name">scrollable</span><span class="api-prop-type">布尔标志</span><span>启用滚动</span></div>
-                <div class="api-row"><span class="api-prop-name">max_h</span><span class="api-prop-type">数字</span><span>最大高度（像素）</span></div>
+                <div class="api-row"><span class="api-prop-name">max-h</span><span class="api-prop-type">数字</span><span>最大高度（像素）</span></div>
                 <div class="api-row"><span class="api-prop-name">menu-item disabled</span><span class="api-prop-type">布尔标志</span><span>禁用项</span></div>
                 <div class="api-row"><span class="api-prop-name">menu-item checked</span><span class="api-prop-type">布尔</span><span>勾选状态</span></div>
                 <div class="api-row"><span class="api-prop-name">menu-item href</span><span class="api-prop-type">URL</span><span>外链跳转</span></div>
@@ -67,8 +67,8 @@
 
             <div class="demo-section">
                 <h3>子菜单与可滚动</h3>
-                <p>scrollable + max_h="280" 限制高度，menu-item 内嵌形成子菜单：</p>
-                <dropdown-menu scrollable="" max_h="280">
+                <p>scrollable + max-h="280" 限制高度，menu-item 内嵌形成子菜单：</p>
+                <dropdown-menu scrollable="" max-h="280">
                     <Button label="Features" ghost="" />
                     <menu-item header="" label="Actions" />
                     <menu-item label="Available" onclick={on_available} />

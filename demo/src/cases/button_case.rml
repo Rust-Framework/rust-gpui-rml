@@ -1,5 +1,5 @@
 <component>
-    <div v_flex="" class="case-pane doc-pane">
+    <div v-flex="" class="case-pane doc-pane">
         <h2>{t("case.button.title")}</h2>
 
         <Card title="组件说明">
@@ -45,9 +45,9 @@
             <div class="demo-section">
                 <h3>尺寸变体</h3>
                 <div class="button-row">
-                    <Button label="小尺寸" small="" primary="" />
+                    <Button label="小尺寸" size="small" primary="" />
                     <Button label="默认尺寸" primary="" />
-                    <Button label="大尺寸" large="" primary="" />
+                    <Button label="大尺寸" size="large" primary="" />
                 </div>
             </div>
         </Card>

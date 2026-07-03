@@ -1,18 +1,18 @@
 <component>
-    <div v_flex="" class="case-pane doc-pane">
+    <div v-flex="" class="case-pane doc-pane">
         <h2>{t("case.tab_bar.title")}</h2>
 
         <Card title="组件说明">
             <p>TabBar 是 gpui-component 标签栏的 RML 封装，标签为 PascalCase TabBar 或小写 tab_bar。子项用 Tab 标签，label 属性指定标题，icon 属性添加图标。</p>
-            <p>核心概念：5 种 variant（underline/pill/flat/outline/segmented）通过同名属性切换；尺寸用 xsmall/small/large；prefix/suffix 注入首尾元素；menu 模式启用下拉；on_click 事件回调选中索引（签名 fn(index: usize)）。</p>
+            <p>核心概念：5 种 variant（underline/pill/flat/outline/segmented）通过同名属性切换；尺寸用 size 属性；prefix/suffix 注入首尾元素；menu 模式启用下拉；on-click 事件回调选中索引（签名 fn(index: usize)）。</p>
             <p>模板定制（高级）：Tab 实现 ParentElement，element 子节点通过 .child() 注入作为标题内容，绕过 label/icon 限制。</p>
         </Card>
 
         <Card title="API">
             <div class="api-table">
                 <div class="api-row api-header"><span class="api-prop-name">属性</span><span class="api-prop-type">类型</span><span>说明</span></div>
-                <div class="api-row"><span class="api-prop-name">selected_index</span><span class="api-prop-type">绑定</span><span>当前选中索引</span></div>
-                <div class="api-row"><span class="api-prop-name">on_click</span><span class="api-prop-type">事件</span><span>点击回调，签名 fn(index: usize)</span></div>
+                <div class="api-row"><span class="api-prop-name">selected-index</span><span class="api-prop-type">绑定</span><span>当前选中索引</span></div>
+                <div class="api-row"><span class="api-prop-name">on-click</span><span class="api-prop-type">事件</span><span>点击回调，签名 fn(index: usize)</span></div>
                 <div class="api-row"><span class="api-prop-name">underline/pill/flat/outline/segmented</span><span class="api-prop-type">布尔标志</span><span>5 种 variant</span></div>
                 <div class="api-row"><span class="api-prop-name">menu</span><span class="api-prop-type">布尔</span><span>启用下拉菜单（标签过多时）</span></div>
                 <div class="api-row"><span class="api-prop-name">prefix/suffix</span><span class="api-prop-type">绑定</span><span>首尾注入元素</span></div>
@@ -32,7 +32,7 @@
 
             <div class="demo-section">
                 <h3>{t("case.tab_bar.basic")}</h3>
-                <TabBar selected_index={active_tab} on_click={on_tab_select}>
+                <TabBar selected-index={active_tab} on-click={on_tab_select}>
                     <Tab label="Account" />
                     <Tab label="Profile" />
                     <Tab label="Settings" />
@@ -41,23 +41,23 @@
 
             <div class="demo-section">
                 <h3>{t("case.tab_bar.variants")}</h3>
-                <TabBar selected_index={0}>
+                <TabBar selected-index={0}>
                     <Tab label="Underline" />
                     <Tab label="B" />
                 </TabBar>
-                <TabBar pill="" selected_index={0}>
+                <TabBar pill="" selected-index={0}>
                     <Tab label="Pill" />
                     <Tab label="B" />
                 </TabBar>
-                <TabBar flat="" selected_index={0}>
+                <TabBar flat="" selected-index={0}>
                     <Tab label="Flat" />
                     <Tab label="B" />
                 </TabBar>
-                <TabBar outline="" selected_index={0}>
+                <TabBar outline="" selected-index={0}>
                     <Tab label="Outline" />
                     <Tab label="B" />
                 </TabBar>
-                <TabBar segmented="" selected_index={0}>
+                <TabBar segmented="" selected-index={0}>
                     <Tab label="Segmented" />
                     <Tab label="B" />
                 </TabBar>
@@ -65,15 +65,15 @@
 
             <div class="demo-section">
                 <h3>{t("case.tab_bar.sizes")}</h3>
-                <TabBar xsmall="" selected_index={0}>
+                <TabBar size="xsmall" selected-index={0}>
                     <Tab label="xsmall" />
                     <Tab label="B" />
                 </TabBar>
-                <TabBar small="" selected_index={0}>
+                <TabBar size="small" selected-index={0}>
                     <Tab label="small" />
                     <Tab label="B" />
                 </TabBar>
-                <TabBar large="" selected_index={0}>
+                <TabBar size="large" selected-index={0}>
                     <Tab label="large" />
                     <Tab label="B" />
                 </TabBar>
@@ -81,7 +81,7 @@
 
             <div class="demo-section">
                 <h3>{t("case.tab_bar.with_icon")}</h3>
-                <TabBar selected_index={0}>
+                <TabBar selected-index={0}>
                     <Tab icon="User" label="Account" />
                     <Tab icon="Bell" label="Notifications" />
                     <Tab icon="Settings" label="Settings" />
@@ -90,7 +90,7 @@
 
             <div class="demo-section">
                 <h3>{t("case.tab_bar.disabled")}</h3>
-                <TabBar selected_index={0}>
+                <TabBar selected-index={0}>
                     <Tab label="Normal" />
                     <Tab label="Disabled" disabled="true" />
                     <Tab label="Selected" selected="true" />
@@ -99,7 +99,7 @@
 
             <div class="demo-section">
                 <h3>{t("case.tab_bar.menu")}</h3>
-                <TabBar menu="true" selected_index={0}>
+                <TabBar menu="true" selected-index={0}>
                     <Tab label="Tab 1" />
                     <Tab label="Tab 2" />
                     <Tab label="Tab 3" />
@@ -112,7 +112,7 @@
             <div class="demo-section">
                 <h3>{t("case.tab_bar.template")}</h3>
                 <p>Tab 内放置 element 子节点作为标题内容（绕过 label 限制）：</p>
-                <TabBar selected_index={active_tab} on_click={on_tab_select}>
+                <TabBar selected-index={active_tab} on-click={on_tab_select}>
                     <Tab>
                         <span>Account</span>
                         <Badge label="3" />
@@ -126,7 +126,7 @@
             <div class="demo-section">
                 <h3>{t("case.tab_bar.tab_item")}</h3>
                 <p>TabItem 同时承载 title (header) 与 body (选中时渲染的内容)，对应 WPF TabControl/TabItem 模式：</p>
-                <TabBar selected_index={active_tab} on_click={on_tab_select}>
+                <TabBar selected-index={active_tab} on-click={on_tab_select}>
                     <tab-item title="Account">
                         <div class="tab-body">
                             <p>Account settings panel</p>

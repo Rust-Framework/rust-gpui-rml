@@ -1,5 +1,5 @@
 <component>
-    <div v_flex="" class="case-pane doc-pane">
+    <div v-flex="" class="case-pane doc-pane">
         <h2>Table 表格组件</h2>
 
         <Card title="组件说明">
@@ -43,7 +43,7 @@
                     <Column key="age" title="年龄" />
                     <Column key="email" title="邮箱" />
                     <template slot="header">
-                        <div h_flex="" style="color: blue; font-weight: bold; width: 100%;">
+                        <div h-flex="" style="color: blue; font-weight: bold; width: 100%;">
                             <span style="flex: 1;">姓名</span>
                             <span style="flex: 1; text-align: center;">年龄</span>
                             <span style="flex: 1;">邮箱</span>

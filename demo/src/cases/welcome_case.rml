@@ -1,5 +1,5 @@
 <component>
-    <div v_flex="" class="case-pane case-empty">
+    <div v-flex="" class="case-pane case-empty">
         <h2>{t("shell.pick_case")}</h2>
         <p>{t("shell.pick_case_hint")}</p>
     </div>

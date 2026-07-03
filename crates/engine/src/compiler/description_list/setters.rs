@@ -8,13 +8,14 @@
 //!
 //! - `label` 不在本模块处理：它是 `DescriptionItem::new(label)` 的构造器参数，
 //!   由 `item::gen_description_item` 提取。
-//! - `vertical` / `horizontal` 为布尔静态属性，映射到 `.layout(gpui::Axis::*)`。
+//! - `vertical` 为静态/绑定属性，映射到 `.layout(gpui::Axis::*)`。默认横向，
+//!   `vertical="true"` 或 `vertical={is_vertical}` 控制纵向布局。
 
 /// 静态属性 → builder 方法
 ///
 /// DescriptionList 属性：
-/// - `vertical=""` → `.layout(gpui::Axis::Vertical)`
-/// - `horizontal=""` → `.layout(gpui::Axis::Horizontal)`
+/// - `vertical=""` / `vertical="true"` → `.layout(gpui::Axis::Vertical)`
+/// - `vertical="false"` → 返回 None（默认横向，不生成 layout 调用）
 /// - `bordered="true"`/`""` → `.bordered(true)` / `bordered="false"` → `.bordered(false)`
 /// - `columns="3"` → `.columns(3)`
 /// - `label_width="200"` → `.label_width(gpui::px(200.))`
@@ -29,13 +30,6 @@ pub fn static_setter(name: &str, value: &str, tag: &str) -> Option<String> {
             "vertical" => {
                 if value.is_empty() || value.eq_ignore_ascii_case("true") {
                     Some(".layout(gpui::Axis::Vertical)".to_string())
-                } else {
-                    None
-                }
-            }
-            "horizontal" => {
-                if value.is_empty() || value.eq_ignore_ascii_case("true") {
-                    Some(".layout(gpui::Axis::Horizontal)".to_string())
                 } else {
                     None
                 }
@@ -85,9 +79,11 @@ pub fn static_setter(name: &str, value: &str, tag: &str) -> Option<String> {
 /// 绑定属性 → builder 方法
 ///
 /// DescriptionList 属性：
+/// - `vertical={is_vertical}` → `.layout(if self.is_vertical { Vertical } else { Horizontal })`
 /// - `bordered={expr}` → `.bordered(self.expr)`
 /// - `columns={expr}` → `.columns(self.expr)`
 /// - `label_width={expr}` → `.label_width(self.expr)`
+/// - `items={data}` → `.children(self.data.clone())`（与 inline <description> 子元素共存）
 ///
 /// DescriptionItem 属性：
 /// - `value={expr}` → `.value(self.expr.clone())`（DescriptionText: From<SharedString> 等需要 owned）
@@ -104,9 +100,14 @@ pub fn bind_setter(
 
     match canonical.as_str() {
         "DescriptionList" => match name {
+            "vertical" => Some(format!(
+                ".layout(if {} {{ gpui::Axis::Vertical }} else {{ gpui::Axis::Horizontal }})",
+                rust_expr
+            )),
             "bordered" | "columns" | "label_width" => {
                 Some(format!(".{}({})", name, rust_expr))
             }
+            "items" => Some(format!(".children({}.clone())", rust_expr)),
             _ => None,
         },
         "DescriptionItem" => match name {
@@ -139,14 +140,6 @@ mod tests {
     #[test]
     fn static_setter_vertical_false_returns_none() {
         assert!(static_setter("vertical", "false", "DescriptionList").is_none());
-    }
-
-    #[test]
-    fn static_setter_horizontal() {
-        assert_eq!(
-            static_setter("horizontal", "", "DescriptionList").unwrap(),
-            ".layout(gpui::Axis::Horizontal)"
-        );
     }
 
     #[test]
@@ -282,6 +275,21 @@ mod tests {
     fn bind_setter_label_width() {
         let code = bind_setter("label_width", "lw", &[], &[], "DescriptionList").unwrap();
         assert_eq!(code, ".label_width(self.lw)");
+    }
+
+    #[test]
+    fn bind_setter_vertical() {
+        let code = bind_setter("vertical", "is_vertical", &[], &[], "DescriptionList").unwrap();
+        assert_eq!(
+            code,
+            ".layout(if self.is_vertical { gpui::Axis::Vertical } else { gpui::Axis::Horizontal })"
+        );
+    }
+
+    #[test]
+    fn bind_setter_items() {
+        let code = bind_setter("items", "desitems", &[], &[], "DescriptionList").unwrap();
+        assert_eq!(code, ".children(self.desitems.clone())");
     }
 
     #[test]

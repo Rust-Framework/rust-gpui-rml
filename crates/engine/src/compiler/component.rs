@@ -255,7 +255,7 @@ pub fn gen_component(
 /// - `primary`/`secondary`/`danger`/`success`/`warning`/`info`/`ghost` → `.primary()` 等
 /// - `disabled="true"` → `.disabled(true)`
 /// - `selected`/`compact`/`loading` → 对应方法
-/// - `xsmall`/`small`/`large` → Sizable 尺寸方法
+/// - `size` → Sizable 尺寸方法（`size="small"` → `.with_size(rml_ui::Size::Small)`）
 /// - `font_bold`/`font_semibold` 等 → StyledExt 字体权重
 /// - `h_flex`/`v_flex` → StyledExt 布局快捷方法
 pub fn component_static_setter(name: &str, value: &str, tag: &str) -> Option<String> {
@@ -288,13 +288,17 @@ pub fn component_static_setter(name: &str, value: &str, tag: &str) -> Option<Str
                 None
             }
         }
-        // Sizable 尺寸方法（small 在 variant 和 size 中都适用，保持兼容）
-        "small" | "xsmall" | "large" => {
-            if value.is_empty() || value.eq_ignore_ascii_case("true") {
-                Some(format!(".{}()", name))
-            } else {
-                None
-            }
+        // Sizable 尺寸：size="small" / size="large" / size="xsmall" / size="medium"
+        // 替代旧 small/xsmall/large 布尔标志，统一通过 with_size(impl Into<Size>) 设置
+        "size" => {
+            let size = match value {
+                "xsmall" => "rml_ui::Size::XSmall",
+                "small" => "rml_ui::Size::Small",
+                "medium" => "rml_ui::Size::Medium",
+                "large" => "rml_ui::Size::Large",
+                _ => return None,
+            };
+            Some(format!(".with_size({})", size))
         }
         "compact" | "loading" => {
             if value.is_empty() || value.eq_ignore_ascii_case("true") {
@@ -437,6 +441,11 @@ pub fn component_bind_setter(
         "label" => {
             let rust_expr = component_bind_rust_expr(expr_str, loop_vars, computed);
             Some(format!(".label({}.clone())", rust_expr))
+        }
+        // Sizable 尺寸绑定：size={size_value} → .with_size(self.size_value)
+        "size" => {
+            let rust_expr = component_bind_rust_expr(expr_str, loop_vars, computed);
+            Some(format!(".with_size({})", rust_expr))
         }
         _ => {
             // 未命中：若属性在 props_registry 中已登记但此处无 match 分支，
@@ -640,10 +649,7 @@ mod tests {
 
     #[test]
     fn static_setter_size_modifiers() {
-        assert_eq!(
-            component_static_setter("small", "", "Button").unwrap(),
-            ".small()"
-        );
+        // compact/loading 仍是布尔标志
         assert_eq!(
             component_static_setter("compact", "", "Button").unwrap(),
             ".compact()"
@@ -655,19 +661,27 @@ mod tests {
     }
 
     #[test]
-    fn static_setter_sizable_xsmall() {
+    fn static_setter_size_attribute() {
+        // size="small" / size="large" / size="xsmall" / size="medium"
+        // 替代旧 small/xsmall/large 布尔标志，统一通过 .with_size(Size::*)
         assert_eq!(
-            component_static_setter("xsmall", "", "Button").unwrap(),
-            ".xsmall()"
+            component_static_setter("size", "xsmall", "Button").unwrap(),
+            ".with_size(rml_ui::Size::XSmall)"
         );
-    }
-
-    #[test]
-    fn static_setter_sizable_large() {
         assert_eq!(
-            component_static_setter("large", "", "Button").unwrap(),
-            ".large()"
+            component_static_setter("size", "small", "Button").unwrap(),
+            ".with_size(rml_ui::Size::Small)"
         );
+        assert_eq!(
+            component_static_setter("size", "medium", "Button").unwrap(),
+            ".with_size(rml_ui::Size::Medium)"
+        );
+        assert_eq!(
+            component_static_setter("size", "large", "Button").unwrap(),
+            ".with_size(rml_ui::Size::Large)"
+        );
+        // 无效值返回 None
+        assert!(component_static_setter("size", "huge", "Button").is_none());
     }
 
     #[test]
@@ -1069,7 +1083,7 @@ mod tests {
 
     #[test]
     fn gen_component_button_with_sizable() {
-        // <Button label="OK" large="" font_bold="" />
+        // <Button label="OK" size="large" font-bold="" />
         let elem = make_element(
             "Button",
             vec![
@@ -1078,8 +1092,8 @@ mod tests {
                     value: "OK".into(),
                 },
                 Attribute::Static {
-                    name: "large".into(),
-                    value: "".into(),
+                    name: "size".into(),
+                    value: "large".into(),
                 },
                 Attribute::Static {
                     name: "font_bold".into(),
@@ -1091,7 +1105,7 @@ mod tests {
         let mut id = 0;
         let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
         assert!(code.contains(".label(\"OK\")"));
-        assert!(code.contains(".large()"));
+        assert!(code.contains(".with_size(rml_ui::Size::Large)"));
         assert!(code.contains(".font_bold()"));
     }
 
@@ -1281,7 +1295,7 @@ mod tests {
 
     #[test]
     fn gen_component_avatar_with_sizable() {
-        // <Avatar name="John" large="" /> → .name("John").large()
+        // <Avatar name="John" size="large" /> → .name("John").with_size(Size::Large)
         let elem = make_element(
             "Avatar",
             vec![
@@ -1290,8 +1304,8 @@ mod tests {
                     value: "John".into(),
                 },
                 Attribute::Static {
-                    name: "large".into(),
-                    value: "".into(),
+                    name: "size".into(),
+                    value: "large".into(),
                 },
             ],
             vec![],
@@ -1299,7 +1313,7 @@ mod tests {
         let mut id = 0;
         let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
         assert!(code.contains(r#".name("John")"#));
-        assert!(code.contains(".large()"));
+        assert!(code.contains(".with_size(rml_ui::Size::Large)"));
     }
 
     #[test]

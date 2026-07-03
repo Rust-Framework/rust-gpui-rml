@@ -35,8 +35,8 @@ pub const COMMON_STATIC_PROPS: &[&str] = &[
     "label", "placeholder", "tooltip",
     // Button variant
     "primary", "secondary", "danger", "success", "warning", "info", "ghost", "link", "text",
-    // Sizable 尺寸
-    "small", "xsmall", "large",
+    // Sizable 尺寸（替代旧 small/xsmall/large 布尔标志）
+    "size",
     // 状态
     "compact", "loading", "disabled", "selected",
     // StyledExt 字体权重
@@ -48,7 +48,7 @@ pub const COMMON_STATIC_PROPS: &[&str] = &[
 
 /// 通用绑定属性（来自 `component_bind_setter` 的通用 match 分支）
 pub const COMMON_BIND_PROPS: &[&str] = &[
-    "content", "value", "disabled", "selected", "checked", "label",
+    "content", "value", "disabled", "selected", "checked", "label", "size",
 ];
 
 /// 通用事件属性（来自 `component_event_setter` 的通用 match 分支）
@@ -100,8 +100,8 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
     ("Table", &["columns", "rows", "delegate", "bordered", "borderless", "stripe"]),
     // Column 专用（item builder 子标签，不在 component_lookup 中）
     ("Column", &["key", "title", "width", "align", "field"]),
-    // DescriptionList 专用（无 ElementId 容器，layout/bordered/columns/label_width）
-    ("DescriptionList", &["vertical", "horizontal", "bordered", "columns", "label_width"]),
+    // DescriptionList 专用（无 ElementId 容器，vertical/bordered/columns/label_width/items）
+    ("DescriptionList", &["vertical", "bordered", "columns", "label_width", "items"]),
     // DescriptionItem 专用（item builder 子标签，label 为构造器参数，value/span 为 setter）
     ("DescriptionItem", &["label", "value", "span"]),
 ];
@@ -175,7 +175,7 @@ pub static SHELL_PROPS: &[(&str, &[&str])] = &[
         "title", "width", "height", "startup", "icon",
         "tabs", "selected_index", "show_chrome",
         "left_size", "right_size", "bottom_size",
-        "on_tab_click", "on_chrome_toggle",
+        "on_tab_click", "on_chrome_toggle", "tab_item_template",
     ]),
     ("modern_window", &[
         "title", "width", "height", "startup", "icon",
@@ -337,6 +337,7 @@ mod tests {
         assert!(is_shell_prop_registered("tab_window", "tabs"));
         assert!(is_shell_prop_registered("tab_window", "on_tab_click"));
         assert!(is_shell_prop_registered("tab_window", "left_size"));
+        assert!(is_shell_prop_registered("tab_window", "tab_item_template"));
         assert!(is_shell_prop_registered("modern_window", "menu"));
         assert!(is_shell_prop_registered("modern_window", "footer"));
         assert!(is_shell_prop_registered("window", "title"));
@@ -347,6 +348,7 @@ mod tests {
         let props = shell_props_for("tab_window").expect("tab_window should be registered");
         assert!(props.contains(&"tabs"));
         assert!(props.contains(&"show_chrome"));
+        assert!(props.contains(&"tab_item_template"));
     }
 
     #[test]

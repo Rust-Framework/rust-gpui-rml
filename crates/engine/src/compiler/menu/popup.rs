@@ -73,7 +73,7 @@ mod tests {
 
     #[test]
     fn scrollable_config() {
-        let src = r#"<DropdownMenu scrollable="" max_h="300" />"#;
+        let src = r#"<DropdownMenu scrollable="" max-h="300" />"#;
         let root = parser::parse(src).unwrap();
         let Node::Element(elem) = root else { panic!() };
         let code = apply_popup_config(&elem).unwrap();

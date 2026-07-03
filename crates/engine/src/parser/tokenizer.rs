@@ -274,7 +274,9 @@ fn read_attributes(chars: &mut CharStream) -> Result<Vec<RawAttribute>, ParseErr
 fn read_attr_name(chars: &mut CharStream) -> Result<String, ParseError> {
     let mut name = String::new();
     while let Some(c) = chars.peek() {
-        if c.is_alphanumeric() || c == '-' || c == '_' || c == ':' {
+        // RML 强制 kebab-case 命名：接受字母数字、连字符 `-`、冒号 `:`
+        // 严格禁止下划线 `_` —— 遇到下划线时停止读取，触发解析错误
+        if c.is_alphanumeric() || c == '-' || c == ':' {
             name.push(c);
             chars.advance();
         } else {

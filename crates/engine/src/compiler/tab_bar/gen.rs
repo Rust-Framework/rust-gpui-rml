@@ -321,13 +321,13 @@ mod tests {
 
     #[test]
     fn gen_tab_bar_with_sizable() {
-        // <TabBar small underline> → .small() + .underline()
+        // <TabBar size="small" underline> → .with_size(Size::Small) + .underline()
         let elem = make_element(
             "TabBar",
             vec![
                 Attribute::Static {
-                    name: "small".into(),
-                    value: "".into(),
+                    name: "size".into(),
+                    value: "small".into(),
                 },
                 Attribute::Static {
                     name: "underline".into(),
@@ -338,7 +338,7 @@ mod tests {
         );
         let mut id = 0;
         let code = gen_tab_bar(&elem, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
-        assert!(code.contains(".small()"));
+        assert!(code.contains(".with_size(rml_ui::Size::Small)"));
         assert!(code.contains(".underline()"));
     }
 

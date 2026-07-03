@@ -270,14 +270,14 @@ mod tests {
 
     #[test]
     fn gen_accordion_with_sizable() {
-        // <Accordion small="" bordered="" /> → .small() + .bordered(true)
-        // small 走通用 Sizable setter，bordered 走 accordion 专用 setter
+        // <Accordion size="small" bordered="" /> → .with_size(Size::Small) + .bordered(true)
+        // size 走通用 Sizable setter，bordered 走 accordion 专用 setter
         let elem = make_element(
             "Accordion",
             vec![
                 Attribute::Static {
-                    name: "small".into(),
-                    value: "".into(),
+                    name: "size".into(),
+                    value: "small".into(),
                 },
                 Attribute::Static {
                     name: "bordered".into(),
@@ -288,7 +288,7 @@ mod tests {
         );
         let mut id = 0;
         let code = gen_accordion(&elem, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
-        assert!(code.contains(".small()"));
+        assert!(code.contains(".with_size(rml_ui::Size::Small)"));
         assert!(code.contains(".bordered(true)"));
     }
 

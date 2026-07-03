@@ -1,20 +1,21 @@
 <component>
-    <div v_flex="" class="case-pane doc-pane">
+    <div v-flex="" class="case-pane doc-pane">
         <h2>{t("case.description_list.title")}</h2>
 
         <Card title="组件说明">
             <p>DescriptionList 是 gpui-component 描述列表组件的 RML 封装，用于呈现键值对形式的只读信息（如用户详情、产品属性）。</p>
-            <p>核心特性：horizontal/vertical 布局切换；bordered 边框控制；columns 多列布局；label_width 标签列宽；description 子项支持 label 必填 + value/span 属性；separator 分隔符；value 支持文本属性、文本子节点、元素子节点三种形式。</p>
+            <p>核心特性：默认 horizontal 布局，vertical 控制纵向；bordered 边框控制；columns 多列布局；label-width 标签列宽；items 绑定批量数据；description 子项支持 label 必填 + value/span 属性；separator 分隔符；value 支持文本属性、文本子节点、元素子节点三种形式。</p>
             <p>支持大小写两种标签形式：DescriptionList/descriptions、DescriptionItem/description、separator（仅小写，避免与独立 Separator 组件冲突）。</p>
         </Card>
 
         <Card title="API">
             <div class="api-table">
                 <div class="api-row api-header"><span class="api-prop-name">属性</span><span class="api-prop-type">类型</span><span>说明</span></div>
-                <div class="api-row"><span class="api-prop-name">vertical/horizontal</span><span class="api-prop-type">布尔标志</span><span>布局方向（互斥）</span></div>
+                <div class="api-row"><span class="api-prop-name">vertical</span><span class="api-prop-type">布尔/绑定</span><span>纵向布局（默认横向）</span></div>
                 <div class="api-row"><span class="api-prop-name">bordered</span><span class="api-prop-type">布尔标志</span><span>显示边框</span></div>
                 <div class="api-row"><span class="api-prop-name">columns</span><span class="api-prop-type">数字</span><span>列数</span></div>
-                <div class="api-row"><span class="api-prop-name">label_width</span><span class="api-prop-type">像素值</span><span>标签列宽</span></div>
+                <div class="api-row"><span class="api-prop-name">label-width</span><span class="api-prop-type">像素值</span><span>标签列宽</span></div>
+                <div class="api-row"><span class="api-prop-name">items</span><span class="api-prop-type">绑定</span><span>批量数据绑定（Vec&lt;DescriptionItem&gt;）</span></div>
                 <div class="api-row"><span class="api-prop-name">description label</span><span class="api-prop-type">字符串</span><span>子项标签（必填）</span></div>
                 <div class="api-row"><span class="api-prop-name">description value</span><span class="api-prop-type">字符串/元素</span><span>子项值</span></div>
                 <div class="api-row"><span class="api-prop-name">description span</span><span class="api-prop-type">数字</span><span>跨列数</span></div>
@@ -29,7 +30,7 @@
         <Card title="演示效果">
             <div class="demo-section">
                 <h3>1. 水平布局 + bordered + columns={3}</h3>
-                <DescriptionList bordered="" columns="3" label_width="120">
+                <DescriptionList bordered="" columns="3" label-width="120">
                     <DescriptionItem label="用户名" value="alice" />
                     <DescriptionItem label="邮箱" value="alice@example.com" />
                     <DescriptionItem label="手机号" value="13800138000" />
@@ -60,7 +61,7 @@
 
             <div class="demo-section">
                 <h3>4. bind 绑定（动态数据）</h3>
-                <DescriptionList bordered="" columns="2" label_width={width}>
+                <DescriptionList bordered="" columns="2" label-width={width}>
                     <DescriptionItem label="用户名" value={user_name} />
                     <DescriptionItem label="邮箱" value={user_email} />
                     <DescriptionItem label="角色" value={role} span="2" />
@@ -76,6 +77,22 @@
                     <DescriptionItem label="状态">
                         <Badge success="">活跃</Badge>
                     </DescriptionItem>
+                </DescriptionList>
+            </div>
+
+            <div class="demo-section">
+                <h3>6. items 绑定（批量数据）</h3>
+                <p>items={desitems} 从 ViewModel 绑定 Vec&lt;DescriptionItem&gt;，与 inline 子元素共存：</p>
+                <descriptions items={desitems} bordered="" columns="2" label-width="100" />
+            </div>
+
+            <div class="demo-section">
+                <h3>7. vertical 绑定（动态方向）</h3>
+                <p>vertical={is_vertical} 通过 ViewModel 布尔字段控制布局方向：</p>
+                <DescriptionList vertical={is_vertical} bordered="" columns="2" label-width="100">
+                    <DescriptionItem label="字段 A" value="值 A" />
+                    <DescriptionItem label="字段 B" value="值 B" />
+                    <DescriptionItem label="字段 C" value="值 C" />
                 </DescriptionList>
             </div>
         </Card>
