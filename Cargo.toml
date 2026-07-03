@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/core", "crates/macros", "crates/engine", "crates/ui", "crates/app", "demo", "crates/lsp"]
+members = ["crates/core", "crates/macros", "crates/engine", "crates/ui", "crates/app", "demo", "crates/lsp", "crates/dap"]
 resolver = "2"
 
 [workspace.package]
@@ -12,7 +12,7 @@ license = "MIT"
 gpui = { git = "https://github.com/zed-industries/zed.git", rev = "1d217ee39d381ac101b7cf49d3d22451ac1093fe" }
 gpui_platform = { git = "https://github.com/zed-industries/zed.git", rev = "1d217ee39d381ac101b7cf49d3d22451ac1093fe" }
 # 外部组件库
-gpui-component = { git = "https://github.com/longbridge/gpui-component.git" }
+gpui-component = { git = "https://github.com/longbridge/gpui-component.git", features = ["tree-sitter-languages"] }
 # gpui-component 内置资源（SVG 图标，包括窗口 min/max/restore/close）
 gpui-component-assets = { git = "https://github.com/longbridge/gpui-component.git" }
 
@@ -23,6 +23,7 @@ rust-rml-engine = { path = "crates/engine" }
 rust-rml-ui = { path = "crates/ui" }
 rust-rml-app = { path = "crates/app" }
 rust-rml-lsp = { path = "crates/lsp" }
+rust-rml-dap = { path = "crates/dap" }
 
 # 过程宏依赖
 syn = { version = "2", features = ["full", "extra-traits", "visit", "visit-mut"] }

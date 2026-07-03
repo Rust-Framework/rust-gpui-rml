@@ -83,6 +83,21 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
     ("AvatarGroup", &["limit", "ellipsis"]),
     // Card 专用（Ant Design 风格卡片，title/extra/cover/footer/bordered/borderless/hoverable）
     ("Card", &["title", "extra", "cover", "footer", "bordered", "borderless", "hoverable"]),
+    // TabBar 专用（标签栏容器，variant 快捷方法 + menu + selected_index + prefix/suffix + on_click）
+    ("TabBar", &[
+        "selected_index", "on_click", "prefix", "suffix", "last_empty_space",
+        "menu", "track_scroll",
+        "underline", "pill", "flat", "outline", "segmented",
+    ]),
+    // Tab 专用（标签项，label/icon + variant 快捷方法 + prefix/suffix + on_click）
+    ("Tab", &[
+        "label", "icon", "disabled", "selected", "prefix", "suffix", "on_click",
+        "underline", "pill", "flat", "outline", "segmented",
+    ]),
+    // Table 专用（WPF DataGrid 风格表格）
+    ("Table", &["columns", "rows", "delegate", "bordered", "borderless", "stripe"]),
+    // Column 专用（item builder 子标签，不在 component_lookup 中）
+    ("Column", &["key", "title", "width", "align", "field"]),
 ];
 
 /// 查询组件的所有已注册属性（通用 + 专用）
@@ -253,6 +268,62 @@ mod tests {
         assert!(bind.contains(&"icon"));
         // 通用属性仍可用
         assert!(static_props.contains(&"disabled"));
+    }
+
+    #[test]
+    fn tab_bar_props_registered() {
+        assert!(is_prop_registered("TabBar", "selected_index"));
+        assert!(is_prop_registered("TabBar", "on_click"));
+        assert!(is_prop_registered("TabBar", "prefix"));
+        assert!(is_prop_registered("TabBar", "suffix"));
+        assert!(is_prop_registered("TabBar", "last_empty_space"));
+        assert!(is_prop_registered("TabBar", "menu"));
+        assert!(is_prop_registered("TabBar", "track_scroll"));
+        assert!(is_prop_registered("TabBar", "underline"));
+        assert!(is_prop_registered("TabBar", "pill"));
+        assert!(is_prop_registered("TabBar", "flat"));
+        assert!(is_prop_registered("TabBar", "outline"));
+        assert!(is_prop_registered("TabBar", "segmented"));
+    }
+
+    #[test]
+    fn tab_props_registered() {
+        assert!(is_prop_registered("Tab", "label"));
+        assert!(is_prop_registered("Tab", "icon"));
+        assert!(is_prop_registered("Tab", "disabled"));
+        assert!(is_prop_registered("Tab", "selected"));
+        assert!(is_prop_registered("Tab", "prefix"));
+        assert!(is_prop_registered("Tab", "suffix"));
+        assert!(is_prop_registered("Tab", "on_click"));
+        assert!(is_prop_registered("Tab", "underline"));
+        assert!(is_prop_registered("Tab", "pill"));
+    }
+
+    #[test]
+    fn tab_bar_lowercase_alias_props_registered() {
+        // <tab_bar> 小写别名也应命中 TabBar 属性
+        assert!(is_prop_registered("tab_bar", "selected_index"));
+        assert!(is_prop_registered("tab_bar", "underline"));
+    }
+
+    #[test]
+    fn tab_short_form_props_registered() {
+        // <tab> 短标签也应命中 Tab 属性
+        assert!(is_prop_registered("tab", "label"));
+        assert!(is_prop_registered("tab", "icon"));
+    }
+
+    #[test]
+    fn props_for_tab_bar_and_tab() {
+        let (_, bind, event) = props_for("TabBar");
+        assert!(bind.contains(&"selected_index"));
+        assert!(bind.contains(&"prefix"));
+        assert!(event.contains(&"on_click"));
+
+        let (_, bind, event) = props_for("Tab");
+        assert!(bind.contains(&"label"));
+        assert!(bind.contains(&"icon"));
+        assert!(event.contains(&"on_click"));
     }
 
     #[test]

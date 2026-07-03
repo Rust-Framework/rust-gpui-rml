@@ -1,5 +1,6 @@
 //! LSP 集成模块：活动栏 LspExplorerPanel + CodeEditorTab + LSP providers。
 
+#[path = "code_editor_tab.rml.rs"]
 pub mod code_editor_tab;
 pub mod completion_provider;
 pub mod definition_provider;
@@ -13,4 +14,4 @@ pub use code_editor_tab::CodeEditorTab;
 pub use completion_provider::RmlCompletionProvider;
 pub use definition_provider::RmlDefinitionProvider;
 pub use hover_provider::RmlHoverProvider;
-pub use lsp_client::LspClient;
+pub use lsp_client::{file_path_to_uri, LspClient};

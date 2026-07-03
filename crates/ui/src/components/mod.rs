@@ -7,6 +7,7 @@ pub mod card;
 pub mod menu;
 pub mod status_bar;
 pub mod tab;
+pub mod table;
 pub mod tree;
 
 pub use activity_bar::{
@@ -26,4 +27,8 @@ pub use status_bar::{
     IStatusBarItem, NativeStatusBar, StatusBar, StatusBarAlign, StatusBarItem,
 };
 pub use tab::{Tab, TabBar, TabVariant};
+pub use table::{
+    CellTemplate, DefaultTableDelegate, FooterTemplate, HeaderTemplate, Table, TableColumn,
+    TableDelegate, TableRow,
+};
 pub use tree::Tree;

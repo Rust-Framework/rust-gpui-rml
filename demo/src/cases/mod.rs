@@ -11,6 +11,8 @@ pub mod two_way_case;
 pub mod button_case;
 #[path = "accordion_case.rml.rs"]
 pub mod accordion_case;
+#[path = "tab_bar_case.rml.rs"]
+pub mod tab_bar_case;
 #[path = "avatar_case.rml.rs"]
 pub mod avatar_case;
 #[path = "i18n_case.rml.rs"]
@@ -29,5 +31,7 @@ pub mod menu_custom_case;
 pub mod status_bar_case;
 #[path = "slot_case.rml.rs"]
 pub mod slot_case;
+#[path = "table_case.rml.rs"]
+pub mod table_case;
 
 pub use catalog::{case_title_key, OpenTab};

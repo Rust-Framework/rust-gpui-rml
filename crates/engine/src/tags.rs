@@ -156,6 +156,10 @@ pub fn canonical_tag(tag: &str) -> String {
     match normalized.as_str() {
         "accordion" => "Accordion".to_string(),
         "item" => "AccordionItem".to_string(),
+        "tab_bar" => "TabBar".to_string(),
+        "tab" => "Tab".to_string(),
+        "table" => "Table".to_string(),
+        "column" => "Column".to_string(),
         _ => normalized,
     }
 }
@@ -347,6 +351,14 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
                 state_field: "input_state",
             },
         }),
+        // CodeEditor：基于 Input 的代码编辑器，自动应用 mono 字体 + size_full
+        // 字段必须为 Option<Entity<InputState>>，在 on_loaded 中延迟初始化
+        "CodeEditor" => Some(ComponentTag {
+            ctor_path: "rml_ui::Input",
+            kind: ComponentKind::Stateful {
+                state_field: "editor_state",
+            },
+        }),
         // 窗口外壳组件（RenderOnce，无 ElementId 参数）
         // TitleBar / NativeStatusBar 来自 gpui-component，供用户手动组装标题栏/状态栏
         // 注：ModernWindowShell 不在此路由表中——它是 `<modern_window>` 根元素的内部实现，
@@ -403,18 +415,33 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             ctor_path: "rml_ui::Card",
             kind: ComponentKind::Stateless,
         }),
+        // TabBar：标签栏容器，子节点为 <Tab>（直接 .child(Tab::new()...)，非闭包）
+        "TabBar" | "tab_bar" => Some(ComponentTag {
+            ctor_path: "rml_ui::TabBar",
+            kind: ComponentKind::StatelessWithItems,
+        }),
+        // Table：WPF DataGrid 风格声明式表格，子节点为 <Column> / <template slot="...">
+        "Table" | "table" => Some(ComponentTag {
+            ctor_path: "rml_ui::Table",
+            kind: ComponentKind::StatelessWithItems,
+        }),
         _ => None,
     }
 }
 
 /// 判断标签是否为 `StatelessWithItems` 组件的子项 builder
 ///
-/// 支持三种形式：`AccordionItem`（PascalCase）、`item`（短标签）、`accordion-item`（kebab-case）。
-/// 仅在 `<accordion>` / `<Accordion>` 内合法，不在 `component_lookup` 中注册
+/// Accordion 支持三种形式：`AccordionItem`（PascalCase）、`item`（短标签）、`accordion-item`（kebab-case）。
+/// TabBar 支持三种形式：`Tab`（PascalCase）、`tab`（短标签）、`tab`（已是短形式）。
+/// 仅在 `<accordion>`/`<tab_bar>` 内合法，不在 `component_lookup` 中注册
 /// （避免被误用为顶层扩展组件），在 validator 和 codegen 中通过此函数识别。
 pub fn is_item_builder_tag(tag: &str) -> bool {
-    matches!(tag, "AccordionItem" | "item")
-        || normalize_component_tag(tag) == "AccordionItem"
+    matches!(
+        tag,
+        "AccordionItem" | "item" | "Tab" | "tab" | "Column" | "column"
+    ) || normalize_component_tag(tag) == "AccordionItem"
+        || normalize_component_tag(tag) == "Tab"
+        || normalize_component_tag(tag) == "Column"
 }
 
 #[cfg(test)]
@@ -485,5 +512,38 @@ mod normalize_tests {
         assert!(component_lookup_resolved("accordion").is_some());
         assert!(is_special_lowercase_component("accordion"));
         assert!(is_extension_component("accordion"));
+    }
+
+    #[test]
+    fn component_lookup_tab_bar() {
+        let tag = component_lookup("TabBar").expect("TabBar should be registered");
+        assert_eq!(tag.ctor_path, "rml_ui::TabBar");
+        assert_eq!(tag.kind, ComponentKind::StatelessWithItems);
+    }
+
+    #[test]
+    fn component_lookup_tab_bar_lowercase() {
+        let tag = component_lookup("tab_bar").expect("tab_bar should be registered");
+        assert_eq!(tag.ctor_path, "rml_ui::TabBar");
+        assert_eq!(tag.kind, ComponentKind::StatelessWithItems);
+        assert!(component_lookup_resolved("tab_bar").is_some());
+        assert!(is_special_lowercase_component("tab_bar"));
+        assert!(is_extension_component("tab_bar"));
+    }
+
+    #[test]
+    fn canonical_tag_maps_tab_bar_lowercase() {
+        assert_eq!(canonical_tag("tab_bar"), "TabBar");
+        assert_eq!(canonical_tag("tab"), "Tab");
+        assert_eq!(canonical_tag("TabBar"), "TabBar");
+        assert_eq!(canonical_tag("Tab"), "Tab");
+    }
+
+    #[test]
+    fn is_item_builder_tab_matches_all_forms() {
+        assert!(is_item_builder_tag("Tab"));
+        assert!(is_item_builder_tag("tab"));
+        assert!(!is_item_builder_tag("TabBar"));
+        assert!(!is_item_builder_tag("div"));
     }
 }

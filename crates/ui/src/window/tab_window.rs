@@ -157,6 +157,9 @@ pub struct TabWindowShell {
     menu_slot: Option<AnyElement>,
     title_ext_slot: Option<AnyElement>,
     tabs: Vec<TabItem>,
+    /// 模板定制模式：直接注入 Tab 列表，绕过 TabItem 的 label/icon 限制。
+    /// 与 `tabs` 互斥；非空时优先使用（由 codegen 在编译期校验二者不并存）。
+    tab_children: Vec<Tab>,
     selected_tab: usize,
     on_tab_click: Option<Rc<dyn Fn(usize, &mut Window, &mut App) + 'static>>,
     on_chrome_toggle: Option<Rc<dyn Fn(&mut Window, &mut App) + 'static>>,
@@ -179,6 +182,7 @@ impl TabWindowShell {
             menu_slot: None,
             title_ext_slot: None,
             tabs: Vec::new(),
+            tab_children: Vec::new(),
             selected_tab: 0,
             on_tab_click: None,
             on_chrome_toggle: None,
@@ -220,6 +224,13 @@ impl TabWindowShell {
 
     pub fn tabs(mut self, tabs: Vec<TabItem>) -> Self {
         self.tabs = tabs;
+        self
+    }
+
+    /// 模板定制模式：直接注入 Tab 列表，绕过 TabItem 的 label/icon 限制。
+    /// 与 `tabs(Vec<TabItem>)` 互斥；非空时优先使用。
+    pub fn tab_children(mut self, children: Vec<Tab>) -> Self {
+        self.tab_children = children;
         self
     }
 
@@ -309,7 +320,7 @@ impl ParentElement for TabWindowShell {
 }
 
 impl RenderOnce for TabWindowShell {
-    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(mut self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let show_chrome = self.show_chrome;
 
         let on_chrome_toggle = self.on_chrome_toggle.clone();
@@ -390,12 +401,20 @@ impl RenderOnce for TabWindowShell {
             }
         }
 
-        for tab in &self.tabs {
-            let mut t = Tab::new().label(tab.label.clone());
-            if let Some(icon) = tab.icon.clone() {
-                t = t.icon(icon);
+        if !self.tab_children.is_empty() {
+            // 模板定制模式：直接注入 Tab，绕过 TabItem 限制
+            for tab in self.tab_children.drain(..) {
+                tab_bar = tab_bar.child(tab);
             }
-            tab_bar = tab_bar.child(t);
+        } else {
+            // 简单模式：沿用 TabItem → Tab::new().label().icon()
+            for tab in &self.tabs {
+                let mut t = Tab::new().label(tab.label.clone());
+                if let Some(icon) = tab.icon.clone() {
+                    t = t.icon(icon);
+                }
+                tab_bar = tab_bar.child(t);
+            }
         }
 
         if let Some(suffix) = self.title_ext_slot {

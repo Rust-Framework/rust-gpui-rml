@@ -74,7 +74,29 @@ pub fn gen_component(
             }
         }
         tags::ComponentKind::StatelessWithItems => {
-            // 闭包式 builder 组件（如 Accordion）：整个 codegen 流程委托到专属模块
+            // 闭包式 builder 组件（如 Accordion）或直接 .child() 注入组件（如 TabBar）：
+            // 按 tag 委托到对应专属模块
+            let resolved_tag = tags::canonical_tag(tag);
+            if resolved_tag == "TabBar" {
+                return crate::compiler::tab_bar::gen_tab_bar(
+                    elem,
+                    ref_name,
+                    id_val,
+                    ctx,
+                    id_counter,
+                    loop_vars,
+                );
+            }
+            if resolved_tag == "Table" {
+                return crate::compiler::table::gen_table(
+                    elem,
+                    ref_name,
+                    id_val,
+                    ctx,
+                    id_counter,
+                    loop_vars,
+                );
+            }
             return crate::compiler::accordion::gen_accordion(
                 elem,
                 ref_name,
@@ -99,10 +121,30 @@ pub fn gen_component(
                 loop_vars,
             );
         }
-        tags::ComponentKind::Stateful { state_field } => format!(
-            "{}::new(&self.{})",
-            component.ctor_path, state_field
-        ),
+        tags::ComponentKind::Stateful { state_field: _ } if tag == "CodeEditor" => {
+            // CodeEditor：基于 Input 的代码编辑器，自动应用 mono 字体 + size_full
+            // 字段必须为 Option<Entity<InputState>>，委托到独立 codegen 模块
+            return crate::compiler::code_editor::gen_code_editor(
+                elem,
+                component,
+                ctx,
+                _depth,
+                id_counter,
+                loop_vars,
+            );
+        }
+        tags::ComponentKind::Stateful { state_field } => {
+            // ref 指令：支持 Option<Entity<T>> 字段（on_loaded 中延迟初始化）
+            // 生成 Input::new(self.<ref_name>.as_ref().expect("init <ref_name> in on_loaded"))
+            if let Some(name) = ref_name {
+                format!(
+                    "{}::new(self.{}.as_ref().expect(\"init {} in on_loaded\"))",
+                    component.ctor_path, name, name
+                )
+            } else {
+                format!("{}::new(&self.{})", component.ctor_path, state_field)
+            }
+        }
         tags::ComponentKind::EntityRef => {
             // EntityRef：从 Host 的 `Entity<T>` 字段直接 clone
             // 必须配合 `ref="field_name"` 指令指定字段名
@@ -213,6 +255,10 @@ pub fn component_static_setter(name: &str, value: &str, tag: &str) -> Option<Str
     }
     // Card 的 title/bordered/borderless/hoverable
     if let Some(s) = super::card::static_setter(name, value, tag) {
+        return Some(s);
+    }
+    // Table 的 bordered/borderless/stripe + Column 的 width/align
+    if let Some(s) = super::table::setters::static_setter(name, value, tag) {
         return Some(s);
     }
     match name {
@@ -341,6 +387,10 @@ pub fn component_bind_setter(
     }
     // Card 的 title/extra/cover/footer/bordered/hoverable 属性
     if let Some(s) = super::card::bind_setter(name, expr_str, loop_vars, computed, tag) {
+        return Some(s);
+    }
+    // Table 的 columns/rows/delegate/bordered/stripe + Column 的 width/align
+    if let Some(s) = super::table::setters::bind_setter(name, expr_str, loop_vars, computed, tag) {
         return Some(s);
     }
 

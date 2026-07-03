@@ -60,7 +60,6 @@ pub use gpui_component::{
     separator::Separator,
     slider::Slider,
     switch::Switch,
-    table::Table,
     tag::Tag,
     tooltip::Tooltip,
     tree::{TreeEntry, TreeEvent, TreeItem, TreeState},
@@ -69,7 +68,7 @@ pub use gpui_component::{
 
 // 共享 trait 体系
 pub use gpui_component::{
-    button::ButtonVariants, Disableable, Sizable, Selectable, StyledExt,
+    button::ButtonVariants, ActiveTheme, Disableable, Sizable, Selectable, StyledExt,
 };
 
 // 窗口组件：ModernWindowShell 内置封装 + 内置 Window/ModernWindow + 助手 trait
@@ -80,9 +79,10 @@ pub use window::{
 
 pub use components::{
     ActivityAct, ActivityBar, ActivityPanel, AlertDialog, Avatar, AvatarGroup, Card, CardVariant,
-    DialogAction, DialogButtonProps, DialogClose, DialogContent, DialogDescription, DialogFooter,
-    DialogHeader, DialogTitle, IActivityAct, IActivityPanel, IMenuItem, IStatusBarItem, Menu,
-    MenuBar, MenuItem, NativeStatusBar, StatusBar, StatusBarAlign, StatusBarItem, Tab, TabBar,
-    TabVariant, Tree, VisualActivityPanel, configure_menu_bar_popup, menu_bar_button,
-    render_menu_bar_from_items,
+    CellTemplate, DefaultTableDelegate, DialogAction, DialogButtonProps, DialogClose,
+    DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, FooterTemplate,
+    HeaderTemplate, IActivityAct, IActivityPanel, IMenuItem, IStatusBarItem, Menu, MenuBar,
+    MenuItem, NativeStatusBar, StatusBar, StatusBarAlign, StatusBarItem, Tab, TabBar, Table,
+    TableColumn, TableDelegate, TableRow, TabVariant, Tree, VisualActivityPanel,
+    configure_menu_bar_popup, menu_bar_button, render_menu_bar_from_items,
 };

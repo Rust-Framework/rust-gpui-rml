@@ -1,0 +1,24 @@
+[package]
+name = "rust-rml-dap"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "RML 调试适配器（DAP）——lldb-dap 引擎集成 + 会话管理 + RML 源映射"
+
+[lib]
+name = "rml_dap"
+path = "src/lib.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+lsp-types = "0.95"
+log = "0.4"
+anyhow = "1"
+
+# lldb-dap 子进程 stdio 异步通信（lldb-backend feature 门后启用）
+tokio = { version = "1", features = ["process", "io-util", "rt", "sync"], optional = true }
+
+[features]
+default = []
+lldb-backend = ["dep:tokio"]

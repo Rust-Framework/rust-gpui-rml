@@ -1,0 +1,3 @@
+<component>
+    <Tree on_activate="on_file_activate" />
+</component>

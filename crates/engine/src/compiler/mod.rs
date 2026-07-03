@@ -5,6 +5,7 @@
 pub mod accordion;
 pub mod avatar;
 pub mod card;
+pub mod code_editor;
 pub mod codegen;
 pub mod component;
 pub mod event;
@@ -12,6 +13,8 @@ pub mod expr;
 pub mod input;
 pub mod menu;
 pub mod props_registry;
+pub mod tab_bar;
+pub mod table;
 pub mod tree;
 pub mod user_component;
 pub mod validator;

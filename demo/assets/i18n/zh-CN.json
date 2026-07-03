@@ -12,6 +12,7 @@
   "shell.pick_case_hint": "在左侧案例树中选择一个示例，将在 Tab 中打开",
   "shell.samples": "案例库",
   "shell.welcome": "欢迎",
+  "shell.lsp_explorer": "LSP 资源管理器",
 
   "shell.status_ready": "就绪 — 请从左侧案例树选择示例",
 
@@ -92,6 +93,26 @@
   "case.accordion.child1": "子项 1",
 
   "case.accordion.child2": "子项 2",
+
+  "case.tab_bar.title": "标签栏 TabBar",
+
+  "case.tab_bar.basic": "基础用法",
+
+  "case.tab_bar.variants": "5 种 variant",
+
+  "case.tab_bar.sizes": "尺寸",
+
+  "case.tab_bar.with_icon": "带图标",
+
+  "case.tab_bar.prefix_suffix": "prefix / suffix",
+
+  "case.tab_bar.disabled": "禁用与选中",
+
+  "case.tab_bar.menu": "menu 模式（下拉）",
+
+  "case.tab_bar.template": "模板定制（高级）",
+
+  "case.tab_bar.status": "事件回调状态",
 
   "case.i18n.title": "国际化 t()",
 
@@ -229,7 +250,9 @@
 
   "case.slot.body": "来自父视图的默认插槽内容",
 
-  "case.slot.footer": "页脚插槽"
+  "case.slot.footer": "页脚插槽",
+
+  "case.table.title": "表格组件"
 
 }
 

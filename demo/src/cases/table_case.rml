@@ -1,0 +1,68 @@
+<component>
+    <div v_flex="" class="case-pane doc-pane">
+        <h2>Table 表格组件</h2>
+
+        <Card title="组件说明">
+            <p>Table 是 WPF DataGrid 风格的声明式表格组件，支持数据绑定式列定义和声明式 Column 子标签，提供列头模板、列数据模板、合并列等高级功能。</p>
+            <p>核心特性：columns/rows 数据绑定；Column 声明式子标签；template slot 插槽模板（header/cell/footer）；TableDelegate trait 模板委托；bordered/borderless/stripe 样式控制；合并列（col_span/row_span）。</p>
+            <p>支持大小写两种标签形式：Table/table、Column/column。</p>
+        </Card>
+
+        <Card title="示例代码">
+            <div class="code-block">{code_sample}</div>
+        </Card>
+
+        <Card title="演示效果">
+            <div class="demo-section">
+                <h3>1. 数据绑定式（API 文档表格）</h3>
+                <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+            </div>
+
+            <div class="demo-section">
+                <h3>2. 声明式 Column 定义</h3>
+                <Table rows={user_rows} bordered="">
+                    <Column key="name" title="姓名" width="120" />
+                    <Column key="age" title="年龄" align="center" />
+                    <Column key="email" title="邮箱" />
+                </Table>
+            </div>
+
+            <div class="demo-section">
+                <h3>3. 小写标签形式</h3>
+                <table rows={user_rows} bordered="" stripe="">
+                    <column key="name" title="姓名" />
+                    <column key="age" title="年龄" align="center" />
+                    <column key="email" title="邮箱" />
+                </table>
+            </div>
+
+            <div class="demo-section">
+                <h3>4. 插槽模板（自定义列头和底部）</h3>
+                <Table rows={user_rows} bordered="">
+                    <Column key="name" title="姓名" />
+                    <Column key="age" title="年龄" />
+                    <Column key="email" title="邮箱" />
+                    <template slot="header">
+                        <div h_flex="" style="color: blue; font-weight: bold; width: 100%;">
+                            <span style="flex: 1;">姓名</span>
+                            <span style="flex: 1; text-align: center;">年龄</span>
+                            <span style="flex: 1;">邮箱</span>
+                        </div>
+                    </template>
+                    <template slot="footer">
+                        <span style="color: gray;">共 {user_rows.len()} 条记录</span>
+                    </template>
+                </Table>
+            </div>
+
+            <div class="demo-section">
+                <h3>5. 合并列</h3>
+                <Table rows={merged_rows} bordered="">
+                    <Column key="category" title="分类" width="120" />
+                    <Column key="name" title="名称" />
+                    <Column key="value" title="值" align="center" />
+                </Table>
+            </div>
+        </Card>
+    </div>
+</component>

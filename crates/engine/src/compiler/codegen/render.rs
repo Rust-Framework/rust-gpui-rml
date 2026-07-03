@@ -1,7 +1,7 @@
 //! `impl Render` 生成 —— 从根节点子节点生成 render 方法
 
 use crate::compiler::{CodegenCtx, CodegenError};
-use crate::parser::ast::Element;
+use crate::parser::ast::{Element, Node};
 use crate::tags;
 
 use super::node::gen_node;
@@ -40,17 +40,17 @@ pub(super) fn gen_render_impl_from_children(
     out.push_str("        }\n");
     out.push_str("        use gpui::{ParentElement, InteractiveElement, StatefulInteractiveElement, IntoElement, Styled};\n");
     out.push_str("        use rml_ui::{ContextMenuExt, DropdownMenu, PopupMenuItem, Side, h_flex};\n");
-    out.push_str("        use rml_ui::{ButtonVariants, Disableable, Sizable, Selectable, StyledExt};\n");
+    out.push_str("        use rml_ui::{ActiveTheme, ButtonVariants, Disableable, Sizable, Selectable, StyledExt};\n");
     out.push_str("        use rml::runtime::event_flow::convert as rml_convert;\n");
 
     let mut id_counter: usize = 0;
     let empty: Vec<String> = Vec::new();
 
-    let (slot_menu, slot_title, slot_footer, slot_left, slot_right, slot_bottom, body_children) =
+    let (slot_menu, slot_title, slot_footer, slot_left, slot_right, slot_bottom, slot_tabs, body_children) =
         if matches!(shell, ShellWrap::Tab | ShellWrap::Modern) {
             shell::partition_slot_children(&elem.children)
         } else {
-            (None, None, None, None, None, None, elem.children.clone())
+            (None, None, None, None, None, None, Vec::new(), elem.children.clone())
         };
 
     let body = if body_children.is_empty() {
@@ -92,6 +92,29 @@ pub(super) fn gen_render_impl_from_children(
         .map(|node| gen_node(node, ctx, 0, &mut id_counter, &empty).map(|(c, _)| c))
         .transpose()?;
 
+    // slot_tabs：对每个 <Tab> 子节点调 tab_bar::tab::gen_tab_child 生成代码
+    // （模板定制模式，与 tabs={Vec<TabItem>} 简单模式互斥）
+    let slot_tabs_codes: Vec<String> = slot_tabs
+        .iter()
+        .map(|node| {
+            if let Node::Element(tab_elem) = node {
+                crate::compiler::tab_bar::tab::gen_tab_child(tab_elem, ctx, &mut id_counter, &empty)
+            } else {
+                Err(CodegenError {
+                    message: format!(
+                        "<template slot=\"tabs\"> 仅支持 <Tab> 子节点，得到 {:?}",
+                        node
+                    ),
+                })
+            }
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let slot_tabs_ref: Option<Vec<String>> = if slot_tabs_codes.is_empty() {
+        None
+    } else {
+        Some(slot_tabs_codes)
+    };
+
     let final_body = match shell {
         ShellWrap::Modern => shell::gen_modern_window_wrapper(
             elem,
@@ -111,6 +134,7 @@ pub(super) fn gen_render_impl_from_children(
             slot_left_code.as_deref(),
             slot_right_code.as_deref(),
             slot_bottom_code.as_deref(),
+            slot_tabs_ref.as_deref(),
         )?,
         ShellWrap::None => body,
     };

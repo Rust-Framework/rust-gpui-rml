@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use gpui::{BorrowAppContext, Global, IntoElement, WeakEntity, Window};
@@ -7,6 +8,8 @@ use rml_core::theme::ThemeExt;
 use rml_ui::{ActivityBar, IMenuItem, IStatusBarItem, TabItem};
 
 use crate::cases::{self, OpenTab};
+use crate::lsp::{CodeEditorTab, LspClient};
+use crate::lsp::lsp_explorer_panel::LspExplorerPanel;
 use crate::shell::activity_panel::ActivityPanel;
 use crate::shell::shell_chrome::{
     build_activity_panels_from, map_menu_items, map_status_items, ContribEntry,
@@ -41,6 +44,10 @@ pub struct MainWindow {
     entries: std::sync::RwLock<Vec<ContribEntry>>,
     // host handle receiver（drain 在 on_loaded / refresh 中进行）
     host_rx: Option<rml_core::flume::Receiver<rml_app::contribution::HostOp>>,
+    // LSP 子进程客户端
+    lsp_client: Option<Arc<LspClient>>,
+    // LSP 文件 Tab：key = "lsp://<relative_path>"
+    lsp_tabs: HashMap<String, gpui::Entity<CodeEditorTab>>,
 }
 
 impl IContributionHost for MainWindow {
@@ -121,6 +128,23 @@ impl ILifecycle for MainWindow {
             .detach();
         }
 
+        // 6. observe LspExplorerPanel Entity（框架缓存）→ ActivityBar 重渲
+        let lsp_panel_entity = rml_app::contribution::visual_entity::<LspExplorerPanel>(cx);
+        cx.observe(&lsp_panel_entity, |_, _, cx| cx.notify())
+            .detach();
+
+        // 7. 启动 LSP 子进程（失败时优雅降级，demo 继续运行）
+        if let Ok(workspace_root) = std::env::current_dir() {
+            match LspClient::spawn(&workspace_root) {
+                Ok(client) => {
+                    self.lsp_client = Some(Arc::new(client));
+                }
+                Err(e) => {
+                    log::warn!("Failed to start LSP server: {e}");
+                }
+            }
+        }
+
         cx.notify();
     }
 }
@@ -139,6 +163,33 @@ impl MainWindow {
         window: &mut gpui::Window,
         cx: &mut gpui::Context<Self>,
     ) -> gpui::AnyElement {
+        // LSP 文件 Tab 分流：懒加载 CodeEditorTab
+        if self.active_case_id.starts_with("lsp://") {
+            let tab_id = self.active_case_id.clone();
+            if !self.lsp_tabs.contains_key(&tab_id) {
+                if let Some(client) = self.lsp_client.clone() {
+                    if let Some(relative_path) = tab_id.strip_prefix("lsp://") {
+                        let full_path = std::env::current_dir()
+                            .unwrap_or_default()
+                            .join("src")
+                            .join(relative_path);
+                        let tab = CodeEditorTab::new(
+                            relative_path,
+                            &full_path,
+                            client,
+                            window,
+                            cx,
+                        );
+                        self.lsp_tabs.insert(tab_id.clone(), tab);
+                    }
+                }
+            }
+            if let Some(tab) = self.lsp_tabs.get(&tab_id) {
+                return tab.update(cx, |tab, cx| tab.render(window, cx).into_any_element());
+            }
+            return gpui::div().into_any_element();
+        }
+
         let entries = self.entries.read().unwrap();
         if let Some((c, _)) = entries
             .iter()
@@ -182,6 +233,31 @@ impl MainWindow {
             .position(|tab| tab.id == case_id)
             .unwrap_or(0);
         self.active_case_id = case_id;
+        cx.notify();
+    }
+
+    /// 由 LspExplorerPanel::on_file_activate 通过 DemoShellHost 回调。
+    /// 仅注册 Tab 元信息；CodeEditorTab Entity 在 active_case_view 中懒加载。
+    #[command]
+    pub fn open_lsp_file(&mut self, relative_path: String, cx: &mut Context<Self>) {
+        let tab_id = format!("lsp://{relative_path}");
+        if !self.open_tabs.iter().any(|tab| tab.id == tab_id) {
+            let title = std::path::Path::new(&relative_path)
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or(&relative_path)
+                .to_string();
+            self.open_tabs.push(OpenTab {
+                id: tab_id.clone(),
+                title,
+            });
+        }
+        self.selected_tab = self
+            .open_tabs
+            .iter()
+            .position(|tab| tab.id == tab_id)
+            .unwrap_or(0);
+        self.active_case_id = tab_id;
         cx.notify();
     }
 

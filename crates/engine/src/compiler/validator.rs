@@ -106,6 +106,34 @@ fn validate_element(
         }
     }
 
+    // Shell 根标签的 slot 名白名单校验
+    // 防止未知 slot 名（如 `<template slot="tabs">` 误用在 modern_window 上）静默落入 body
+    if let Some(root_tag) = tags::root_tag_lookup(&elem.tag) {
+        let allowed_slots: &[&str] = match root_tag {
+            tags::RootTag::TabWindow => &[
+                "menu", "title", "footer", "left", "right", "bottom", "tabs",
+            ],
+            tags::RootTag::ModernWindow => &["menu", "title", "footer"],
+            _ => &[],
+        };
+        for child in &elem.children {
+            if let Node::Element(child_elem) = child {
+                if child_elem.tag == "template" {
+                    if let Some(slot_name) = &child_elem.slot_name {
+                        if !allowed_slots.contains(&slot_name.as_str()) {
+                            return Err(ValidationError {
+                                message: format!(
+                                    "unknown slot name `{}` for <{}>: allowed slots are {:?}",
+                                    slot_name, elem.tag, allowed_slots
+                                ),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // 校验未知属性：扩展组件的 bind/event 属性必须在 props_registry 中登记
     validate_unknown_props(elem)?;
 

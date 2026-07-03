@@ -14,6 +14,7 @@ gpui = { workspace = true }
 gpui-component = { workspace = true }
 lsp-server = "0.7"
 lsp-types = "0.97"
+url = "2"
 ropey = "=2.0.0-beta.1"
 crossbeam-channel = "0.5"
 serde = { version = "1", features = ["derive"] }

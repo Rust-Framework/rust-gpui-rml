@@ -12,6 +12,7 @@
   "shell.pick_case_hint": "Pick a sample in the tree on the left — it opens in a tab",
   "shell.samples": "Samples",
   "shell.welcome": "Welcome",
+  "shell.lsp_explorer": "LSP Explorer",
 
   "shell.status_ready": "Ready — pick a sample from the tree",
 
@@ -92,6 +93,26 @@
   "case.accordion.child1": "Child 1",
 
   "case.accordion.child2": "Child 2",
+
+  "case.tab_bar.title": "TabBar",
+
+  "case.tab_bar.basic": "Basic",
+
+  "case.tab_bar.variants": "5 variants",
+
+  "case.tab_bar.sizes": "Sizes",
+
+  "case.tab_bar.with_icon": "With icon",
+
+  "case.tab_bar.prefix_suffix": "prefix / suffix",
+
+  "case.tab_bar.disabled": "Disabled & selected",
+
+  "case.tab_bar.menu": "menu mode (dropdown)",
+
+  "case.tab_bar.template": "Template customization (advanced)",
+
+  "case.tab_bar.status": "Event callback state",
 
   "case.i18n.title": "i18n with t()",
 
@@ -228,7 +249,9 @@
 
   "case.slot.body": "Default slot content from parent",
 
-  "case.slot.footer": "Footer slot"
+  "case.slot.footer": "Footer slot",
+
+  "case.table.title": "Table Component"
 
 }
 
