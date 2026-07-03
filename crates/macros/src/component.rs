@@ -72,13 +72,17 @@ fn gen_impl_i_model(struct_name: &Ident, fields: &Fields) -> TokenStream {
 /// - `__rml_input_state_versions: HashMap<String, u64>`（每结构体一个，记录每个字段上次
 ///   正向同步到 InputState 的版本号，render 时对比决定是否需 set_value）
 ///
+/// Slot 注入：`#[component(slots = ["header", "footer"])]` 声明的每个插槽注入
+/// `__rml_slot_<name>: Option<gpui::AnyElement>` 私有字段，供父视图通过 setter 注入内容。
+///
 /// 注意：`cx.subscribe` 返回的 `Subscription` 调用 `.detach()` 后随 entity 生命周期存活，
 /// 不存储在结构体中（`Subscription` 非 `Sync`，存储会导致视图不满足 `Send + Sync`）。
 ///
 /// 注入字段为私有，不会进入 `IModel::rml_fields()`（其只收集 pub 字段）。
 /// `AtomicU64: Default = 0`，`ComputedCache::default() = 空 map`，
-/// `HashMap::default() = 空 map`，`Vec::default() = 空 vec`，`#[derive(Default)]` 兼容。
-pub fn inject_tracking_fields(fields: &mut Fields) {
+/// `HashMap::default() = 空 map`，`Vec::default() = 空 vec`，
+/// `Option::default() = None`，`#[derive(Default)]` 兼容。
+pub fn inject_tracking_fields(fields: &mut Fields, slots: &[String]) {
     let Fields::Named(named) = fields else {
         return;
     };
@@ -140,6 +144,24 @@ pub fn inject_tracking_fields(fields: &mut Fields) {
         __rml_loaded: bool
     };
     named.named.push(loaded_field);
+
+    // Slot 字段注入：为 #[component(slots = ["header", ...])] 声明的每个插槽注入
+    // `__rml_slot_<name>: Option<rml_core::slot::SlotRenderer>` 私有字段。
+    //
+    // 用 `SlotRenderer`（`Box<dyn Fn(&mut Window, &mut App) -> AnyElement + Send + Sync>`）
+    // 而非 `AnyElement`，因为 `IModel: Send + Sync` 要求组件类型线程安全，
+    // 而 `AnyElement` 含 `Rc` 不满足 `Send`。闭包把 cx 作为参数，不捕获 cx，可满足约束。
+    //
+    // 父视图 codegen 通过 `__rml_set_slot_<name>()` setter 注入闭包，
+    // 组件 render 通过 `self.__rml_slot_<name>.as_ref().map(|f| f(window, cx))` 调用。
+    for slot_name in slots {
+        let field_name = format_ident!("__rml_slot_{}", slot_name);
+        let slot_field: Field = parse_quote! {
+            #[allow(non_snake_case, dead_code)]
+            #field_name: Option<rml_core::slot::SlotRenderer>
+        };
+        named.named.push(slot_field);
+    }
 }
 
 /// 生成组件所需的全部 trait 实现（IModel + ILifecycle + IViewModel + IComponent）
@@ -184,10 +206,33 @@ pub fn expand_component_impls(
         }
     };
 
+    // 为每个声明的 slot 生成 setter 方法（`__rml_set_slot_<name>`）
+    // 父视图 codegen 在 clone entity 后调用此方法注入 slot 渲染闭包
+    let slot_setters = if slots.is_empty() {
+        None
+    } else {
+        let setter_methods: Vec<TokenStream> = slots.iter().map(|slot_name| {
+            let method_name = format_ident!("__rml_set_slot_{}", slot_name);
+            let field_name = format_ident!("__rml_slot_{}", slot_name);
+            quote! {
+                pub fn #method_name(&mut self, renderer: rml_core::slot::SlotRenderer) {
+                    self.#field_name = Some(renderer);
+                }
+            }
+        }).collect();
+        Some(quote! {
+            #[allow(non_snake_case)]
+            impl #struct_name {
+                #(#setter_methods)*
+            }
+        })
+    };
+
     quote! {
         #impl_i_model
         #impl_i_view_model
         #impl_i_component
+        #slot_setters
     }
 }
 
@@ -215,9 +260,9 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
     // 生成文件名（不含扩展名）：<snake_case>
     let generated_file = format!("{}.rs", snake);
 
-    // 注入追踪字段（AtomicU64 + ComputedCache）
+    // 注入追踪字段（AtomicU64 + ComputedCache + Slot 字段）
     let mut item = item;
-    inject_tracking_fields(&mut item.fields);
+    inject_tracking_fields(&mut item.fields, &slots);
 
     // 生成全部 trait 实现
     let trait_impls = expand_component_impls(

@@ -77,35 +77,47 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
 
 /// 查询组件的所有已注册属性（通用 + 专用）
 ///
-/// 返回 (static_props, bind_props, event_props) 三元组。
+/// 返回 (static_props, bind_props, event_props) 三元组（owned Vec）。
 /// 若组件未在 COMPONENT_PROPS 登记，仅返回通用属性。
-pub fn props_for(tag: &str) -> (&'static [&'static str], &'static [&'static str], &'static [&'static str]) {
+///
+/// 自动处理 kebab-case → PascalCase 规范化。
+pub fn props_for(tag: &str) -> (Vec<&'static str>, Vec<&'static str>, Vec<&'static str>) {
+    // 查找专用属性（先原始 tag，再规范化 tag）
     let extra: &[&str] = COMPONENT_PROPS
         .iter()
         .find(|(t, _)| *t == tag)
         .map(|(_, props)| *props)
+        .or_else(|| {
+            let normalized = crate::tags::normalize_component_tag(tag);
+            COMPONENT_PROPS
+                .iter()
+                .find(|(t, _)| *t == normalized)
+                .map(|(_, props)| *props)
+        })
         .unwrap_or(&[]);
 
     // 把专用属性按前缀分类（on* → event，其余 → bind）
-    let mut bind_extra: Vec<&'static str> = Vec::new();
-    let mut event_extra: Vec<&'static str> = Vec::new();
+    let mut bind_props: Vec<&'static str> = COMMON_BIND_PROPS.to_vec();
+    let mut event_props: Vec<&'static str> = COMMON_EVENT_PROPS.to_vec();
     for prop in extra {
         if prop.starts_with("on") {
-            event_extra.push(prop);
-        } else {
-            bind_extra.push(prop);
+            if !event_props.contains(prop) {
+                event_props.push(prop);
+            }
+        } else if !bind_props.contains(prop) {
+            bind_props.push(prop);
         }
     }
 
-    // 合并通用 + 专用（专用优先，避免重复）
-    let _ = (bind_extra, event_extra); // 当前实现仅返回通用，专用属性通过 is_prop_registered 查询
-    (COMMON_STATIC_PROPS, COMMON_BIND_PROPS, COMMON_EVENT_PROPS)
+    (COMMON_STATIC_PROPS.to_vec(), bind_props, event_props)
 }
 
 /// 判断属性是否在组件的已注册清单中（通用 + 专用）
 ///
 /// 供 codegen 在 bind_setter / static_setter 未命中时调用，
 /// 判断属性是"已知但未映射"（需补全 setter 逻辑）还是"完全未知"（用户拼写错误）。
+///
+/// 自动处理 kebab-case → PascalCase 规范化（如 `menu-bar` → `MenuBar`）。
 pub fn is_prop_registered(tag: &str, attr: &str) -> bool {
     // 通用属性
     if COMMON_STATIC_PROPS.contains(&attr)
@@ -115,8 +127,12 @@ pub fn is_prop_registered(tag: &str, attr: &str) -> bool {
         return true;
     }
 
-    // 组件专用属性
+    // 组件专用属性：先查原始 tag，再查规范化后的 tag
     if let Some((_, props)) = COMPONENT_PROPS.iter().find(|(t, _)| *t == tag) {
+        return props.contains(&attr);
+    }
+    let normalized = crate::tags::normalize_component_tag(tag);
+    if let Some((_, props)) = COMPONENT_PROPS.iter().find(|(t, _)| *t == normalized) {
         return props.contains(&attr);
     }
 
@@ -146,6 +162,9 @@ pub static SHELL_PROPS: &[(&str, &[&str])] = &[
     ]),
     ("dialog", &[
         "title", "width", "height",
+    ]),
+    ("component", &[
+        "content",
     ]),
 ];
 

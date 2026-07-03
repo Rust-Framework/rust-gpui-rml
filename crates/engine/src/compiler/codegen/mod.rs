@@ -327,6 +327,32 @@ fn gen_element(
         });
     }
 
+    // <slot> 占位符：组件模板内声明插槽渲染位置（Vue 风格 `<slot name="header" />`）。
+    //
+    // slot 字段类型为 `Option<SlotRenderer>`（`Box<dyn Fn(&mut Window, &mut App) -> AnyElement + Send + Sync>`），
+    // codegen 调用闭包即时生成 element：
+    //   `self.__rml_slot_<name>.as_ref().map(|f| f(window, cx)).unwrap_or(gpui::Empty)`
+    //
+    // 返回 is_iter=false（直接是 AnyElement，不需要 .children() 包裹）。
+    // 无 name 属性的 `<slot />` 对应 "default" 插槽。
+    if tag == "slot" {
+        let slot_name = elem
+            .attributes
+            .iter()
+            .find_map(|a| match a {
+                Attribute::Static { name, value } if name == "name" => Some(value.clone()),
+                _ => None,
+            })
+            .unwrap_or_else(|| "default".to_string());
+        return Ok((
+            format!(
+                "self.__rml_slot_{}.as_ref().map_or(gpui::Empty.into_any_element(), |f| f(_window, cx))",
+                slot_name
+            ),
+            false,
+        ));
+    }
+
     // 菜单容器标签（context-menu / dropdown-menu / menu-bar / app-menu-bar）
     if menu::is_menu_container(tag) {
         let code = menu::gen_menu_element(elem, ctx, depth, id_counter, loop_vars)?;

@@ -77,8 +77,6 @@ pub enum Directive {
     Html(String),
     /// `ref="name"` 元素引用
     Ref(String),
-    /// `slot="name"` 组件插槽
-    Slot(String),
 }
 
 /// `each` 子句

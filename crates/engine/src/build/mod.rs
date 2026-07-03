@@ -197,12 +197,13 @@ impl Builder {
         let user_components: std::collections::HashMap<String, UserComponentInfo> = struct_metas
             .iter()
             .filter(|(_, m)| m.is_component)
-            .map(|(name, _)| {
+            .map(|(name, meta)| {
                 (
                     name.clone(),
                     UserComponentInfo {
                         struct_name: name.clone(),
                         entity_field: to_snake_case(name),
+                        slots: meta.slots.clone(),
                     },
                 )
             })

@@ -6,6 +6,7 @@ extern crate rust_rml_ui as rml_ui;
 
 mod app;
 mod cases;
+mod components;
 mod shell;
 
 // `#[rml::main]` 自动注入 `rml::embed_assets!()`（include build.rs 生成的 rml_assets.rs）。

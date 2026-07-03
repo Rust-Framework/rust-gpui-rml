@@ -1,369 +1,359 @@
-# RML Slot 规范化方案
+# Slot 规范化实施计划
 
-> 目标：统一 slot 语法为 Vue 风格，让自定义组件具备内容分发能力；建立框架内部属性映射注册表，杜绝 codegen 阶段的属性静默丢弃。
+## 概述
+
+规范化 RML 框架的 slot（插槽）规范，回答三个核心问题：
+1. 自定义控件如何预留插槽位 + 标准语法
+2. 使用方如何扩展插槽 + 标准语法（层次分明、简洁清晰）
+3. 确保 RML 框架 codegen 属性映射齐全
+
+采用 **Vue 风格插槽**（`<slot name="...">` 定义 + `<template slot="...">` 填充）+ **宏参数显式声明**（`#[component(slots = [...])]`）+ **Slot 字段注入**分发机制。
 
 ---
 
-## 一、摘要
+## 当前状态分析
 
-当前 RML 框架存在三套互不相关的 "slot" 概念，且文档与实现严重割裂：
+### 已实现（上一轮迭代）
 
-| 概念 | 状态 |
+| 能力 | 状态 | 位置 |
+|------|------|------|
+| Shell 级 `<template slot="name">` | ✅ 已实现 | `shell.rs::partition_slot_children` |
+| 6 个 shell 插槽 (menu/title/footer/left/right/bottom) | ✅ 已实现 | `shell.rs::gen_tab_window_wrapper` |
+| AST `Element.slot_name` 字段 | ✅ 已实现 | `parser/ast.rs` + `parser/mod.rs` |
+| `IComponent::slots()` trait 方法 | ✅ 已实现 | `core/src/component.rs` |
+| `#[component(slots = [...])]` 宏参数解析 | ✅ 已实现 | `macros/src/component.rs` |
+| `props_registry.rs` 单一信源 | ✅ 已实现 | `compiler/props_registry.rs` |
+| `component_bind_setter` warning 机制 | ✅ 已实现 | `compiler/component.rs` |
+
+### 缺失（本计划填补）
+
+| 缺失 | 影响 |
 |------|------|
-| `slot_*` 硬编码标签（仅 tab_window / modern_window 根节点可用） | 唯一可用，命名错位（`slot_footer`→`status_slot`←`slot_status`） |
-| `Directive::Slot(String)` | 死代码，parser 解析后 codegen 零消费 |
-| `ContributionOptions::slot` | 运行时贡献点路由，与模板语法无关 |
-
-文档 `docs/06-components/slots.md` 承诺的 Vue 风格 `<slot>` / `<template slot="...">` 完全未实现；`#[component]` 宏不声明 slot 契约；`component_bind_setter` 硬编码 + 未知属性静默丢弃。
-
-本方案分四步：① 统一为 Vue 风格 slot 语法；② `#[component]` 宏显式声明 slot 契约；③ 废弃 `slot_*` 硬编码标签、改造 tab_window / modern_window 为通用机制；④ 建立框架内部属性映射注册表，配合单测确保 codegen 翻译齐全。
-
----
-
-## 二、现状分析（基于 Phase 1 探索）
-
-### 2.1 Slot 三套概念混淆
-
-- **可用层**：[shell.rs:91-152](file:///d:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/codegen/shell.rs#L91-L152) 的 `partition_slot_children` 按标签名字符串硬编码拆分 `slot_menu`/`slot_title`/`slot_footer`/`slot_left`/`slot_right`/`slot_bottom`，仅对 `<tab_window>` / `<modern_window>` 根节点生效（[codegen/mod.rs:168-173](file:///d:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/codegen/mod.rs#L168-L173)）。
-- **死代码**：[parser/mod.rs:186-189](file:///d:/GitCode/RF/rust-gpui-rml/crates/engine/src/parser/mod.rs#L186-L189) 解析 `slot="name"` 为 `Directive::Slot(String)`，但 codegen 全程无消费。
-- **无关概念**：`crates/core/src/contribution.rs:23,48-51` 的 `ContributionOptions.slot` 是贡献点路由字段，不应共享 slot 词汇。
-
-### 2.2 命名错位三角
-
-| RML 标签 | codegen 变量 | builder 方法 | TabWindowShell 字段 |
-|----------|--------------|--------------|---------------------|
-| `slot_menu` | `slot_menu` | `.menu_slot()` | `menu_slot` |
-| `slot_title` | `slot_title` | `.title_ext_slot()` | `title_ext_slot` |
-| `slot_footer` | `slot_footer`（[mod.rs:222](file:///d:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/codegen/mod.rs#L222)） | `.status_slot()` | `status_slot`（参数名 `slot_status` 见 [shell.rs:175](file:///d:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/codegen/shell.rs#L175)） |
-
-`slot_footer` → `status_slot` 的语义割裂源于历史命名（status_bar 是 gpui-component 原生控件，TabWindowShell 把 footer slot 装入 status_bar）。Some 包裹也不统一：`menu_slot` 不包 `Some`，`status_slot`/`slot_left` 包 `Some`（[shell.rs:74-82, 254-271](file:///d:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/codegen/shell.rs#L74-L82)）。
-
-### 2.3 ComponentKind 无 Slot 变体
-
-[tags.rs:241-255](file:///d:/GitCode/RF/rust-gpui-rml/crates/engine/src/tags.rs#L241-L255) 仅有 `Stateless` / `StatelessNoId` / `Stateful{state_field}` / `EntityRef` 四变体。`#[component]` 宏（[macros/src/component.rs:148-176](file:///d:/GitCode/RF/rust-gpui-rml/crates/macros/src/component.rs#L148-L176)）仅生成 `IModel`+`IViewModel`+`IComponent`（`rml_template()`+`rml_tag()`），无 slot 契约。
-
-### 2.4 bind_setter 硬编码 + 静默丢弃
-
-[component.rs:298-336](file:///d:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/component.rs#L298-L336) 的 `component_bind_setter` 逐属性名 match，未命中返回 `None` 静默丢弃。`tag` 参数虽传入但 `_tag = tag` 未使用。`shell.rs:208-216` 的 tab_window 属性绑定（tabs/selected_tab/show_chrome/left_size 等）同样逐名硬编码。
-
-### 2.5 文档承诺 vs 实现真空
-
-[docs/06-components/slots.md](file:///d:/GitCode/RF/rust-gpui-rml/docs/06-components/slots.md) 描述了完整的 Vue 风格 slot：默认插槽 `<slot></slot>`、具名插槽 `<slot name="...">`、默认内容、作用域插槽 `<slot let-item={item}>`、`<template slot="...">` 填充语法——**全部未实现**。
+| scanner.rs 不捕获 `#[component(slots)]` 参数 | codegen 无法知道自定义组件声明的插槽 |
+| `UserComponentInfo` 无 slots 字段 | 父视图 codegen 无法校验 slot 名合法性 |
+| 组件模板 `<slot>` 占位符不支持 | 自定义组件无法声明插槽位置 |
+| `gen_user_component` 忽略所有子节点 | 父视图的 `<template slot="...">` 内容无法注入自定义组件 |
+| validator 不校验 slot 名 | 未知 slot 名静默落入 body，不报错 |
+| validator 不校验未知属性 | 用户拼写错误静默丢弃 |
+| `props_for()` 丢弃专用属性（bug） | 查询函数返回不完整 |
+| shell 属性无 warning 机制 | shell 属性映射缺失静默丢弃 |
+| `component_static_setter` 无 warning | 静态属性映射缺失静默丢弃 |
 
 ---
 
-## 三、提议变更
+## 规范定义（最终标准语法）
 
-### Step 1：统一 Slot 语法（Vue 风格）
+### 1. 组件预留插槽（组件开发者）
 
-**目标**：让 `<slot>` / `<template slot="...">` 真正可用，与文档对齐。
-
-#### 1.1 定义端（组件作者在 .rml 模板内）
-
-```rml
-<!-- components/card.rml -->
-<div class="card">
-    <div class="card-header">
-        <slot name="header">默认标题</slot>
-    </div>
-    <div class="card-body">
-        <slot />                              <!-- 默认插槽 -->
-    </div>
-    <div class="card-footer">
-        <slot name="footer" />                <!-- 无默认内容的具名插槽 -->
-    </div>
-</div>
-```
-
-- `<slot>` 标签由 parser 识别为新的 `Node::Slot { name: Option<String>, default_children: Vec<Node> }` 变体（替代死代码 `Directive::Slot`）。
-- 无 `name` 属性 → 默认插槽（每组件最多一个）。
-- 标签内子节点 → 默认内容（父视图未填充时显示）。
-
-#### 1.2 使用端（父视图填充）
-
-```rml
-<!-- views/my_view.rml -->
-<Card>
-    <template slot="header">
-        <h2>用户信息</h2>
-    </template>
-    <p>姓名: 张三</p>                         <!-- 默认插槽内容（无需 template 包装） -->
-    <template slot="footer">
-        <button onclick={edit}>编辑</button>
-    </template>
-</Card>
-```
-
-- `<template slot="name">` 块的子节点 → 注入到组件内对应 `<slot name="name">` 位置。
-- 直接子节点（非 `<template slot=...>`）→ 注入到默认 `<slot />` 位置。
-- 沿用 `Directive::Slot` 现有的 `slot="name"` 静态属性解析（[parser/mod.rs:186-189](file:///d:/GitCode/RF/rust-gpui-rml/crates/engine/src/parser/mod.rs#L186-L189)），但 codegen 必须真正消费它。
-
-#### 1.3 编译流程改造
-
-| 文件 | 改造内容 |
-|------|----------|
-| `crates/engine/src/parser/ast.rs` | 新增 `Node::Slot { name: Option<String>, default_children: Vec<Node> }` 变体；`Element` 增加 `slot_name: Option<String>` 字段（来自 `slot="..."` 指令） |
-| `crates/engine/src/parser/mod.rs:186-189` | 保留 `Directive::Slot(s)` 解析；在 `parse_element` 末尾把它升级为 `Element.slot_name` 字段，不再仅作 directive |
-| `crates/engine/src/parser/mod.rs` | 新增 `parse_slot_element`：识别 `<slot>` 标签，构造 `Node::Slot` 而非 `Node::Element` |
-| `crates/engine/src/compiler/codegen/mod.rs` | 自定义组件调用路径新增 `inject_slot_children`：把 `<template slot="x">` 子节点收集到 `slots: HashMap<String, Vec<Node>>`，传给组件 codegen |
-| `crates/engine/src/compiler/codegen/component_render.rs`（新文件） | 自定义组件渲染时，扫描其 .rml 模板的 `Node::Slot` 占位符，用父视图传入的 slots HashMap 替换；未填充则用 default_children |
-
-#### 1.4 分期决策：作用域插槽延后
-
-`<slot let-item={item}>` 作用域插槽涉及子→父反向数据流，与 `each` 列表渲染深度耦合，第一期不实现。slots.md 中相关章节标注为"规划中"。
-
----
-
-### Step 2：Slot 契约显式声明（`#[component]` 宏参数）
-
-**目标**：编译时强校验，未知 slot 名编译报错。
-
-#### 2.1 宏语法
-
+**Rust 侧声明**（`#[component]` 宏参数）：
 ```rust
 #[component(slots = ["header", "footer", "default"])]
-pub struct Card { ... }
-
-// 无 slots 参数 → 不接受任何 slot（默认）
-#[component]
-pub struct Counter { ... }
+pub struct Card {
+    title: String,
+    // ...
+}
 ```
+- `slots` 为字符串数组字面量
+- 保留名 `"default"` 对应模板内无 `name` 属性的 `<slot />`
+- 不写 `slots` 参数 → 组件不接受任何插槽
 
-- `slots` 参数为可选字符串数组字面量。
-- 字符串 `"default"` 保留为默认插槽标识（与 `<slot />` 对应）。
-- 不写 `slots` 参数 → 组件不接受 slot，父视图传 `<template slot="...">` 编译报错。
-
-#### 2.2 宏改造
-
-| 文件 | 改造内容 |
-|------|----------|
-| `crates/macros/src/component.rs:181-189` | `expand(args, ...)` 接受 `slots = [...]` 参数解析为 `Vec<String>`；移除"takes no arguments"硬性拒绝 |
-| `crates/macros/src/component.rs:148-176` | `expand_component_impls` 新增 `slots: &[String]` 参数，生成 `IComponent::slots() -> &'static [&'static str]` 方法 |
-| `crates/core/src/component.rs:23-30` | `IComponent` trait 新增 `fn slots() -> &'static [&'static str] { &[] }` 默认实现 |
-
-#### 2.3 编译器校验
-
-| 文件 | 改造内容 |
-|------|----------|
-| `crates/engine/src/compiler/validator.rs` | 使用端：父视图 `<template slot="x">` 时，查目标组件 `IComponent::slots()`，若 `x` 不在其中 → 编译错误 `"Component X does not have slot 'x'. Available slots: header, footer"` |
-| `crates/engine/src/compiler/validator.rs` | 定义端：组件 .rml 模板内 `<slot name="y">` 时，`y` 必须在 `#[component(slots=[...])]` 声明中，否则编译错误 |
-
----
-
-### Step 3：废弃 `slot_*` 硬编码标签，统一到 Vue 风格
-
-**目标**：消除 shell.rs 的硬编码 partition，让 tab_window / modern_window 也走通用 slot 机制。
-
-#### 3.1 TabWindow / ModernWindow 改造为 `#[component]`
-
-将 `TabWindowShell` / `ModernWindowShell` 视为内置 `#[component]` 组件，显式声明 slots：
-
-```rust
-// crates/ui/src/window/tab_window.rs
-#[component(slots = ["menu", "title", "footer", "left", "right", "bottom", "default"])]
-pub struct TabWindowShell { ... }
-
-// crates/ui/src/window/modern_window.rs
-#[component(slots = ["menu", "title", "footer", "default"])]
-pub struct ModernWindowShell { ... }
+**RML 模板侧声明**（`<slot>` 占位符）：
+```html
+<!-- components/card.rml -->
+<component>
+    <div class="card">
+        <div class="card-header">
+            <slot name="header" />
+        </div>
+        <div class="card-body">
+            <slot />              <!-- default 插槽 -->
+        </div>
+        <div class="card-footer">
+            <slot name="footer" />
+        </div>
+    </div>
+</component>
 ```
+- `<slot name="header" />` 声明具名插槽位置
+- `<slot />`（无 name）声明默认插槽位置
+- codegen 将 `<slot>` 替换为 `self.__rml_slot_<name>.take()` 渲染
 
-#### 3.2 .rml 改写
+### 2. 使用方扩展插槽（组件使用者）
 
-`demo/src/shell/main_window.rml` 改为 Vue 风格：
+```html
+<!-- 父视图 .rml -->
+<Card title="My Card">
+    <template slot="header">
+        <h2>Card Title</h2>
+        <Button label="Close" ghost="" />
+    </template>
 
-```rml
-<tab_window title="RML Showcase" ...>
-    <template slot="left">
-        <ActivityBar ref="activity_bar" />
-    </template>
-    <template slot="menu">
-        <menu-bar items={menu_items} />
-    </template>
-    <template slot="title">
-        <Button label="Docs" ghost="" />
-    </template>
-    <template slot="bottom">
-        <div>Output panel — drag the top edge to resize</div>
-    </template>
     <template slot="footer">
-        <status_bar items={status_items} />
+        <Button label="OK" primary="" />
     </template>
-    <component content={self.active_case_view(_window, cx)} />
+
+    <!-- 默认插槽：无 slot 属性的子节点 -->
+    <p>This is the card body content.</p>
+</Card>
+```
+- `<template slot="name">` 填充具名插槽
+- 无 `slot` 属性的子节点填充 `default` 插槽（仅当组件声明了 `"default"` 时）
+- 未填充的插槽渲染为空
+
+### 3. Shell 窗口插槽（已实现，保持不变）
+
+```html
+<tab_window title="App" ...>
+    <template slot="left">...</template>
+    <template slot="menu">...</template>
+    <template slot="footer">...</template>
+    <!-- 主内容 -->
 </tab_window>
 ```
 
-#### 3.3 shell.rs 重写
+---
 
-| 文件 | 改造内容 |
-|------|----------|
-| `crates/engine/src/compiler/codegen/shell.rs:91-152` | 删除 `partition_slot_children` 硬编码 match；改为通用 `partition_template_slots`：扫描子节点中的 `<template slot="x">`，按 `x` 收集到 `HashMap<String, Node>`，剩余子节点作为 default |
-| `crates/engine/src/compiler/codegen/shell.rs:155-166` | `slot_element_content` 改名为 `template_block_content`，逻辑不变（单子节点 unwrap，多子节点包 div） |
-| `crates/engine/src/compiler/codegen/shell.rs:74-82, 254-271` | builder 链生成改为查 TabWindowShell 的 slots 声明动态生成 `.slot_xxx(...)` 调用；Some 包裹统一（所有 slot setter 接受 `Option<AnyElement>`） |
-| `crates/ui/src/window/tab_window.rs:209, 245` | 统一 setter 签名：`menu_slot(Option<AnyElement>)`、`status_slot(Option<AnyElement>)`、`slot_left(Option<AnyElement>)` 等，消除 Some 包裹不一致 |
-| `crates/ui/src/window/modern_window.rs:19-27` | 同上统一签名 |
+## 实施变更
 
-#### 3.4 命名一致性
+### Step 1: scanner 捕获 slots 声明
 
-| RML slot 名 | builder 方法 | 字段名 |
-|-------------|--------------|--------|
-| `menu` | `.slot_menu(Option<AnyElement>)` | `slot_menu` |
-| `title` | `.slot_title(Option<AnyElement>)` | `slot_title` |
-| `footer` | `.slot_footer(Option<AnyElement>)` | `slot_footer` |
-| `left` | `.slot_left(Option<AnyElement>)` | `slot_left` |
-| `right` | `.slot_right(Option<AnyElement>)` | `slot_right` |
-| `bottom` | `.slot_bottom(Option<AnyElement>)` | `slot_bottom` |
-| `default` | `.child(AnyElement)` | (走现有 child 链) |
+**文件**: `crates/engine/src/build/scanner.rs`
 
-消除 `slot_footer`↔`status_slot`↔`slot_status` 三角错位。
+**变更**:
+1. `StructMetadata` 新增字段：
+   ```rust
+   pub slots: Vec<String>,
+   ```
+2. 在 `scan_struct_metadata` 第一遍扫描中，解析 `#[component(slots = [...])]` 属性的 TokenStream，提取字符串数组。复用 `macros/src/component.rs` 的 `ComponentArgs` 解析逻辑（或用 syn 直接解析 `Meta::List`）。
+
+**原因**: codegen 需要知道自定义组件声明了哪些插槽，才能在父视图中校验 `<template slot="x">` 的 x 是否合法，以及为组件生成 slot 字段。
+
+### Step 2: UserComponentInfo 携带 slots
+
+**文件**: 
+- `crates/engine/src/compiler/mod.rs`（`UserComponentInfo` 结构体）
+- `crates/engine/src/build/mod.rs`（构建 user_components 注册表）
+
+**变更**:
+1. `UserComponentInfo` 新增字段：
+   ```rust
+   pub slots: Vec<String>,
+   ```
+2. `build/mod.rs` 中构建 `user_components` 时，从 `struct_metas` 的 `slots` 字段填充。
+
+**原因**: 父视图 codegen 在 `gen_user_component` 时需要查询目标组件的 slots 列表，以分离 `<template slot="...">` 子节点。
+
+### Step 3: `#[component]` 宏注入 slot 字段 + setter
+
+**文件**: `crates/macros/src/component.rs`
+
+**变更**:
+1. `inject_tracking_fields` 新增逻辑：当 `slots` 非空时，为每个 slot 注入私有字段：
+   ```rust
+   #[allow(non_snake_case)]
+   __rml_slot_<name>: Option<gpui::AnyElement>,
+   ```
+   注意：`default` slot 的字段名为 `__rml_slot_default`。
+2. `expand_component_impls` 生成 slot setter 方法（在独立 `impl` 块中）：
+   ```rust
+   impl #struct_name {
+       pub fn __rml_set_slot_<name>(&mut self, element: impl gpui::IntoElement) {
+           self.__rml_slot_<name> = Some(element.into_any_element());
+       }
+   }
+   ```
+3. `Default` derive 兼容：`Option<AnyElement>::default() = None`，无需特殊处理。
+
+**原因**: 组件实体持有 slot 内容，父视图通过 setter 注入，组件 render 通过 `.take()` 消费。
+
+**限制说明**: slot 内容在组件 render 时被 `.take()` 消费。父视图每次 render 时重新注入 slot 内容，因此父视图状态变化驱动的 slot 更新生效。若组件独立 re-render（组件自身状态变化），slot 内容为空。这是 MVP 的已知限制，文档中标注。
+
+### Step 4: codegen 支持 `<slot>` 占位符
+
+**文件**: `crates/engine/src/compiler/codegen/mod.rs`（`gen_element` 函数）
+
+**变更**:
+1. 在 `gen_element` 中新增 `<slot>` 标签处理分支（在用户组件/扩展组件检查之前）：
+   ```rust
+   if tag == "slot" {
+       // 从元素的 name 属性提取 slot 名（无 name 属性 = "default"）
+       let slot_name = elem.attributes.iter()
+           .find_map(|a| match a {
+               Attribute::Static { name, value } if name == "name" => Some(value.clone()),
+               _ => None,
+           })
+           .unwrap_or_else(|| "default".to_string());
+       // 生成 .children(self.__rml_slot_<name>.take())
+       return Ok((format!(".children(self.__rml_slot_{}.take())", slot_name), false));
+   }
+   ```
+2. `<slot>` 标签不创建元素，仅作为占位符替换为字段访问。
+
+**原因**: 组件模板中的 `<slot>` 声明 slot 内容的渲染位置，codegen 将其替换为对 slot 字段的消费。
+
+### Step 5: `gen_user_component` 支持插槽内容注入
+
+**文件**: `crates/engine/src/compiler/component.rs`（`gen_user_component` 函数）
+
+**变更**:
+1. 修改 `gen_user_component` 签名，接收 `elem: &Element` 和 `ctx: &CodegenCtx`（需从 `gen_component` 传递），以便处理子节点。
+2. 重写生成逻辑：
+   ```rust
+   fn gen_user_component(
+       info: &UserComponentInfo,
+       elem: &Element,
+       ctx: &CodegenCtx,
+       id_counter: &mut usize,
+       loop_vars: &[String],
+   ) -> Result<String, CodegenError> {
+       let entity_expr = format!(
+           "self.{}.as_ref().expect(\"init {} in on_loaded\").clone()",
+           info.entity_field, info.struct_name
+       );
+
+       // 分离 slot 子节点与 default 子节点
+       let (slot_children, default_children) = partition_user_component_children(elem, &info.slots);
+
+       // 若无任何 slot 子节点，保持原行为（直接 clone entity）
+       if slot_children.is_empty() && default_children.is_empty() {
+           return Ok(entity_expr);
+       }
+
+       // 生成 slot 注入代码
+       let mut code = String::new();
+       code.push_str("{\n");
+       code.push_str(&format!("    let __rml_entity = {};\n", entity_expr));
+
+       // 为每个 slot 生成内容 + 注入
+       for (slot_name, slot_nodes) in &slot_children {
+           let slot_code = gen_slot_content(slot_nodes, ctx, id_counter, loop_vars)?;
+           code.push_str(&format!(
+               "    __rml_entity.update(cx, |this, _cx| {{ this.__rml_set_slot_{}({}); }});\n",
+               slot_name, slot_code
+           ));
+       }
+       // default 插槽
+       if !default_children.is_empty() && info.slots.contains(&"default".to_string()) {
+           let default_code = gen_slot_content(&default_children, ctx, id_counter, loop_vars)?;
+           code.push_str(&format!(
+               "    __rml_entity.update(cx, |this, _cx| {{ this.__rml_set_slot_default({}); }});\n",
+               default_code
+           ));
+       }
+
+       code.push_str("    __rml_entity\n");
+       code.push_str("}");
+       Ok(code)
+   }
+   ```
+
+3. 新增 `partition_user_component_children` 辅助函数：
+   - 遍历子节点，将 `<template slot="name">` 的内容路由到 `slot_children: HashMap<String, Vec<Node>>`
+   - 其余子节点收集到 `default_children: Vec<Node>`
+   - 若组件未声明 `"default"` slot，default 子节点被忽略（validator 应在编译期拦截）
+
+4. 新增 `gen_slot_content` 辅助函数：
+   - 单节点：直接生成节点代码
+   - 多节点：包裹 `gpui::div().child(...).child(...)` 容器
+
+**原因**: 这是 slot 内容分发的核心——父视图 codegen 在 clone entity 后，通过 `entity.update(cx, |this, _cx| { this.__rml_set_slot_xxx(...); })` 注入 slot 内容。
+
+### Step 6: validator 校验 slot 名 + 未知属性
+
+**文件**: `crates/engine/src/compiler/validator.rs`
+
+**变更**:
+1. 新增 `validate_slot_names` 函数：遍历 AST，对每个用户组件标签的 `<template slot="x">` 子节点，校验 `x` 是否在该组件的 `slots()` 声明中。需要 `CodegenCtx.user_components` 信息传入 validator。
+   - validator 当前签名 `validate(node: &Node)` 需扩展为 `validate(node: &Node, user_components: &HashMap<String, UserComponentInfo>)`
+   - 调用方 `compile()` 传递 `ctx.user_components`
+2. 新增未知属性校验：对扩展组件（`tags::is_extension_component(tag)`）的属性，若既不在 `props_registry::is_prop_registered` 中，也不在通用属性中，报 ValidationError。
+   - shell 根标签用 `is_shell_prop_registered` 校验
+   - 仅校验 bind/event 属性（static 属性可能有自定义用途，宽松处理）
+
+**原因**: 编译期拦截用户拼写错误（error）+ 框架开发者映射缺失（warning），双层保障属性齐全。
+
+### Step 7: props_registry 修复 + 补全
+
+**文件**: `crates/engine/src/compiler/props_registry.rs`
+
+**变更**:
+1. **修复 `props_for()` bug**：当前 line 101 `let _ = (bind_extra, event_extra);` 丢弃了专用属性。重写为正确合并通用 + 专用属性并返回。
+2. **新增 shell 属性 warning**：在 `shell.rs` 的 `gen_tab_window_wrapper` / `gen_modern_window_wrapper` 的 bind 属性 match 中，未命中分支添加 warning（参考 `component_bind_setter` 的 warning 逻辑）。
+3. **新增 `component_static_setter` warning**：在 `component_static_setter` 的未命中分支添加 warning，检查 `is_prop_registered`。
+4. **补全 `SHELL_PROPS`**：确认 `tab_window` 的 slot 相关属性（`left_size` 等已登记），添加缺失项。
+
+**原因**: 确保框架 codegen 翻译时属性映射齐全，单一信源 + warning 机制 + 测试验证三重保障。
+
+### Step 8: 文档同步
+
+**文件**:
+- `docs/06-components/slots.md`（重写）
+- `docs/06-components/custom-components.md`（补充 slot 章节）
+- `docs/06-components/reference/props-mapping.md`（同步 registry 变更）
+
+**变更**:
+1. `slots.md`：将"规划中"标注改为"已实现"，补充自定义组件 slot 完整示例（`<slot>` 占位符 + `<template slot>` 填充 + `#[component(slots)]` 声明）。
+2. `custom-components.md`：新增"组件插槽"章节。
+3. `props-mapping.md`：同步 props_registry 的修复。
+
+### Step 9: demo 验证
+
+**文件**: `demo/src/components/` 或 `demo/src/cases/`
+
+**变更**:
+1. 新增一个带 slot 的自定义组件 demo（如 `Card` 组件），验证：
+   - `#[component(slots = ["header", "default", "footer"])]` 声明
+   - `.rml` 模板中 `<slot>` 占位符渲染
+   - 父视图 `<template slot="...">` 填充
+   - 编译期校验未知 slot 名报错
+2. 运行 `cargo build` 全量编译
+3. 运行 `cargo test -p rust-rml-engine` 验证 props_registry 一致性测试
 
 ---
 
-### Step 4：框架内部属性映射注册表（确保 codegen 翻译齐全）
+## 假设与决策
 
-**目标**：RML 框架自身在做 .rml → Rust 代码翻译时，确保所有 gpui-component 组件的可绑定属性都有映射，避免静默丢弃。这是框架开发规范，不是面向最终用户的属性校验。
+### 决策
 
-#### 4.1 集中化属性注册表
+1. **Slot 分发机制 = Slot 字段注入**：组件 struct 持有 `Option<AnyElement>` slot 字段，父视图 codegen 通过 `entity.update(cx, |this, _cx| { this.__rml_set_slot_xxx(...); })` 注入。选择此方案因其最简单、最契合现有 Entity 模式。
 
-新建 `crates/engine/src/compiler/props_registry.rs`：
+2. **属性校验 = 编译期 error + warning 双层**：
+   - validator 对「完全未知属性」报编译 error（用户拼写错误立即发现）
+   - codegen 对「已注册但未映射」属性输出 warning（框架开发者补全）
 
-```rust
-/// 每个组件的可绑定属性白名单（framework 维护，单测覆盖）
-pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
-    ("Button", &["label", "disabled", "selected", "on_click", "variant", "size", "icon", "ghost"]),
-    ("Input",  &["value", "disabled", "placeholder", "on_change", "on_submit"]),
-    ("Checkbox", &["checked", "label", "on_change"]),
-    ("Tree",  &["items", "on_activate", "on_select"]),
-    // ... 所有 rml_ui 重导出的组件
-];
+3. **`<slot>` 标签在 codegen 中是占位符**：不创建 GPUI 元素，仅替换为 `self.__rml_slot_<name>.take()` 字段访问。
 
-/// 窗口外壳组件的可绑定属性
-pub static SHELL_PROPS: &[(&str, &[&str])] = &[
-    ("tab_window", &["title", "width", "height", "icon", "tabs", "selected_tab",
-                     "show_chrome", "left_size", "right_size", "bottom_size",
-                     "on_tab_click", "on_chrome_toggle"]),
-    ("modern_window", &["title", "width", "height", "icon", "menu", "footer"]),
-];
-```
+4. **default 插槽用 `<slot />`（无 name 属性）**：保留名 `"default"` 在 `slots` 数组中对应。
 
-#### 4.2 bind_setter 改为查表 + 未命中处理
+### 已知限制（MVP）
 
-| 文件 | 改造内容 |
-|------|----------|
-| `crates/engine/src/compiler/component.rs:298-336` | `component_bind_setter` 改为：① 查 `COMPONENT_PROPS` 表确认属性属于该组件；② 命中 → 生成 `.xxx()` 调用；③ 未命中 → 编译 warning（含组件名 + 属性名 + 可用属性列表） |
-| `crates/engine/src/compiler/codegen/shell.rs:208-216` | tab_window / modern_window 属性绑定改为查 `SHELL_PROPS` 表 |
-| `crates/engine/src/compiler/component.rs:330` | `items` 属性去掉 `tag == "menu" || ...` 硬编码，改为注册表中按组件声明 |
-
-#### 4.3 单测覆盖确保齐全
-
-新建 `crates/engine/tests/props_registry_complete.rs`：
-
-```rust
-#[test]
-fn all_gpui_component_setters_are_registered() {
-    // 通过反射 rml_ui 重导出的所有组件，遍历其 .xxx() setter 方法
-    // 断言每个 setter 都在 COMPONENT_PROPS 表中有对应条目
-    // 漏登记 → 测试失败，列出缺失的 setter
-}
-
-#[test]
-fn all_shell_props_are_registered() {
-    // 遍历 TabWindowShell / ModernWindowShell 的 pub builder 方法
-    // 断言都在 SHELL_PROPS 中
-}
-```
-
-#### 4.4 文档化属性对照清单
-
-新建 `docs/07-reference/props-mapping.md`，维护 gpui-component setter ↔ RML 属性名对照表，每次新增组件时同步更新（CI 检查单测通过即保证文档与注册表一致）。
+- **独立 re-render 限制**：组件独立 re-render（组件自身状态变化，父视图未 re-render）时，slot 内容已被 `.take()` 消费，渲染为空。父视图状态变化驱动的 slot 更新正常。文档中标注此限制。
+- **作用域插槽延后**：`<slot let-item={item}>` 作用域插槽不在本期范围，保持"规划中"。
 
 ---
 
-## 四、假设与决策
+## 验证步骤
 
-### 4.1 关键决策
-
-1. **Slot 语法采用 Vue 风格**（用户确认）：`<slot>` 定义 + `<template slot="...">` 填充，与 `docs/06-components/slots.md` 对齐。
-2. **Slot 契约宏参数显式声明**（用户确认）：`#[component(slots = ["header", "footer", "default"])]`，编译时强校验。
-3. **属性齐全性是框架内部规范**（用户确认）：不是面向最终用户的属性校验，而是 framework codegen 自身的清单/单测约束。
-4. **废弃 `slot_*` 硬编码标签**：与 ActivityBar 重写一致，遵循"删除过封装、回到设计意图"的偏好，不保留兼容层。
-5. **作用域插槽 `<slot let-item={item}>` 延后到第二期**：与 `each` 列表渲染深度耦合，第一期不实现，slots.md 相关章节标注"规划中"。
-6. **`Directive::Slot` 升级为 `Element.slot_name` 字段**：保留 parser 解析能力，但 codegen 真正消费。
-7. **Slot setter 签名统一为 `Option<AnyElement>`**：消除 `menu_slot` 不包 Some、`slot_left` 包 Some 的不一致。
-
-### 4.2 兼容性影响
-
-- `demo/src/shell/main_window.rml` 需改写（`slot_xxx` → `<template slot="xxx">`）。
-- `crates/ui/src/window/tab_window.rs` 和 `modern_window.rs` 的 setter 签名变更（Some 包裹统一），影响所有调用方（仅框架内部）。
-- 用户已有的自定义组件（如 demo 中的 cases）未使用 slot，不受影响。
-
-### 4.3 不在本次范围
-
-- 作用域插槽（`<slot let-item={item}>`）。
-- 动态 slot 名（`<slot name={dynamic}>`）。
-- `ContributionOptions.slot` 改名（与本次 slot 规范化无关，保留）。
-- 第三方组件库的属性自动发现（仅维护 rml_ui 内置组件的注册表）。
+1. `cargo build` — 全量编译通过
+2. `cargo test -p rust-rml-engine` — props_registry 一致性测试通过
+3. `cargo run -p rust-rml-demo` — demo 启动，Card 组件 slot 渲染正常
+4. 手动验证：在 demo 中故意写错 slot 名（如 `<template slot="hdr">`），确认编译期报 error
+5. 手动验证：在 demo 中故意写错属性名（如 `<Button labl="...">`），确认编译期报 error
 
 ---
 
-## 五、验证步骤
+## 实施顺序
 
-### 5.1 编译验证
-
-```powershell
-cargo build -p rust-rml-engine
-cargo build -p rust-rml-macros
-cargo build -p rust-rml-ui
-cargo build -p rust-rml-demo
+```
+Step 1 (scanner 捕获 slots)
+  → Step 2 (UserComponentInfo 携带 slots)
+  → Step 3 (宏注入 slot 字段 + setter)
+  → Step 4 (codegen <slot> 占位符)
+  → Step 5 (gen_user_component 注入 slot)
+  → Step 6 (validator 校验)
+  → Step 7 (props_registry 修复)
+  → Step 8 (文档同步)
+  → Step 9 (demo 验证)
 ```
 
-### 5.2 单测验证
-
-```powershell
-cargo test -p rust-rml-engine                    # 现有 251 个测试全通过
-cargo test -p rust-rml-engine --test props_registry_complete   # 新增注册表齐全性测试
-cargo test -p rust-rml-macros                    # 宏测试
-```
-
-### 5.3 功能验证
-
-启动 demo：`cargo run -p rust-rml-demo`，确认：
-
-1. tab_window 标题栏左侧 ActivityBar 正常显示（`<template slot="left">` 生效）。
-2. 菜单栏正常显示（`<template slot="menu">` 生效）。
-3. 标题栏右侧 "Docs" 按钮正常显示（`<template slot="title">` 生效）。
-4. 底部 Output panel 正常显示（`<template slot="bottom">` 生效）。
-5. 底部状态栏正常显示（`<template slot="footer">` 生效）。
-6. 点击 ActivityBar 图标可切换面板（slot 内容的 ref 指令仍工作）。
-
-### 5.4 错误注入验证
-
-故意写错 slot 名，确认编译报错：
-
-```rml
-<tab_window>
-    <template slot="nonexistent">...</template>
-</tab_window>
-```
-
-预期编译错误：`"Component TabWindowShell does not have slot 'nonexistent'. Available slots: menu, title, footer, left, right, bottom, default"`。
-
-### 5.5 属性齐全性验证
-
-故意在 .rml 中写未注册的属性：
-
-```rml
-<Button label="OK" unknown_prop="x" />
-```
-
-预期编译 warning：`"Button does not support property 'unknown_prop'. Available: label, disabled, selected, ..."`。
-
----
-
-## 六、实施顺序（建议）
-
-1. **Step 2 先行**：扩 `IComponent` trait + `#[component]` 宏参数解析（不影响现有代码，纯增量）。
-2. **Step 1.3 编译流程**：parser 新增 `Node::Slot` + `Element.slot_name`，codegen 消费 `Directive::Slot`（保持 `slot_*` 标签仍工作，渐进式）。
-3. **Step 3 shell 改造**：`partition_slot_children` 改为 `partition_template_slots`，tab_window / modern_window 改用 Vue 风格，删除 `slot_*` 标签支持。
-4. **Step 4 属性注册表**：新建 `props_registry.rs`，`bind_setter` 改查表，加单测。
-5. **demo 验证 + 文档同步**：改写 main_window.rml，更新 docs/06-components/slots.md 标注作用域插槽为"规划中"，新增 docs/07-reference/props-mapping.md。
+Step 1-2 为数据流基础设施，Step 3-5 为 slot 核心机制，Step 6-7 为校验与齐全性保障，Step 8-9 为文档与验证。

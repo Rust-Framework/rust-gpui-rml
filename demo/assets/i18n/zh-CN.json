@@ -173,7 +173,15 @@
 
   "case.menu.on": "开",
 
-  "case.menu.off": "关"
+  "case.menu.off": "关",
+
+  "case.slot.title": "组件插槽",
+
+  "case.slot.header": "页眉插槽",
+
+  "case.slot.body": "来自父视图的默认插槽内容",
+
+  "case.slot.footer": "页脚插槽"
 
 }
 

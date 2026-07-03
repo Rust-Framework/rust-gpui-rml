@@ -172,6 +172,15 @@
 
   "case.menu.on": "On",
 
-  "case.menu.off": "Off"
+  "case.menu.off": "Off",
+
+  "case.slot.title": "Component slots",
+
+  "case.slot.header": "Header slot",
+
+  "case.slot.body": "Default slot content from parent",
+
+  "case.slot.footer": "Footer slot"
+
 }
 

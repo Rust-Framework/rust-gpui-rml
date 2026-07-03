@@ -62,7 +62,8 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
     }
 
     // 注入追踪字段（AtomicU64 版本计数器 + ComputedCache）
-    inject_tracking_fields(&mut item.fields);
+    // 窗口不支持插槽，slots 传空切片
+    inject_tracking_fields(&mut item.fields, &[]);
 
     // 生成组件 trait 实现（IModel + ILifecycle + IViewModel + IComponent）
     // 注意：不生成 impl IWindow —— 由 RML 编译器从 <window> 根节点生成

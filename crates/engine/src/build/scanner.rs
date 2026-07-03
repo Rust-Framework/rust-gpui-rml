@@ -72,6 +72,11 @@ pub struct StructMetadata {
     pub is_contributehost: bool,
     /// `#[contributehost(bindings = "...")]` — 首次 render 调用宏生成的 attach 方法
     pub contribution_bindings: bool,
+    /// `#[component(slots = ["header", "footer", ...])]` 声明的具名插槽列表
+    ///
+    /// build.rs 据此填充 `UserComponentInfo.slots`，供 codegen 在父视图中
+    /// 分离 `<template slot="x">` 子节点并校验 slot 名合法性。
+    pub slots: Vec<String>,
 }
 
 /// 扫描 `.rml.rs` code-behind 文件，提取所有 `#[window]`/`#[component]` 标注 struct 的元信息。
@@ -120,6 +125,11 @@ pub fn scan_struct_metadata(rml_rs_path: &Path) -> HashMap<String, StructMetadat
             meta.is_component = has_component;
             meta.is_contributehost = is_contributehost;
             meta.contribution_bindings = contribution_bindings;
+
+            // 解析 #[component(slots = ["header", "footer", ...])] 参数
+            if has_component {
+                meta.slots = parse_component_slots(&s.attrs);
+            }
             for f in &s.fields {
                 if let Some(name) = &f.ident {
                     let name_str = name.to_string();
@@ -223,6 +233,59 @@ fn type_name(ty: &Type) -> String {
         }
     }
     String::new()
+}
+
+/// 从 struct 属性列表中解析 `#[component(slots = ["header", "footer", ...])]` 参数
+///
+/// 返回插槽名列表；无 `#[component]` 属性或无 `slots` 参数时返回空 Vec。
+///
+/// 支持形式：
+/// - `#[component]` → 空
+/// - `#[component(slots = ["header", "footer"])]` → ["header", "footer"]
+fn parse_component_slots(attrs: &[syn::Attribute]) -> Vec<String> {
+    for attr in attrs {
+        if !attr.path().is_ident("component") {
+            continue;
+        }
+        let syn::Meta::List(list) = &attr.meta else {
+            continue;
+        };
+        // 尝试解析 tokens 为 `ident = expr_array` 形式
+        let tokens = &list.tokens;
+        // 用 syn 解析为 ComponentSlotsArgs
+        if let Ok(args) = syn::parse2::<ComponentSlotsArgs>(tokens.clone()) {
+            return args.slots;
+        }
+    }
+    Vec::new()
+}
+
+/// `#[component(slots = [...])]` 参数解析结构
+struct ComponentSlotsArgs {
+    slots: Vec<String>,
+}
+
+impl syn::parse::Parse for ComponentSlotsArgs {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let mut slots = Vec::new();
+        while !input.is_empty() {
+            let ident: Ident = input.parse()?;
+            if ident == "slots" {
+                let _eq: syn::Token![=] = input.parse()?;
+                let arr: syn::ExprArray = input.parse()?;
+                for expr in arr.elems {
+                    let lit: syn::LitStr = syn::parse2(quote! { #expr })?;
+                    slots.push(lit.value());
+                }
+            } else {
+                return Err(syn::Error::new(ident.span(), "unknown argument, expected `slots`"));
+            }
+            if !input.is_empty() {
+                let _comma: syn::Token![,] = input.parse()?;
+            }
+        }
+        Ok(ComponentSlotsArgs { slots })
+    }
 }
 
 /// `#[computed]` 方法体依赖访问器

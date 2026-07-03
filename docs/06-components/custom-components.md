@@ -314,41 +314,69 @@ impl TwoWayBinding for Counter {
 
 ## 6.2.7 组件的插槽
 
-组件可以通过 `<slot>` 接收父视图传递的内容：
+组件可以通过 `<slot>` 占位符接收父视图传递的内容。使用插槽需要**两处声明**：
+
+### ① 声明插槽契约
+
+在 `#[component]` 宏参数中声明组件接受的插槽列表：
+
+```rust
+// components/card.rml.rs
+#[derive(IModel)]
+#[component(slots = ["header", "default", "footer"])]
+pub struct Card {
+    pub title: SharedString,
+}
+```
+
+- `slots` 为字符串数组字面量
+- 保留名 `"default"` 对应模板内无 `name` 属性的 `<slot />`
+- 不写 `slots` 参数 → 组件不接受任何插槽
+
+### ② 声明插槽位置
+
+在 `.rml` 模板内用 `<slot>` 占位符声明渲染位置：
 
 ```html
 <!-- components/card.rml -->
-<div class="card">
-    <div class="card-header">
-        <slot name="header">默认标题</slot>
+<component>
+    <div class="card">
+        <div class="card-header">
+            <slot name="header" />
+        </div>
+        <div class="card-body">
+            <slot />
+        </div>
+        <div class="card-footer">
+            <slot name="footer" />
+        </div>
     </div>
-    <div class="card-body">
-        <slot></slot>
-    </div>
-    <div class="card-footer">
-        <slot name="footer">默认页脚</slot>
-    </div>
-</div>
+</component>
 ```
+
+> **注意**：`<slot>` 不支持默认内容。`<slot>默认文本</slot>` 中的子节点会被忽略，未填充的插槽渲染为空。
 
 ### 使用插槽
 
 ```html
-<Card>
+<Card title="用户信息">
     <template slot="header">
         <h2>用户信息</h2>
     </template>
 
-    <template>
-        <p>姓名: {user.name}</p>
-        <p>邮箱: {user.email}</p>
-    </template>
+    <!-- 默认插槽：无 slot 属性的裸子节点（仅当声明了 "default"） -->
+    <p>姓名: {user.name}</p>
+    <p>邮箱: {user.email}</p>
 
     <template slot="footer">
         <button onclick={edit_user}>编辑</button>
     </template>
 </Card>
 ```
+
+- `<template slot="name">` 填充具名插槽，`name` 必须在 `slots` 声明中
+- 无 `slot` 属性的裸子节点填充 `default` 插槽
+- 未填充的插槽渲染为空
 
 详见 [6.3 插槽与内容分发](./slots.md)。
 

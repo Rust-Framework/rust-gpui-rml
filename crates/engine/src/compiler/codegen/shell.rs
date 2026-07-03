@@ -63,7 +63,16 @@ pub(super) fn gen_modern_window_wrapper(
                         "footer" => {
                             code.push_str(&format!(".status_slot({})", rust_expr))
                         }
-                        _ => {}
+                        _ => {
+                            if crate::compiler::props_registry::is_shell_prop_registered("modern_window", name) {
+                                eprintln!(
+                                    "[rml warning] <modern_window> bind property `{}` is registered in SHELL_PROPS \
+                                     but has no mapping in gen_modern_window_wrapper; property will be silently dropped. \
+                                     Add a match arm in crates/engine/src/compiler/codegen/shell.rs.",
+                                    name
+                                );
+                            }
+                        }
                     }
                 }
                 "icon" => {
@@ -254,7 +263,16 @@ pub(super) fn gen_tab_window_wrapper(
                     "left_size" => code.push_str(&format!(".left_size({})", rust_expr)),
                     "right_size" => code.push_str(&format!(".right_size({})", rust_expr)),
                     "bottom_size" => code.push_str(&format!(".bottom_size({})", rust_expr)),
-                    _ => {}
+                    _ => {
+                        if crate::compiler::props_registry::is_shell_prop_registered("tab_window", name) {
+                            eprintln!(
+                                "[rml warning] <tab_window> bind property `{}` is registered in SHELL_PROPS \
+                                 but has no mapping in gen_tab_window_wrapper; property will be silently dropped. \
+                                 Add a match arm in crates/engine/src/compiler/codegen/shell.rs.",
+                                name
+                            );
+                        }
+                    }
                 }
             }
             Attribute::Event { name, handler } if name == "on_tab_click" => {

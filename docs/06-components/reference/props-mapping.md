@@ -4,13 +4,31 @@
 
 ## 维护规则
 
-添加新组件或新属性时，**必须同步**：
+添加新组件或新属性时，**必须三同步**：
 
 1. 在 `crates/engine/src/compiler/props_registry.rs` 的 `COMPONENT_PROPS` / `SHELL_PROPS` 中登记
 2. 在 `component_bind_setter` / `component_static_setter` / `component_event_setter` 或 `shell.rs` 中添加对应 match 分支
 3. 运行 `cargo test -p rust-rml-engine` 验证 `props_registry` 测试通过
 
-未在注册表登记的属性会在 codegen 时静默丢弃；已登记但无 match 分支的属性会输出 `[rml warning]` 提示。
+### Tag 规范化
+
+`is_prop_registered(tag, attr)` / `is_shell_prop_registered(tag, attr)` 查询时自动将 kebab-case 标签规范化为 PascalCase（如 `menu-bar` → `MenuBar`、`status_bar` → `StatusBar`）。因此在 `COMPONENT_PROPS` 中登记的 tag 用 PascalCase 即可，两种写法都能命中。
+
+## 属性齐全性双层保障
+
+RML 通过两层机制确保 codegen 属性映射齐全：
+
+1. **编译期 error（用户拼写错误）** —— `crates/engine/src/compiler/validator.rs`：
+   - shell 根标签的 bind/event 属性若不在 `SHELL_PROPS` → `ValidationError`
+   - 扩展组件的 bind/event 属性若不在 `COMPONENT_PROPS` + 通用属性 → `ValidationError`
+   - 用户组件的 `<template slot="x">` 中 `x` 若不在组件 `slots` 声明 → `ValidationError`
+
+2. **codegen warning（框架开发者映射缺失）**：
+   - `component_static_setter` / `component_bind_setter` 未命中分支：若 `is_prop_registered` 为 true → `eprintln!("[rml warning] ...")`
+   - `gen_tab_window_wrapper` / `gen_modern_window_wrapper` 未命中分支：若 `is_shell_prop_registered` 为 true → warning
+   - 提示开发者在对应 match 添加分支
+
+未在注册表登记的属性会在 validator 阶段报 error（bind/event）；已登记但无 match 分支的属性会输出 `[rml warning]` 提示。
 
 ## 通用属性（所有 Stateless / Stateful 组件共享）
 
@@ -104,6 +122,28 @@
 | tab_window | `left` | `.slot_left(...)` | 左侧面板 |
 | tab_window | `right` | `.slot_right(...)` | 右侧面板 |
 | tab_window | `bottom` | `.slot_bottom(...)` | 底部面板 |
+
+## 自定义组件插槽
+
+自定义组件通过 `#[component(slots = [...])]` 宏参数声明插槽契约，模板内用 `<slot>` 占位符，父视图用 `<template slot="...">` 填充：
+
+```rust
+#[component(slots = ["header", "default", "footer"])]
+pub struct Card { ... }
+```
+
+| 角色 | 语法 | 说明 |
+|------|------|------|
+| 契约声明 | `#[component(slots = ["header", "default", "footer"])]` | Rust 侧声明组件接受的插槽列表 |
+| 占位符 | `<slot name="header" />` / `<slot />` | 模板内声明渲染位置；无 `name` 对应 `"default"` |
+| 填充具名 | `<template slot="header">...</template>` | `name` 必须在 `slots` 声明中，否则 validator error |
+| 填充默认 | 裸子节点（无 `slot` 属性） | 仅当声明了 `"default"`；否则 validator error |
+
+- `<slot>` 不支持默认内容，未填充的插槽渲染为空
+- codegen 将 `<slot>` 替换为 `self.__rml_slot_<name>.take()`
+- 独立 re-render 时 slot 内容已被 `.take()` 消费，渲染为空（MVP 限制）
+
+详见 [6.3 插槽与内容分发](../slots.md)。
 
 ## 相关文档
 

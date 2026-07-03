@@ -64,6 +64,11 @@ pub struct UserComponentInfo {
     pub struct_name: String,
     /// snake_case 字段名（如 "counter_case"，父视图中的 `Option<Entity<CounterCase>>` 字段名）
     pub entity_field: String,
+    /// `#[component(slots = [...])]` 声明的具名插槽列表
+    ///
+    /// 父视图 codegen 据此分离 `<template slot="x">` 子节点并注入到对应 slot setter。
+    /// 空 Vec 表示组件不接受任何插槽。
+    pub slots: Vec<String>,
 }
 
 /// 代码生成上下文
@@ -191,7 +196,7 @@ impl From<CodegenError> for CompileError {
 /// 生成的 `impl Render for <View>` 代码块字符串
 pub fn compile(source: &str, ctx: &CodegenCtx) -> Result<String, CompileError> {
     let root = parser::parse(source)?;
-    validator::validate(&root)?;
+    validator::validate(&root, &ctx.user_components)?;
     let mut ctx = ctx.clone();
     ctx.model_fields = codegen::collect_model_fields(&root);
     let code = codegen::codegen(&root, &ctx)?;

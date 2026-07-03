@@ -1,0 +1,16 @@
+<component>
+    <div v_flex="" class="case-pane">
+        <h2>{t("case.slot.title")}</h2>
+        <Card>
+            <template slot="header">
+                <h3>{t("case.slot.header")}</h3>
+            </template>
+
+            <p>{t("case.slot.body")}</p>
+
+            <template slot="footer">
+                <Button label={t("case.slot.footer")} primary="" />
+            </template>
+        </Card>
+    </div>
+</component>
