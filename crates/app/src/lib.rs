@@ -5,6 +5,7 @@
 #![forbid(unsafe_code)]
 
 extern crate rust_rml_core as rml_core;
+extern crate rust_rml_ui as rml_ui;
 
 pub mod application;
 pub mod contribution;
@@ -13,8 +14,8 @@ pub mod resources;
 
 pub use application::{NoWindow, RmlApplication};
 pub use contribution::{
-    bootstrap_contributions, contribution_entries, ensure_contribution_registry,
-    register_contribution, subscribe_host_changes, ContributionExt, Registerable,
+    build_activity_panels, bootstrap_contributions, ensure_contribution_registry, extract_visual,
+    get_or_create_entity, visual_entity, ContributionRegistryExt,
 };
 pub use lifecycle::IAppLifecycle;
 pub use resources::{

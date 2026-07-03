@@ -6,7 +6,7 @@ use crate::components::card::Card;
 /// 使用 `<Card>` 组件，通过 `<template slot="...">` 填充 header / footer，
 /// 裸子节点填充 default 插槽。
 #[contribute(
-    host_id = "demo.shell",
+    host_id = "demo.activity",
     id = "components.slot",
     name = "case.slot.title",
     kind = "case",

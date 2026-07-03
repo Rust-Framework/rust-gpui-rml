@@ -1,497 +1,871 @@
-# RML ObservableCollection 与响应式数据驱动能力增强计划
+# RML ObservableCollection 与贡献点架构重构计划
 
-## Context
+## 摘要
 
-当前 RML 框架的响应式能力存在根本性缺口：集合数据（`Vec<T>`）的变更依赖 `#[command]` 宏的 AST 模式匹配（仅识别 `push`/`pop`/`clear` 等 6 个方法），无法检测间接修改（`let p = &mut self.items; p.push()`）和外部方法调用；且无细粒度通知，任何 Vec 变更都导致整个 `#[computed]` 缓存失效。
+本计划基于用户六项决策重构原计划，核心转变：**框架不再存储贡献数据**，`IContributionHost` 成为主动的受理方（自带 `add`/`remove` 受理代码），`IContributionRegistry` 仅作桥接器将 `register` 调用路由到对应 host。由此消除 `ContributedEntry`、`ComponentEntityCache`、`VisualRenderer` 等框架侧存储类型，并否决 `#[computed_with_cx]` 新宏——业务代码不再调用 `contribution_entries`，数据直接存储在 host 自身的 `ObservableVec` 字段中，`#[computed]` 通过版本号自动感知变更。
 
-在实际应用中，这意味着大量样板代码：Demo 的 `refresh_shell_chrome` + `map_shell_chrome` + `subscribe_host_changes` 三件套手动桥接贡献点数据到 ViewModel 字段，每次贡献变更都要全量重建 menu/status/activity 面板。用户的目标是**数据 + 模板驱动界面渲染**——给集合增删改数据时不用额外写代码促成 UI 响应，且确保高性能。
+### 迭代目标
 
-本计划引入 WPF `ObservableCollection<T>` 等价能力，通过三个核心机制达成目标：
-1. **`ObservableVec<T>`** —— 版本号驱动的集合类型，mutation 自动 bump version
-2. **`#[computed_with_cx]`** —— 支持 `cx` 访问的计算属性，缓存键可包含外部 revision
-3. **RML `each=` + `key=`** —— render 时 keyed diffing，element 复用，高性能列表更新
+| 迭代 | 目标 | 交付物 |
+|------|------|--------|
+| Phase A | 集合响应式核心类型 | `ObservableVec<T>` |
+| Phase B | 版本系统集成 | `#[computed]`/`#[command]` 自动感知 ObservableVec |
+| Phase C | 贡献点架构重构（核心） | `IContributionHost`（受理方）+ `IContributionRegistry`（桥接器） |
+| Phase D | RML keyed diffing | `each=` + `key=` 元素复用 |
+| Phase E | Demo 样板消除 | 受理代码替代 `refresh_shell_chrome`/`map_shell_chrome` |
 
-### 用户决策
+---
 
-| 决策点 | 选择 |
-|--------|------|
-| 通知模型 | 仅版本号 + render 时 key diffing（无 CollectionChange 事件） |
-| `#[computed]` 扩展 | 纳入：实现 `#[computed_with_cx]` |
-| Host API | `IContributionHost` trait 增加 `add`/`remove` 方法 |
+## 用户决策
+
+| # | 决策 | 影响 |
+|---|------|------|
+| 1 | Phase C 否决，不增加新宏，`contribution_entries` 不出现在业务代码 | 移除 `#[computed_with_cx]`；数据存储下沉到 host |
+| 2 | `IContributionHost` 含 `id`/`add`/`remove`，业务编写受理代码 | host 主动处置贡献，框架不代劳 |
+| 3 | `ContributedEntry` 无必要性 | 框架不存储贡献条目，host 自管存储 |
+| 4 | `ComponentEntityCache` 无必要性 | 框架不缓存组件 Entity，host 自管缓存 |
+| 5 | `IContributionRegistry` 定义 `add`/`remove`/`register`/`unregister` | 框架实现桥接 contribute → host |
+| 6 | 扩展 App/Context 提供 `get_contribution_registry()` | 宏生成代码通过接口操作 |
+
+---
+
+## 当前状态分析
+
+### 框架侧（将被重构）
+
+- **`crates/core/src/contribution.rs`**：`IContributionHost` 仅有 `const ID`（无 add/remove）；存在 `ContributedEntry`、`ComponentEntityCache` trait、`VisualRenderer` 类型
+- **`crates/core/src/contribution_cache.rs`**：`ComponentEntityCacheImpl` 框架侧 Entity 缓存实现
+- **`crates/app/src/contribution/host.rs`**：`ContributionHost` 框架存储 `Vec<ContributedEntry>` + `revision: AtomicU64`
+- **`crates/app/src/contribution/registry.rs`**：`ContributionRegistry` 框架集中存储 hosts + entity_cache + listeners
+- **`crates/app/src/contribution/entry.rs`**：`data_entry`/`component_entry` 构建 `ContributedEntry`
+- **`crates/app/src/contribution/render.rs`**：`render_component_view` 通过全局 registry entity_cache 渲染
+- **`crates/app/src/contribution/global.rs`**：`ContributionExt` 扩展 App，`contribution_entries`/`contribution_revision`/`subscribe_host_changes` 读框架存储
+
+### 业务侧（将被简化）
+
+- **`demo/src/shell/main_window.rml.rs`**：`refresh_shell_chrome` 手动桥接 + `subscribe_host_changes` 回调
+- **`demo/src/shell/shell_chrome.rs`**：`map_shell_chrome`/`map_menu_items`/`map_status_items` 从 `contribution_entries` 投影
+- **`demo/src/shell/activity_panel.rml.rs`**：`ActivityPanel` 通过 `subscribe_host_changes` + `map_case_tree_items` 刷新树
+
+### 宏侧（将调整）
+
+- **`crates/macros/src/contribute.rs`**：生成 `Registerable` impl + `register_contribution` 调用
+- **`crates/macros/src/contributehost.rs`**：生成 `ID` const + `cx.add(ID)` 注册
+- **`crates/engine/src/build/contribution_generator.rs`**：build.rs 扫描生成 `register_rml_contributions`
+
+---
+
+## 新架构概览
+
+### 数据流转变
+
+```
+旧：contribute宏 → register_contribution → 框架存储 ContributedEntry
+    → contribution_entries 读取 → map_shell_chrome 投影 → refresh_shell_chrome 更新字段
+    → #[computed_with_cx] 缓存 → UI 更新
+
+新：contribute宏 → registry.register → 路由到 host.add（受理代码）
+    → host.push 到 ObservableVec → version bump
+    → #[computed] 缓存失效 → UI 更新（零样板）
+```
+
+### 类型关系
+
+```
+IContribution（元数据 + render_view）
+  └─ IVisualContribution（render 方法）
+
+IContributionHost（id + add + remove —— 受理方）
+  ↑ EntityHostHandle<T> 包装 WeakEntity<T>，实现 HostHandle trait
+
+IContributionRegistry（add + remove + register + unregister —— 桥接器）
+  └─ ContributionRegistry（框架实现，RwLock 内部可变性）
+
+EntityCache（host 拥有的工具结构，非 trait）
+  └─ RenderContext.entity_cache 字段
+```
+
+### 注册时序
+
+```
+1. #[ctor::ctor] → register_contribution(cx, host_id, contribution, options)
+   → registry.register → host 不存在 → 存入 pending 队列
+
+2. 窗口创建 → MainWindow::on_loaded → register_host(cx)
+   → registry.add(EntityHostHandle { weak }) → 重放 pending 队列
+   → 逐条调用 host.add(contribution, options, cx) → host 存储到 ObservableVec
+   → cx.notify() → 重渲
+```
 
 ---
 
 ## Phase A：`ObservableVec<T>` 核心类型
 
+**不变，详见原计划。**
+
 ### 新建文件
 
-**`crates/core/src/observable.rs`** —— 集合响应式核心类型
+**`crates/core/src/observable.rs`** —— 版本号驱动的可观察集合
 
 ```rust
-use std::sync::atomic::{AtomicU64, Ordering};
-
-/// 版本号驱动的可观察集合。
-///
-/// Mutation 方法（push/insert/remove/swap/clear/replace_range）自动 bump version。
-/// 与 RML 版本系统集成的桥梁：
-/// - `__rml_get_version("field")` 路由到 `self.field.version()`
-/// - `#[computed]` 缓存键自动包含集合版本
-/// - `#[command]` 宏注入的 `__rml_bump_version` 对 ObservableVec 字段为 no-op
 pub struct ObservableVec<T> {
     inner: Vec<T>,
     version: AtomicU64,
 }
-
-impl<T> ObservableVec<T> {
-    pub fn new() -> Self { ... }
-    pub fn with_capacity(n: usize) -> Self { ... }
-    pub fn from(vec: Vec<T>) -> Self { ... }
-
-    /// 当前版本号（每次 mutation 递增）
-    pub fn version(&self) -> u64 { self.version.load(Ordering::Relaxed) }
-
-    pub fn len(&self) -> usize { self.inner.len() }
-    pub fn is_empty(&self) -> bool { self.inner.is_empty() }
-
-    // —— mutation 方法：bump version ——
-    pub fn push(&mut self, item: T) { self.inner.push(item); self.bump(); }
-    pub fn insert(&mut self, index: usize, item: T) { self.inner.insert(index, item); self.bump(); }
-    pub fn remove(&mut self, index: usize) -> T { let v = self.inner.remove(index); self.bump(); v }
-    pub fn swap(&mut self, a: usize, b: usize) { self.inner.swap(a, b); self.bump(); }
-    pub fn clear(&mut self) { self.inner.clear(); self.bump(); }
-    pub fn replace_range(&mut self, range: std::ops::Range<usize>, items: impl IntoIterator<Item = T>) { ... self.bump(); }
-    pub fn retain<F: FnMut(&T) -> bool>(&mut self, f: F) { self.inner.retain(f); self.bump(); }
-
-    // —— 只读访问（支持 each= codegen 生成 .iter()）——
-    pub fn iter(&self) -> std::slice::Iter<'_, T> { self.inner.iter() }
-    pub fn get(&self, index: usize) -> Option<&T> { self.inner.get(index) }
-    pub fn as_slice(&self) -> &[T] { &self.inner }
-
-    fn bump(&self) { self.version.fetch_add(1, Ordering::Relaxed); }
-}
-
-impl<T> std::ops::Deref for ObservableVec<T> {
-    type Target = [T];
-    fn deref(&self) -> &[T] { &self.inner }
-}
-
-// 无 DerefMut —— 防止绕过 version bump 的未追踪修改
-
-impl<T: Send + Sync + 'static> Send for ObservableVec<T> {}
-impl<T: Send + Sync + 'static> Sync for ObservableVec<T> {}
 ```
 
-**关键设计决策：**
-- **无 `DerefMut`** —— 强制通过专用 mutation 方法修改，确保 version 总是 bump
-- **无 listener / 无 CollectionChange 事件** —— 版本号是唯一通知机制，GPUI 每次 render 重建元素，diffing 在 render 时通过 key 比对完成
-- **`AtomicU64` version** —— 与现有 `__rml_<field>_version: AtomicU64` 系统一致，lock-free 读取
-- **`Send + Sync`** —— `Vec<T: Send+Sync>` + `AtomicU64` 天然满足，无需 unsafe
+- 无 `DerefMut`：强制通过 mutation 方法修改，确保 version bump
+- `AtomicU64` version：lock-free 读取
+- mutation 方法（push/insert/remove/swap/clear/replace_range/retain/sort_by_mut）自动 bump
+- 只读方法（iter/get/as_slice/len/is_empty/version）
 
-**导出：** 在 `crates/core/src/lib.rs` 添加 `pub mod observable;` + `pub use observable::ObservableVec;`，在 `prelude.rs` 添加导出。
+**`sort_by_mut`**：为 `ContributionHost::add` 的 dedup+sort 需求提供有意 mutation 入口。
 
-**单元测试：** 同文件 `#[cfg(test)]` 模块，验证 mutation 后 version 递增、`Deref` 读取正确、无 `DerefMut` 编译失败。
+**导出**：`crates/core/src/lib.rs` 添加 `pub mod observable;` + `pub use observable::ObservableVec;`，`prelude.rs` 导出。
 
 ---
 
 ## Phase B：版本系统 + `#[computed]` 集成
 
-### 目标
+**不变，详见原计划。**
 
-让 `ObservableVec<T>` 字段自动接入版本系统：
-- `__rml_get_version("field")` 返回 `self.field.version()`（而非 `self.__rml_field_version.load()`）
-- `#[computed]` 方法依赖 `ObservableVec` 字段时，缓存键自动包含集合版本
-- `#[command]` 宏无需修改——注入的 `__rml_bump_version("field")` 对 ObservableVec 字段为 no-op（match 默认 arm `_ => {}`），`cx.notify()` 照常触发重渲
+### 修改要点
 
-### 修改文件
-
-**`crates/engine/src/build/scanner.rs`** —— 编译期检测 ObservableVec 字段类型
-
-当前 `StructMetadata`（L42-60）已有 `field_types: HashMap<String, String>`。扩展：
-```rust
-pub struct StructMetadata {
-    pub observable_fields: Vec<String>,
-    pub computed_methods: Vec<String>,
-    pub field_types: HashMap<String, String>,
-    pub observable_vec_fields: Vec<String>,  // 新增：类型为 ObservableVec<...> 的字段
-}
-```
-在 `scan_struct_metadata`（L87+）的字段类型解析逻辑中，当 `cleaned` 以 `"ObservableVec<"` 开头时，将字段名加入 `observable_vec_fields`。
-
-**`crates/engine/src/compiler/codegen/observable.rs`** —— `gen_observable_impl` 版本路由
-
-当前 L23-32 为每个 `version_fields` 字段生成 `bump_arms` + `get_arms`。修改逻辑：
-- `bump_arms`：跳过 `observable_vec_fields` 中的字段（不生成 match arm，落入默认 `_ => {}` no-op）
-- `get_arms`：对 `observable_vec_fields` 中的字段，生成 `self.{field}.version()` 而非 `self.__rml_{field}_version.load(...)`
-
-```rust
-for field in version_fields {
-    if ctx.observable_vec_fields.contains(field) {
-        // bump: skip (no-op via default arm)
-        // get: route to ObservableVec::version()
-        get_arms.push_str(&format!(
-            "            \"{}\" => self.{}.version(),\n",
-            field, field
-        ));
-    } else {
-        bump_arms.push_str(&format!(...));  // 原逻辑
-        get_arms.push_str(&format!(...));   // 原逻辑
-    }
-}
-```
-
-**`crates/macros/src/component.rs`** —— 跳过 ObservableVec 字段的 `__rml_<field>_version` 注入
-
-当前 L94-101 为每个 observable 字段注入 `__rml_<field>_version: AtomicU64` 字段。修改：对 `observable_vec_fields` 中的字段跳过注入（ObservableVec 内部已有自己的 version）。
-
-**`crates/engine/src/build/mod.rs`** —— 传递 `observable_vec_fields` 到 `CodegenCtx`
-
-L295 附近将 `observable_vec_fields` 从 `StructMetadata` 传入 `CodegenCtx`。
+- **`crates/engine/src/build/scanner.rs`**：检测 `ObservableVec<...>` 字段类型，记入 `observable_vec_fields`
+- **`crates/engine/src/compiler/codegen/observable.rs`**：`get_arms` 对 ObservableVec 字段路由到 `self.field.version()`；`bump_arms` 跳过（no-op）
+- **`crates/macros/src/component.rs`**：跳过 ObservableVec 字段的 `__rml_<field>_version` 注入（ObservableVec 内部已有 version）
 
 ### 效果
 
-```rust
-#[component]
-pub struct MyView {
-    items: ObservableVec<String>,  // 无 __rml_items_version 注入
-    name: String,                  // 有 __rml_name_version 注入
-}
-
-#[computed]
-fn item_count(&self) -> usize {
-    self.items.len()  // 依赖 items，缓存键 = self.items.version()
-}
-
-#[command]
-fn add_item(&mut self, cx: &mut Context<Self>) {
-    self.items.push("new".into());  // ObservableVec 内部 bump version
-    // 宏注入：self.__rml_bump_version("items"); → no-op（默认 arm）
-    // 宏注入：cx.notify(); → 触发重渲
-    // 重渲时：item_count() 缓存键变化 → 自动重算
-}
-```
+`#[computed]` 方法依赖 `ObservableVec` 字段时，缓存键自动包含集合版本。`#[command]` 中的 `__rml_bump_version` 对 ObservableVec 字段为 no-op。**无需 `#[computed_with_cx]`**——computed 方法通过 `&self` 读取 host 自身字段即可。
 
 ---
 
-## Phase C：`#[computed_with_cx]` 扩展
+## Phase C：贡献点架构重构（核心）
 
-### 目标
+### C1：`IContributionHost` trait 重设计
 
-当前 `#[computed]`（`crates/macros/src/computed.rs`）强制 `&self` 无参，无法访问 `cx`。这导致 computed 方法无法调用 `contribution_entries(host_id, cx)` 读取全局注册表数据——是 `refresh_shell_chrome` 样板代码存在的根本原因。
-
-`#[computed_with_cx]` 是新宏属性，允许 `&self, cx: &Context<Self>` 签名，缓存键可包含外部 revision（如 `contribution_revision`）。
-
-### 新建文件
-
-**`crates/macros/src/computed_with_cx.rs`** —— 新宏实现
+**文件**：`crates/core/src/contribution.rs`
 
 ```rust
-/// #[computed_with_cx(revision = expr)]
-/// pub fn method(&self, cx: &Context<Self>) -> RetType { ... }
-///
-/// 生成的包装方法：
-/// pub fn method(&self, cx: &Context<Self>) -> RetType {
-///     let __v = self.__rml_computed_deps_version("method") + (expr);
-///     self.__rml_computed_cache.get_or_compute::<RetType>("method", __v, || self.__rml_computed_with_cx_method(cx))
-/// }
-///
-/// 其中 `revision = expr` 的 expr 在 &self + &Context<Self> 作用域内求值，
-/// 典型用法：revision = contribution_revision(Self::ID, cx)
-```
-
-**校验规则：**
-- 签名必须是 `&self, cx: &Context<Self>`（或 `cx: &Context<View>`）
-- `revision =` 属性必填（提供外部版本源，否则退化为普通 `#[computed]`）
-- 方法体重命名为 `__rml_computed_with_cx_{name}`
-
-### 修改文件
-
-**`crates/macros/src/lib.rs`** —— 注册新 proc-macro attribute
-
-```rust
-#[proc_macro_attribute]
-pub fn computed_with_cx(attr: TokenStream, item: TokenStream) -> TokenStream { ... }
-```
-
-**`crates/engine/src/compiler/codegen/observable.rs`** —— `gen_computed_wrappers` 扩展
-
-新增 `gen_computed_with_cx_wrappers` 函数，生成带 `cx` 参数的包装方法。缓存键 = `__rml_computed_deps_version("method") + revision_expr_value`。
-
-**`crates/engine/src/build/scanner.rs`** —— 检测 `#[computed_with_cx]` 方法
-
-在方法扫描逻辑中识别 `#[computed_with_cx]` 属性，记录方法名 + revision 表达式到 `StructMetadata.computed_with_cx_methods: Vec<(String, String)>`。
-
-### 使用示例
-
-```rust
-#[computed_with_cx(revision = contribution_revision(Self::ID, cx))]
-pub fn menu_items(&self, cx: &Context<Self>) -> MenuItems {
-    let entries = contribution_entries(Self::ID, cx);
-    map_menu_items(entries, &self.menu_commands)
-}
-```
-
-贡献点注册 → `ObservableVec` bump version → `contribution_revision` 递增 → `menu_items` 缓存键变化 → 自动重算 → RML 模板读取新值 → UI 更新。**零样板代码。**
-
----
-
-## Phase D：`IContributionHost` trait + 存储重构
-
-### 目标
-
-1. `IContributionHost` trait 增加 `add`/`remove` 方法，提供 `host.add(contribution)` API
-2. `ContributionHost` 存储改为 `ObservableVec<ContributedEntry>`，version 驱动响应式
-3. `subscribe_host_changes` 简化（从手动 refresh 回调退化为 `cx.notify()`）
-
-### 修改文件
-
-**`crates/core/src/contribution.rs`** —— trait 扩展
-
-```rust
+/// 贡献点主机：主动受理方。host 自行决定如何存储/映射贡献。
 pub trait IContributionHost: Send + Sync + 'static {
     const ID: &'static str;
 
-    /// 向 host 注册贡献。默认实现路由到全局注册表。
-    fn add(&self, contribution: Arc<dyn IContribution>, options: ContributionOptions, cx: &mut gpui::App) {
-        cx.register(Self::ID, contribution, options);
-    }
+    /// 受理代码：接收并处置贡献。host 自行决定存储方式
+    /// （如 push 到 ObservableVec<MenuItem>、ObservableVec<StatusBarItem> 等）。
+    fn add(&mut self, contribution: Arc<dyn IContribution>, options: ContributionOptions, cx: &mut App);
 
-    /// 从 host 注销贡献。默认实现路由到全局注册表。
-    fn remove(&self, contribution_id: &str, cx: &mut gpui::App) -> bool {
-        cx.unregister(Self::ID, contribution_id)
+    /// 移除贡献。host 自行决定清理方式。
+    fn remove(&mut self, contribution_id: &str, cx: &mut App);
+}
+```
+
+**设计要点**：
+- `const ID`：编译期已知，宏生成代码使用（`#[contributehost]` 生成 `Self::ID`）
+- `add`/`remove`：业务实现的受理代码，接收 `Arc<dyn IContribution>` + `ContributionOptions`，按 slot/group 等分发到 host 自有数据结构
+- `&mut App`（非 `&mut Context<Self>`）：host 通过 `ObservableVec::push` 的 version bump 驱动响应式，`HostHandle` 在 `entity.update` 后自动调用 `cx.notify()`
+
+### C2：`IContribution` trait 扩展
+
+**文件**：`crates/core/src/contribution.rs`
+
+```rust
+pub trait IContribution: Send + Sync {
+    fn id(&self) -> &str;
+    fn name(&self) -> SharedString;
+    fn description(&self) -> SharedString;
+    fn icon(&self) -> Option<SharedString>;
+
+    /// 视觉渲染（视觉贡献覆盖此方法；非视觉贡献返回 None）。
+    /// 消除 VisualRenderer 闭包类型——host 直接调用此方法。
+    fn render_view(&self, ctx: &mut RenderContext<'_>) -> Option<gpui::AnyElement> { None }
+}
+
+pub trait IVisualContribution: IContribution {
+    fn render(&self, ctx: &mut RenderContext<'_>) -> gpui::AnyElement;
+}
+```
+
+**`#[contribute] + #[component]` 宏生成覆盖**：
+
+```rust
+impl IContribution for MyCase {
+    // ... 元数据方法 ...
+    fn render_view(&self, ctx: &mut RenderContext) -> Option<gpui::AnyElement> {
+        Some(self.render(ctx))  // 委托给 IVisualContribution::render
     }
 }
 ```
 
-**设计决策：** trait 方法提供默认实现（路由到 `ContributionExt`），用户通常无需重写。这保留了"trait = 契约，存储 = app 关注点"的分层——trait 定义 API，存储仍由全局注册表管理。`Send + Sync + 'static` bound 确保 host 可作为 `Entity<T>` 存储。
+### C3：`RenderContext` + `EntityCache` 重设计
 
-**`crates/app/src/contribution/host.rs`** —— 存储改用 ObservableVec
+**文件**：`crates/core/src/contribution.rs` + `crates/core/src/contribution_cache.rs`（重命名）
 
 ```rust
-pub struct ContributionHost {
-    id: String,
-    entries: ObservableVec<ContributedEntry>,  // 原 Vec<ContributedEntry>
-    // revision: AtomicU64 移除（ObservableVec 内部已有）
+/// 渲染上下文（host 创建，包含 host 拥有的 EntityCache）
+pub struct RenderContext<'a> {
+    pub window: &'a mut gpui::Window,
+    pub cx: &'a mut gpui::App,
+    pub active: bool,
+    pub entity_cache: &'a mut EntityCache,  // 新增：host 拥有
 }
 
-impl ContributionHost {
-    pub fn revision(&self) -> u64 { self.entries.version() }
+/// 组件 Entity 缓存（工具结构，非 trait；host 作为字段持有）
+/// 替代原 ComponentEntityCache trait + ComponentEntityCacheImpl
+pub struct EntityCache {
+    entries: HashMap<String, (TypeId, Box<dyn Any + Send + Sync>)>,
+}
 
-    pub fn add(&mut self, entry: ContributedEntry, _cx: &mut App) {
-        let id = entry.contribution.id().to_string();
-        // dedup + sort 逻辑保留，但通过 ObservableVec 的 mutation 方法操作
-        // 需要先 remove 旧的同 id 条目，再 push 新的，最后 sort
-        // 注意：sort 需要直接访问 inner Vec —— 提供 ObservableVec::sort_by_mut 或在 host 层处理
-        self.entries.retain(|e| e.contribution.id() != id);
-        self.entries.push(entry);
-        self.sort_entries();  // 需要 &mut Vec 访问 —— 见下方"sort 方案"
+impl EntityCache {
+    pub fn new() -> Self { ... }
+
+    /// 查找或创建 Entity<V>，缓存按 contribution_id
+    pub fn render_view<V: Render + Send + Sync + 'static>(
+        &mut self, contribution_id: &str, view: V, ctx: &mut RenderContext,
+    ) -> AnyElement { ... }
+
+    pub fn pre_register<T: Render + Send + Sync + 'static>(
+        &mut self, contribution_id: &str, entity: Entity<T>,
+    );
+
+    pub fn clear(&mut self, contribution_id: &str);
+    pub fn clear_all(&mut self);
+}
+```
+
+**设计要点**：
+- `EntityCache` 是普通结构体（非 trait），host 直接作为字段持有
+- `RenderContext` 包含 `&mut EntityCache`，视觉贡献通过 `ctx.entity_cache` 复用 Entity
+- **框架不存储** EntityCache——它由 host 创建并拥有
+
+### C4：`IContributionRegistry` trait 定义
+
+**文件**：`crates/core/src/contribution.rs`
+
+```rust
+/// 贡献注册表接口：桥接 contribute → host。
+/// 框架内实现，负责按 host_id 路由 register 调用到对应 host 的 add 方法。
+pub trait IContributionRegistry: Send + Sync {
+    /// 注册 host（host 在 on_loaded 时调用）
+    fn add(&self, host: Box<dyn HostHandle>);
+
+    /// 注销 host
+    fn remove(&self, host_id: &str);
+
+    /// 向 host 注册贡献（#[contribute] 宏生成代码调用）
+    fn register(&self, host_id: &str, contribution: Arc<dyn IContribution>, options: ContributionOptions, cx: &mut App);
+
+    /// 从 host 注销贡献
+    fn unregister(&self, host_id: &str, contribution_id: &str, cx: &mut App) -> bool;
+}
+```
+
+**`HostHandle` trait（内部，`#[doc(hidden)]`）**：
+
+```rust
+/// 类型擦除的 host 句柄，包装 WeakEntity<T>
+#[doc(hidden)]
+pub trait HostHandle: Send + Sync {
+    fn id(&self) -> &str;
+    fn add(&self, contribution: Arc<dyn IContribution>, options: ContributionOptions, cx: &mut App);
+    fn remove(&self, contribution_id: &str, cx: &mut App);
+}
+
+/// Entity<T> 的 HostHandle 实现
+#[doc(hidden)]
+pub struct EntityHostHandle<T: IContributionHost> {
+    weak: WeakEntity<T>,
+}
+
+impl<T: IContributionHost + Render + 'static> HostHandle for EntityHostHandle<T> {
+    fn id(&self) -> &str { T::ID }
+
+    fn add(&self, contribution: Arc<dyn IContribution>, options: ContributionOptions, cx: &mut App) {
+        if let Some(entity) = self.weak.upgrade() {
+            entity.update(cx, |host, ctx| {
+                host.add(contribution, options, ctx);  // 受理代码
+                ctx.notify();  // 自动触发重渲
+            });
+        }
+    }
+
+    fn remove(&self, contribution_id: &str, cx: &mut App) {
+        if let Some(entity) = self.weak.upgrade() {
+            entity.update(cx, |host, ctx| {
+                host.remove(contribution_id, ctx);
+                ctx.notify();
+            });
+        }
+    }
+}
+
+/// 构造函数（宏 / register_host 调用）
+#[doc(hidden)]
+pub fn entity_host_handle<T: IContributionHost + Render + 'static>(weak: WeakEntity<T>) -> Box<dyn HostHandle> {
+    Box::new(EntityHostHandle { weak })
+}
+```
+
+### C5：`ContributionRegistry` 框架实现
+
+**文件**：`crates/app/src/contribution/registry.rs`（重写）
+
+```rust
+use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
+
+use gpui::App;
+use rml_core::contribution::{
+    HostHandle, IContribution, IContributionRegistry, ContributionOptions,
+};
+
+/// 框架内部实现：桥接 contribute → host
+pub struct ContributionRegistry {
+    hosts: RwLock<HashMap<String, Box<dyn HostHandle>>>,
+    pending: RwLock<HashMap<String, Vec<(Arc<dyn IContribution>, ContributionOptions)>>>,
+}
+
+impl ContributionRegistry {
+    pub fn new() -> Self {
+        Self {
+            hosts: RwLock::new(HashMap::new()),
+            pending: RwLock::new(HashMap::new()),
+        }
+    }
+
+    /// 读取 host 条目（host 自管存储，registry 不提供 entries 读取）
+    /// 保留 revision 供调试/监控
+    pub fn has_host(&self, host_id: &str) -> bool {
+        self.hosts.read().unwrap().contains_key(host_id)
+    }
+}
+
+impl IContributionRegistry for ContributionRegistry {
+    fn add(&self, host: Box<dyn HostHandle>) {
+        let id = host.id().to_string();
+        let mut hosts = self.hosts.write().unwrap();
+        hosts.insert(id.clone(), host);
+        drop(hosts);
+
+        // 重放 pending 队列
+        let mut pending = self.pending.write().unwrap();
+        if let Some(queue) = pending.remove(&id) {
+            drop(pending);
+            // 注意：重放需要 cx，但 IContributionRegistry::add 不接受 cx
+            // 解决方案：见下方 C6 register_host 设计——重放在 register_host 中完成
+            // 或：pending 存储 (contribution, options)，重放在 add 中无法完成
+            // 修正：add 接受 cx 参数
+        }
+    }
+
+    // ...
+}
+```
+
+**修正：`add` 需要 `cx` 参数以重放 pending**。调整 trait 签名：
+
+```rust
+pub trait IContributionRegistry: Send + Sync {
+    fn add(&self, host: Box<dyn HostHandle>, cx: &mut App);
+    fn remove(&self, host_id: &str, cx: &mut App);
+    fn register(&self, host_id: &str, contribution: Arc<dyn IContribution>, options: ContributionOptions, cx: &mut App);
+    fn unregister(&self, host_id: &str, contribution_id: &str, cx: &mut App) -> bool;
+}
+```
+
+**`add` 实现（重放 pending）**：
+
+```rust
+fn add(&self, host: Box<dyn HostHandle>, cx: &mut App) {
+    let id = host.id().to_string();
+    let mut hosts = self.hosts.write().unwrap();
+    hosts.insert(id.clone(), host);
+    drop(hosts);
+
+    // 重放 pending 注册
+    let mut pending = self.pending.write().unwrap();
+    let queue = pending.remove(&id).unwrap_or_default();
+    drop(pending);
+
+    let hosts = self.hosts.read().unwrap();
+    if let Some(host) = hosts.get(&id) {
+        for (contribution, options) in queue {
+            host.add(contribution, options, cx);
+        }
     }
 }
 ```
 
-**sort 方案：** `ObservableVec` 不暴露 `&mut Vec<T>`（会绕过 version bump）。为支持 sort，在 `ObservableVec` 增加 `sort_by_mut<F: FnMut(&T, &T) -> Ordering>(&mut self, f: F)` 方法，内部调用 `self.inner.sort_by(f)` + `self.bump()`。这是一个有意的 mutation 入口，bump version。
-
-**`crates/app/src/contribution/global.rs`** —— `contribution_revision` 读取 ObservableVec version
+**`register` 实现（路由到 host 或入队 pending）**：
 
 ```rust
-pub fn contribution_revision<C>(host_id: &str, cx: &Context<C>) -> u64 {
-    if !cx.has_global::<ContributionRegistryGlobal>() { return 0; }
-    cx.global::<ContributionRegistryGlobal>().0.revision(host_id)
-    // revision() 内部返回 entries.version()
+fn register(&self, host_id: &str, contribution: Arc<dyn IContribution>, options: ContributionOptions, cx: &mut App) {
+    let hosts = self.hosts.read().unwrap();
+    if let Some(host) = hosts.get(host_id) {
+        host.add(contribution, options, cx);
+    } else {
+        drop(hosts);
+        let mut pending = self.pending.write().unwrap();
+        pending
+            .entry(host_id.to_string())
+            .or_default()
+            .push((contribution, options));
+    }
 }
 ```
 
-**`crates/app/src/contribution/registry.rs`** —— `notify_host` 保留，`revision` 改读 ObservableVec
-
-`ContributionRegistry` 的 `notify_host`（L74-80）保留——它负责将变更通知到订阅 Entity。`HostListener` 回调签名不变（`Fn(&mut App)`），但消费者的回调逻辑简化为 `|_, cx| cx.notify()`（不再需要 `refresh_shell_chrome`）。
-
-### 效果
+**`unregister` 实现**：
 
 ```rust
-// 贡献注册（#[contribute] 宏生成的代码）：
-MainWindow::add(&MainWindow, Arc::new(MyCase::default()), options, cx);
-// 或等价的：cx.register("demo.shell", contribution, options);
+fn unregister(&self, host_id: &str, contribution_id: &str, cx: &mut App) -> bool {
+    let hosts = self.hosts.read().unwrap();
+    if let Some(host) = hosts.get(host_id) {
+        host.remove(contribution_id, cx);
+        true
+    } else {
+        false
+    }
+}
+```
 
-// 内部流程：
-// 1. ContributionExt::register → registry.register_entry → host.add(entry, cx)
-// 2. host.add → ObservableVec::push (bump version) → registry.notify_host
-// 3. notify_host → HostListener 回调 → entity.update(cx, |_, cx| cx.notify())
-// 4. 重渲 → #[computed_with_cx(revision = contribution_revision(...))] 缓存失效 → 自动重算
-// 5. RML each=+key= keyed diffing → element 复用 → UI 更新
+### C6：App/Context 扩展
+
+**文件**：`crates/app/src/contribution/global.rs`（重写）
+
+```rust
+use std::sync::{Arc, Mutex};
+
+use gpui::{App, Global};
+use rml_core::contribution::{
+    EntityCache, HostHandle, IContribution, IContributionHost, IContributionRegistry,
+    ContributionOptions,
+};
+
+use super::registry::ContributionRegistry;
+
+/// GPUI 全局贡献注册表
+#[doc(hidden)]
+pub struct ContributionRegistryGlobal(pub ContributionRegistry);
+
+impl Global for ContributionRegistryGlobal {}
+
+/// 确保全局注册表已初始化
+pub fn ensure_contribution_registry(cx: &mut App) {
+    if !cx.has_global::<ContributionRegistryGlobal>() {
+        cx.set_global(ContributionRegistryGlobal(ContributionRegistry::new()));
+    }
+}
+
+/// App 扩展：贡献注册表访问
+pub trait ContributionRegistryExt {
+    /// 获取 IContributionRegistry 接口进行操作。
+    /// 返回 &dyn（不可变引用），方法通过 RwLock 内部可变性操作。
+    fn get_contribution_registry(&mut self) -> &dyn IContributionRegistry;
+}
+
+impl ContributionRegistryExt for App {
+    fn get_contribution_registry(&mut self) -> &dyn IContributionRegistry {
+        ensure_contribution_registry(self);
+        &self.global::<ContributionRegistryGlobal>().0
+    }
+}
+
+/// host 注册自身（在 on_loaded 中调用）
+pub fn register_host<T: IContributionHost + gpui::Render + 'static>(cx: &mut gpui::Context<T>) {
+    let weak = cx.weak_entity();
+    cx.get_contribution_registry().add(rml_core::contribution::entity_host_handle(weak), cx);
+}
+
+/// 注销 host
+pub fn unregister_host(cx: &mut App, host_id: &str) {
+    if cx.has_global::<ContributionRegistryGlobal>() {
+        cx.get_contribution_registry().remove(host_id, cx);
+    }
+}
+
+/// 统一贡献注册入口（#[contribute] 宏生成代码调用）
+pub fn register_contribution(
+    cx: &mut App,
+    host_id: &str,
+    contribution: Arc<dyn IContribution>,
+    options: ContributionOptions,
+) {
+    ensure_contribution_registry(cx);
+    cx.get_contribution_registry().register(host_id, contribution, options, cx);
+}
+
+/// 注销贡献
+pub fn unregister_contribution(cx: &mut App, host_id: &str, contribution_id: &str) -> bool {
+    if !cx.has_global::<ContributionRegistryGlobal>() {
+        return false;
+    }
+    cx.get_contribution_registry().unregister(host_id, contribution_id, cx)
+}
+```
+
+### C7：`#[contributehost]` 宏调整
+
+**文件**：`crates/macros/src/contributehost.rs`
+
+移除 `__rml_register_*` 函数（不再需要 bootstrap 时预注册 host slot）。宏只生成：
+
+```rust
+quote! {
+    #(#items)*
+
+    impl #struct_name {
+        pub const ID: &'static str = #id;
+    }
+
+    // 编译期断言：必须实现 IContributionHost（含 add/remove 受理代码）
+    const _: () = {
+        fn assert_contribution_host<T: rml_core::contribution::IContributionHost>() {}
+        fn check() { assert_contribution_host::<#struct_name>(); }
+    };
+}
+```
+
+**build.rs 调整**：`crates/engine/src/build/contribution_generator.rs` 移除 host 注册扫描（`HostRegistrar` / `parse_host_registrars`），只保留 `#[contribute]` 扫描。`register_rml_contributions` 只调用贡献注册函数。
+
+### C8：`#[contribute]` 宏调整
+
+**文件**：`crates/macros/src/contribute.rs`
+
+移除 `Registerable` impl + `component_registerable`/`data_registerable` 引用。改为：
+
+```rust
+// 视觉贡献：IVisualContribution + IContribution::render_view 覆盖
+let visual_impl = if use_component_visual {
+    quote! {
+        impl rml_core::contribution::IVisualContribution for #struct_name {
+            fn render(&self, ctx: &mut rml_core::contribution::RenderContext) -> gpui::AnyElement {
+                rml_app::contribution::render_component_view::<Self>(self, ctx)
+            }
+        }
+    }
+} else { quote! {} };
+
+// 注册函数：使用 register_contribution
+quote! {
+    #(#items)*
+
+    impl rml_core::contribution::IContribution for #struct_name {
+        fn id(&self) -> &str { #id }
+        fn name(&self) -> gpui::SharedString { rml_core::i18n::t_static(#name_key).into() }
+        fn description(&self) -> gpui::SharedString { #description_impl }
+        fn icon(&self) -> Option<gpui::SharedString> { #icon_impl }
+
+        // 视觉贡献覆盖 render_view
+        fn render_view(&self, ctx: &mut rml_core::contribution::RenderContext) -> Option<gpui::AnyElement> {
+            #render_view_body  // Some(self.render(ctx)) 或 None
+        }
+    }
+
+    #visual_impl
+
+    pub fn #register_fn(cx: &mut gpui::App) {
+        use std::sync::Arc;
+        use rml_app::contribution::register_contribution;
+
+        let contribution = Arc::new(#struct_name::default());
+        let options = rml_core::contribution::ContributionOptions::new()
+            #slot #parent_id #order #group #align;
+
+        register_contribution(cx, #host_id, contribution, options);
+    }
+}
+```
+
+### C9：视觉贡献渲染重构
+
+**文件**：`crates/app/src/contribution/render.rs`（重写）
+
+```rust
+use gpui::{AnyElement, Render};
+use rml_core::component::IComponent;
+use rml_core::contribution::{EntityCache, IVisualContribution, RenderContext};
+
+/// 框架工具：渲染组件贡献视图（由 IVisualContribution::render 调用）。
+/// 使用 RenderContext.entity_cache 查找或创建 Entity，host 拥有缓存。
+pub fn render_component_view<T>(contribution: &T, ctx: &mut RenderContext) -> AnyElement
+where
+    T: IComponent + Render + Default + Send + Sync + 'static,
+{
+    let id = contribution.id().to_string();
+    ctx.entity_cache.render_view(&id, T::default(), ctx)
+}
+```
+
+### C10：移除的文件/类型
+
+| 文件 | 操作 | 原因 |
+|------|------|------|
+| `crates/core/src/contribution_cache.rs` | 重写为 `entity_cache.rs`（`EntityCache` 结构体） | `ComponentEntityCache` trait + `ComponentEntityCacheImpl` → 简化为工具结构 |
+| `crates/app/src/contribution/host.rs` | **删除** | 框架不再存储 `ContributionHost`（host 自管存储） |
+| `crates/app/src/contribution/entry.rs` | **删除** | `ContributedEntry` 类型移除，`data_entry`/`component_entry` 不再需要 |
+| `crates/app/src/contribution/registerable.rs` | **删除** | `Registerable` trait 移除 |
+| `crates/app/src/contribution/activity_panel.rs` | **移至 demo** | `map_activity_panels` 是业务投影代码 |
+| `VisualRenderer` 类型 | **删除** | `IContribution::render_view` 替代 |
+| `ContributedEntry` 类型 | **删除** | host 自管存储格式 |
+| `ComponentEntityCache` trait | **删除** | `EntityCache` 工具结构替代 |
+| `contribution_entries` 函数 | **删除** | 业务代码不读框架存储 |
+| `contribution_revision` 函数 | **删除** | ObservableVec::version() 替代 |
+| `subscribe_host_changes` 函数 | **删除** | host ObservableVec version bump + `#[computed]` 替代；跨 Entity 用 `cx.observe` |
+
+### C11：`crates/app/src/contribution/mod.rs` 更新
+
+```rust
+mod entity_cache;  // 原 contribution_cache
+mod global;
+mod registry;
+mod render;
+
+pub use global::{
+    register_contribution, register_host, unregister_contribution, unregister_host,
+    ContributionRegistryExt,
+};
+#[doc(hidden)]
+pub use global::ContributionRegistryGlobal;
+#[doc(hidden)]
+pub use registry::ContributionRegistry;
+#[doc(hidden)]
+pub use render::render_component_view;
 ```
 
 ---
 
-## Phase E：RML `each=` + `key=` keyed diffing
+## Phase D：RML `each=` + `key=` keyed diffing
 
-### 目标
-
-当前 RML `each=` 生成 `self.field.iter().map(|item| { code })` → `.children(iter)`，每次 render 全量重建元素。引入 `key=` 指令后，render 时通过 key 比对复用已存在的元素，避免状态丢失 + 提升性能。
+**不变，详见原计划。**
 
 ### 修改文件
 
-**`crates/core/src/observable.rs`** —— 新增 `reconcile` 辅助函数
-
-```rust
-/// Keyed reconciliation：比对前一次 render 的 (key, element) 列表与当前 items，
-/// 复用匹配 key 的 element，为新 key 调用 builder 构建 element，移除消失的 key。
-///
-/// 返回新的 (key, element) 列表（供下一次 render 比对）+ 元素引用迭代器。
-pub fn reconcile<T, K, F>(
-    prev: Vec<(K, gpui::AnyElement)>,
-    items: impl IntoIterator<Item = (K, T)>,
-    builder: F,
-) -> Vec<(K, gpui::AnyElement)>
-where
-    K: Eq + std::hash::Hash + Clone,
-    F: Fn(&T) -> gpui::AnyElement,
-{
-    // 1. 构建 prev 的 key→element HashMap
-    // 2. 遍历 items，对每个 key：
-    //    - 若 prev 中存在，复用 element（不调用 builder）
-    //    - 若不存在，调用 builder 构建新 element
-    // 3. 返回新的 (key, element) Vec，顺序与 items 一致
-}
-```
-
-**`crates/engine/src/compiler/codegen/mod.rs`** —— `gen_node` each= 分支
-
-当前 L433-440 的 `each=` codegen 无条件生成 `.iter().map(...)`。修改为三分支：
-
-```rust
-// 伪代码
-let is_observable_vec = ctx.observable_vec_fields.contains(&clause.iterable);
-let has_key = directives.iter().any(|d| matches!(d, Directive::Key(_)));
-
-if is_observable_vec && has_key {
-    // Case B：ObservableVec + key= → keyed diffing
-    let key_expr = extract_key_expr(directives);
-    format!("{{ ... reconcile ... }}")
-} else {
-    // Case A/C：plain Vec 或无 key= → 原逻辑 .iter().map(...)
-    format!("self.{}.iter().map(|{}| {{ {} }})", ...)
-}
-```
-
-**生成的 keyed diffing 代码模式：**
-
-```rust
-// RML 模板：<div each="item in items" key={item.id}>...</div>
-// 生成代码：
-{
-    let __rml_key_fn = |item: &Item| item.id.clone();
-    let __rml_new_keys: Vec<_> = self.items.iter().map(__rml_key_fn).collect();
-    self.__rml_items_children = rml_core::observable::reconcile(
-        std::mem::take(&mut self.__rml_items_children),
-        self.items.iter().map(|item| (__rml_key_fn(item), item)),
-        |item| {
-            // 原始 each= body 代码，item 已在作用域内
-            { /* generated element code */ }
-        },
-    );
-    self.__rml_items_children.iter().map(|(_, el)| el.clone())
-}
-// 父元素使用 .children(上述迭代器)
-```
-
-**`crates/macros/src/component.rs`** —— 注入 `__rml_{field}_children` 字段
-
-对 RML 模板中使用了 `each=` + `key=` 的 `ObservableVec` 字段，注入：
-```rust
-#[allow(non_snake_case)]
-__rml_items_children: Vec<(String, gpui::AnyElement)>,
-```
-类似当前 `__rml_input_states` 的惰性初始化模式。扫描器需检测 RML 模板中的 `each=` + `key=` 组合并记录对应字段。
-
-**`crates/engine/src/parser/ast.rs`** —— `Directive::Key` 已解析（L36），需在 codegen 中消费
-
-当前 `key=` 被解析为 `Directive::Key(Expr)` 但无 codegen 消费者。Phase E 在 `gen_node` 中提取 `Directive::Key` 的表达式并传入 keyed diffing 分支。
+- **`crates/core/src/observable.rs`**：`reconcile` 辅助函数（keyed reconciliation）
+- **`crates/engine/src/compiler/codegen/mod.rs`**：`gen_node` each= 分支，ObservableVec + key= 时生成 keyed diffing
+- **`crates/macros/src/component.rs`**：注入 `__rml_{field}_children: Vec<(K, AnyElement)>` 字段
+- **`crates/engine/src/parser/ast.rs`**：`Directive::Key` 已解析，codegen 消费
 
 ### 性能特性
 
-- **Element 复用：** 相同 key 的 element 跨 render 复用，保留内部状态（如 InputState、滚动位置）
-- **增量构建：** 仅新 key 触发 builder 调用，已存在 key 的 builder 不执行
-- **顺序保持：** 输出顺序与 items 迭代顺序一致，支持 reorder
-- **复杂度：** O(n) reconcile（HashMap 查找），n = items 长度
+- Element 复用：相同 key 跨 render 复用，保留内部状态
+- 增量构建：仅新 key 触发 builder
+- O(n) reconcile
 
 ---
 
-## Phase F：Demo 样板代码消除
+## Phase E：Demo 样板代码消除
 
-### 目标
+### E1：`MainWindow` 受理代码
 
-消除 `demo/src/shell/` 中的响应式桥接样板：
-- `refresh_shell_chrome` 方法删除
-- `subscribe_host_changes` 回调简化为 `|_, cx| cx.notify()`
-- `map_shell_chrome` 转为 `#[computed_with_cx]` 方法
-- `menu_shell_contribs.rs` 的菜单定义可保留为 `#[contribute]` 声明（贡献点机制仍用于扩展），但 shell chrome 映射层消除
-
-### 修改文件
-
-**`demo/src/shell/main_window.rml.rs`** —— MainWindow 重构
+**文件**：`demo/src/shell/main_window.rml.rs`
 
 ```rust
-// —— 删除 ——
-// fn refresh_shell_chrome(&mut self, cx: &mut Context<Self>) { ... }
-// subscribe_host_changes(Self::ID, cx, |this, cx| { this.refresh_shell_chrome(cx); cx.notify(); });
+#[contributehost(id = "demo.shell")]
+#[window]
+#[derive(Default)]
+pub struct MainWindow {
+    open_tabs: Vec<OpenTab>,
+    selected_tab: usize,
+    active_case_id: String,
+    show_chrome: bool,
+    i18n_version: u32,
+    menu_commands: HashMap<String, Arc<dyn ICommand>>,
 
-// —— 替换为 ——
-// on_loaded 末尾：
-subscribe_host_changes(Self::ID, cx, |_, cx| {
-    cx.notify(); // 仅触发重渲，computed_with_cx 自动重算
-});
+    // —— ObservableVec：host 自管存储 ——
+    menu_entries: ObservableVec<MenuEntry>,           // menu slot 贡献
+    status_entries: ObservableVec<StatusEntry>,       // status slot 贡献
+    activity_entries: ObservableVec<ActivityEntry>,   // activity slot 贡献（含 visual）
+    case_entries: ObservableVec<CaseEntry>,           // case slot 贡献
 
-// —— 新增 #[computed_with_cx] 方法 ——
-#[computed_with_cx(revision = contribution_revision(Self::ID, cx))]
-pub fn menu_items(&self, cx: &Context<Self>) -> MenuItems {
-    let entries = contribution_entries(Self::ID, cx);
-    map_menu_items(entries, &self.menu_commands)
+    // —— host 拥有的 Entity 缓存 ——
+    entity_cache: EntityCache,
+
+    // —— derived（#[computed] 从 ObservableVec 计算）——
+    slot_left_size: gpui::Pixels,
 }
 
-#[computed_with_cx(revision = contribution_revision(Self::ID, cx))]
-pub fn status_items(&self, cx: &Context<Self>) -> StatusBarItems {
-    let entries = contribution_entries(Self::ID, cx);
-    map_status_items(entries)
+/// host 内部存储格式（host 自定义，非框架类型）
+struct MenuEntry {
+    id: String,
+    name: SharedString,
+    order: i32,
+    parent_id: Option<String>,
+}
+// 类似 StatusEntry, ActivityEntry, CaseEntry ...
+
+impl IContributionHost for MainWindow {
+    const ID: &'static str = "demo.shell";
+
+    fn add(&mut self, contribution: Arc<dyn IContribution>, options: ContributionOptions, cx: &mut App) {
+        match options.effective_slot() {
+            Some("menu") => {
+                self.menu_entries.push(MenuEntry::from(&contribution, &options));
+            }
+            Some("status") => {
+                self.status_entries.push(StatusEntry::from(&contribution, &options));
+            }
+            Some("activity") => {
+                self.activity_entries.push(ActivityEntry::from(&contribution, &options));
+            }
+            Some("case") => {
+                self.case_entries.push(CaseEntry::from(&contribution, &options));
+            }
+            _ => {}
+        }
+        // ObservableVec::push 已 bump version → #[computed] 自动失效
+        // HostHandle 自动调用 cx.notify()，无需手动触发
+    }
+
+    fn remove(&mut self, contribution_id: &str, _cx: &mut App) {
+        self.menu_entries.retain(|e| e.id != contribution_id);
+        self.status_entries.retain(|e| e.id != contribution_id);
+        self.activity_entries.retain(|e| e.id != contribution_id);
+        self.case_entries.retain(|e| e.id != contribution_id);
+        self.entity_cache.clear(contribution_id);
+    }
 }
 
-#[computed_with_cx(revision = contribution_revision(Self::ID, cx))]
-pub fn activity_panels(&self, cx: &Context<Self>) -> ActivityPanels {
-    let entries = contribution_entries(Self::ID, cx);
-    map_activity_panels(entries)
+impl ILifecycle for MainWindow {
+    fn on_loaded(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
+        // ... 初始化 open_tabs, menu_commands ...
+
+        // 注册自身为贡献 host → registry 重放 pending 注册 → add 逐条调用
+        register_host(cx);
+
+        // ActivityBar 构造（从 activity_entries computed）
+        let panels = self.activity_panels(cx);
+        self.activity_bar = Some(cx.new(|_| ActivityBar::new(panels)));
+
+        // observe ActivityBar active_id 变化
+        if let Some(bar) = &self.activity_bar {
+            cx.observe(bar, |this, bar, cx| {
+                let collapsed = bar.read(cx).active_id().is_none();
+                this.slot_left_size = if collapsed { gpui::px(48.) } else { gpui::px(260.) };
+                cx.notify();
+            }).detach();
+        }
+
+        // 无需 subscribe_host_changes —— host.add 直接修改 ObservableVec
+        // 无需 refresh_shell_chrome —— #[computed] 自动从 ObservableVec 计算
+    }
+}
+
+impl MainWindow {
+    #[computed]
+    pub fn menu_items(&self) -> MenuItems {
+        // 缓存键 = self.menu_entries.version()
+        build_menu_tree(&self.menu_entries, &self.menu_commands)
+    }
+
+    #[computed]
+    pub fn status_items(&self) -> StatusBarItems {
+        // 缓存键 = self.status_entries.version()
+        build_status_items(&self.status_entries)
+    }
+
+    #[computed]
+    pub fn activity_panels(&self) -> ActivityPanels {
+        // 缓存键 = self.activity_entries.version()
+        build_activity_panels(&self.activity_entries)
+    }
+
+    #[computed]
+    pub fn case_tree_items(&self) -> Vec<TreeItem> {
+        // 缓存键 = self.case_entries.version()
+        build_case_tree(&self.case_entries)
+    }
+
+    /// 渲染当前激活的视觉贡献（供 RML 模板调用）
+    pub fn active_case_view(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        let mut ctx = RenderContext {
+            window,
+            cx,
+            active: true,
+            entity_cache: &mut self.entity_cache,
+        };
+        // 在 activity_entries 中查找激活的视觉贡献
+        if let Some(entry) = self.activity_entries.iter().find(|e| e.id == self.active_case_id) {
+            if let Some(element) = entry.contribution.render_view(&mut ctx) {
+                return element;
+            }
+        }
+        gpui::div().into_any_element()
+    }
 }
 ```
 
-**`demo/src/shell/shell_chrome.rs`** —— `map_shell_chrome` 拆分为独立 projection 函数
+### E2：`ActivityPanel` 重构
 
-`map_shell_chrome`（L135-145）拆分为 `map_menu_items` / `map_status_items` / `map_activity_panels`，各自作为 `#[computed_with_cx]` 方法的 body。`ShellChromeBindings` 结构体可删除。
+**文件**：`demo/src/shell/activity_panel.rml.rs`
 
-**`demo/src/shell/main_window.rml`** —— 模板绑定到 computed_with_cx 方法
-
-```rml
-// 修改前
-<menu items={menu_items} />
-<status_bar items={status_items} />
-
-// 修改后（computed_with_cx 方法通过字段绑定语法访问）
-<menu items={menu_items} />
-<status_bar items={status_items} />
-```
-
-RML 模板无需改动——`menu_items`/`status_items` 现在是 `#[computed_with_cx]` 方法而非普通字段，但 RML 的 `items={menu_items}` 绑定生成的 `self.menu_items(cx)` 调用需要 codegen 支持 computed_with_cx 方法的 cx 参数传递。
-
-**Codegen 调整：** `crates/engine/src/compiler/codegen/` 中，当绑定目标为 `computed_with_cx` 方法时，生成 `self.{method}(cx)` 而非 `self.{field}.clone()`。需要 scanner 标记 computed_with_cx 方法名，codegen 查表区分。
-
-### 复杂多层级数据结构（树形菜单）
-
-菜单树通过 `parent_id` 链构建层级。`map_menu_items` 内部递归分组：
 ```rust
-fn map_menu_items(entries: &[ContributedEntry], commands: &HashMap<...>) -> MenuItems {
-    // 1. 按 parent_id 分组：HashMap<parent_id, Vec<entry>>
-    // 2. 递归构建树：root entries (parent_id=None) → children → grandchildren
-    // 3. 返回扁平化的 MenuItems（MenuBar 内部处理层级展开）
+#[contribute(host_id = "demo.shell", id = "samples", name = "shell.samples", icon = IconName::BookOpen, kind = "activity", order = 0)]
+#[component]
+#[derive(Default)]
+pub struct ActivityPanel {
+    tree_state: Option<gpui::Entity<TreeState>>,
+}
+
+impl ILifecycle for ActivityPanel {
+    fn on_loaded(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
+        self.refresh_tree(cx);
+
+        // 通过 DemoShellHost WeakEntity observe MainWindow → 案例树变更时自动刷新
+        if let Some(host) = cx.try_global::<DemoShellHost>().and_then(|h| h.0.upgrade()) {
+            cx.observe(&host, |this, main, cx| {
+                this.refresh_tree_from_host(&main, cx);
+                cx.notify();
+            }).detach();
+        }
+
+        cx.observe_global::<I18nState>(|this, cx| {
+            this.refresh_tree_from_global(cx);
+            cx.notify();
+        }).detach();
+    }
+}
+
+impl ActivityPanel {
+    fn refresh_tree(&mut self, cx: &mut Context<Self>) {
+        if let Some(host) = cx.try_global::<DemoShellHost>().and_then(|h| h.0.upgrade()) {
+            let items = host.read(cx).case_tree_items();  // MainWindow 的 #[computed]
+            self.set_tree_items(items, cx);
+        }
+    }
+
+    fn refresh_tree_from_host(&mut self, main: &MainWindow, cx: &mut Context<Self>) {
+        let items = main.case_tree_items();
+        self.set_tree_items(items, cx);
+    }
+
+    fn set_tree_items(&mut self, items: Vec<TreeItem>, cx: &mut Context<Self>) {
+        if let Some(state) = self.tree_state.as_ref() {
+            state.update(cx, |s, cx| s.set_items(items, cx));
+        } else {
+            let state = cx.new(|cx| TreeState::new(cx).items(items));
+            self.tree_state = Some(state);
+        }
+    }
 }
 ```
 
-当贡献点增删时，`contribution_revision` 变化 → `menu_items` computed_with_cx 缓存失效 → 自动重新构建整棵树 → RML `each=` + `key=` keyed diffing 复用现有 element。**树形结构的 CRUD 无需额外 UI 代码。**
+**关键变化**：
+- `subscribe_host_changes` → `cx.observe(&host_entity, ...)` 直接 observe MainWindow Entity
+- `map_case_tree_items(MainWindow::ID, cx)` → `host.read(cx).case_tree_items()` 读 host 自身 computed
+- 无 `contribution_entries` 调用
+
+### E3：`shell_chrome.rs` 调整
+
+**文件**：`demo/src/shell/shell_chrome.rs`
+
+- `map_shell_chrome` / `ShellChromeBindings` **删除**（不再需要投影层）
+- `map_menu_items` / `map_status_items` / `map_case_tree_items` 逻辑移入 `MainWindow` 的 `#[computed]` 方法（`build_menu_tree` / `build_status_items` / `build_case_tree`）
+- `map_activity_panels` 移入 `demo/src/shell/`（业务投影代码，从 `rml_app` 移出）
+
+### E4：`#[contribute]` 声明保留
+
+`demo/src/shell/menu_shell_contribs.rs` 的 `#[contribute]` 声明不变——贡献点声明本身是数据驱动的，宏自动注册。变化在于注册路由：`register_contribution` → `registry.register` → `host.add`（受理代码分发到对应 ObservableVec）。
 
 ---
 
@@ -501,46 +875,45 @@ fn map_menu_items(entries: &[ContributedEntry], commands: &HashMap<...>) -> Menu
 ```bash
 cargo test -p rust-rml-core -- observable
 ```
-验证 ObservableVec mutation 后 version 递增、`Deref<[T]>` 读取、无 `DerefMut`。
+ObservableVec mutation 后 version 递增、`Deref<[T]>` 读取、无 `DerefMut`。
 
 ### Phase B 验证
 ```bash
 cargo build -p rust-rml-engine -p rust-rml-macros
 cargo test -p rust-rml-engine -- codegen::observable
 ```
-验证 `__rml_get_version` 对 ObservableVec 字段路由到 `self.field.version()`，`__rml_bump_version` 对 ObservableVec 字段为 no-op。
+`__rml_get_version` 对 ObservableVec 字段路由到 `self.field.version()`。
 
 ### Phase C 验证
 ```bash
-cargo build -p rust-rml-macros
-cargo test -p rust-rml-engine -- computed_with_cx
-```
-验证 `#[computed_with_cx(revision = ...)]` 生成正确的缓存包装，缓存键包含 revision 表达式值。
-
-### Phase D 验证
-```bash
-cargo build -p rust-rml-core -p rust-rml-app
+cargo build -p rust-rml-core -p rust-rml-app -p rust-rml-macros
 cargo test -p rust-rml-app -- contribution
 ```
-验证 `IContributionHost::add`/`remove` 默认实现路由正确，`ContributionHost.entries` 为 ObservableVec，`revision()` 返回 ObservableVec::version()。
+验证：
+1. `IContributionHost::add`/`remove` 受理代码正确分发
+2. `IContributionRegistry::register` 路由到 host.add（host 存在时）
+3. pending 队列：host 未注册时入队，`add` 后重放
+4. `get_contribution_registry()` 返回接口可操作
+5. `ContributedEntry`/`ComponentEntityCache`/`VisualRenderer` 已删除，编译无引用
 
-### Phase E 验证
+### Phase D 验证
 ```bash
 cargo test -p rust-rml-engine -- codegen::each_key
 cargo run -p rust-rml-demo
 ```
-验证 `each=` + `key=` 生成 keyed diffing 代码，运行 demo 切换 tab/打开 case 时 element 复用（可通过日志或视觉验证无闪烁）。
+`each=` + `key=` 生成 keyed diffing 代码，element 复用。
 
-### Phase F 验证
+### Phase E 验证
 ```bash
 cargo build -p rust-rml-demo
 cargo run -p rust-rml-demo
 ```
 验证：
 1. Demo 启动后 menu/status/activity 面板正确显示
-2. 通过菜单打开 case → tab 新增 → UI 更新（无 refresh_shell_chrome 调用）
-3. 切换语言 → 菜单标题更新（computed_with_cx 缓存失效）
-4. ActivityBar 面板切换正常
+2. 通过菜单打开 case → tab 新增 → UI 更新（无 `refresh_shell_chrome` 调用）
+3. ActivityPanel 案例树正确显示，observe MainWindow 自动刷新
+4. 切换语言 → 菜单标题更新
+5. **无 `contribution_entries` 调用出现在 demo 代码中**
 
 ---
 
@@ -549,33 +922,53 @@ cargo run -p rust-rml-demo
 | 文件 | Phase | 操作 |
 |------|-------|------|
 | `crates/core/src/observable.rs` | A | 新建 |
-| `crates/core/src/lib.rs` | A | 导出 observable 模块 |
-| `crates/core/src/prelude.rs` | A | 导出 ObservableVec |
-| `crates/engine/src/build/scanner.rs` | B, C, E | 检测 ObservableVec 字段 + computed_with_cx 方法 |
-| `crates/engine/src/compiler/codegen/observable.rs` | B, C | 版本路由 + computed_with_cx wrapper 生成 |
-| `crates/macros/src/component.rs` | B, E | 跳过 ObservableVec version 注入 + children 字段注入 |
-| `crates/macros/src/computed_with_cx.rs` | C | 新建 |
-| `crates/macros/src/lib.rs` | C | 注册 computed_with_cx proc-macro |
-| `crates/engine/src/compiler/codegen/mod.rs` | E | each= + key= keyed diffing 分支 |
-| `crates/core/src/contribution.rs` | D | IContributionHost trait add/remove |
-| `crates/app/src/contribution/host.rs` | D | 存储改用 ObservableVec |
-| `crates/app/src/contribution/global.rs` | D | contribution_revision 读 ObservableVec version |
-| `crates/app/src/contribution/registry.rs` | D | revision 路由 |
-| `demo/src/shell/main_window.rml.rs` | F | 删除 refresh_shell_chrome + computed_with_cx 方法 |
-| `demo/src/shell/shell_chrome.rs` | F | 拆分为独立 projection 函数 |
+| `crates/core/src/lib.rs` | A, C | 导出 observable + 调整 contribution 模块 |
+| `crates/core/src/prelude.rs` | A, C | 导出 ObservableVec，移除旧类型导出 |
+| `crates/core/src/contribution.rs` | C | 重写：IContributionHost add/remove + IContributionRegistry + HostHandle + IContribution::render_view + EntityCache + RenderContext |
+| `crates/core/src/contribution_cache.rs` | C | 重写为 `entity_cache.rs`（EntityCache 结构体） |
+| `crates/engine/src/build/scanner.rs` | B | 检测 ObservableVec 字段 |
+| `crates/engine/src/compiler/codegen/observable.rs` | B | 版本路由 |
+| `crates/macros/src/component.rs` | B, D | 跳过 ObservableVec version 注入 + children 字段注入 |
+| `crates/macros/src/contributehost.rs` | C | 移除 __rml_register_* 函数，仅生成 ID + 断言 |
+| `crates/macros/src/contribute.rs` | C | 移除 Registerable，生成 render_view 覆盖，调用 register_contribution |
+| `crates/engine/src/build/contribution_generator.rs` | C | 移除 host 扫描，只保留 contribute 扫描 |
+| `crates/app/src/contribution/mod.rs` | C | 更新模块声明与导出 |
+| `crates/app/src/contribution/global.rs` | C | 重写：ContributionRegistryExt + register_host + register_contribution |
+| `crates/app/src/contribution/registry.rs` | C | 重写：ContributionRegistry 实现 IContributionRegistry |
+| `crates/app/src/contribution/render.rs` | C | 重写：render_component_view 使用 ctx.entity_cache |
+| `crates/app/src/contribution/host.rs` | C | **删除** |
+| `crates/app/src/contribution/entry.rs` | C | **删除** |
+| `crates/app/src/contribution/registerable.rs` | C | **删除** |
+| `crates/app/src/contribution/activity_panel.rs` | C | **移至 demo** |
+| `crates/engine/src/compiler/codegen/mod.rs` | D | each= + key= keyed diffing |
+| `demo/src/shell/main_window.rml.rs` | E | 受理代码 + ObservableVec + #[computed] + register_host |
+| `demo/src/shell/shell_chrome.rs` | E | 删除 map_shell_chrome，投影逻辑移入 MainWindow |
+| `demo/src/shell/activity_panel.rml.rs` | E | observe MainWindow 替代 subscribe_host_changes |
 
 ---
 
-## 假设与风险
+## 假设与决策
 
 ### 假设
-1. `ObservableVec` 的 `sort_by_mut` 方法是有意 mutation 入口，bump version——满足 `ContributionHost::add` 的 dedup+sort 需求
-2. `#[computed_with_cx]` 的 `revision = expr` 表达式在 `&self` + `&Context<Self>` 作用域内求值——`contribution_revision(host_id, cx)` 满足此约束
-3. RML `each=` + `key=` 的 key 表达式返回 `String`（或可 `Eq + Hash + Clone`），通过 `key={item.id}` 语法指定
-4. `computed_with_cx` 方法在 RML 模板中通过 `items={method_name}` 绑定，codegen 识别并生成 `self.method_name(cx)` 调用
+
+1. **host EntityCache**：host 将 `EntityCache` 作为字段持有，在 `RenderContext` 中传递给视觉贡献渲染。框架提供 `EntityCache` 工具结构但不存储它。
+2. **pending 队列重放**：贡献在 host 注册前通过 `#[ctor::ctor]` 注册，registry 入队 pending。host 在 `on_loaded` 调用 `register_host(cx)` 后重放。
+3. **跨 Entity 通知**：子 Entity（如 `ActivityPanel`）通过 `cx.observe(&host_entity, ...)` 观察 host 变更，替代 `subscribe_host_changes`。
+4. **ObservableVec sort**：`sort_by_mut` 作为有意 mutation 入口，bump version。用于 host 内部排序需求。
+5. **IContributionRegistry 方法签名**：`add`/`remove`/`register`/`unregister` 均接受 `&mut App` 参数（用于 `entity.update` 调用），trait 方法使用 `&self` + `RwLock` 内部可变性使 `get_contribution_registry()` 可返回 `&dyn IContributionRegistry`。
+
+### 设计决策
+
+1. **`const ID` 而非 `fn id()`**：编译期常量，宏生成代码可直接引用 `Self::ID`，无需 trait 对象。`HostHandle::id()` 方法返回 `T::ID` 供 registry 运行时查询。
+2. **`HostHandle` 为内部 trait**：`#[doc(hidden)]`，用户不直接接触。通过 `entity_host_handle(weak)` 构造，`register_host` 封装调用。
+3. **`EntityCache` 为结构体而非 trait**：简化设计，host 直接持有，无需实现 trait。原 `ComponentEntityCache` trait 的"可替换实现"需求在实际中不存在。
+4. **`IContribution::render_view` 默认 None**：非视觉贡献返回 None，视觉贡献由宏覆盖为 `Some(self.render(ctx))`。消除 `VisualRenderer` 闭包类型。
+5. **`register_host` 需要 `Render` bound**：`EntityHostHandle<T>` 调用 `entity.update(cx, |host, ctx| ...)` 需要 `T: Render`（GPUI `Context<T>` 约束）。host 本身是可渲染 Entity，自然满足。
+6. **build.rs 移除 host 扫描**：host 不再需要 bootstrap 时预注册 slot（无框架侧存储）。只有 `#[contribute]` 需要扫描生成注册函数。
 
 ### 风险
-1. **`computed_with_cx` 缓存键碰撞：** 若 `revision` 表达式返回的值与 `__rml_computed_deps_version` 求和后碰撞，可能导致缓存未失效。缓解：revision 使用 `u64`，碰撞概率极低
-2. **keyed diffing 的 element clone 开销：** `gpui::AnyElement::clone()` 可能非廉价（取决于内部 `Arc` 引用计数）。缓解：AnyElement 通常是 `Arc`-backed，clone 为引用计数递增
-3. **`computed_with_cx` 方法的 cx 借用冲突：** 若方法体内同时需要 `&self` 读取和 `cx` 读取，可能触发借用检查错误。缓解：方法体内先 clone 需要的数据再释放 `&self` 借用
-4. **`menu_shell_contribs.rs` 的 `#[contribute]` 声明保留：** 贡献点声明本身是数据驱动的（宏自动注册），不应消除。消除的是 `shell_chrome.rs` 的映射层 + `refresh_shell_chrome` 的手动刷新层
+
+1. **RwLock 性能**：`ContributionRegistry` 使用 `RwLock<HashMap>`，每次 `register` 加读锁。缓解：读多写少场景，RwLock 读锁并发；`#[ctor::ctor]` 注册集中在启动期。
+2. **pending 队列内存**：若 host 永不注册，pending 队列永久持有贡献引用。缓解：调试模式下日志告警；生产环境 host 通常在窗口创建时即注册。
+3. **EntityCache 生命周期**：host 拥有 EntityCache，视觉贡献 Entity 生命周期绑定 host。host 销毁时 EntityCache 自动释放。`remove` 时调用 `entity_cache.clear(id)` 清理单个贡献。
+4. **跨 Entity observe**：`ActivityPanel` observe `MainWindow` 需要通过 `DemoShellHost` 全局获取 WeakEntity。若 MainWindow 先于 ActivityPanel 销毁，observe 自动失效（WeakEntity upgrade 返回 None）。

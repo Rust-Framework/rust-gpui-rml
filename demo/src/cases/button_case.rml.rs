@@ -1,7 +1,7 @@
 use rml::prelude::*;
 
 #[contribute(
-    host_id = "demo.shell",
+    host_id = "demo.activity",
     id = "components.button",
     name = "case.button.title",
     kind = "case",

@@ -9,7 +9,7 @@ pub mod tree;
 
 pub use activity_bar::{
     ActivityAct, ActivityActs, ActivityBar, ActivityPanel, ActivityPanels, IActivityAct,
-    IActivityPanel,
+    IActivityPanel, VisualActivityPanel,
 };
 pub use dialog_window::{DialogDragState, DialogTitleBar};
 pub use menu::{

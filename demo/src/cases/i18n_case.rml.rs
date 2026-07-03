@@ -3,7 +3,7 @@ use rml_core::i18n::I18nState;
 use rml_core::theme::ThemeExt;
 
 #[contribute(
-    host_id = "demo.shell",
+    host_id = "demo.activity",
     id = "i18n.basic",
     name = "case.i18n.title",
     kind = "case",

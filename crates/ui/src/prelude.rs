@@ -10,5 +10,5 @@ pub use crate::{
     NotificationList, NotificationType, Popover, Progress, ProgressCircle, Radio,
     Root, Select, Selectable, Separator, Sizable, Slider, StatusBar, StatusBarAlign,
     StatusBarItem, StatusBarItems, StyledExt, Switch, Tab, TabBar, Table, Tag, TitleBar,
-    Tooltip, Tree, NativeStatusBar, Window, WindowExt,
+    Tooltip, Tree, NativeStatusBar, VisualActivityPanel, Window, WindowExt,
 };

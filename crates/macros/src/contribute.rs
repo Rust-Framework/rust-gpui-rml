@@ -1,4 +1,5 @@
-//! `#[contribute]` —— 为类型生成 `IContribution`、注册函数，并由 build.rs 扫描汇总为 `register_rml_contributions`
+//! `#[contribute]` —— 为类型生成 `IContribution`、`IVisualContribution`（视觉贡献）impl +
+//! 视觉提取器注册 + 单行注册函数。build.rs 扫描汇总为 `register_rml_contributions`。
 
 use proc_macro2::TokenStream;
 
@@ -179,6 +180,10 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
         "__rml_register_{}",
         struct_name.to_string().to_lowercase()
     );
+    let visual_extractor_fn = format_ident!(
+        "__rml_register_visual_extractor_{}",
+        struct_name.to_string().to_lowercase()
+    );
 
     let host_id = host_id_tokens(&args.host_id);
     let id = &args.id;
@@ -243,41 +248,42 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
     });
     let use_component_visual = args.visual || has_component;
 
-    let registerable_impl = if use_component_visual {
+    // 视觉贡献契约：`#[contribute]` + `#[component]` 叠加时自动实现。
+    // `render` 通过框架实体缓存复用 Entity——避免每次渲染创建新实例导致状态丢失。
+    // host 通过 `extract_visual` 获取 `Arc<dyn IVisualContribution>` 后直接调 `render(window, cx)`。
+    let visual_impl = if use_component_visual {
         quote! {
-            impl rml_app::contribution::Registerable for #struct_name {
-                fn into_entry(
-                    contribution: std::sync::Arc<Self>,
-                    options: rml_core::contribution::ContributionOptions,
-                ) -> rml_core::contribution::ContributedEntry {
-                    rml_app::contribution::component_registerable(contribution, options)
+            impl rml_core::contribution::IVisualContribution for #struct_name {
+                fn render(&self, window: &mut gpui::Window, cx: &mut gpui::App) -> gpui::AnyElement {
+                    let entity = rml_app::contribution::get_or_create_entity::<#struct_name>(cx);
+                    entity.update(cx, |this, ctx| {
+                        this.render(window, ctx).into_any_element()
+                    })
                 }
             }
         }
     } else {
-        quote! {
-            impl rml_app::contribution::Registerable for #struct_name {
-                fn into_entry(
-                    contribution: std::sync::Arc<Self>,
-                    options: rml_core::contribution::ContributionOptions,
-                ) -> rml_core::contribution::ContributedEntry {
-                    rml_app::contribution::data_registerable(contribution, options)
-                }
-            }
-        }
+        quote! {}
     };
 
-    // 视觉贡献契约：`#[contribute]` + `#[component]` 叠加时自动实现。
-    // render 委托给框架内部 `render_component_view`，由其处理 Entity 缓存。
-    let visual_impl = if use_component_visual {
+    // 视觉提取器注册：`#[ctor::ctor]` 在进程启动期将 `TypeId::of::<T>()` → 提取器
+    // 写入进程级静态表。利用 `Any` supertrait + trait upcasting coercion 实现
+    // `Arc<dyn IContribution>` → `Arc<dyn Any + Send + Sync>` → `Arc::downcast::<T>()` → `Arc<dyn IVisualContribution>`。
+    let visual_extractor = if use_component_visual {
         quote! {
-            impl rml_core::contribution::IVisualContribution for #struct_name {
-                fn render(
-                    &self,
-                    ctx: &mut rml_core::contribution::RenderContext,
-                ) -> gpui::AnyElement {
-                    rml_app::contribution::render_component_view::<Self>(self, ctx)
-                }
+            #[rml_core::ctor::ctor]
+            fn #visual_extractor_fn() {
+                rml_app::contribution::register_visual_extractor(
+                    std::any::TypeId::of::<#struct_name>(),
+                    |contrib: &std::sync::Arc<dyn rml_core::contribution::IContribution>|
+                        -> Option<std::sync::Arc<dyn rml_core::contribution::IVisualContribution>>
+                    {
+                        let any: std::sync::Arc<dyn std::any::Any + Send + Sync> = contrib.clone();
+                        any.downcast::<#struct_name>()
+                            .ok()
+                            .map(|a| a as std::sync::Arc<dyn rml_core::contribution::IVisualContribution>)
+                    },
+                );
             }
         }
     } else {
@@ -307,22 +313,21 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
 
         #visual_impl
 
-        #registerable_impl
+        #visual_extractor
 
         /// 由 build.rs 生成的 `register_rml_contributions` 统一调用；用户无需手写清单。
         pub fn #register_fn(cx: &mut gpui::App) {
-            use std::sync::Arc;
-            use rml_app::contribution::register_contribution;
-
-            let contribution = Arc::new(#struct_name::default());
-            let options = rml_core::contribution::ContributionOptions::new()
-                #slot
-                #parent_id
-                #order
-                #group
-                #align;
-
-            register_contribution::<#struct_name>(cx, #host_id, contribution, options);
+            use rml_app::contribution::ContributionRegistryExt;
+            cx.get_contribution_registry().register(
+                #host_id,
+                std::sync::Arc::new(#struct_name::default()),
+                rml_core::contribution::ContributionOptions::new()
+                    #slot
+                    #parent_id
+                    #order
+                    #group
+                    #align,
+            );
         }
     }
 }

@@ -7,8 +7,8 @@ pub use crate::binding::{BindingPath, IBindingContext};
 pub use crate::command::{ICommand, RelayCommand};
 pub use crate::component::IComponent;
 pub use crate::contribution::{
-    ContributedEntry, ContributionOptions, IContribution, IContributionHost, IVisualContribution,
-    RenderContext,
+    ContributionEntry, ContributionOptions, IContribution, IContributionHost, IContributionRegistry,
+    IHostEntity, IVisualContribution,
 };
 pub use crate::converter::{BoolToYesNo, Currency, IConverter, LowerCase, Percent, Trim, UpperCase};
 pub use crate::element_ref::ElementRef;
@@ -17,6 +17,7 @@ pub use crate::events::*;
 pub use crate::i18n::{I18nExt, t, t_static};
 pub use crate::lifecycle::ILifecycle;
 pub use crate::model::{FieldMeta, IModel};
+pub use crate::observable::ObservableVec;
 pub use crate::two_way_binding::ITwoWayBinding;
 pub use crate::validate::{IValidate, ValidResult};
 pub use crate::view_model::IViewModel;
