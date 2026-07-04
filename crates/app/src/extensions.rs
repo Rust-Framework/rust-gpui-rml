@@ -43,6 +43,6 @@ impl IAppContextExt for App {}
 // IAppContext 由 lib.rs 直接从 rml_core::context 导入（避免与本模块 use 冲突）
 pub use rml_core::command::CommandAbilityExt;
 pub use rml_core::context::{ensure_service_collection, ServiceCollection};
-pub use rml_core::contribution::{ContributionAbilityExt, VisualAbilityExt};
+pub use rml_core::contribution::{ContributionAbilityExt, StatusBarItemAbilityExt, VisualAbilityExt};
 pub use rml_core::i18n::I18nExt;
 pub use rml_core::theme::ThemeExt;

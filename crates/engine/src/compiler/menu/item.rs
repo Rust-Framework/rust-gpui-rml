@@ -245,7 +245,7 @@ fn command_bind_expr(elem: &Element) -> Option<String> {
 ///   闭包内处理 `Option<Arc<dyn ICommand>>`——`Some(cmd)` 时 `can_execute` + `execute`。
 /// - **entity 字段上下文**（如 `command={save_command}`）：通过 `entity.update` 克隆
 ///   `Arc<dyn ICommand>`，再 `can_execute` + `execute`。
-fn gen_command_closure(
+pub(super) fn gen_command_closure(
     cmd_expr: &str,
     ctx: &CodegenCtx,
     loop_vars: &[String],

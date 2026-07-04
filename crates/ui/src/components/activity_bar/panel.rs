@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, IntoElement, SharedString, Window};
-use rml_core::contribution::{IContribution, IVisualContribution};
+use rml_core::contribution::{IContribution, IVisual};
 
 use super::traits::IActivityPanel;
 
@@ -44,7 +44,7 @@ impl IContribution for ActivityPanel {
     }
 }
 
-impl IVisualContribution for ActivityPanel {
+impl IVisual for ActivityPanel {
     fn render(&self, _window: &mut Window, _cx: &mut App) -> AnyElement {
         gpui::div().into_any_element()
     }

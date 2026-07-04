@@ -1,6 +1,6 @@
 //! Workbench 实现 —— IWorkbench 实例与 LSP 工厂。
 //!
-//! - `CaseWorkbench` / `LspWorkbench`：`IWorkbench + IContribution + IVisualContribution`
+//! - `CaseWorkbench` / `LspWorkbench`：`IWorkbench + IContribution + IVisual`
 //!   三 trait impl，供 MainWindow 经 `as_visual()` 渲染。
 //! - `LspWorkbenchProvider`（`IWorkbenchProvider`）：处理 `lsp://` URI。
 //!
@@ -14,7 +14,7 @@ use std::sync::{Arc, Once, RwLock};
 use gpui::{AnyElement, App, Entity, SharedString, Window};
 use rml::prelude::*;
 use rml_core::contribution::{
-    register_contribution_ability, register_visual_ability, IContribution, IVisualContribution,
+    register_contribution_ability, register_visual_ability, IContribution, IVisual,
 };
 use rml_core::workbench::{IWorkbench, IWorkbenchProvider, Uri};
 
@@ -22,7 +22,7 @@ use crate::lsp::{CodeEditorTab, LspClient};
 use crate::shell::case_view_model::CaseViewModel;
 
 // ──────────────────────────────────────────────────────────────────────────
-//  能力注册：CaseWorkbench / LspWorkbench 需注册 IContribution + IVisualContribution
+//  能力注册：CaseWorkbench / LspWorkbench 需注册 IContribution + IVisual
 //  能力 cast，使 MainWindow 的 `as_visual()` 查询生效。
 // ──────────────────────────────────────────────────────────────────────────
 
@@ -62,7 +62,7 @@ impl IContribution for CaseWorkbench {
     }
 }
 
-impl IVisualContribution for CaseWorkbench {
+impl IVisual for CaseWorkbench {
     fn render(&self, window: &mut Window, cx: &mut App) -> AnyElement {
         self.case.render(window, cx)
     }
@@ -112,7 +112,7 @@ impl IContribution for LspWorkbench {
     }
 }
 
-impl IVisualContribution for LspWorkbench {
+impl IVisual for LspWorkbench {
     fn render(&self, window: &mut Window, cx: &mut App) -> AnyElement {
         let mut tab_lock = self.tab.write().unwrap();
         if tab_lock.is_none() {

@@ -8,10 +8,10 @@ use rml_core::contribution::IVisualContribution;
 
 /// 活动栏面板扩展接口。
 ///
-/// `IActivityPanel: IVisualContribution`——面板本身是视觉贡献：
+/// `IActivityPanel: IVisualContribution`——面板本身是视觉贡献(`IContribution + IVisual`)：
 /// - `IContribution::id` / `name` 提供元数据（`name` 作按钮 tooltip）
 /// - `IContribution::icon` 提供图标字符串（URL 文件地址或内置图标名）
-/// - `IVisualContribution::render` 提供面板内容
+/// - `IVisual::render` 提供面板内容
 pub trait IActivityPanel: IVisualContribution {}
 
 /// 活动栏底部动作扩展接口。

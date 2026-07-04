@@ -2,7 +2,7 @@ use std::sync::Once;
 
 use gpui::{AnyElement, ParentElement, SharedString, Styled};
 use rml::prelude::*;
-use rml_core::contribution::{register_visual_ability, IVisualContribution};
+use rml_core::contribution::{register_visual_ability, IVisual};
 use rml_core::i18n::t_static;
 
 #[contribute(
@@ -56,7 +56,7 @@ impl IContribution for StatusReady {
     }
 }
 
-impl IVisualContribution for StatusReady {
+impl IVisual for StatusReady {
     fn render(&self, _window: &mut gpui::Window, _cx: &mut gpui::App) -> AnyElement {
         gpui::div()
             .text_xs()
@@ -67,7 +67,7 @@ impl IVisualContribution for StatusReady {
 
 static STATUS_READY_REGISTERED: Once = Once::new();
 
-/// 注册 `StatusReady` 的 `IVisualContribution` 能力 cast。
+/// 注册 `StatusReady` 的 `IVisual` 能力 cast。
 ///
 /// `StatusReady` 有 `#[contribute]` 无 `#[component]`，视觉能力不自动注册。
 /// 需在 `MainWindow::on_loaded` 的 `project_entries()` 前调用，使 `as_visual()` 查询生效。

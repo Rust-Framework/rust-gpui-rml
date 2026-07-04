@@ -6,7 +6,8 @@
 //!
 //! 三接口分工：
 //! - `IWorkbenchManager`：调度者。资源生命周期与激活态入口（`open`/`close`/`get`…）。
-//! - `IWorkbench`：状态载体 + 元数据。继承 `IContribution`（含 `id`/`name`），单个已打开资源的会话句柄。
+//! - `IWorkbench`：状态载体 + 元数据 + 视觉。继承 `IContribution + IVisual`
+//!   （含 `id`/`name` 元数据 + `render` 视图),单个已打开资源的会话句柄。
 //! - `IWorkbenchProvider`：视图工厂。按 Uri schema 注册，`render(uri)` 把资源构造成 `IWorkbench`。
 //!
 //! 流程：`Manager.open(uri)` → `uri.scheme()` → 业务自持 map 查 `Provider` →
@@ -15,7 +16,7 @@
 use std::any::Any;
 use std::sync::Arc;
 
-use crate::contribution::IContribution;
+use crate::contribution::{IContribution, IVisual};
 use gpui::SharedString;
 
 /// Uri 类型：复用 `url::Url`。
@@ -23,12 +24,15 @@ pub use url::Url as Uri;
 
 /// 工作台：一个已打开资源的会话句柄。
 ///
-/// 继承 `IContribution`——工作台同时是贡献（含 `id`/`name` 元数据），
-/// 可经 `as_visual()` 查询 `IVisualContribution` 能力获取 render。
-/// 业务实现此 trait；实例由 `IWorkbenchManager::open` 返回。
-/// `close`/`activate`/`set` 均为 `&self`——业务使用内部可变性，
+/// 继承 `IContribution + IVisual`——工作台同时是贡献(含 `id`/`name` 元数据)和视觉对象
+/// (含 `render` 视图)。经 `as_visual()` 直接查询 `IVisual` 能力获取 render,
+/// 无需再经 `as_contribution()` 中转。业务实现此 trait;实例由 `IWorkbenchManager::open` 返回。
+/// `close`/`activate`/`set` 均为 `&self`——业务使用内部可变性,
 /// 并将 cx 相关 UI 工作延迟到具备 `&mut App` 的时机（如宿主实体的 `on_loaded`/observe 回调）。
-pub trait IWorkbench: IContribution {
+///
+/// **设计理由**(WPF `ContentControl` 类比):workbench 本质是视觉的——已打开资源必然有视图。
+/// 无视图的"后台任务"应实现 `IContribution` 而非 `IWorkbench`。
+pub trait IWorkbench: IContribution + IVisual {
     /// 此工作台的 Uri（唯一标识，用于去重与查找）。
     fn uri(&self) -> &str;
 
@@ -65,9 +69,10 @@ pub trait IWorkbenchManager: Send + Sync + 'static {
 
 /// 工作台提供程序：按 Uri schema 注册的资源→工作台工厂。
 ///
-/// 继承 `IContribution`（具备 `id`/`name` 元数据，可纳入贡献体系），但不继承
-/// `IVisualContribution`——此处的 `render` 不产出 UI 元素，而是**工厂方法**：
-/// 给定资源 Uri，构造并返回对应的 `IWorkbench` 实例。
+/// 继承 `IContribution`(具备 `id`/`name` 元数据,可纳入贡献体系),但不继承 `IVisual`
+/// ——此处的 `render` 不产出 UI 元素,而是**工厂方法**:给定资源 Uri,构造并返回对应的
+/// `IWorkbench` 实例。`render` 方法名与 `IVisual::render` 同名但语义不同(工厂 vs 视觉),
+/// 因 `IWorkbenchProvider` 不 impl `IVisual`,无 trait 方法冲突。
 ///
 /// 框架不提供 schema 路由注册表——业务在 `IWorkbenchManager` 实现中自行维护
 /// `schema -> Arc<dyn IWorkbenchProvider>` 映射，按 `uri.scheme()` 查表后调用 `render`。

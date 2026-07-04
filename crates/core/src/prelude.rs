@@ -10,8 +10,9 @@ pub use crate::component::IComponent;
 pub use crate::context::{ensure_service_collection, IAppContext, ServiceCollection};
 pub use crate::contribution::{
     ContributionAbilityExt, ContributionOptions, ContributionStorage, IContribution, IContributionHost,
-    IContributionRegistry, IVisualContribution, VisualAbilityExt, register_contribution_ability,
-    register_visual_ability,
+    IContributionRegistry, IStatusBarItem, IVisual, IVisualContribution, StatusBarAlign,
+    StatusBarItemAbilityExt, VisualAbilityExt, register_contribution_ability,
+    register_status_bar_item_ability, register_visual_ability,
 };
 pub use crate::value::IValue;
 pub use crate::workbench::{IWorkbench, IWorkbenchManager, IWorkbenchProvider, Uri};

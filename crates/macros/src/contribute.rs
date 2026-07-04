@@ -6,7 +6,8 @@
 //! 3. 生成 `__rml_register_*` 函数：
 //!    - 按 `command`/`visual` flag 调用 `ability::register` 注册能力 cast 函数
 //!    - 统一调用 `registry.register(host_id, c, Some(opts))`
-//! 4. 视觉贡献（`visual` flag 或 `#[component]` 叠加）额外生成 `impl IVisualContribution`（仅 `render`）
+//! 4. 视觉能力（`visual` flag 或 `#[component]` 叠加）额外生成 `impl IVisual`（仅 `render`）
+//!    blanket impl 自动获得 `IVisualContribution: IContribution + IVisual` 标记
 //!
 //! 宏不再自动生成 `impl IContribution`——用户必须手写。
 //!
@@ -239,11 +240,11 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
     let use_visual = args.visual || has_component;
     let use_command = args.command;
 
-    // 视觉贡献契约：`#[contribute]` + `#[component]` 叠加时自动实现 `IVisualContribution::render`。
-    // 用户仍需手写 `impl IContribution`。
+    // 视觉能力契约:`#[contribute]` + `#[component]` 叠加时自动实现 `IVisual::render`。
+    // 用户仍需手写 `impl IContribution`。blanket impl 自动获得 `IVisualContribution` 标记。
     let visual_impl = if use_visual {
         quote! {
-            impl rml_core::contribution::IVisualContribution for #struct_name {
+            impl rml_core::contribution::IVisual for #struct_name {
                 fn render(&self, window: &mut gpui::Window, cx: &mut gpui::App) -> gpui::AnyElement {
                     let entity = rml_app::contribution::get_or_create_entity::<#struct_name>(cx);
                     entity.update(cx, |this, ctx| {
@@ -277,11 +278,11 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
 
     let visual_ability_registration = if use_visual {
         quote! {
-            rml_core::ability::register::<#struct_name, dyn rml_core::contribution::IVisualContribution>(
+            rml_core::ability::register::<#struct_name, dyn rml_core::contribution::IVisual>(
                 |c| {
                     let any: &dyn std::any::Any = c;
                     any.downcast_ref::<#struct_name>().map(|s| {
-                        let v: &dyn rml_core::contribution::IVisualContribution = s;
+                        let v: &dyn rml_core::contribution::IVisual = s;
                         unsafe { rml_core::ability::erase(v) }
                     })
                 },

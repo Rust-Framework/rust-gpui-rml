@@ -1,7 +1,7 @@
 use std::sync::{Arc, RwLock};
 
-use gpui::{IntoElement, ParentElement, Styled, WeakEntity, Window};
-use gpui_component::scroll::ScrollableElement as _;
+use gpui::prelude::StatefulInteractiveElement as _;
+use gpui::{InteractiveElement, IntoElement, ParentElement, Styled, WeakEntity, Window};
 use rml::prelude::*;
 use rml_app::IAppContextExt;
 use rml_core::command::CommandAbilityExt;
@@ -234,18 +234,50 @@ impl MainWindow {
 
     /// 渲染激活的 workbench 视图：读 activated → as_visual() → render。
     ///
-    /// 外层包裹 `overflow_y_scrollbar` 容器，确保案例内容超出视口时显示可见垂直滚动条。
-    /// `size_full()` 填满 tab-window 主体区域；`min_h_0()` 让 flex 子项可正确收缩。
+    /// 手动 `overflow_y_scroll` + `Scrollbar` 实现垂直滚动。
+    /// 不能使用 gpui-component 的 `overflow_y_scrollbar()`，因为其内部对内容
+    /// 元素施加 `flex_1()`，导致内容高度始终等于容器高度，溢出检测失效。
     pub fn active_view(&self, window: &mut Window, cx: &mut gpui::Context<Self>) -> gpui::AnyElement {
         let activated = self.activated.read().unwrap().clone();
         if let Some(wb) = activated {
             let iv: &dyn IContribution = wb.as_ref();
             if let Some(visual) = iv.as_visual() {
+                let scroll_handle_id = "active-view-scroll-handle";
+                let scroll_handle = window
+                    .use_keyed_state(
+                        scroll_handle_id,
+                        &mut **cx,
+                        |_, _| gpui::ScrollHandle::default(),
+                    )
+                    .read(cx)
+                    .clone();
+
                 return gpui::div()
+                    .id("active-view-container")
                     .size_full()
-                    .min_h_0()
-                    .overflow_y_scrollbar()
-                    .child(visual.render(window, cx))
+                    .relative()
+                    .child(
+                        gpui::div()
+                            .id("active-view-scroll-area")
+                            .size_full()
+                            .flex()
+                            .flex_col()
+                            .overflow_y_scroll()
+                            .track_scroll(&scroll_handle)
+                            .child(visual.render(window, cx)),
+                    )
+                    .child(
+                        gpui::div()
+                            .absolute()
+                            .top_0()
+                            .left_0()
+                            .right_0()
+                            .bottom_0()
+                            .child(
+                                gpui_component::scroll::Scrollbar::vertical(&scroll_handle)
+                                    .id("active-view-scrollbar"),
+                            ),
+                    )
                     .into_any_element();
             }
         }
