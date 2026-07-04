@@ -1,4 +1,7 @@
 //! Observable 字段版本管理 + 计算属性缓存 + InputState 双向同步代码生成
+//!
+//! 所有运行时状态由 `__rml_state: rml_ui::RmlState` 单一字段承载，
+//! 替代旧的 7+ 类散落 `__rml_*` 字段。
 
 use crate::compiler::CodegenCtx;
 use super::binding::{gen_field_assign_expr, gen_field_value_expr};
@@ -31,30 +34,15 @@ fn gen_input_handler_call(field: &str, ctx: &CodegenCtx) -> String {
 /// 生成 observable 字段版本管理方法 + 计算属性依赖版本方法
 ///
 /// 生成一个 `impl <View> { ... }` 块，包含四个方法：
-/// - `__rml_bump_version(&self, field: &str)`
-/// - `__rml_get_version(&self, field: &str) -> u64`
-/// - `__rml_computed_deps_version(&self, computed: &str) -> u64`
-/// - `__rml_changed_fields(&self) -> &'static [&'static str]`
+/// - `__rml_bump_version(&mut self, field: &str)` — 委托 `RmlState::bump_version`
+/// - `__rml_get_version(&self, field: &str) -> u64` — 委托 `RmlState::get_version`
+/// - `__rml_computed_deps_version(&self, computed: &str) -> u64` — 求和依赖字段版本
+/// - `__rml_changed_fields(&self) -> &'static [&'static str]` — 静态字段名列表
+///
+/// `bump_version` 取 `&mut self` 以支持 `HashMap::entry` 惰性插入；
+/// 所有调用点（`#[command]` 包装、双向绑定反向同步）均持有 `&mut self`。
 pub(super) fn gen_observable_impl(ctx: &CodegenCtx) -> String {
     let view_name = &ctx.view_struct_name;
-
-    let version_fields = if ctx.version_fields.is_empty() {
-        &ctx.observable_fields
-    } else {
-        &ctx.version_fields
-    };
-    let mut bump_arms = String::new();
-    let mut get_arms = String::new();
-    for field in version_fields {
-        bump_arms.push_str(&format!(
-            "            \"{}\" => {{ self.__rml_{}_version.fetch_add(1, std::sync::atomic::Ordering::Relaxed); }}\n",
-            field, field
-        ));
-        get_arms.push_str(&format!(
-            "            \"{}\" => self.__rml_{}_version.load(std::sync::atomic::Ordering::Relaxed),\n",
-            field, field
-        ));
-    }
 
     let mut deps_arms = String::new();
     for method in &ctx.computed_methods {
@@ -92,17 +80,13 @@ pub(super) fn gen_observable_impl(ctx: &CodegenCtx) -> String {
         r#"#[allow(dead_code, non_snake_case)]
 impl {view_name} {{
     /// 将指定字段的版本号 +1（由 #[command] 宏注入）
-    fn __rml_bump_version(&self, field: &str) {{
-        match field {{
-{bump_arms}            _ => {{}}
-        }}
+    fn __rml_bump_version(&mut self, field: &str) {{
+        self.__rml_state.bump_version(field);
     }}
 
     /// 读取字段当前版本号
     fn __rml_get_version(&self, field: &str) -> u64 {{
-        match field {{
-{get_arms}            _ => 0,
-        }}
+        self.__rml_state.get_version(field)
     }}
 
     /// 返回计算属性依赖字段版本号之和，作为缓存键
@@ -118,8 +102,6 @@ impl {view_name} {{
     }}
 }}"#,
         view_name = view_name,
-        bump_arms = bump_arms,
-        get_arms = get_arms,
         deps_arms = deps_arms,
         changed_fields_array = changed_fields_array,
     )
@@ -144,7 +126,7 @@ pub(super) fn gen_computed_wrappers(ctx: &CodegenCtx) -> String {
     #[allow(dead_code, non_snake_case)]
     pub fn {method}(&self) -> {ret_type} {{
         let __v = self.__rml_computed_deps_version("{method}");
-        self.__rml_computed_cache.get_or_compute::<{ret_type}>("{method}", __v, || self.__rml_computed_{method}())
+        self.__rml_state.computed_cache.get_or_compute::<{ret_type}>("{method}", __v, || self.__rml_computed_{method}())
     }}
 "#,
             method = method,
@@ -198,7 +180,7 @@ pub(super) fn gen_input_state_impl(ctx: &CodegenCtx) -> String {
     out.push_str("        window: &mut gpui::Window,\n");
     out.push_str("        cx: &mut gpui::Context<Self>,\n");
     out.push_str("    ) -> gpui::Entity<rml_ui::InputState> {\n");
-    out.push_str("        if !self.__rml_input_states.contains_key(field) {\n");
+    out.push_str("        if !self.__rml_state.input_states.contains_key(field) {\n");
     out.push_str("            let entity = match placeholder {\n");
     out.push_str("                Some(p) => cx.new(|cx| rml_ui::InputState::new(window, cx).placeholder(p)),\n");
     out.push_str("                None => cx.new(|cx| rml_ui::InputState::new(window, cx)),\n");
@@ -217,27 +199,27 @@ pub(super) fn gen_input_state_impl(ctx: &CodegenCtx) -> String {
     out.push_str("                            _ => {}\n");
     out.push_str("                        }\n");
     out.push_str("                        let v = this.__rml_get_version(field);\n");
-    out.push_str("                        this.__rml_input_state_versions.insert(field.to_string(), v);\n");
+    out.push_str("                        this.__rml_state.input_state_versions.insert(field.to_string(), v);\n");
     out.push_str("                        cx.notify();\n");
     out.push_str("                    }\n");
     out.push_str("                    _ => {}\n");
     out.push_str("                }\n");
     out.push_str("            }).detach();\n");
     out.push_str("            let v = self.__rml_get_version(field);\n");
-    out.push_str("            self.__rml_input_state_versions.insert(field.to_string(), v);\n");
-    out.push_str("            self.__rml_input_states.insert(field.to_string(), entity);\n");
+    out.push_str("            self.__rml_state.input_state_versions.insert(field.to_string(), v);\n");
+    out.push_str("            self.__rml_state.input_states.insert(field.to_string(), entity);\n");
     out.push_str("        }\n");
-    out.push_str("        let entity = self.__rml_input_states.get(field).unwrap().clone();\n");
+    out.push_str("        let entity = self.__rml_state.input_states.get(field).unwrap().clone();\n");
     out.push_str("        let current_version = self.__rml_get_version(field);\n");
-    out.push_str("        let last_synced = self.__rml_input_state_versions.get(field).copied().unwrap_or(0);\n");
+    out.push_str("        let last_synced = self.__rml_state.input_state_versions.get(field).copied().unwrap_or(0);\n");
     out.push_str("        if current_version != last_synced {\n");
     out.push_str("            let value: gpui::SharedString = match field {\n");
     out.push_str(&forward_arms);
     out.push_str("                _ => gpui::SharedString::default(),\n");
     out.push_str("            };\n");
     out.push_str("            entity.update(cx, |state, cx| state.set_value(value, window, cx));\n");
-    out.push_str("            self.__rml_field_errors.insert(field.to_string(), None);\n");
-    out.push_str("            self.__rml_input_state_versions.insert(field.to_string(), current_version);\n");
+    out.push_str("            self.__rml_state.field_errors.insert(field.to_string(), None);\n");
+    out.push_str("            self.__rml_state.input_state_versions.insert(field.to_string(), current_version);\n");
     out.push_str("        }\n");
     out.push_str("        entity\n");
     out.push_str("    }\n");

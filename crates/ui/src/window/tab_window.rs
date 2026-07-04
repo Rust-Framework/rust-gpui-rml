@@ -32,6 +32,9 @@ use rml_core::value::IValue;
 use crate::components::tab::{TabBar, TabItem, TabVariant};
 use smallvec::SmallVec;
 
+type TabClickHandler = Rc<dyn Fn(usize, &mut Window, &mut App) + 'static>;
+type ChromeToggleHandler = Rc<dyn Fn(&mut Window, &mut App) + 'static>;
+
 /// Slot 尺寸低于此阈值视为折叠：移出 resizable group，改用普通 div 渲染，
 /// 从而隐藏 resize handle 且不污染 ResizableState 的 panel_ix 映射。
 const SLOT_COLLAPSED_THRESHOLD: gpui::Pixels = px(60.);
@@ -146,8 +149,8 @@ pub struct TabWindowShell {
     /// `as_contribution()?.name()` 提供 tab title，`as_visual()?.render()` 提供 tab body。
     tabs: Vec<Arc<dyn IValue>>,
     selected_index: usize,
-    on_tab_click: Option<Rc<dyn Fn(usize, &mut Window, &mut App) + 'static>>,
-    on_chrome_toggle: Option<Rc<dyn Fn(&mut Window, &mut App) + 'static>>,
+    on_tab_click: Option<TabClickHandler>,
+    on_chrome_toggle: Option<ChromeToggleHandler>,
     slot_left: Option<AnyElement>,
     slot_right: Option<AnyElement>,
     slot_bottom: Option<AnyElement>,

@@ -66,7 +66,7 @@ RML 通过两层机制确保 codegen 属性映射齐全：
 
 | RML 属性 | 生成的 builder 方法 | 适用组件 |
 |----------|---------------------|----------|
-| `onclick={fn}` | `.on_click(cx.listener(...))` | 所有组件 |
+| `on-click={fn}` | `.on_click(cx.listener(...))` | 所有组件 |
 | `onchange={fn}` | `.on_change(cx.listener(...))` | Input / TextInput |
 | `on_activate={fn}` | `.on_activate_rc(Rc::new(...))` | Tree |
 
@@ -150,8 +150,8 @@ pub struct Card { ... }
 | 填充默认 | 裸子节点（无 `slot` 属性） | 仅当声明了 `"default"`；否则 validator error |
 
 - `<slot>` 不支持默认内容，未填充的插槽渲染为空
-- codegen 将 `<slot>` 替换为 `self.__rml_slot_<name>.take()`
-- 独立 re-render 时 slot 内容已被 `.take()` 消费，渲染为空（MVP 限制）
+- codegen 将 `<slot>` 替换为 `self.__rml_state.slot(<name>).map_or(gpui::Empty.into_any_element(), |f| f(_window, cx))`
+- slot 渲染闭包存储于 `__rml_state.slots: HashMap<&'static str, SlotRenderer>`，每次 render 通过 `__rml_state.slot(<name>)` 查询调用（不消费，可重复渲染）
 
 详见 [6.3 插槽与内容分发](../slots.md)。
 

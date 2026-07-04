@@ -16,6 +16,8 @@ use gpui_component::{
     ActiveTheme, ElementExt, Icon, IconName, Selectable, Sizable, Size, StyledExt, h_flex, v_flex,
 };
 
+type TabBarClickHandler = Rc<dyn Fn(&usize, &mut Window, &mut App) + 'static>;
+
 struct TabIndicatorBounds {
     container: Bounds<Pixels>,
     tabs: Vec<Bounds<Pixels>>,
@@ -49,7 +51,7 @@ pub struct TabBar {
     variant: TabVariant,
     size: Size,
     menu: bool,
-    on_click: Option<Rc<dyn Fn(&usize, &mut Window, &mut App) + 'static>>,
+    on_click: Option<TabBarClickHandler>,
 }
 
 impl TabBar {

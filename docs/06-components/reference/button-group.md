@@ -8,8 +8,8 @@
 
 ```html
 <ButtonGroup>
-    <Button label="左" onclick={on_left} />
-    <Button label="右" onclick={on_right} />
+    <Button label="左" on-click={on_left} />
+    <Button label="右" on-click={on_right} />
 </ButtonGroup>
 ```
 
@@ -31,7 +31,7 @@
 
 | 事件 | 说明 |
 |------|------|
-| `onclick` | 组级点击（子 Button 各自处理自己的 `onclick`） |
+| `on-click` | 组级点击（子 Button 各自处理自己的 `on-click`） |
 
 ## 数据绑定
 
@@ -45,8 +45,8 @@
 
 ```html
 <ButtonGroup>
-    <Button label="保存" primary="" onclick={on_save} />
-    <Button label="取消" ghost="" onclick={on_cancel} />
+    <Button label="保存" primary="" on-click={on_save} />
+    <Button label="取消" ghost="" on-click={on_cancel} />
 </ButtonGroup>
 ```
 

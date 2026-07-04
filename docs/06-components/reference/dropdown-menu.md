@@ -9,9 +9,9 @@
 ```html
 <dropdown-menu anchor="TopRight">
     <Button label="Options" ghost="" />
-    <menu-item label="New" onclick={on_new} />
+    <menu-item label="New" on-click={on_new} />
     <menu-separator />
-    <menu-item label="Exit" onclick={on_exit} />
+    <menu-item label="Exit" on-click={on_exit} />
 </dropdown-menu>
 ```
 

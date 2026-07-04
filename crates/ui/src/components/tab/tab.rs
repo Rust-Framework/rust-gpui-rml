@@ -9,6 +9,8 @@ use gpui::{
     RenderOnce, SharedString, StatefulInteractiveElement, Styled, Window, div, px, relative,
 };
 
+type TabClickHandler = Rc<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>;
+
 /// Tab variants.
 #[derive(Debug, Clone, Default, Copy, PartialEq, Eq, Hash)]
 pub enum TabVariant {
@@ -452,7 +454,7 @@ pub struct Tab {
     /// tab switch. Used to key the selected tab's text color fade so it
     /// restarts in sync with the indicator slide.
     pub(super) indicator_epoch: u64,
-    pub(super) on_click: Option<Rc<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>>,
+    pub(super) on_click: Option<TabClickHandler>,
 }
 
 impl From<&'static str> for Tab {

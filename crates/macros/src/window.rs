@@ -1,7 +1,7 @@
 //! `#[window]` 实现
 //!
 //! 为标注的结构体生成：
-//! - `__rml_window_handle` 字段（存储窗口句柄）
+//! - `__rml_state: rml_ui::RmlState` 字段（统一承载窗口句柄 + 组件运行时状态）
 //! - `impl IModel` + `impl ILifecycle` + `impl IViewModel` + `impl IComponent`
 //! - `include!(OUT_DIR/rml_generated/<snake>.rs)` 注入编译器生成的
 //!   `impl IWindow` + `impl Render`
@@ -15,8 +15,7 @@ use crate::component::{expand_component_impls, inject_tracking_fields};
 use crate::derive_model::to_snake_case;
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::parse_quote;
-use syn::{Field, Fields, ItemStruct};
+use syn::{Fields, ItemStruct};
 
 /// `#[window]` 入口
 ///
@@ -46,28 +45,18 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
     // 生成文件名（不含扩展名）：<snake_case>
     let generated_file = format!("{}.rs", snake);
 
-    // 添加窗口句柄字段
-    match &mut item.fields {
-        Fields::Named(named) => {
-            let handle_field: Field = parse_quote! {
-                #[allow(dead_code, non_snake_case)]
-                __rml_window_handle: Option<gpui::AnyWindowHandle>
-            };
-            named.named.push(handle_field);
-        }
-        _ => {
-            return syn::Error::new(item.ident.span(), "#[window] requires named fields")
-                .to_compile_error();
-        }
+    // 校验具名字段（inject_tracking_fields 仅处理 Named）
+    if !matches!(item.fields, Fields::Named(_)) {
+        return syn::Error::new(item.ident.span(), "#[window] requires named fields")
+            .to_compile_error();
     }
 
-    // 注入追踪字段（AtomicU64 版本计数器 + ComputedCache）
-    // 窗口不支持插槽，slots 传空切片
+    // 注入单一 `__rml_state: rml_ui::RmlState` 字段
+    // （含窗口句柄 + 全部组件运行时状态，替代旧的 `__rml_window_handle` + 7+ 类仪式字段）
     inject_tracking_fields(&mut item.fields, &[]);
 
     // 生成组件 trait 实现（IModel + ILifecycle + IViewModel + IComponent）
     // 注意：不生成 impl IWindow —— 由 RML 编译器从 <window> 根节点生成
-    // 窗口不支持插槽，slots 传空切片
     let component_impls = expand_component_impls(
         &struct_name,
         &item.fields,

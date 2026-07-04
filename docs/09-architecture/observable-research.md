@@ -17,7 +17,7 @@ RML 框架并非「无 observable 方案」——当前已落地一套**显式�
 | 契约 | [crates/core/src/binding.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/core/src/binding.rs) | `BindingPath`/`BindingSegment` 编译期解析；`IBindingContext` **目前仅为 marker trait**（L57-60 注释「MVP 阶段标记，阶段二扩展为完整订阅管理接口」） |
 | 契约 | [crates/core/src/observable.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/core/src/observable.rs) | `ObservableVec<T>`：`RwLock<Vec<T>>` + `AtomicU64` + 可选 `flume::Sender<()>`；仅用于 host Entity 跨线程通知 |
 | 契约 | [crates/core/src/computed_cache.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/core/src/computed_cache.rs) | `ComputedCache`：`Mutex<HashMap<String,(u64, Box<dyn Any>)>>`；core 中唯一 `allow(unsafe_code)` 处 |
-| 宏 | [crates/macros/src/component.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/macros/src/component.rs) | 为每个 pub 字段注入 `__rml_<field>_version: AtomicU64` + `__rml_computed_cache` + `__rml_input_states` |
+| 宏 | [crates/macros/src/component.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/macros/src/component.rs) | 注入单一私有字段 `__rml_state: RmlState`，统一承载 `field_versions: HashMap<String, AtomicU64>` + `computed_cache` + `input_states` 等运行时状态 |
 | 宏 | [crates/macros/src/command.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/macros/src/command.rs) | `syn::visit::Visit` 检测 `self.x =`/`+=`/`push`/`clear` 等，注入 `__rml_bump_version` + `cx.notify()` |
 | 宏 | [crates/macros/src/computed.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/macros/src/computed.rs) | 将 `fn xxx` 重命名为 `fn __rml_computed_xxx`，由 codegen 生成缓存包装 |
 | codegen | [crates/engine/src/compiler/codegen/observable.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/codegen/observable.rs) | 生成 `__rml_bump_version`/`__rml_get_version`/`__rml_computed_deps_version` + `InputState` 惰性同步 |
@@ -122,7 +122,7 @@ RML 框架并非「无 observable 方案」——当前已落地一套**显式�
 
 **核心机制**：
 
-- **版本号旁挂**：每个 pub 字段旁挂 `__rml_<field>_version: AtomicU64`（[component.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/macros/src/component.rs) 注入）
+- **版本号旁挂**：每个 pub 字段在 `__rml_state.field_versions: HashMap<String, AtomicU64>` 中惰性插入版本计数器（[component.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/macros/src/component.rs) 注入 `__rml_state`）
 - **mutation 检测**：`#[command]` 宏通过 `syn::visit::Visit` 检测 `self.x =`/`+=`/`push`/`clear` 等，在每个修改语句后注入 `self.__rml_bump_version("x");`，方法末尾注入 `cx.notify();`（[command.rs:99-137](file:///e:/GitCode/RF/rust-gpui-rml/crates/macros/src/command.rs)）
 - **`cx.notify()` 触发**：GPUI 对整个 Entity 触发 `Render::render` 重渲（全量重渲）
 - **`#[computed]` 缓存**：方法重命名为 `__rml_computed_<name>`，codegen 包装层通过 `__rml_computed_deps_version` 比较依赖字段版本号和，命中缓存跳过重算（[observable.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/codegen/observable.rs)）

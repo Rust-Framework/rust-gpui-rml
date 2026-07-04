@@ -109,10 +109,10 @@ Sizable 作用于所有子头像：
 
 ## 事件
 
-Avatar 实现 `InteractiveElement`，支持通用 `onclick`：
+Avatar 实现 `InteractiveElement`，支持通用 `on-click`：
 
 ```html
-<Avatar src={user.avatar} onclick={on_avatar_click} />
+<Avatar src={user.avatar} on-click={on_avatar_click} />
 ```
 
 ## 数据绑定

@@ -57,9 +57,9 @@ fn main() {
 
 ```html
 <tab_window title="RML Showcase" width="1100" height="720" ...>
-    <slot_left>...</slot_left>
-    <slot_menu><menu items={menu_items} /></slot_menu>
-    <slot_footer><status_bar items={status_items} /></slot_footer>
+    <template slot="left">...</template>
+    <template slot="menu"><menu items={menu_items} /></template>
+    <template slot="footer"><status_bar items={status_items} /></template>
     <div class="case-host">...</div>
 </tab_window>
 ```
@@ -86,7 +86,7 @@ pub struct MainWindow {
 }
 ```
 
-`#[window]` 注入 `__rml_window_handle` 等窗口字段；`#[component]` 用于可复用片段（如 `ButtonCase`）。
+`#[window]` 注入 `__rml_state: RmlState`（统一承载 `window_handle` 等窗口字段）；`#[component]` 用于可复用片段（如 `ButtonCase`）。
 
 ## 3. MVVM：字段、计算属性、命令
 
@@ -111,7 +111,7 @@ pub fn tab_bar_items(&self) -> Vec<TabItem> {
 
 ### 3.3 `#[command]`
 
-事件处理函数，RML `onclick={on_click}` 或 `on_panel_change="on_panel_change"`：
+事件处理函数，RML `on-click={on_click}` 或 `on_panel_change="on_panel_change"`：
 
 ```rust
 #[command]

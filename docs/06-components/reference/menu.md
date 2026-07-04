@@ -28,7 +28,7 @@ PascalCase（`ContextMenu` 等）仍兼容。规范见 [tags-mapping.md](../../0
 ```html
 <context-menu>
     <div>Right-click</div>
-    <menu-item label="Copy" onclick={on_copy} />
+    <menu-item label="Copy" on-click={on_copy} />
 </context-menu>
 
 <dropdown-menu anchor="TopRight">

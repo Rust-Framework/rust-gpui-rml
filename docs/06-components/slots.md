@@ -112,7 +112,7 @@ impl Card {
 - `slots` 为字符串数组字面量
 - 保留名 `"default"` 对应模板内无 `name` 属性的 `<slot />`
 - 不写 `slots` 参数 → 组件不接受任何插槽（父视图传 `<template slot>` 会被 validator 报 error）
-- 宏自动为每个 slot 注入私有字段 `__rml_slot_<name>: Option<rml_core::slot::SlotRenderer>` 与 setter `__rml_set_slot_<name>`
+- 宏自动为每个 slot 在 `__rml_state.slots: HashMap<&'static str, SlotRenderer>` 中预留存储（通过 `__rml_state.slot(<name>)` 读取 `Option<&SlotRenderer>`），并生成 setter `__rml_set_slot_<name>`（内部调用 `self.__rml_state.set_slot("<name>", renderer)`）
   - `SlotRenderer` = `Box<dyn Fn(&mut Window, &mut App) -> AnyElement + Send + Sync + 'static>`
   - 用闭包而非直接存 `AnyElement`，因为 `IModel: Send + Sync` 要求组件线程安全，而 `AnyElement` 含 `Rc` 不满足 `Send`
 
@@ -137,7 +137,7 @@ impl Card {
 
 - `<slot name="header" />` 声明具名插槽位置
 - `<slot />`（无 `name`）声明默认插槽位置（对应 `"default"`）
-- codegen 将 `<slot>` 替换为 `self.__rml_slot_<name>.as_ref().map_or(gpui::Empty.into_any_element(), |f| f(_window, cx))`，调用闭包即时生成 element
+- codegen 将 `<slot>` 替换为 `self.__rml_state.slot(<name>).map_or(gpui::Empty.into_any_element(), |f| f(_window, cx))`，调用闭包即时生成 element
 - **`<slot>` 不支持默认内容**：`<slot>默认文本</slot>` 中的子节点会被忽略，未填充的插槽渲染为空
 
 ### ② 使用方：填充插槽

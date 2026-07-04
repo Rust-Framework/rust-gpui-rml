@@ -7,7 +7,7 @@
 RML 使用标准 HTML 的 `on*` 属性绑定事件：
 
 ```html
-<button onclick={submit}>提交</button>
+<button on-click={submit}>提交</button>
 <input oninput={handle_input} />
 <div onmouseenter={show_tooltip}>悬停我</div>
 ```
@@ -27,7 +27,7 @@ pub fn submit(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
 ```
 
 ```html
-<button onclick={submit}>提交</button>
+<button on-click={submit}>提交</button>
 ```
 
 **优点**：
@@ -49,7 +49,7 @@ pub fn handle_click(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
 ```
 
 ```html
-<button onclick="handle_click">提交</button>
+<button on-click="handle_click">提交</button>
 ```
 
 **特点**：
@@ -73,7 +73,7 @@ pub fn delete_item(&mut self, id: u64, _: &ClickEvent, cx: &mut ViewContext<Self
 ```
 
 ```html
-<button onclick={delete_item, {item.id}}>删除</button>
+<button on-click={delete_item, {item.id}}>删除</button>
 ```
 
 ## 5.1.3 完整事件列表
@@ -82,7 +82,7 @@ pub fn delete_item(&mut self, id: u64, _: &ClickEvent, cx: &mut ViewContext<Self
 
 | 事件属性          | 触发时机       | 事件对象            |
 | ------------- | ---------- | --------------- |
-| `onclick`     | 点击         | `ClickEvent`    |
+| `on-click`     | 点击         | `ClickEvent`    |
 | `ondblclick`  | 双击         | `ClickEvent`    |
 | `onmousedown` | 鼠标按下       | `MouseEvent`    |
 | `onmouseup`   | 鼠标释放       | `MouseEvent`    |
@@ -121,9 +121,9 @@ pub fn delete_item(&mut self, id: u64, _: &ClickEvent, cx: &mut ViewContext<Self
 ### 点击事件
 
 ```html
-<button onclick={increment}>+1</button>
-<button onclick={decrement}>-1</button>
-<button onclick={reset}>重置</button>
+<button on-click={increment}>+1</button>
+<button on-click={decrement}>-1</button>
+<button on-click={reset}>重置</button>
 ```
 
 ### 输入事件
@@ -173,33 +173,33 @@ pub fn delete_item(&mut self, id: u64, _: &ClickEvent, cx: &mut ViewContext<Self
 ### 单参数
 
 ```html
-<button onclick={delete_item, {item.id}}>删除</button>
-<button onclick={edit_item, {item.id}}>编辑</button>
-<button onclick={toggle_status, {item.id}}>切换状态</button>
+<button on-click={delete_item, {item.id}}>删除</button>
+<button on-click={edit_item, {item.id}}>编辑</button>
+<button on-click={toggle_status, {item.id}}>切换状态</button>
 ```
 
 ### 多参数
 
 ```html
-<button onclick={update_status, {item.id}, 'completed'}>标记完成</button>
-<button onclick={update_status, {item.id}, 'pending'}>标记待办</button>
-<button onclick={move_item, {item.id}, {target_index}}>移动</button>
+<button on-click={update_status, {item.id}, 'completed'}>标记完成</button>
+<button on-click={update_status, {item.id}, 'pending'}>标记待办</button>
+<button on-click={move_item, {item.id}, {target_index}}>移动</button>
 ```
 
 ### 参数类型
 
 ```html
 <!-- 数字 -->
-<button onclick={set_priority, {item.id}, 1}>高优先级</button>
+<button on-click={set_priority, {item.id}, 1}>高优先级</button>
 
 <!-- 字符串 -->
-<button onclick={set_category, {item.id}, 'work'}>工作</button>
+<button on-click={set_category, {item.id}, 'work'}>工作</button>
 
 <!-- 布尔 -->
-<button onclick={set_flag, {item.id}, true}>启用</button>
+<button on-click={set_flag, {item.id}, true}>启用</button>
 
 <!-- 字段引用 -->
-<button onclick={copy_item, {source.id}, {target.id}}>复制</button>
+<button on-click={copy_item, {source.id}, {target.id}}>复制</button>
 ```
 
 ## 5.1.6 事件绑定的常见模式
@@ -209,7 +209,7 @@ pub fn delete_item(&mut self, id: u64, _: &ClickEvent, cx: &mut ViewContext<Self
 最简单的模式，一个事件绑定一个命令：
 
 ```html
-<button onclick={submit}>提交</button>
+<button on-click={submit}>提交</button>
 ```
 
 ### 模式二：条件命令
@@ -227,7 +227,7 @@ pub fn submit(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
 ```
 
 ```html
-<button onclick={submit} disabled={!can_submit}>提交</button>
+<button on-click={submit} disabled={!can_submit}>提交</button>
 ```
 
 ### 模式三：链式命令
@@ -271,7 +271,7 @@ pub fn handle_search(&mut self, query: SharedString, _: &SearchEvent, cx: &mut V
 
 ```html
 <!-- ❌ 命令不存在，编译错误 -->
-<button onclick={non_existent}>点击</button>
+<button on-click={non_existent}>点击</button>
 ```
 
 ### 参数类型必须匹配
@@ -285,10 +285,10 @@ pub fn delete_item(&mut self, id: u64, _: &ClickEvent, cx: &mut ViewContext<Self
 
 ```html
 <!-- ❌ 参数类型不匹配 -->
-<button onclick={delete_item, 'string_id'}>删除</button>
+<button on-click={delete_item, 'string_id'}>删除</button>
 
 <!-- ✅ 参数类型匹配 -->
-<button onclick={delete_item, {item.id}}>删除</button>
+<button on-click={delete_item, {item.id}}>删除</button>
 ```
 
 ### 事件对象类型必须匹配
@@ -300,8 +300,8 @@ pub fn on_click(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) { ... }
 ```
 
 ```html
-<!-- ✅ onclick 对应 ClickEvent -->
-<button onclick={on_click}>点击</button>
+<!-- ✅ on-click 对应 ClickEvent -->
+<button on-click={on_click}>点击</button>
 
 <!-- ❌ onkeydown 对应 KeyDownEvent，不匹配 -->
 <button onkeydown={on_click}>点击</button>
@@ -330,11 +330,11 @@ pub fn on_click(&mut self, ...) { ... }      // 应为 submit
 
 ```html
 <!-- ✅ 语义对应 -->
-<button onclick={submit}>提交</button>           <!-- 点击 = 提交 -->
+<button on-click={submit}>提交</button>           <!-- 点击 = 提交 -->
 <input onkeydown={on_enter_key} />              <!-- 键盘 = 回车处理 -->
 
 <!-- ❌ 语义混乱 -->
-<button onclick={on_input_change}>提交</button>  <!-- 点击 ≠ 输入变化 -->
+<button on-click={on_input_change}>提交</button>  <!-- 点击 ≠ 输入变化 -->
 ```
 
 ### 3. 复杂逻辑用辅助方法
@@ -383,9 +383,9 @@ pub fn sorted_items(&self) -> Vec<&Item> {
 
 RML 的事件绑定提供三种方式：
 
-- **命令绑定**：`onclick={command}`（推荐）
-- **方法名绑定**：`onclick="method_name"`
-- **带参数绑定**：`onclick={command, {param}}`
+- **命令绑定**：`on-click={command}`（推荐）
+- **方法名绑定**：`on-click="method_name"`
+- **带参数绑定**：`on-click={command, {param}}`
 
 掌握完整的事件列表和绑定方式，你就能处理任何用户交互。
 

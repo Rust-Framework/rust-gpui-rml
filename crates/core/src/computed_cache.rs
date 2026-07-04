@@ -81,12 +81,15 @@ impl Drop for RenderThreadGuard {
 /// ```rust,ignore
 /// pub fn doubled(&self) -> i32 {
 ///     let v = self.__rml_computed_deps_version("doubled");
-///     self.__rml_computed_cache.get_or_compute("doubled", v, || self.__rml_computed_doubled())
+///     self.__rml_state.computed_cache.get_or_compute("doubled", v, || self.__rml_computed_doubled())
 /// }
 /// ```
 pub struct ComputedCache {
-    inner: Mutex<HashMap<String, (u64, Box<dyn Any>)>>,
+    inner: Mutex<HashMap<String, CacheEntry>>,
 }
+
+/// 缓存条目：(版本号, 类型擦除的值)
+type CacheEntry = (u64, Box<dyn Any>);
 
 // SAFETY: ComputedCache 通过 Mutex 提供线程同步。
 // 缓存值通过 Box<dyn Any> 类型擦除存储，可能包含非 Send 的 GPUI 类型（如 Vec<TabItem>）。

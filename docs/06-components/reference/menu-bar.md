@@ -2,16 +2,16 @@
 
 ## 概述
 
-`<menu-bar>` 与兼容别名 `<menu>` 用于标题栏水平菜单（`<slot_menu>`）。
+`<menu-bar>` 与兼容别名 `<menu>` 用于标题栏水平菜单（`<template slot="menu">`）。
 
 ## 声明式
 
 ```html
 <menu-bar>
     <menu-item label={t("menu.file")}>
-        <menu-item label={t("menu.file_new")} onclick={on_new} />
+        <menu-item label={t("menu.file_new")} on-click={on_new} />
         <menu-separator />
-        <menu-item label={t("menu.file_exit")} onclick={on_exit} />
+        <menu-item label={t("menu.file_exit")} on-click={on_exit} />
     </menu-item>
 </menu-bar>
 ```

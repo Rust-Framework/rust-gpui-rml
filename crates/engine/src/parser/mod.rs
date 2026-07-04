@@ -175,11 +175,13 @@ impl Parser {
                         directives.push(Directive::Each(parse_each_expr(&expr)?));
                     }
                 }
-                "key" => {
-                    if let AttrValue::Binding(expr) = attr.value {
-                        directives.push(Directive::Key(expr));
-                    }
-                }
+                "key" => match attr.value {
+                    AttrValue::Binding(expr) => directives.push(Directive::Key(expr)),
+                    AttrValue::Static(v) => attributes.push(Attribute::Static {
+                        name,
+                        value: v,
+                    }),
+                },
                 "model" => {
                     if let AttrValue::Binding(expr) = attr.value {
                         let (field, converter) = if let Some((f, c)) = expr.split_once('|') {

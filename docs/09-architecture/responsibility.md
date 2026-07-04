@@ -1,4 +1,4 @@
-﻿# 9.1 职责归属与划分
+# 9.1 职责归属与划分
 
 > **本节目标**：明确 `.rml`、`.rml.rs`、Model、ViewModel、View 各自的职责边界，建立“什么代码该写在哪里”的判断准则。
 
@@ -56,7 +56,7 @@ RML 的核心价值是**关注点分离**。如果开发者把业务逻辑塞进
   <img class="avatar" src="{user.avatar_url}" />
   <h3>{user.display_name}</h3>
   <p if={user.is_online} class="status online">在线</p>
-  <button onclick={toggle_follow}>关注</button>
+  <button on-click={toggle_follow}>关注</button>
 </div>
 
 <!-- ❌ 错误：模板里塞业务逻辑 -->
@@ -104,7 +104,7 @@ pub struct UserViewModel {
 }
 
 impl UserViewModel {
-    // #[command] 让此方法可被 .rml 的 onclick={toggle_follow} 直接调用
+    // #[command] 让此方法可被 .rml 的 on-click={toggle_follow} 直接调用
     // 编译器会生成事件分发胶水代码，无需手写 ICommand 实现
     #[command]
     pub fn toggle_follow(&mut self, _ev: &ClickEvent, cx: &mut ViewContext<Self>) {

@@ -1,4 +1,4 @@
-﻿# 3.6 绑定引擎原理
+# 3.6 绑定引擎原理
 
 > **本节目标**：深入理解 RML 绑定引擎的编译期路径解析与运行时订阅机制，掌握性能优化的底层依据。
 
@@ -41,7 +41,7 @@ div(class="counter")
 ├── h1
 │   └── text("计数: ")
 │   └── interpolation(field="count")  ← 识别为绑定
-└── button(onclick="increment")       ← 识别为事件绑定
+└── button(on-click="increment")       ← 识别为事件绑定
     └── text("+1")
 ```
 

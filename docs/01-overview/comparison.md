@@ -1,4 +1,4 @@
-﻿# 1.4 与原生 GPUI 的对比
+# 1.4 与原生 GPUI 的对比
 
 > **本节目标**：用同一个 Todo 应用，横向对比原生 GPUI、gpui-rsx、RML 三种方案的代码量、可维护性与团队协作能力，建立"为什么选 RML"的直观认知。
 
@@ -114,9 +114,9 @@ impl Render for Counter {
     <h1 class="counter-title">⚡ 计数器: {count}</h1>
     <span class="counter-status" if={count > 10}>🚀 超过十啦！</span>
     <div class="counter-buttons">
-        <button class="btn primary" onclick={increment}>➕ 增加</button>
-        <button class="btn danger" onclick={decrement} if={count > 0}>➖ 减少</button>
-        <button class="btn secondary" onclick={reset}>↺ 重置</button>
+        <button class="btn primary" on-click={increment}>➕ 增加</button>
+        <button class="btn danger" on-click={decrement} if={count > 0}>➖ 减少</button>
+        <button class="btn secondary" on-click={reset}>↺ 重置</button>
     </div>
 </div>
 ```
@@ -162,7 +162,7 @@ impl Counter {
 | 设计师可编辑        | ❌       | ❌        | **✅**     |
 | 热重载           | ❌       | ❌        | **✅**     |
 | 条件渲染可读性       | `.when()` 闭包 | `if-else` 表达式 | **`if={}` 指令** |
-| 事件绑定          | `.on_click(cx.listener(...))` | `on_click={...}` | **`onclick={name}`** |
+| 事件绑定          | `.on_click(cx.listener(...))` | `on_click={...}` | **`on-click={name}`** |
 | 状态更新          | `cx.notify()` | `cx.notify()` | **`cx.notify()`** |
 
 ## 1.4.3 团队协作维度

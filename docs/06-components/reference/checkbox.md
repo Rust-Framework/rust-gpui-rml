@@ -7,8 +7,8 @@
 ## 基本用法
 
 ```html
-<Checkbox label="记住我" onclick={on_toggle_remember} />
-<Checkbox label={agree_label} selected={is_agreed} onclick={on_toggle_agree} />
+<Checkbox label="记住我" on-click={on_toggle_remember} />
+<Checkbox label={agree_label} selected={is_agreed} on-click={on_toggle_agree} />
 ```
 
 ## 属性
@@ -25,12 +25,12 @@
 
 | 事件 | 回调 |
 |------|------|
-| `onclick` | `fn(&mut self, ev: &ClickEvent, cx: &mut Context<Self>)` |
+| `on-click` | `fn(&mut self, ev: &ClickEvent, cx: &mut Context<Self>)` |
 
 ## 数据绑定
 
 - `selected={flag}` 或 `checked={flag}` — 单向显示选中态
-- **无** `model` 双向绑定；切换选中态需在 `onclick` 命令中更新字段
+- **无** `model` 双向绑定；切换选中态需在 `on-click` 命令中更新字段
 
 ## 子节点 / 插槽
 
@@ -39,13 +39,13 @@
 ## 完整示例
 
 ```html
-<Checkbox label="启用通知" selected={notify_enabled} onclick={on_toggle_notify} />
+<Checkbox label="启用通知" selected={notify_enabled} on-click={on_toggle_notify} />
 ```
 
 ## 常见错误
 
 1. **写 `model={flag}`** — Checkbox 不支持 `model` 指令。
-2. **只绑 `selected` 不写 `onclick`** — UI 不会自动回写 ViewModel。
+2. **只绑 `selected` 不写 `on-click`** — UI 不会自动回写 ViewModel。
 
 ## 相关组件
 

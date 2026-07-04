@@ -18,9 +18,9 @@
 ```html
 <!-- components/counter.rml -->
 <div class="counter">
-    <button onclick={decrement} disabled={count <= min}>-</button>
+    <button on-click={decrement} disabled={count <= min}>-</button>
     <span class="counter-value">{count}</span>
-    <button onclick={increment} disabled={count >= max}>+</button>
+    <button on-click={increment} disabled={count >= max}>+</button>
 </div>
 ```
 
@@ -369,7 +369,7 @@ pub struct Card {
     <p>邮箱: {user.email}</p>
 
     <template slot="footer">
-        <button onclick={edit_user}>编辑</button>
+        <button on-click={edit_user}>编辑</button>
     </template>
 </Card>
 ```
@@ -433,7 +433,7 @@ impl DataLoader {
         <h3>{user.name}</h3>
         <p>{user.email}</p>
     </div>
-    <Button onclick={edit_user} variant="ghost">编辑</Button>
+    <Button on-click={edit_user} variant="ghost">编辑</Button>
 </div>
 ```
 
@@ -541,7 +541,7 @@ impl SearchBox {
     />
     <button
         if={!query.is_empty()}
-        onclick={on_clear_click}
+        on-click={on_clear_click}
         class="clear-btn"
     >
         ✕

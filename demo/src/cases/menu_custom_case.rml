@@ -55,7 +55,7 @@
                     <Button label="Account" ghost="" />
                     <menu-item label="Help Center" href="https://longbridge.github.io/gpui-component/" icon="Info" />
                     <menu-separator />
-                    <menu-item label="Sign Out" icon="LogOut" on-click={on_sign_out} />
+                    <menu-item label="Sign Out" icon="ExternalLink" on-click={on_sign_out} />
                 </dropdown-menu>
             </div>
         </Card>

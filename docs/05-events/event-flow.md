@@ -29,9 +29,9 @@ RML 借鉴 DOM 事件模型，事件流分为三个阶段：
 默认情况下，RML 事件在冒泡阶段触发。事件从目标元素开始，逐级向上传播到根元素：
 
 ```html
-<div onclick={on_outer_click}>
-    <div onclick={on_middle_click}>
-        <button onclick={on_inner_click}>点击我</button>
+<div on-click={on_outer_click}>
+    <div on-click={on_middle_click}>
+        <button on-click={on_inner_click}>点击我</button>
     </div>
 </div>
 ```
@@ -47,7 +47,7 @@ RML 借鉴 DOM 事件模型，事件流分为三个阶段：
 冒泡允许父元素统一处理子元素的事件：
 
 ```html
-<ul onclick={on_list_click}>
+<ul on-click={on_list_click}>
     <li each={item in items} key={item.id} data-id={item.id}>
         {item.text}
     </li>
@@ -69,8 +69,8 @@ pub fn on_list_click(&mut self, ev: &ClickEvent, cx: &mut ViewContext<Self>) {
 用 `stop_propagation()` 阻止事件继续冒泡：
 
 ```html
-<div onclick={on_outer_click}>
-    <button onclick={on_inner_click}>点击我</button>
+<div on-click={on_outer_click}>
+    <button on-click={on_inner_click}>点击我</button>
 </div>
 ```
 
@@ -96,8 +96,8 @@ pub fn on_outer_click(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
 - 嵌套列表的子项点击不应触发父项点击
 
 ```html
-<div onclick={close_modal} class="modal-overlay">
-    <div onclick={on_modal_content_click} class="modal-content">
+<div on-click={close_modal} class="modal-overlay">
+    <div on-click={on_modal_content_click} class="modal-content">
         <!-- 点击这里不应关闭对话框 -->
         <p>对话框内容</p>
     </div>
@@ -136,7 +136,7 @@ pub fn on_key_down(&mut self, ev: &KeyDownEvent, cx: &mut ViewContext<Self>) {
 
 | 事件           | 默认行为           | 阻止后的效果       |
 | ------------ | -------------- | ------------- |
-| `onclick`（链接） | 导航到 href       | 不导航           |
+| `on-click`（链接） | 导航到 href       | 不导航           |
 | `onkeydown`（Tab） | 切换焦点           | 不切换焦点         |
 | `onsubmit`   | 提交表单           | 不提交，由 JS 处理   |
 | `onwheel`    | 滚动             | 不滚动           |
@@ -149,7 +149,7 @@ pub fn on_key_down(&mut self, ev: &KeyDownEvent, cx: &mut ViewContext<Self>) {
 
 ```html
 <ul>
-    <li each={item in items} key={item.id} onclick={select_item, {item.id}}>
+    <li each={item in items} key={item.id} on-click={select_item, {item.id}}>
         {item.text}
     </li>
 </ul>
@@ -158,7 +158,7 @@ pub fn on_key_down(&mut self, ev: &KeyDownEvent, cx: &mut ViewContext<Self>) {
 ### 事件委托：父元素统一处理
 
 ```html
-<ul onclick={on_list_click}>
+<ul on-click={on_list_click}>
     <li each={item in items} key={item.id} data-id={item.id}>
         {item.text}
     </li>
@@ -191,9 +191,9 @@ pub fn on_list_click(&mut self, ev: &ClickEvent, cx: &mut ViewContext<Self>) {
 ### 完整示例
 
 ```html
-<div onclick={on_root_click} class="root">
-    <div onclick={on_middle_click} class="middle">
-        <button onclick={on_button_click} class="button">
+<div on-click={on_root_click} class="root">
+    <div on-click={on_middle_click} class="middle">
+        <button on-click={on_button_click} class="button">
             点击我
         </button>
     </div>
@@ -236,7 +236,7 @@ pub fn on_root_click(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
 自定义组件的事件也会冒泡，可以通过 `stop_propagation()` 控制：
 
 ```html
-<div onclick={on_outer_click}>
+<div on-click={on_outer_click}>
     <SearchBox on_search={on_search} />
 </div>
 ```
@@ -275,10 +275,10 @@ pub fn on_modal_content_click(&mut self, ev: &ClickEvent, _cx: &mut ViewContext<
 
 ```html
 <!-- ❌ 每个子元素都绑定 -->
-<li each={item in items} onclick={select, {item.id}}>
+<li each={item in items} on-click={select, {item.id}}>
 
 <!-- ✅ 父元素事件委托 -->
-<ul onclick={on_list_click}>
+<ul on-click={on_list_click}>
     <li each={item in items} data-id={item.id}>
 ```
 

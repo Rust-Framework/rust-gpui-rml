@@ -3,8 +3,8 @@
         <h2>{t("case.two_way.title")}</h2>
 
         <Card title="组件说明">
-            <p>双向绑定案例演示 RML 的 model 属性。通过 model={field} 将 input 与 pub 字段绑定，输入变化自动回写字段，字段变化自动触发 computed 重算与重渲。</p>
-            <p>核心概念：input model={field} 实现双向绑定；#[validate(range(min,max))] 标注数值验证规则；验证失败时框架自动显示红框 + tooltip。</p>
+            <p>双向绑定案例演示 RML 的 model 属性。通过 model=&#123;field&#125; 将 input 与 pub 字段绑定，输入变化自动回写字段，字段变化自动触发 computed 重算与重渲。</p>
+            <p>核心概念：input model=&#123;field&#125; 实现双向绑定；#[validate(range(min,max))] 标注数值验证规则；验证失败时框架自动显示红框 + tooltip。</p>
         </Card>
 
         <Card title="API">

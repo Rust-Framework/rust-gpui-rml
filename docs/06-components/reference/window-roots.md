@@ -50,9 +50,9 @@ RML 文件必须有且仅有一个根标签。根节点决定 codegen 输出：�
 
 | 插槽标签 | 说明 |
 |----------|------|
-| `slot_menu` | 菜单区 |
-| `slot_title` | 标题扩展区 |
-| `slot_footer` | 页脚区 |
+| `slot="menu"` | 菜单区 |
+| `slot="title"` | 标题扩展区 |
+| `slot="footer"` | 页脚区 |
 
 其余子节点为主内容区。
 
@@ -69,18 +69,18 @@ Demo 主窗口使用的根类型，包裹 `TabWindowShell`。
 ```
 
 - **图标切换**：`icon` + `on_chrome_toggle`；`show_chrome=true` 时显示 `ChevronLeft`，折叠后仅保留图标与 `ChevronRight`，菜单与标题隐藏。
-- **主窗口菜单**：`slot_menu` 内容嵌入 TabBar `prefix`（非独立菜单行）。
+- **主窗口菜单**：`slot="menu"` 内容嵌入 TabBar `prefix`（非独立菜单行）。
 - **Tab 溢出**：宽度不足时启用 TabBar `.menu()` 下拉，避免横向滚动条（依赖 gpui-component TabBar 行为）。
-- **可扩展区**：`slot_title` → `title_ext_slot` → TabBar `suffix`。
+- **可扩展区**：`slot="title"` → `title_ext_slot` → TabBar `suffix`。
 
 主体区域（`h_resizable` + `v_resizable`）：
 
 ```text
-| 插槽1 (slot_left)  |  Tab Body + 插槽3 (slot_bottom)  | 插槽2 (slot_right) |
+| 插槽1 (slot="left")  |  Tab Body + 插槽3 (slot="bottom")  | 插槽2 (slot="right") |
 | 空则隐藏，右缘拖拽  |  主内容 + 底栏上缘拖拽高度          | 空则隐藏，左缘拖拽  |
 ```
 
-底部 **插槽4**：`slot_footer` → `status_slot`（状态栏，空则隐藏，不可拖拽）。
+底部 **插槽4**：`slot="footer"` → `status_slot`（状态栏，空则隐藏，不可拖拽）。
 
 ### 属性
 
@@ -106,12 +106,12 @@ Demo 主窗口使用的根类型，包裹 `TabWindowShell`。
 
 | 插槽标签 | 说明 |
 |----------|------|
-| `slot_menu` | 标题栏内菜单（TabBar prefix） |
-| `slot_title` | 标题栏右侧扩展区（TabBar suffix） |
-| `slot_footer` | 底部状态栏 |
-| `slot_left` | 左侧栏（如 ActivityBar），右缘可拖拽调宽 |
-| `slot_right` | 右侧栏，左缘可拖拽调宽 |
-| `slot_bottom` | 主内容区下方栏（如输出面板），上缘可拖拽调高 |
+| `slot="menu"` | 标题栏内菜单（TabBar prefix） |
+| `slot="title"` | 标题栏右侧扩展区（TabBar suffix） |
+| `slot="footer"` | 底部状态栏 |
+| `slot="left"` | 左侧栏（如 ActivityBar），右缘可拖拽调宽 |
+| `slot="right"` | 右侧栏，左缘可拖拽调宽 |
+| `slot="bottom"` | 主内容区下方栏（如输出面板），上缘可拖拽调高 |
 
 非插槽子节点为主内容区。
 
@@ -132,33 +132,33 @@ Demo 主窗口使用的根类型，包裹 `TabWindowShell`。
     show_chrome={show_chrome}
     on_chrome_toggle="on_chrome_toggle">
 
-    <slot_left>
+    <template slot="left">
         <ActivityBar panels={activity_panels} on_panel_change="on_panel_change">
             <div if={active_panel_id == "samples"}>
                 <Tree on_activate="on_case_activate" />
             </div>
         </ActivityBar>
-    </slot_left>
+    </template>
 
-    <slot_menu>
+    <template slot="menu">
         <menu-bar>
             <menu-item label={t("menu.view")}>
-                <menu-item label={t("menu.theme_toggle")} onclick="on_menu_theme_toggle" />
+                <menu-item label={t("menu.theme_toggle")} on-click="on_menu_theme_toggle" />
             </menu-item>
         </menu-bar>
-    </slot_menu>
+    </template>
 
-    <slot_title>
+    <template slot="title">
         <Button label="Docs" ghost="" />
-    </slot_title>
+    </template>
 
-    <slot_bottom>
+    <template slot="bottom">
         <div class="shell-output">Output panel</div>
-    </slot_bottom>
+    </template>
 
-    <slot_footer>
+    <template slot="footer">
         <status_bar items={status_items} />
-    </slot_footer>
+    </template>
 
     <div class="case-host">
         <WelcomeCase />
@@ -180,7 +180,7 @@ Demo 主窗口使用的根类型，包裹 `TabWindowShell`。
 
 ### 用法
 
-ViewModel 需 `#[window]` 宏（注入 `__rml_window_handle`）。在父窗口 `on_loaded` 中调用：
+ViewModel 需 `#[window]` 宏（注入 `__rml_state`，其 `window_handle` 字段供对话框 `open`/`close` 使用）。在父窗口 `on_loaded` 中调用：
 
 ```rust
 window.defer(cx, |window, cx| {
@@ -194,7 +194,7 @@ window.defer(cx, |window, cx| {
 <dialog title="RML Demo" width="420" margin_top="120">
     <div class="login">
         <input model={username} placeholder={t("login.username")} />
-        <Button label={t("login.submit")} primary="" onclick={on_login} />
+        <Button label={t("login.submit")} primary="" on-click={on_login} />
     </div>
 </dialog>
 ```
@@ -207,7 +207,7 @@ window.defer(cx, |window, cx| {
 <!-- cases/button_case.rml -->
 <component>
     <div class="case-pane">
-        <Button label={t("case.button.primary")} primary="" onclick={on_button_demo_click} />
+        <Button label={t("case.button.primary")} primary="" on-click={on_button_demo_click} />
     </div>
 </component>
 ```
@@ -217,9 +217,9 @@ window.defer(cx, |window, cx| {
 ## 常见错误
 
 1. **多个根元素** — 每个 `.rml` 只能有一个根标签。
-2. **混用 `window` 与 `tab_window` 插槽** — `slot_left` 等仅 `tab_window` / `modern_window` 支持。
+2. **混用 `window` 与 `tab_window` 插槽** — `slot="left"` 等仅 `tab_window` / `modern_window` 支持。
 3. **dialog 当独立窗口** — dialog 不能 `IWindow::open` 单独启动，必须从父窗口 `open()`。
-4. **未 `#[window]` 却用 dialog** — 缺少 `__rml_window_handle` 字段。
+4. **未 `#[window]` 却用 dialog** — 缺少 `__rml_state.window_handle` 字段。
 
 ## 相关文档
 

@@ -16,6 +16,9 @@ use std::sync::Arc;
 use gpui::{AnyElement, App, ClickEvent, IntoElement, ParentElement, SharedString, Window};
 use gpui_component::Icon;
 
+type TabBodyRenderer = Arc<dyn Fn(&mut Window, &mut App) -> AnyElement + Send + Sync + 'static>;
+type TabClickHandler = Rc<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>;
+
 /// WPF TabItem 风格的 Tab 子项：title (header) + body (闭包模板)。
 ///
 /// 详见模块级文档。
@@ -25,12 +28,10 @@ pub struct TabItem {
     pub(super) title_label: Option<SharedString>,
     pub(super) title_icon: Option<Icon>,
     pub(super) title_children: Vec<AnyElement>,
-    pub(super) body: Option<
-        Arc<dyn Fn(&mut Window, &mut App) -> AnyElement + Send + Sync + 'static>,
-    >,
+    pub(super) body: Option<TabBodyRenderer>,
     pub(super) disabled: bool,
     pub(super) tab_bar_prefix: Option<bool>,
-    pub(super) on_click: Option<Rc<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>>,
+    pub(super) on_click: Option<TabClickHandler>,
 }
 
 

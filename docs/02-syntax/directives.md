@@ -1,4 +1,4 @@
-﻿# 2.4 指令系统
+# 2.4 指令系统
 
 > **本节目标**：完整掌握 RML 的 10 个指令——`if`、`else`、`each`、`key`、`model`、`show`、`once`、`html`、`ref`、`slot`。这是 RML 区别于 HTML 的核心能力。
 
@@ -282,7 +282,7 @@ pub fn user_bio_text(&self) -> SharedString {
 
 ```html
 <input ref="username_input" model={user_name} />
-<button ref="submit_btn" onclick={submit}>提交</button>
+<button ref="submit_btn" on-click={submit}>提交</button>
 ```
 
 ```rust
@@ -329,7 +329,7 @@ impl MyView {
     key={todo.id}
     if={!todo.done}
     class={todo.priority == "high" ? "urgent" : ""}
-    onclick={toggle_todo, {todo.id}}
+    on-click={toggle_todo, {todo.id}}
 >
     {todo.text}
 </li>

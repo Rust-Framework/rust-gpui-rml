@@ -46,7 +46,6 @@ fn make_ctx_with_range_validation() -> CodegenCtx {
         model_fields: Vec::new(),
         user_components: HashMap::new(),
         is_contributehost: false,
-        contribution_bindings: false,
         ..Default::default()
     }
 }
@@ -62,10 +61,10 @@ fn range_validation_generates_bounds_check() {
     let ctx = make_ctx_with_range_validation();
     let code = compile(RML_SOURCE_WITH_AGE, &ctx).expect("compile failed");
 
-    // 应生成 range 校验条件：v < 0 || v > 150（失败条件）
+    // 应生成 range 校验条件：!(0..=150).contains(&v)（失败条件）
     assert!(
-        code.contains("v < 0 || v > 150"),
-        "range 校验应生成 `v < 0 || v > 150` 条件，实际：\n{}",
+        code.contains("!(0..=150).contains(&v)"),
+        "range 校验应生成 `!(0..=150).contains(&v)` 条件，实际：\n{}",
         code
     );
     // 应生成默认错误消息
@@ -130,7 +129,6 @@ fn length_validation_generates_len_check() {
         model_fields: Vec::new(),
         user_components: HashMap::new(),
         is_contributehost: false,
-        contribution_bindings: false,
         ..Default::default()
     };
     let source = r#"
@@ -185,7 +183,6 @@ fn required_validation_generates_empty_check() {
         model_fields: Vec::new(),
         user_components: HashMap::new(),
         is_contributehost: false,
-        contribution_bindings: false,
         ..Default::default()
     };
     let source = r#"
@@ -242,7 +239,6 @@ fn regex_validation_generates_pattern_match() {
         model_fields: Vec::new(),
         user_components: HashMap::new(),
         is_contributehost: false,
-        contribution_bindings: false,
         ..Default::default()
     };
     let source = r#"
@@ -302,7 +298,6 @@ fn custom_validation_generates_function_call() {
         model_fields: Vec::new(),
         user_components: HashMap::new(),
         is_contributehost: false,
-        contribution_bindings: false,
         ..Default::default()
     };
     let source = r#"
@@ -363,7 +358,6 @@ fn multiple_rules_executed_in_order() {
         model_fields: Vec::new(),
         user_components: HashMap::new(),
         is_contributehost: false,
-        contribution_bindings: false,
         ..Default::default()
     };
     let source = r#"
@@ -402,8 +396,8 @@ fn validation_failure_skips_bump_version() {
     let ctx = make_ctx_with_range_validation();
     let code = compile(RML_SOURCE_WITH_AGE, &ctx).expect("compile failed");
 
-    // 提取 range 校验失败分支（if v < 0 || v > 150 { ... }）
-    let fail_section = code.split("if v < 0 || v > 150").nth(1).unwrap_or("");
+    // 提取 range 校验失败分支（if !(0..=150).contains(&v) { ... }）
+    let fail_section = code.split("if !(0..=150).contains(&v)").nth(1).unwrap_or("");
     let fail_block = fail_section.split("} else").next().unwrap_or("");
 
     // 失败分支不应包含 bump_version
@@ -414,7 +408,7 @@ fn validation_failure_skips_bump_version() {
     );
     // 失败分支应设置错误状态
     assert!(
-        fail_block.contains("__rml_field_errors.insert"),
+        fail_block.contains("__rml_state.field_errors.insert"),
         "校验失败分支应设置错误状态，实际：\n{}",
         fail_block
     );
@@ -433,7 +427,7 @@ fn validation_success_clears_error() {
         success_section
     );
     assert!(
-        success_section.contains("__rml_field_errors.insert"),
+        success_section.contains("__rml_state.field_errors.insert"),
         "成功分支应清除错误状态，实际：\n{}",
         success_section
     );
@@ -465,7 +459,6 @@ fn no_validation_falls_back_to_default() {
         model_fields: Vec::new(),
         user_components: HashMap::new(),
         is_contributehost: false,
-        contribution_bindings: false,
         ..Default::default()
     };
     let code = compile(RML_SOURCE_WITH_AGE, &ctx).expect("compile failed");

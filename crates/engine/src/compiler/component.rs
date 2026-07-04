@@ -216,10 +216,7 @@ pub fn gen_component(
     // 通过 canonical_tag 统一规范化 tag 名（kebab-case / 小写别名 → PascalCase），
     // 避免字符串字面量比对漏洞（B2 统一规范）。
     let canonical = tags::canonical_tag(&resolved);
-    let is_container = matches!(component.kind, tags::ComponentKind::StatelessNoId)
-        && canonical != "menu"
-        && canonical != "MenuBar"
-        && canonical != "Avatar";
+    let is_container = component.container;
 
     if is_container {
         // 容器组件：所有 element/文本子节点作为 children

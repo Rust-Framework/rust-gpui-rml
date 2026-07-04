@@ -40,11 +40,11 @@ RML 的 MVVM 支持已覆盖 WPF XAML 的核心数据绑定与命令能力。下
 | 双向绑定 | `<input model={field}>` | 基于 `Entity<InputState>` 的双向数据流 + 版本号循环防护 | [3.3 双向绑定](../03-binding/two-way-binding.md) |
 | 转换器绑定 | `model={field \| Converter}` | `IConverter::convert()` 正向格式化 + `convert_back()` 反向解析 | [3.5 值转换器](../03-binding/converter.md) |
 | 计算属性 | `#[computed]` | 依赖字段版本号追踪 + `ComputedCache` 自动缓存与失效 | [3.4 计算属性](../03-binding/computed.md) |
-| 命令方法 | `#[command]` + `onclick={method}` | 强类型直接调用，宏自动注入 `bump_version` + `cx.notify()` | [4.4 命令系统](../04-code-behind/command-system.md) |
+| 命令方法 | `#[command]` + `on-click={method}` | 强类型直接调用，宏自动注入 `bump_version` + `cx.notify()` | [4.4 命令系统](../04-code-behind/command-system.md) |
 | 声明式命令 | `<menu-item command={field} />` | 对齐 WPF `ICommand`，经 `can_execute`/`execute` 动态调度 | [4.4.12 声明式命令绑定](../04-code-behind/command-system.md) |
 | 事件处理 | `oninput={fn}` / `onchange={fn}` | handler 注入 `cx.subscribe` 回调，与 `model` 反向同步协作 | [3.3.6 oninput/onchange](../03-binding/two-way-binding.md) |
 | 事件冒泡控制 | `ev.stop_propagation()` | 事件流 `apply_event` 分支注入 stop 标志 | [5.4 事件流](../05-events/event-flow.md) |
-| 字段校验 | `#[validate(range/length/required/regex/custom)]` | 校验链 + `__rml_field_errors` 自动管理 | [4.5 状态管理](../04-code-behind/state-management.md) |
+| 字段校验 | `#[validate(range/length/required/regex/custom)]` | 校验链 + `__rml_state.field_errors` 自动管理 | [4.5 状态管理](../04-code-behind/state-management.md) |
 | 防抖节流 | `#[command(debounce = "300ms")]` | 函数局部 `AtomicU64` 计时器，无全局状态 | [5.5 防抖与节流](../05-events/debounce-throttle.md) |
 | 生命周期 | `#[on_loaded]` / `#[on_unloaded]` | 自动检测方法名并接入生命周期钩子 | [8.1 生命周期总览](../08-lifecycle/lifecycle-overview.md) |
 | 元素引用 | `ref="name"` + `#[element]` | `Entity<InputState>` 句柄注入字段 | [4.3 元素引用](../04-code-behind/element-ref.md) |
@@ -154,7 +154,7 @@ RML 提供两种命令绑定，适用于不同场景：
 
 | 方式 | 语法 | 调度机制 | 适用场景 |
 |---|---|---|---|
-| **方法绑定** | `onclick={method}` | codegen 生成 `this.method(&ev, cx)` 强类型直接调用 | 事件与命令一一对应（推荐默认） |
+| **方法绑定** | `on-click={method}` | codegen 生成 `this.method(&ev, cx)` 强类型直接调用 | 事件与命令一一对应（推荐默认） |
 | **声明式绑定** | `command={field}` | 经 `ICommand::can_execute`/`execute` 动态调度 | 命令可复用、可快捷键、可命令面板 |
 
 声明式绑定使用 `RelayCommand`（WPF `RelayCommand`/`DelegateCommand` 等价物），持有 `WeakEntity<T>` + 闭包：
@@ -217,7 +217,7 @@ pub fn refresh(&mut self, _ev: &ClickEvent, cx: &mut Context<Self>) {
 
 - ViewModel 的 `pub` 字段（含 `Arc<RelayCommand>` 命令字段）
 - ViewModel 的 `#[computed]` 方法
-- ViewModel 的 `#[command]` 方法名（`onclick={method}`）
+- ViewModel 的 `#[command]` 方法名（`on-click={method}`）
 - ViewModel 的命令字段（`command={field}` 声明式绑定）
 
 模板**不应**直接访问 Service、全局变量、或 ViewModel 的私有字段。

@@ -101,7 +101,7 @@ RML 组件来自两个互不混淆的层次：
 
 | 需求 | 正确写法 | 错误写法 |
 |------|----------|----------|
-| 带样式的按钮 | `<Button primary="" onclick={...}>` | `<button variant="primary">` |
+| 带样式的按钮 | `<Button primary="" on-click={...}>` | `<button variant="primary">` |
 | 双向文本输入 | `<input model={name}>` | `<Input model={name}>` |
 | 状态栏 MVVM | `<status_bar items={status_items}>` | `<StatusBar items={...}>` |
 | 案例树 | `<Tree on_activate={...}>` + Rust 初始化 `case_tree_state` | `<Tree items={...}>` |
@@ -113,7 +113,7 @@ RML 组件来自两个互不混淆的层次：
 
 - **静态**：`label`、`placeholder`、`primary`/`ghost`/…、`disabled`、`small` 等
 - **绑定**：`value`、`disabled`、`selected`、`label`；`ActivityBar` 的 `panels`/`actions`；`menu`/`MenuBar`/`status_bar` 的 `items`
-- **事件**：`onclick`（通用）、`onchange`（Input/TextInput）、`on_panel_change`（ActivityBar）、`on_activate`（Tree）
+- **事件**：`on-click`（通用）、`onchange`（Input/TextInput）、`on_panel_change`（ActivityBar）、`on_activate`（Tree）
 - **菜单**：`ContextMenu` / `DropdownMenu` / `MenuBar` 由 `compiler/menu/` codegen；子项仅 `MenuItem` + `MenuSeparator`（见 [menu-items.md](./reference/menu-items.md)）
 
 ## 6.1.7 小结

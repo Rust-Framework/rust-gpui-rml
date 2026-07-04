@@ -83,8 +83,8 @@
 对应 `gpui_component::Button`。RML 自动处理按钮的样式、状态、点击事件。
 
 ```html
-<button class="btn primary" onclick={submit}>提交</button>
-<button class="btn danger" onclick={delete_item} disabled={is_deleting}>
+<button class="btn primary" on-click={submit}>提交</button>
+<button class="btn danger" on-click={delete_item} disabled={is_deleting}>
     删除
 </button>
 ```
@@ -94,7 +94,7 @@
 | 属性          | 类型     | 说明           |
 | ----------- | ------ | ------------ |
 | `disabled`  | bool   | 是否禁用         |
-| `onclick`   | 命令     | 点击事件         |
+| `on-click`   | 命令     | 点击事件         |
 | `class`     | string | 样式类名         |
 | `ref`       | string | 元素引用名        |
 
@@ -182,7 +182,7 @@
 对应 `gpui_component::Link`。
 
 ```html
-<a href="https://example.com" onclick={open_link}>访问网站</a>
+<a href="https://example.com" on-click={open_link}>访问网站</a>
 ```
 
 ## 2.2.7 自闭合标签
@@ -205,7 +205,7 @@ HTML 中自闭合的标签在 RML 中也支持自闭合写法：
 <!-- 输入 -->
 <div class="card">
     <h1>标题</h1>
-    <button onclick={submit}>提交</button>
+    <button on-click={submit}>提交</button>
 </div>
 ```
 
@@ -263,7 +263,7 @@ gpui::div()
 <div>、<button>、<input>
 
 <!-- 自定义组件：PascalCase -->
-<PrimaryButton label="保存" onclick={save} />
+<PrimaryButton label="保存" on-click={save} />
 <Card>
     <div slot="header">头部</div>
     <p>内容</p>

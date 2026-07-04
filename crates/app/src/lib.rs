@@ -13,7 +13,6 @@ pub mod contribution;
 pub mod extensions;
 pub mod lifecycle;
 pub mod resources;
-pub mod workbench;
 
 pub mod prelude;
 

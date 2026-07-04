@@ -9,9 +9,9 @@
 ## 基本用法
 
 ```html
-<slot_footer>
+<template slot="footer">
     <status_bar items={status_items} />
-</slot_footer>
+</template>
 ```
 
 ## 属性
@@ -62,9 +62,9 @@ fn refresh_shell_bindings(&mut self, cx: &mut Context<Self>) {
 `demo/src/shell/main_window.rml`：
 
 ```html
-<slot_footer>
+<template slot="footer">
     <status_bar items={status_items} />
-</slot_footer>
+</template>
 ```
 
 ## 常见错误

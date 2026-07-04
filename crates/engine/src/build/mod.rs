@@ -304,7 +304,6 @@ impl Builder {
                 model_input_handlers: Default::default(),
                 user_components: user_components.clone(),
                 is_contributehost: struct_meta.is_contributehost,
-                contribution_bindings: struct_meta.contribution_bindings,
                 lifecycle_hooks: struct_meta.lifecycle_hooks.clone(),
                 has_manual_lifecycle_impl: struct_meta.has_manual_lifecycle_impl,
             };

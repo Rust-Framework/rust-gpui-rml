@@ -13,10 +13,8 @@ use std::sync::Arc;
 use gpui::App;
 use rml_core::contribution::IContributionRegistry;
 use rml_core::context::IAppContext;
-use rml_core::workbench::IWorkbenchManager;
 
 use crate::contribution::ContributionRegistry;
-use crate::workbench::WorkbenchManagerSlot;
 
 /// IAppContext 便利方法——为常用服务提供语义化访问。
 ///
@@ -26,16 +24,6 @@ pub trait IAppContextExt: IAppContext {
     /// 获取贡献注册表（trait object 视图，隐藏具体类型）。
     fn get_contribution_registry(&self) -> Arc<dyn IContributionRegistry> {
         self.get_required_service::<ContributionRegistry>() as Arc<dyn IContributionRegistry>
-    }
-
-    /// 安装工作台管理器。
-    fn set_workbench_manager(&mut self, manager: Arc<dyn IWorkbenchManager + Send + Sync>) {
-        self.set_service(Arc::new(WorkbenchManagerSlot(manager)));
-    }
-
-    /// 获取已安装的工作台管理器。
-    fn workbench_manager(&self) -> Option<Arc<dyn IWorkbenchManager + Send + Sync>> {
-        self.get_service::<WorkbenchManagerSlot>().map(|s| s.0.clone())
     }
 }
 

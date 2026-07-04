@@ -8,7 +8,7 @@
 
 ```html
 <Tag label="Rust" />
-<Tag label={tag_name} onclick={on_tag_click} />
+<Tag label={tag_name} on-click={on_tag_click} />
 ```
 
 ## 属性
@@ -25,7 +25,7 @@
 
 | 事件 | 说明 |
 |------|------|
-| `onclick` | 点击 |
+| `on-click` | 点击 |
 
 ## 数据绑定
 
@@ -39,13 +39,13 @@
 
 ```html
 <div class="tag-row">
-    <Tag each={tag in tags} label={tag.name} onclick={on_tag_click} />
+    <Tag each={tag in tags} label={tag.name} on-click={on_tag_click} />
 </div>
 ```
 
 ## 常见错误
 
-RML 无 `on_close` 事件；关闭逻辑需用 `onclick` 在命令中处理。
+RML 无 `on_close` 事件；关闭逻辑需用 `on-click` 在命令中处理。
 
 ## 相关组件
 

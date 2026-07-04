@@ -80,17 +80,17 @@ pub struct PrimaryButton {
 
 ### 宏自动注入的字段
 
-`#[component]`（和 `#[window]`）会为每个 `pub` 字段自动注入以下私有字段，用于实现响应式数据绑定与计算属性缓存：
+`#[component]`（和 `#[window]`）会自动注入单一私有字段 `__rml_state: rml_ui::RmlState`，统一承载响应式数据绑定与计算属性缓存所需的全部运行时状态（按职责分字段）：
 
-| 注入字段 | 数量 | 用途 |
+| `__rml_state` 子字段 | 数量 | 用途 |
 |---|---|---|
-| `__rml_<field>_version: AtomicU64` | 每个 `pub` 字段一个 | 字段版本号计数器，`#[command]` 修改字段时自动 `fetch_add` |
-| `__rml_computed_cache: ComputedCache` | 每结构体一个 | `#[computed]` 方法结果缓存，按方法名索引 |
-| `__rml_input_states: HashMap<String, Entity<InputState>>` | 每结构体一个 | 双向绑定的 `InputState` entity 存储（按字段名索引） |
-| `__rml_input_state_versions: HashMap<String, u64>` | 每结构体一个 | 双向绑定正向同步的版本号追踪 |
-| `__rml_field_errors: HashMap<String, Option<SharedString>>` | 每结构体一个 | Phase B-3.1 校验状态：`None`=通过，`Some(msg)`=失败（UI 显示红色边框 + tooltip） |
+| `field_versions: HashMap<String, AtomicU64>` | 每个 `pub` 字段一个 entry（惰性插入） | 字段版本号计数器，`#[command]` 修改字段时自动 `fetch_add` |
+| `computed_cache: ComputedCache` | 每结构体一个 | `#[computed]` 方法结果缓存，按方法名索引 |
+| `input_states: HashMap<String, Entity<InputState>>` | 每结构体一个 | 双向绑定的 `InputState` entity 存储（按字段名索引） |
+| `input_state_versions: HashMap<String, u64>` | 每结构体一个 | 双向绑定正向同步的版本号追踪 |
+| `field_errors: HashMap<String, Option<SharedString>>` | 每结构体一个 | Phase B-3.1 校验状态：`None`=通过，`Some(msg)`=失败（UI 显示红色边框 + tooltip） |
 
-这些字段均为私有，不会进入 `IModel::rml_fields()`（其只收集 `pub` 字段）。所有注入字段均实现 `Default`，与 `#[derive(Default)]` 兼容。
+`__rml_state` 字段为私有，不会进入 `IModel::rml_fields()`（其只收集 `pub` 字段）。`RmlState` 实现 `Default`，与 `#[derive(Default)]` 兼容。
 
 > ⚠️ **注意**：`Subscription` 不会作为字段存储。`cx.subscribe` 返回的 `Subscription` 调用 `.detach()` 后随 entity 生命周期存活。这是因为 `Subscription` 内部含 `Box<dyn FnOnce() + 'static>`，不满足 `Send + Sync`，存储会导致视图类型无法满足 `open_window` 的 `Send + Sync` 约束。
 
@@ -181,13 +181,13 @@ pub fn method_name(&mut self, p1: T1, p2: T2, _: &ClickEvent, cx: &mut Context<S
 
 ```html
 <!-- 无参数 -->
-<button onclick={increment}>+1</button>
+<button on-click={increment}>+1</button>
 
 <!-- 带参数 -->
-<button onclick={delete_item, {item.id}}>删除</button>
+<button on-click={delete_item, {item.id}}>删除</button>
 
 <!-- 多参数 -->
-<button onclick={update_status, {item.id}, 'completed'}>完成</button>
+<button on-click={update_status, {item.id}, 'completed'}>完成</button>
 ```
 
 ### 命令的命名约定
@@ -211,9 +211,9 @@ pub fn completed_count(&self) -> usize {
 
 `#[computed]` 的缓存基于字段版本号追踪：
 
-1. **字段版本号**：每个 `pub` 字段注入 `__rml_<field>_version: AtomicU64`，`#[command]` 修改字段时自动 `fetch_add`
+1. **字段版本号**：`__rml_state.field_versions: HashMap<String, AtomicU64>` 按字段名惰性插入版本计数器，`#[command]` 修改字段时自动 `fetch_add`
 2. **依赖版本和**：`#[computed]` 方法调用时计算依赖字段的版本号之和（`__rml_computed_deps_version`），若与缓存时的版本号之和不同则重算
-3. **缓存存储**：结果存入 `__rml_computed_cache: ComputedCache`（`Mutex<HashMap<String, (u64, Box<dyn Any>)>>`），按方法名索引
+3. **缓存存储**：结果存入 `__rml_state.computed_cache: ComputedCache`（`Mutex<HashMap<String, (u64, Box<dyn Any>)>>`），按方法名索引
 
 ```
 #[computed] pub fn summary(&self) -> String {
@@ -223,7 +223,7 @@ pub fn completed_count(&self) -> usize {
 // 等价于：
 pub fn summary(&self) -> String {
     let dep_version = self.__rml_get_version("name") + self.__rml_get_version("count");
-    self.__rml_computed_cache.get_or_compute::<String>(
+    self.__rml_state.computed_cache.get_or_compute::<String>(
         "summary",
         dep_version,
         || format!("{} / {}", self.name, self.count)
@@ -392,7 +392,7 @@ pub struct MyView {
 ```html
 <!-- .rml 中用 ref 关联 -->
 <input ref="username_input" model={user_name} />
-<button ref="submit_btn" onclick={submit}>提交</button>
+<button ref="submit_btn" on-click={submit}>提交</button>
 ```
 
 详见 [4.3 元素引用](./element-ref.md)。
@@ -489,15 +489,15 @@ pub struct Form {
 match value.parse::<i32>() {
     Ok(v) => {
         if v < 0 || v > 150 {
-            this.__rml_field_errors.insert("age".to_string(), Some("值必须在 0-150 之间".into()));
+            this.__rml_state.field_errors.insert("age".to_string(), Some("值必须在 0-150 之间".into()));
         } else {
             this.age = v;
-            this.__rml_field_errors.insert("age".to_string(), None);  // 清除错误
+            this.__rml_state.field_errors.insert("age".to_string(), None);  // 清除错误
             this.__rml_bump_version("age");
         }
     }
     Err(_) => {
-        this.__rml_field_errors.insert("age".to_string(), Some("请输入有效的整数".into()));
+        this.__rml_state.field_errors.insert("age".to_string(), Some("请输入有效的整数".into()));
     }
 }
 ```
@@ -659,10 +659,10 @@ pub name: String,
     let __rml_validator = EmailValidator::default();
     let __rml_result = __rml_validator.valid_with_view(&__rml_value, this as &dyn std::any::Any);
     if let Some(__rml_err_msg) = __rml_validator.message(&__rml_result) {
-        this.__rml_field_errors.insert("email".to_string(), Some(__rml_err_msg));
+        this.__rml_state.field_errors.insert("email".to_string(), Some(__rml_err_msg));
     } else {
         this.email = __rml_value;
-        this.__rml_field_errors.insert("email".to_string(), None);
+        this.__rml_state.field_errors.insert("email".to_string(), None);
         this.__rml_bump_version("email");
     }
 }

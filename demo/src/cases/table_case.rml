@@ -50,7 +50,7 @@
                         </div>
                     </template>
                     <template slot="footer">
-                        <span style="color: gray;">共 {user_rows.len()} 条记录</span>
+                        <span style="color: gray;">表格底部</span>
                     </template>
                 </Table>
             </div>

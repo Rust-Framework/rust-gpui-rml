@@ -10,7 +10,7 @@ RML 的属性分为四类，每类有不同的语法和用途：
 | -------- | ----------------------------- | ------------ |
 | 标准 HTML 属性 | `class="..."`、`id="..."`      | 静态属性，直接透传    |
 | 数据绑定属性   | `value={field}`、`class={dyn}` | 动态属性，绑定 ViewModel |
-| 事件绑定属性   | `onclick={fn}`                | 事件处理         |
+| 事件绑定属性   | `on-click={fn}`                | 事件处理         |
 | 指令属性     | `if={cond}`、`each={...}`      | 控制渲染行为       |
 
 ## 2.3.2 标准 HTML 属性
@@ -124,7 +124,7 @@ RML 的属性分为四类，每类有不同的语法和用途：
 ### 基础事件
 
 ```html
-<button onclick={submit}>提交</button>
+<button on-click={submit}>提交</button>
 <input oninput={handle_input} />
 <input onkeydown={handle_key} />
 <input onkeyup={handle_key_up} />
@@ -138,14 +138,14 @@ RML 的属性分为四类，每类有不同的语法和用途：
 也可以用字符串形式绑定方法名：
 
 ```html
-<button onclick="handle_click">方法名绑定</button>
+<button on-click="handle_click">方法名绑定</button>
 ```
 
 ### 带参数的事件
 
 ```html
-<button onclick="delete_item, {item.id}">删除</button>
-<button onclick="update_status, {item.id}, 'completed'">完成</button>
+<button on-click="delete_item, {item.id}">删除</button>
+<button on-click="update_status, {item.id}, 'completed'">完成</button>
 ```
 
 参数用逗号分隔，第一个是方法名，后续是参数表达式。
@@ -154,7 +154,7 @@ RML 的属性分为四类，每类有不同的语法和用途：
 
 | 事件属性          | 触发时机       | 事件对象            |
 | ------------- | ---------- | --------------- |
-| `onclick`     | 点击         | `ClickEvent`    |
+| `on-click`     | 点击         | `ClickEvent`    |
 | `oninput`     | 输入框值变化     | `InputEvent`   |
 | `onchange`    | 值变化（失去焦点后） | `ChangeEvent`   |
 | `onkeydown`   | 键盘按下       | `KeyDownEvent`  |
@@ -197,7 +197,7 @@ RML 的属性分为四类，每类有不同的语法和用途：
 <button
     class="btn primary"              <!-- 标准 HTML 属性 -->
     disabled={is_submitting}         <!-- 数据绑定属性 -->
-    onclick={submit}                 <!-- 事件绑定属性 -->
+    on-click={submit}                 <!-- 事件绑定属性 -->
     if={show_submit_button}          <!-- 指令属性 -->
 >
     提交
@@ -208,7 +208,7 @@ RML 的属性分为四类，每类有不同的语法和用途：
 
 1. 标准 HTML 属性（`class`、`id`、`style`）
 2. 数据绑定属性（`value={}`、`disabled={}`）
-3. 事件绑定属性（`onclick={}`）
+3. 事件绑定属性（`on-click={}`）
 4. 指令属性（`if={}`、`each={}`）
 
 ## 2.3.7 布尔属性的简写
@@ -252,7 +252,7 @@ HTML 的布尔属性（如 `disabled`、`checked`、`readonly`）在 RML 中有�
     label="保存"
     color="blue"
     size="large"
-    onclick={save}
+    on-click={save}
 />
 ```
 
@@ -264,7 +264,7 @@ RML 的属性系统是四类属性的有序组合：
 
 1. **标准 HTML 属性**：`class="..."`、`id="..."`、`style="..."`、`type="..."` 等
 2. **数据绑定属性**：`value={field}`、`disabled={cond}` 等
-3. **事件绑定属性**：`onclick={fn}`、`oninput={fn}` 等
+3. **事件绑定属性**：`on-click={fn}`、`oninput={fn}` 等
 4. **指令属性**：`if={}`、`each={}`、`model={}` 等
 
 掌握这四类属性的语法和用途，你就能在 `.rml` 中表达任何 UI 的结构、样式、数据和行为。

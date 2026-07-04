@@ -16,7 +16,7 @@
 | 宏 | 类型 | 生成内容 |
 |----|------|---------|
 | `#[derive(IModel)]` | derive | 为 `pub` 字段生成 `FieldMeta`，实现 `IModel::rml_fields()` |
-| `#[component]` | attribute | 生成 `IModel`/`ILifecycle`/`IViewModel`/`IComponent` impl + `include!` 注入 `Render` impl；注入 `__rml_<field>_version` 与 `__rml_computed_cache` 字段 |
+| `#[component]` | attribute | 生成 `IModel`/`ILifecycle`/`IViewModel`/`IComponent` impl + `include!` 注入 `Render` impl；注入 `__rml_state: RmlState` 字段（统一承载版本追踪/缓存/InputState/校验/插槽等运行时状态） |
 | `#[window]` | attribute | 在 `#[component]` 基础上额外生成 `IWindow` impl（title/width/height/open/handle/set_handle），窗口操作由 trait 默认实现提供 |
 | `#[command]` | attribute | 标记方法为 UI 可调用命令：生成 `ICommand` impl + **自动注入 `bump_version` 与 `cx.notify()`**（见下方 MVVM 数据驱动） |
 | `#[command(no_notify)]` | attribute | 同上但禁用自动 notify，适合需要精确控制 notify 时机的场景 |
@@ -44,7 +44,7 @@
 
 1. **include! 位置**：`include!` 必须在模块顶层（不能在 `const _: () = { ... }` 块内），因为生成文件含 `impl Render` 块
 2. **字段插值**：`syn::Field` 未实现 `ToTokens`，必须用 `let ty = &f.ty; quote!(#ty)` 而非 `quote!(#f.ty)`
-3. **命名约定**：生成的方法名以 `__rml_` 前缀（如 `__rml_on_loaded_impl`、`__rml_bump_version`、`__rml_computed_cache`），避免与用户方法冲突
+3. **命名约定**：生成的方法名以 `__rml_` 前缀（如 `__rml_on_loaded_impl`、`__rml_bump_version`），字段统一收敛到 `__rml_state: RmlState`，避免与用户方法/字段冲突
 4. **helper attribute**：`#[element]` 通过 `#[derive(IModel, attributes(element))]` 声明，`#[component]` 在展开时剥离并解析
 5. **窗口宏精简**：`#[window]` 仅生成核心方法（title/width/height/open/handle/set_handle），窗口操作（close/show/hide/activate/state）由 `IWindow` trait 默认实现提供
 6. **MVVM 数据驱动（`#[command]`）**：

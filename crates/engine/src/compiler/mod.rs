@@ -28,7 +28,7 @@ use std::fmt;
 /// 字段校验规则（Phase B-3.2：`#[validate]` 宏）
 ///
 /// 由 `crates/engine/src/build/scanner.rs` 从 `.rml.rs` 的 `#[validate(...)]` 属性提取，
-/// 经 `CodegenCtx.field_validations` 传递给 codegen，生成校验代码写入 `__rml_field_errors`。
+/// 经 `CodegenCtx.field_validations` 传递给 codegen，生成校验代码写入 `__rml_state.field_errors`。
 #[derive(Debug, Clone)]
 pub enum ValidationRule {
     /// 非空校验（String 非空、数字非零）
@@ -163,8 +163,6 @@ pub struct CodegenCtx {
     pub user_components: HashMap<String, UserComponentInfo>,
     /// 是否标注 `#[contributehost]`（注册 host slot）
     pub is_contributehost: bool,
-    /// `#[contributehost(bindings = "...")]` — 首次 render 自动 attach Shell 订阅
-    pub contribution_bindings: bool,
     /// 生命周期钩子（Phase B-3：`#[on_loaded]`/`#[on_unloaded]` 自动联动）
     ///
     /// 由 build.rs 扫描 `.rml.rs` impl 块中的 `#[on_loaded]`/`#[on_unloaded]` 标注方法收集，

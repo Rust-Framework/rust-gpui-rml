@@ -42,11 +42,11 @@ codegen 无 StatusBar 专用属性；通用属性大多无意义。
 
 ```html
 <modern_window title="工具" width="800" height="600">
-  <slot_footer>
+  <template slot="footer">
     <StatusBar>
         <Label label={connection_status} />
     </StatusBar>
-  </slot_footer>
+  </template>
 </modern_window>
 ```
 

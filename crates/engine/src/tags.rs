@@ -27,6 +27,7 @@ pub enum BuiltinTag {
     A,
     Label,
     Br,
+    Code,
 }
 
 impl BuiltinTag {
@@ -62,6 +63,8 @@ impl BuiltinTag {
             BuiltinTag::Label => "gpui::div()",
             // <br>：用 hidden() 产生零尺寸占位
             BuiltinTag::Br => "gpui::div().hidden()",
+            // <code>：内联代码，等宽字体
+            BuiltinTag::Code => "gpui::div()",
         }
     }
 
@@ -107,6 +110,7 @@ fn build_tag_map() -> HashMap<&'static str, BuiltinTag> {
     m.insert("a", BuiltinTag::A);
     m.insert("label", BuiltinTag::Label);
     m.insert("br", BuiltinTag::Br);
+    m.insert("code", BuiltinTag::Code);
     m
 }
 
@@ -223,7 +227,7 @@ pub enum RootTag {
     TabWindow,
     /// `<dialog>`：模态对话框（非独立 OS 窗口，依赖父窗口的 Root 层渲染）
     ///
-    /// 复用 `#[window]` 宏标注的结构体（获得 `__rml_window_handle` 字段），
+    /// 复用 `#[window]` 宏标注的结构体（获得 `__rml_state.window_handle` 字段），
     /// 但 codegen 不生成 `impl IWindow`，而是生成 `open(window, cx)` / `close(cx)`
     /// 方法，封装 gpui-component 的 `Dialog` 组件。
     DialogWindow,
@@ -291,6 +295,11 @@ pub struct ComponentTag {
     /// 类型路径，如 `rml_ui::Button`
     pub ctor_path: &'static str,
     pub kind: ComponentKind,
+    /// 是否为容器组件（实现 `ParentElement`，支持 `.child(...)` 接收元素子节点）。
+    ///
+    /// `true`：codegen 将元素子节点生成为 `.child(...)` / `.children(...)` 调用。
+    /// `false`：仅支持单个文本子节点作为 label，元素子节点被拒绝。
+    pub container: bool,
 }
 
 /// 查询扩展组件元信息（仅查内置 gpui-component 路由表）
@@ -302,63 +311,77 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
         "Button" => Some(ComponentTag {
             ctor_path: "rml_ui::Button",
             kind: ComponentKind::Stateless,
+            container: false,
         }),
         "ButtonGroup" => Some(ComponentTag {
             ctor_path: "rml_ui::ButtonGroup",
             kind: ComponentKind::Stateless,
+            container: true,
         }),
         "Badge" => Some(ComponentTag {
             ctor_path: "rml_ui::Badge",
-            kind: ComponentKind::Stateless,
+            kind: ComponentKind::StatelessNoId,
+            container: true,
         }),
         "Checkbox" => Some(ComponentTag {
             ctor_path: "rml_ui::Checkbox",
             kind: ComponentKind::Stateless,
+            container: false,
         }),
         "Label" => Some(ComponentTag {
             ctor_path: "rml_ui::Label",
             kind: ComponentKind::Stateless,
+            container: false,
         }),
         "Separator" => Some(ComponentTag {
             ctor_path: "rml_ui::Separator",
             kind: ComponentKind::Stateless,
+            container: false,
         }),
         // DescriptionList：无 ElementId 容器，子节点为 <description>/<separator>
         "DescriptionList" | "descriptions" => Some(ComponentTag {
             ctor_path: "rml_ui::DescriptionList",
             kind: ComponentKind::StatelessWithItems,
+            container: false,
         }),
         "Tag" => Some(ComponentTag {
             ctor_path: "rml_ui::Tag",
             kind: ComponentKind::Stateless,
+            container: false,
         }),
         "Progress" => Some(ComponentTag {
             ctor_path: "rml_ui::Progress",
             kind: ComponentKind::Stateless,
+            container: false,
         }),
         "ProgressCircle" => Some(ComponentTag {
             ctor_path: "rml_ui::ProgressCircle",
             kind: ComponentKind::Stateless,
+            container: false,
         }),
         "Slider" => Some(ComponentTag {
             ctor_path: "rml_ui::Slider",
             kind: ComponentKind::Stateless,
+            container: false,
         }),
         "Switch" => Some(ComponentTag {
             ctor_path: "rml_ui::Switch",
             kind: ComponentKind::Stateless,
+            container: false,
         }),
         "Input" => Some(ComponentTag {
             ctor_path: "rml_ui::Input",
             kind: ComponentKind::Stateful {
                 state_field: "input_state",
             },
+            container: false,
         }),
         "TextInput" => Some(ComponentTag {
             ctor_path: "rml_ui::Input",
             kind: ComponentKind::Stateful {
                 state_field: "input_state",
             },
+            container: false,
         }),
         // CodeEditor：基于 Input 的代码编辑器，自动应用 mono 字体 + size_full
         // 字段必须为 Option<Entity<InputState>>，在 on_loaded 中延迟初始化
@@ -367,6 +390,7 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             kind: ComponentKind::Stateful {
                 state_field: "editor_state",
             },
+            container: false,
         }),
         // 窗口外壳组件（RenderOnce，无 ElementId 参数）
         // TitleBar / NativeStatusBar 来自 gpui-component，供用户手动组装标题栏/状态栏
@@ -375,62 +399,74 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
         "TitleBar" => Some(ComponentTag {
             ctor_path: "rml_ui::TitleBar",
             kind: ComponentKind::StatelessNoId,
+            container: true,
         }),
         // gpui-component 原生状态栏容器（手动 .left() / .right() 组装）
         // PascalCase: <NativeStatusBar>，kebab-case: <native-status-bar>
         "NativeStatusBar" | "native-status-bar" => Some(ComponentTag {
             ctor_path: "rml_ui::NativeStatusBar",
             kind: ComponentKind::StatelessNoId,
+            container: true,
         }),
         "ActivityBar" => Some(ComponentTag {
             ctor_path: "rml_ui::ActivityBar",
             kind: ComponentKind::EntityRef,
+            container: false,
         }),
         "Tree" => Some(ComponentTag {
             ctor_path: "rml_ui::Tree",
             kind: ComponentKind::Stateful {
                 state_field: "tree_state",
             },
+            container: false,
         }),
         // MVVM / 声明式菜单栏（ui crate MenuBar；声明式由 compiler/menu/ 生成 children）
         "MenuBar" | "menu-bar" => Some(ComponentTag {
             ctor_path: "rml_ui::MenuBar",
             kind: ComponentKind::Stateless,
+            container: false,
         }),
         "menu" => Some(ComponentTag {
             ctor_path: "rml_ui::MenuBar",
             kind: ComponentKind::Stateless,
+            container: false,
         }),
         // Accordion：闭包式 builder，子节点为 <AccordionItem> / <item>
         "Accordion" | "accordion" => Some(ComponentTag {
             ctor_path: "rml_ui::Accordion",
             kind: ComponentKind::StatelessWithItems,
+            container: false,
         }),
         // Avatar：无参构造 RenderOnce 叶子组件（无 ParentElement，无 .label()）
         "Avatar" => Some(ComponentTag {
             ctor_path: "rml_ui::Avatar",
             kind: ComponentKind::StatelessNoId,
+            container: false,
         }),
         // AvatarGroup：无参构造 RenderOnce 容器（.child(Avatar)）
         "AvatarGroup" => Some(ComponentTag {
             ctor_path: "rml_ui::AvatarGroup",
             kind: ComponentKind::StatelessNoId,
+            container: true,
         }),
         // Card：Ant Design 风格卡片容器，需 id 支持 hoverable 悬浮效果
         "Card" => Some(ComponentTag {
             ctor_path: "rml_ui::Card",
             kind: ComponentKind::Stateless,
+            container: true,
         }),
         // TabBar：标签栏容器，子节点为 <Tab>（直接 .child(Tab::new()...)，非闭包）
         // PascalCase: <TabBar>，kebab-case: <tab-bar>
         "TabBar" | "tab-bar" => Some(ComponentTag {
             ctor_path: "rml_ui::TabBar",
             kind: ComponentKind::StatelessWithItems,
+            container: false,
         }),
         // Table：WPF DataGrid 风格声明式表格，子节点为 <Column> / <template slot="...">
         "Table" | "table" => Some(ComponentTag {
             ctor_path: "rml_ui::Table",
             kind: ComponentKind::StatelessWithItems,
+            container: false,
         }),
         _ => None,
     }

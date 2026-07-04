@@ -27,6 +27,7 @@ extern crate rust_rml_core as rml_core;
 
 pub mod prelude;
 pub mod components;
+pub mod state;
 pub mod window;
 
 /// 初始化扩展组件。
@@ -86,3 +87,5 @@ pub use components::{
     Tab, TabBar, TabItem, Table, TableColumn, TableDelegate, TableRow, TabVariant, Tree,
     VisualActivityPanel, configure_menu_bar_popup, menu_bar_button,
 };
+
+pub use state::RmlState;

@@ -22,7 +22,7 @@
 
 RML 的事件系统借鉴 DOM 事件模型，但通过命令系统统一了事件处理：
 
-- **事件绑定**：`onclick={command}` 把 UI 事件连接到 ViewModel 命令
+- **事件绑定**：`on-click={command}` 把 UI 事件连接到 ViewModel 命令
 - **事件对象**：每个事件携带类型化的载荷（`ClickEvent`、`KeyDownEvent` 等）
 - **事件流**：支持冒泡和阻止默认行为
 - **自定义事件**：组件可以声明自己的事件

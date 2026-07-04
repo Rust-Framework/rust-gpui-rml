@@ -6,7 +6,7 @@
 //! - `InputState::set_value` 正向同步（初始值 + 版本号对比）
 //! - 类型转换代码（i32 → parse、String → to_string）
 //! - `__rml_bump_version` + `cx.notify()` 反向回调
-//! - `__rml_input_state_versions` 版本追踪
+//! - `__rml_state.input_state_versions` 版本追踪
 
 use rust_rml_engine::compiler::{compile, CodegenCtx};
 use std::collections::HashMap;
@@ -32,7 +32,6 @@ fn make_ctx_with_field_types() -> CodegenCtx {
         model_fields: Vec::new(),
         user_components: HashMap::new(),
         is_contributehost: false,
-        contribution_bindings: false,
         ..Default::default()
     }
 }
@@ -143,10 +142,10 @@ fn gen_input_state_impl_generates_helper_method() {
         "方法签名应包含 &mut self、placeholder、window、cx 参数，实际：\n{}",
         code
     );
-    // 方法应使用 __rml_input_states HashMap
+    // 方法应使用 __rml_state.input_states HashMap
     assert!(
-        code.contains("__rml_input_states"),
-        "方法应使用 __rml_input_states 字段"
+        code.contains("__rml_state.input_states"),
+        "方法应使用 __rml_state.input_states 字段"
     );
 }
 
@@ -208,7 +207,6 @@ fn gen_model_input_floating_point_types() {
         model_fields: Vec::new(),
         user_components: HashMap::new(),
         is_contributehost: false,
-        contribution_bindings: false,
         ..Default::default()
     };
     let source = r#"
@@ -291,10 +289,10 @@ fn gen_input_state_impl_includes_version_tracking() {
     let ctx = make_ctx_with_field_types();
     let code = compile(RML_SOURCE_WITH_MODEL, &ctx).expect("compile failed");
 
-    // 应使用 __rml_input_state_versions 追踪同步版本
+    // 应使用 __rml_state.input_state_versions 追踪同步版本
     assert!(
-        code.contains("__rml_input_state_versions"),
-        "应使用 __rml_input_state_versions 追踪同步版本，实际：\n{}",
+        code.contains("__rml_state.input_state_versions"),
+        "应使用 __rml_state.input_state_versions 追踪同步版本，实际：\n{}",
         code
     );
     // 应对比 current_version 和 last_synced
@@ -304,7 +302,7 @@ fn gen_input_state_impl_includes_version_tracking() {
     );
     // 反向闭包内应更新版本号标记
     assert!(
-        code.contains("this.__rml_input_state_versions.insert(field.to_string(), v)"),
+        code.contains("this.__rml_state.input_state_versions.insert(field.to_string(), v)"),
         "反向闭包内应更新版本号标记"
     );
 }
@@ -347,7 +345,7 @@ fn gen_field_assign_preserves_old_value_on_error() {
     );
     // Err 分支应设置错误状态
     assert!(
-        err_block.contains("__rml_field_errors.insert"),
+        err_block.contains("__rml_state.field_errors.insert"),
         "Err 分支应设置错误状态"
     );
 }
@@ -357,10 +355,10 @@ fn gen_model_input_applies_red_border_to_input() {
     let ctx = make_ctx_with_field_types();
     let code = compile(RML_SOURCE_WITH_MODEL, &ctx).expect("compile failed");
 
-    // 应检查 __rml_field_errors 获取错误状态
+    // 应检查 __rml_state.field_errors 获取错误状态
     assert!(
-        code.contains("__rml_field_errors.get("),
-        "应检查 __rml_field_errors 获取错误状态"
+        code.contains("__rml_state.field_errors.get("),
+        "应检查 __rml_state.field_errors 获取错误状态"
     );
     // Phase B-3.3：红色边框应直接应用到 Input 自身（通过 Styled trait .border_color()），
     // 而非附加在外层 wrapper div 上（避免双层边框 / 间距错位）
@@ -414,7 +412,7 @@ fn gen_input_state_impl_clears_error_on_forward_sync() {
     // 正向同步部分（set_value 后）应清除错误状态
     let forward_section = code.split("state.set_value(value, window, cx)").nth(1).unwrap_or("");
     assert!(
-        forward_section.contains("__rml_field_errors.insert(field.to_string(), None)"),
+        forward_section.contains("__rml_state.field_errors.insert(field.to_string(), None)"),
         "正向同步 set_value 后应清除错误状态，实际：\n{}",
         forward_section
     );
@@ -443,7 +441,6 @@ fn model_with_converter_generates_convert_back_call() {
         model_fields: Vec::new(),
         user_components: HashMap::new(),
         is_contributehost: false,
-        contribution_bindings: false,
         ..Default::default()
     };
     let source = r#"
@@ -521,7 +518,6 @@ fn model_with_converter_generates_forward_convert_call() {
         model_fields: Vec::new(),
         user_components: HashMap::new(),
         is_contributehost: false,
-        contribution_bindings: false,
         ..Default::default()
     };
     let source = r#"

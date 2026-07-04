@@ -44,8 +44,8 @@ pub trait IWorkbench: IContribution {
 
 /// 工作台管理器：资源的打开/关闭/查询。
 ///
-/// 业务实现并经 `rml_app::IAppContextExt::set_workbench_manager` 安装。
-/// 所有方法 `&self`——业务用 `RwLock`/channel 等内部可变性，UI 工作延迟处理。
+/// 业务直接实现此 trait（如 `impl IWorkbenchManager for MainWindow`），
+/// 用 `RwLock` 保护内部状态以支持 `&self` 方法。UI 刷新由调用方在 trait 方法返回后处理。
 pub trait IWorkbenchManager: Send + Sync + 'static {
     /// 打开资源；若已打开则激活现有工作台。无法识别 URI 时返回 `None`。
     fn open(&self, uri: &Uri) -> Option<Arc<dyn IWorkbench>>;

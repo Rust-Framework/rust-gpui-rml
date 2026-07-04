@@ -58,7 +58,7 @@ impl MainWindow {
 ```
 
 **缓存机制**：
-- 每个 `pub` 字段注入 `__rml_<field>_version: AtomicU64`
+- 每个 `pub` 字段在 `__rml_state.field_versions: HashMap<String, AtomicU64>` 中惰性插入版本号计数器
 - `#[command]` 修改字段时自动 `bump_version`
 - `#[computed]` 方法调用时检查依赖字段版本号之和，未变则返回缓存值
 
@@ -72,17 +72,17 @@ impl MainWindow {
 
 | 操作 | 时机 | 开销 | 备注 |
 |---|---|---|---|
-| `Entity<InputState>` 创建 | 首次 render | 一次性 | 后续 render 复用，存入 `__rml_input_states` |
+| `Entity<InputState>` 创建 | 首次 render | 一次性 | 后续 render 复用，存入 `__rml_state.input_states` |
 | `cx.subscribe` + `.detach()` | 首次 render | 一次性 | 订阅随 entity 存活，不占结构体字段 |
 | 版本号对比 | 每次 render | O(1) | `AtomicU64::load` + 整数比较 |
 | `InputState::set_value` | 仅版本号变化时 | 字符串拷贝 | `emit_events=false` 不触发反向闭包 |
 | 反向闭包执行 | 用户每次输入 | 字段回写 + `HashMap::insert` | 闭包内 `bump_version` + `cx.notify()` |
-| `__rml_field_errors.get(field)` | 每次 render | O(1) HashMap 查询 | Phase B-3.1 校验状态查询，确定是否包裹红色边框 + tooltip |
+| `__rml_state.field_errors.get(field)` | 每次 render | O(1) HashMap 查询 | Phase B-3.1 校验状态查询，确定是否包裹红色边框 + tooltip |
 
 **关键优化点**：
 
 1. **惰性初始化**：`InputState` entity 仅在首次 render 时创建，后续 render 仅版本号对比
-2. **正向同步条件触发**：`__rml_get_version(field) != __rml_input_state_versions[field]` 时才调用 `set_value`，避免冗余更新
+2. **正向同步条件触发**：`__rml_get_version(field) != __rml_state.input_state_versions[field]` 时才调用 `set_value`，避免冗余更新
 3. **`Subscription.detach()`**：不存储 `Vec<Subscription>`（避免 `Subscription` 非 `Sync` 导致视图不满足 `Send + Sync`），订阅随 entity 生命周期自动清理
 4. **`cx.notify()` 批量合并**：反向闭包内的 `cx.notify()` 与 `#[command]` 的自动 notify 会合并，多次输入只触发一次 render
 
@@ -147,7 +147,7 @@ pub email: String,
 
 // ✅ 正例：防抖搜索（model 同步 + 防抖触发搜索）
 <input model={search_text} />
-<button onclick={perform_search}>搜索</button>
+<button on-click={perform_search}>搜索</button>
 // 用户点击按钮才触发搜索，而非每次输入
 ```
 
@@ -199,7 +199,7 @@ GPUI 的 element ID intern 机制要求元素有稳定 ID。RML 通过 `ref` 指
 ```html
 <div ref="list_container">
     <h1 ref="title">{title}</h1>
-    <Button ref="submit_btn" onclick={on_submit} label="提交" />
+    <Button ref="submit_btn" on-click={on_submit} label="提交" />
 </div>
 ```
 

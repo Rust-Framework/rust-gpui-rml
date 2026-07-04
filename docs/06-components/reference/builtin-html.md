@@ -55,7 +55,7 @@
 
 | 事件 | 说明 |
 |------|------|
-| `onclick` | 点击 |
+| `on-click` | 点击 |
 | `onmouseenter` / `onmouseleave` | 悬停 |
 | 等 | 见 [事件绑定](../../05-events/event-binding.md) |
 

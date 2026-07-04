@@ -44,12 +44,12 @@ pub fn contribute(args: TokenStream, input: TokenStream) -> TokenStream {
 
 /// 声明贡献点主机标记类型（通常标注主窗口 ViewModel）。
 ///
-/// - 自动实现 [`IContributionHost`] 并在启动时 `App::add` 注册 host slot
-/// - 若指定 `bindings = "method"`：宏生成 `__rml_attach_contribution_bindings`，
-///   在首次 render 时 `subscribe_host_changes` 并调用该方法（应用自行决定如何刷新 UI）
+/// 仅接受 `id = "..."` 参数，生成 `pub const ID: &'static str`。
+/// 用户需手写 host handle（实现 `IContributionHost`）并在 `on_loaded` 中
+/// `cx.get_contribution_registry().add(handle)` + `bootstrap_host_contributions(cx, Self::ID)`。
 ///
 /// ```rust,ignore
-/// #[contributehost(id = "my.app", bindings = "refresh_bindings")]
+/// #[contributehost(id = "my.app")]
 /// #[window]
 /// pub struct MainWindow { ... }
 /// ```
@@ -90,7 +90,7 @@ pub fn component(args: TokenStream, input: TokenStream) -> TokenStream {
 
 /// 标记结构体为窗口（顶层 OS 窗口）。
 ///
-/// 在 `#[component]` 基础上额外生成窗口句柄字段（`__rml_window_handle`）。
+/// 在 `#[component]` 基础上额外注入窗口句柄（存入 `__rml_state.window_handle`）。
 /// `IWindow` trait 实现由 RML 编译器从 `<window>` 根节点属性提取并生成。
 ///
 /// **不接受任何属性参数**。窗口配置（`title`/`width`/`height`）在 `.rml` 根节点上声明式配置：

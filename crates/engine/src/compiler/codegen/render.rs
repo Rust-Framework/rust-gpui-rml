@@ -32,12 +32,9 @@ pub(super) fn gen_render_impl_from_children(
         "    fn render(&mut self, _window: &mut gpui::Window, cx: &mut gpui::Context<Self>) -> impl gpui::IntoElement {\n",
     );
     out.push_str("        let _rml_render_guard = rml_core::computed_cache::RenderThreadGuard::enter();\n");
-    out.push_str("        if !self.__rml_loaded {\n");
-    out.push_str("            self.__rml_loaded = true;\n");
+    out.push_str("        if !self.__rml_state.loaded {\n");
+    out.push_str("            self.__rml_state.loaded = true;\n");
     out.push_str("            rml_core::lifecycle::ILifecycle::on_loaded(self, _window, cx);\n");
-    if ctx.contribution_bindings {
-        out.push_str("            self.__rml_attach_contribution_bindings(cx);\n");
-    }
     out.push_str("        }\n");
     out.push_str("        use gpui::{ParentElement, InteractiveElement, StatefulInteractiveElement, IntoElement, Styled};\n");
     out.push_str("        use rml_ui::{ContextMenuExt, DropdownMenu, PopupMenuItem, Side, h_flex};\n");

@@ -48,7 +48,7 @@
                     <menu-separator />
                     <menu-item label="Standard Action" icon="Check" on-click={on_standard} />
                     <menu-separator />
-                    <menu-item label="Exit" icon="X" on-click={on_exit} />
+                    <menu-item label="Exit" icon="Close" on-click={on_exit} />
                 </dropdown-menu>
             </div>
         </Card>

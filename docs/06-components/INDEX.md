@@ -27,7 +27,7 @@ RML 的组件系统是构建大型应用的基础：
 - **内置组件**：以 `tags.rs` 路由表为准，分 HTML 基础轨与 gpui-component 扩展轨
 - **组件参考**：`reference/` 下每个已注册标签一份文档，属性仅收录 codegen 实际支持的项
 - **自定义组件**：用 `#[component]` 宏封装可复用的 UI 单元
-- **插槽**：窗口插槽（`slot_left` 等）与组件 `<slot>` 实现内容分发
+- **插槽**：窗口插槽（`slot="left"` 等）与组件 `<slot>` 实现内容分发
 - **MVVM Shell 控件**：ActivityBar / menu / status_bar / Tree 由 ViewModel 数据驱动
 
 下一节 → [6.1 内置组件](./builtin-components.md)

@@ -34,11 +34,11 @@
 
 ```html
 <modern_window title="应用" width="900" height="600">
-    <slot_title>
+    <template slot="title">
         <TitleBar>
             <Label label={window_subtitle} font_semibold="" />
         </TitleBar>
-    </slot_title>
+    </template>
     <div class="main">...</div>
 </modern_window>
 ```

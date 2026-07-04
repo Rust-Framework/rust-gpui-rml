@@ -8,7 +8,7 @@
 
 ```html
 <Switch />
-<Switch selected={dark_mode} onclick={on_toggle_dark} />
+<Switch selected={dark_mode} on-click={on_toggle_dark} />
 ```
 
 ## 属性
@@ -24,7 +24,7 @@
 
 | 事件 | 说明 |
 |------|------|
-| `onclick` | 点击切换；在命令中更新 `selected` 对应字段 |
+| `on-click` | 点击切换；在命令中更新 `selected` 对应字段 |
 
 ## 数据绑定
 
@@ -39,13 +39,13 @@
 ```html
 <div class="setting-row">
     <Label label="深色模式" />
-    <Switch selected={is_dark} onclick={on_toggle_theme} />
+    <Switch selected={is_dark} on-click={on_toggle_theme} />
 </div>
 ```
 
 ## 常见错误
 
-1. **只绑 `selected` 无 `onclick`** — 状态不会自动回写。
+1. **只绑 `selected` 无 `on-click`** — 状态不会自动回写。
 2. **与 Checkbox 混淆** — Switch 用于二元设置，Checkbox 用于多选/同意场景。
 
 ## 相关组件

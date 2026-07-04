@@ -70,8 +70,6 @@ pub struct StructMetadata {
     pub is_component: bool,
     /// 是否标注 `#[contributehost]`（注册 host slot）
     pub is_contributehost: bool,
-    /// `#[contributehost(bindings = "...")]` — 首次 render 调用宏生成的 attach 方法
-    pub contribution_bindings: bool,
     /// `#[component(slots = ["header", "footer", ...])]` 声明的具名插槽列表
     ///
     /// build.rs 据此填充 `UserComponentInfo.slots`，供 codegen 在父视图中
@@ -148,15 +146,6 @@ pub fn parse_struct_metadata(source: &str) -> HashMap<String, StructMetadata> {
             let has_window = s.attrs.iter().any(|a| a.path().is_ident("window"));
             let has_component = s.attrs.iter().any(|a| a.path().is_ident("component"));
             let is_contributehost = s.attrs.iter().any(|a| a.path().is_ident("contributehost"));
-            let contribution_bindings = s.attrs.iter().any(|a| {
-                if !a.path().is_ident("contributehost") {
-                    return false;
-                }
-                let syn::Meta::List(list) = &a.meta else {
-                    return false;
-                };
-                list.tokens.to_string().contains("bindings")
-            });
             if !has_window && !has_component {
                 continue;
             }
@@ -164,7 +153,6 @@ pub fn parse_struct_metadata(source: &str) -> HashMap<String, StructMetadata> {
             let mut meta = StructMetadata {
                 is_component: has_component,
                 is_contributehost,
-                contribution_bindings,
                 ..Default::default()
             };
 

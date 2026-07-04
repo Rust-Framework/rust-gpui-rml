@@ -9,8 +9,8 @@
 ## 基本用法
 
 ```html
-<Button label="提交" primary="" onclick={on_submit} />
-<Button label={t("demo.click_btn")} ghost="" onclick={on_click} />
+<Button label="提交" primary="" on-click={on_submit} />
+<Button label={t("demo.click_btn")} ghost="" on-click={on_click} />
 ```
 
 ## 属性
@@ -31,7 +31,7 @@
 
 | 事件 | 回调签名（code-behind） | 说明 |
 |------|-------------------------|------|
-| `onclick` | `fn(&mut self, ev: &ClickEvent, cx: &mut Context<Self>)` | 点击；支持 `onclick={method}` 或 `onclick="method"` |
+| `on-click` | `fn(&mut self, ev: &ClickEvent, cx: &mut Context<Self>)` | 点击；支持 `on-click={method}` 或 `on-click="method"` |
 
 ## 数据绑定
 
@@ -42,7 +42,7 @@
 子节点文本可作为 `label` 的简写（与 `label=` 属性互斥）：
 
 ```html
-<Button primary="" onclick={on_click}>点击我</Button>
+<Button primary="" on-click={on_click}>点击我</Button>
 ```
 
 ## 子节点 / 插槽
@@ -59,9 +59,9 @@
         <h2 class="case-title">{t("case.button.title")}</h2>
         <p class="count">{button_demo_text}</p>
         <div class="button-row">
-            <Button label={t("case.button.primary")} primary="" onclick={on_button_demo_click} />
-            <Button label={t("case.button.ghost")} ghost="" onclick={on_button_demo_click} />
-            <Button label={t("case.button.danger")} danger="" onclick={on_button_demo_click} />
+            <Button label={t("case.button.primary")} primary="" on-click={on_button_demo_click} />
+            <Button label={t("case.button.ghost")} ghost="" on-click={on_button_demo_click} />
+            <Button label={t("case.button.danger")} danger="" on-click={on_button_demo_click} />
         </div>
     </div>
 </component>
@@ -71,7 +71,7 @@
 
 1. **使用 `variant="primary"`** — RML 不支持 `variant` 属性，应写 `primary=""`。
 2. **混用 `<button>` 与 `<Button>`** — 小写 `button` 不走组件路由，无 gpui-component 样式。
-3. **期望 `onchange`** — Button 仅支持 `onclick`，`onchange` 在 codegen 中被忽略。
+3. **期望 `onchange`** — Button 仅支持 `on-click`，`onchange` 在 codegen 中被忽略。
 
 ## 相关组件
 

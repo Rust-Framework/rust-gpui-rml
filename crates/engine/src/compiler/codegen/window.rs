@@ -63,11 +63,11 @@ pub(super) fn gen_window_impl(
     }}
 
     fn handle(&self) -> Option<gpui::AnyWindowHandle> {{
-        self.__rml_window_handle
+        self.__rml_state.window_handle
     }}
 
     fn set_handle(&mut self, handle: gpui::AnyWindowHandle) {{
-        self.__rml_window_handle = Some(handle);
+        self.__rml_state.window_handle = Some(handle);
     }}
 }}"#,
         view_name = view_name,
@@ -84,7 +84,7 @@ pub(super) fn gen_window_impl(
 /// 从 `<dialog>` 根节点生成 `open(window, cx)` / `close(cx)` 方法
 ///
 /// 对话框不是独立 OS 窗口，而是父窗口 `Root` 层内的模态组件。
-/// 复用 `#[window]` 宏注入的 `__rml_window_handle: Option<AnyWindowHandle>` 字段
+/// 复用 `#[window]` 宏注入的 `__rml_state.window_handle: Option<AnyWindowHandle>` 字段
 /// 存储父窗口句柄，供 `close()` 通过 `AnyWindowHandle::update` 调用
 /// `WindowExt::close_dialog`。
 ///
@@ -113,7 +113,7 @@ pub(super) fn gen_dialog_impl(elem: &Element, ctx: &CodegenCtx) -> Result<String
         let __rml_width: gpui::Pixels = gpui::px({width:?});
         let __rml_entity = cx.new(|_| {{
             let mut __rml_this = self;
-            __rml_this.__rml_window_handle = Some(__rml_parent_handle);
+            __rml_this.__rml_state.window_handle = Some(__rml_parent_handle);
             __rml_this
         }});
         window.open_alert_dialog(cx, move |__rml_a, _, _| {{
@@ -132,7 +132,7 @@ pub(super) fn gen_dialog_impl(elem: &Element, ctx: &CodegenCtx) -> Result<String
     /// 关闭对话框（通过父窗口句柄调用 `WindowExt::close_dialog`）。
     pub fn close(&mut self, cx: &mut gpui::Context<Self>) {{
         use rml_ui::WindowExt;
-        if let Some(__rml_handle) = self.__rml_window_handle {{
+        if let Some(__rml_handle) = self.__rml_state.window_handle {{
             let _ = __rml_handle.update(cx, |_, __rml_window, __rml_cx| {{
                 __rml_window.close_dialog(__rml_cx);
             }});

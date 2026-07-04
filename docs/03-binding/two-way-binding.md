@@ -37,7 +37,7 @@ RML 的双向绑定基于 gpui-component 的 `InputState` entity 与 `InputEvent
     ↓
 下一次 render：调用 __rml_get_or_init_input_state("count", ...)
     ↓
-对比 __rml_get_version("count") 与 __rml_input_state_versions["count"]
+对比 __rml_get_version("count") 与 __rml_state.input_state_versions["count"]
     ↓ 版本号不同
 entity.update(cx, |state, cx| state.set_value(value, window, cx))
     ↓
@@ -57,7 +57,7 @@ cx.subscribe 的闭包被调用：
         "name" => this.name = value.to_string();  // 回写字段
     }
     this.__rml_bump_version("name");              // 版本号 +1
-    this.__rml_input_state_versions.insert("name", v);  // 标记已同步
+    this.__rml_state.input_state_versions.insert("name", v);  // 标记已同步
     cx.notify();                                  // 触发重绘
     ↓
 下一次 render：对比版本号相等 → 跳过 set_value（循环防护）
@@ -68,7 +68,7 @@ cx.subscribe 的闭包被调用：
 双向绑定面临循环风险：VM→UI 触发 UI→VM，反之亦然。RML 通过两层防护避免循环：
 
 1. **`set_value` 内部 `emit_events=false`**：正向同步调用 `InputState::set_value` 不会触发 `InputEvent::Change`，切断 VM→UI→VM 循环
-2. **版本号标记**：反向闭包内 `bump_version` 后立即更新 `__rml_input_state_versions`，render 时版本号相等跳过 `set_value`，切断 UI→VM→UI 循环
+2. **版本号标记**：反向闭包内 `bump_version` 后立即更新 `__rml_state.input_state_versions`，render 时版本号相等跳过 `set_value`，切断 UI→VM→UI 循环
 
 ## 3.3.3 适用标签与字段类型
 
@@ -127,7 +127,7 @@ codegen 生成（简化）：
 // 反向（InputEvent::Change）
 match Currency.convert_back(&value.to_string()) {
     Some(v) => { this.price = v; bump_version("price"); }  // 解析成功
-    None    => { __rml_field_errors["price"] = Some("转换失败".into()); }  // 解析失败
+    None    => { __rml_state.field_errors["price"] = Some("转换失败".into()); }  // 解析失败
 }
 ```
 
@@ -167,7 +167,7 @@ pub struct Settings {
 <input model={score} placeholder="分数" />
 ```
 
-用户输入 `"25"` 时，codegen 生成的反向闭包执行 `match "25".parse::<i32>() { Ok(v) => this.age = v, Err(_) => 设置错误状态 }`，结果为 `25`。输入 `"abc"` 时 parse 失败，**保留原值**，仅设置 `__rml_field_errors["age"] = Some("请输入有效的整数")`，UI 显示红色边框 + tooltip。
+用户输入 `"25"` 时，codegen 生成的反向闭包执行 `match "25".parse::<i32>() { Ok(v) => this.age = v, Err(_) => 设置错误状态 }`，结果为 `25`。输入 `"abc"` 时 parse 失败，**保留原值**，仅设置 `__rml_state.field_errors["age"] = Some("请输入有效的整数")`，UI 显示红色边框 + tooltip。
 
 ### 完整示例（来自 demo）
 
@@ -199,7 +199,7 @@ impl MainWindow {
 <!-- crates/demo/src/main_window.rml -->
 <input model={name} placeholder="姓名" />
 <input model={age} placeholder="年龄" />
-<button onclick={increment}>+1</button>
+<button on-click={increment}>+1</button>
 <p>{profile_summary}</p>
 ```
 
@@ -230,7 +230,7 @@ pub struct MyView {
 
 ```html
 <input model={search_text} placeholder="搜索..." />
-<button onclick={perform_search}>搜索</button>
+<button on-click={perform_search}>搜索</button>
 ```
 
 ```rust
@@ -348,7 +348,7 @@ pub fn set_value(&mut self, value: impl Into<SharedString>, window: &mut Window,
 
 ### 防护二：版本号标记
 
-反向闭包内 `bump_version` 后立即更新 `__rml_input_state_versions`：
+反向闭包内 `bump_version` 后立即更新 `__rml_state.input_state_versions`：
 
 ```rust
 // codegen 生成的反向闭包（简化）
@@ -359,7 +359,7 @@ cx.subscribe(&entity, move |this, input_entity, event, cx| {
             this.name = value.to_string();              // 回写字段
             this.__rml_bump_version("name");             // 版本号 +1
             let v = this.__rml_get_version("name");
-            this.__rml_input_state_versions.insert("name".to_string(), v);  // 标记已同步
+            this.__rml_state.input_state_versions.insert("name".to_string(), v);  // 标记已同步
             cx.notify();                                 // 触发重绘
         }
         _ => {}
@@ -371,7 +371,7 @@ cx.subscribe(&entity, move |this, input_entity, event, cx| {
 
 ```rust
 let current_version = self.__rml_get_version("name");           // 反向闭包 bump 后的版本号
-let last_synced = self.__rml_input_state_versions.get("name").copied().unwrap_or(0);
+let last_synced = self.__rml_state.input_state_versions.get("name").copied().unwrap_or(0);
 // current_version == last_synced（反向闭包已标记）
 // → 跳过 set_value，切断 UI→VM→UI 循环
 ```
@@ -384,7 +384,7 @@ let last_synced = self.__rml_input_state_versions.get("name").copied().unwrap_or
 #[command]
 pub fn uppercase_name(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
     self.name = self.name.to_uppercase();  // 修改了 model 绑定的字段
-    // 宏自动注入：bump_version("name")，但未更新 __rml_input_state_versions
+    // 宏自动注入：bump_version("name")，但未更新 __rml_state.input_state_versions
 }
 ```
 
@@ -396,9 +396,9 @@ pub fn uppercase_name(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
 - 反向闭包内 `parse` 失败，进入 `Err(_)` 分支
 - **不调用** `__rml_bump_version`（字段值未变）
 - **不调用** `cx.notify()`（但闭包末尾仍有 notify，触发一次重绘以显示错误 UI）
-- 设置 `__rml_field_errors[field] = Some("请输入有效的整数")`
+- 设置 `__rml_state.field_errors[field] = Some("请输入有效的整数")`
 - 下一次 render：版本号未变（`current_version == last_synced`），跳过 `set_value`
-- render 时检查 `__rml_field_errors`，发现 `Some`，包裹红色边框 + tooltip
+- render 时检查 `__rml_state.field_errors`，发现 `Some`，包裹红色边框 + tooltip
 
 ## 3.3.9 校验失败 UI
 
@@ -414,17 +414,17 @@ pub fn uppercase_name(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
 ```
 用户输入 "abc"（i32 字段）
     ↓
-反向闭包 parse 失败 → __rml_field_errors["age"] = Some("请输入有效的整数")
+反向闭包 parse 失败 → __rml_state.field_errors["age"] = Some("请输入有效的整数")
     ↓
-cx.notify() → render → 检查 __rml_field_errors → 显示红色边框 + tooltip
+cx.notify() → render → 检查 __rml_state.field_errors → 显示红色边框 + tooltip
     ↓
 用户输入 "25"（有效值）
     ↓
-反向闭包 parse 成功 → __rml_field_errors["age"] = None + bump_version + cx.notify()
+反向闭包 parse 成功 → __rml_state.field_errors["age"] = None + bump_version + cx.notify()
     ↓
-render → 检查 __rml_field_errors → None → 直接返回 Input（无边框）
+render → 检查 __rml_state.field_errors → None → 直接返回 Input（无边框）
     ↓
-正向同步（版本号变化）→ set_value("25") → __rml_field_errors["age"] = None（冗余清除）
+正向同步（版本号变化）→ set_value("25") → __rml_state.field_errors["age"] = None（冗余清除）
 ```
 
 ### 正向同步清除错误
@@ -439,7 +439,7 @@ pub fn reset_age(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
 }
 ```
 
-render 时版本号变化 → `set_value("0")` → `__rml_field_errors["age"] = None` → 红色边框消失。
+render 时版本号变化 → `set_value("0")` → `__rml_state.field_errors["age"] = None` → 红色边框消失。
 
 ### 默认错误消息
 
@@ -540,12 +540,12 @@ pub name: String,
 ```rust
 let __rml_value = value.to_string();
 if __rml_value.is_empty() {
-    this.__rml_field_errors.insert("name", Some("此项为必填".into()));      // required 先执行
+    this.__rml_state.field_errors.insert("name", Some("此项为必填".into()));      // required 先执行
 } else if __rml_value.len() < 3 || __rml_value.len() > 20 {
-    this.__rml_field_errors.insert("name", Some("长度必须在 3-20 之间".into())); // length 后执行
+    this.__rml_state.field_errors.insert("name", Some("长度必须在 3-20 之间".into())); // length 后执行
 } else {
     this.name = __rml_value;
-    this.__rml_field_errors.insert("name", None);  // 清除错误
+    this.__rml_state.field_errors.insert("name", None);  // 清除错误
     this.__rml_bump_version("name");
 }
 ```
@@ -652,10 +652,10 @@ pub struct RegistrationForm {
     let __rml_validator = EmailValidator::default();
     let __rml_result = __rml_validator.valid_with_view(&__rml_value, this as &dyn std::any::Any);
     if let Some(__rml_err_msg) = __rml_validator.message(&__rml_result) {
-        this.__rml_field_errors.insert("email".to_string(), Some(__rml_err_msg));
+        this.__rml_state.field_errors.insert("email".to_string(), Some(__rml_err_msg));
     } else {
         this.email = __rml_value;
-        this.__rml_field_errors.insert("email".to_string(), None);
+        this.__rml_state.field_errors.insert("email".to_string(), None);
         this.__rml_bump_version("email");
     }
 }

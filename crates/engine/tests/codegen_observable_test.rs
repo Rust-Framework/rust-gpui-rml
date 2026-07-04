@@ -29,7 +29,6 @@ fn make_ctx() -> CodegenCtx {
         model_fields: Vec::new(),
         user_components: HashMap::new(),
         is_contributehost: false,
-        contribution_bindings: false,
         ..Default::default()
     }
 }
@@ -71,16 +70,16 @@ fn generates_computed_deps_version_method() {
 }
 
 #[test]
-fn bump_version_targets_count_field() {
+fn bump_version_delegates_to_rml_state() {
     let code = compile(RML_SOURCE, &make_ctx()).expect("compile failed");
     assert!(
-        code.contains("\"count\" =>"),
-        "missing count match arm\n{}",
+        code.contains("fn __rml_bump_version(&mut self, field: &str)"),
+        "missing bump_version method with &mut self signature\n{}",
         code
     );
     assert!(
-        code.contains("__rml_count_version"),
-        "missing __rml_count_version field access\n{}",
+        code.contains("self.__rml_state.bump_version(field)"),
+        "missing RmlState::bump_version delegation\n{}",
         code
     );
 }
@@ -91,19 +90,6 @@ fn computed_deps_sums_count_version() {
     assert!(
         code.contains("self.__rml_get_version(\"count\")"),
         "missing computed deps sum expression\n{}",
-        code
-    );
-}
-
-#[test]
-fn contributehost_emits_attach_contribution_bindings() {
-    let mut ctx = make_ctx();
-    ctx.view_struct_name = "Shell".to_string();
-    ctx.contribution_bindings = true;
-    let code = compile(RML_SOURCE, &ctx).expect("compile");
-    assert!(
-        code.contains("__rml_attach_contribution_bindings"),
-        "missing __rml_attach_contribution_bindings for contributehost with bindings\n{}",
         code
     );
 }

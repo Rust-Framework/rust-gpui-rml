@@ -145,9 +145,9 @@ fn gen_element(
 
     // <slot> 占位符：组件模板内声明插槽渲染位置（Vue 风格 `<slot name="header" />`）。
     //
-    // slot 字段类型为 `Option<SlotRenderer>`（`Box<dyn Fn(&mut Window, &mut App) -> AnyElement + Send + Sync>`），
-    // codegen 调用闭包即时生成 element：
-    //   `self.__rml_slot_<name>.as_ref().map(|f| f(window, cx)).unwrap_or(gpui::Empty)`
+    // slot 渲染闭包存储在 `self.__rml_state.slots: HashMap<&'static str, SlotRenderer>`，
+    // codegen 通过 `self.__rml_state.slot(<name>)` 查询并调用闭包即时生成 element：
+    //   `self.__rml_state.slot("name").map(|f| f(_window, cx)).unwrap_or(gpui::Empty)`
     //
     // 返回 is_iter=false（直接是 AnyElement，不需要 .children() 包裹）。
     // 无 name 属性的 `<slot />` 对应 "default" 插槽。
@@ -162,8 +162,8 @@ fn gen_element(
             .unwrap_or_else(|| "default".to_string());
         return Ok((
             format!(
-                "self.__rml_slot_{}.as_ref().map_or(gpui::Empty.into_any_element(), |f| f(_window, cx))",
-                slot_name
+                "self.__rml_state.slot({slot_name:?}).map_or(gpui::Empty.into_any_element(), |f| f(_window, cx))",
+                slot_name = slot_name
             ),
             false,
         ));

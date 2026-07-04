@@ -262,7 +262,7 @@ impl App {
 <div class="app">
     <header class="app-header">
         <h1>我的应用</h1>
-        <button onclick={toggle_theme}>
+        <button on-click={toggle_theme}>
             {theme_manager.current_theme == Theme::Light ? "🌙" : "☀️"}
         </button>
     </header>
@@ -371,27 +371,27 @@ impl ThemeManager {
             <button
                 class="color-option"
                 style="background: #007bff;"
-                onclick={set_primary_color, '#007bff'}
+                on-click={set_primary_color, '#007bff'}
             ></button>
             <button
                 class="color-option"
                 style="background: #28a745;"
-                onclick={set_primary_color, '#28a745'}
+                on-click={set_primary_color, '#28a745'}
             ></button>
             <button
                 class="color-option"
                 style="background: #dc3545;"
-                onclick={set_primary_color, '#dc3545'}
+                on-click={set_primary_color, '#dc3545'}
             ></button>
             <button
                 class="color-option"
                 style="background: #ffc107;"
-                onclick={set_primary_color, '#ffc107'}
+                on-click={set_primary_color, '#ffc107'}
             ></button>
         </div>
     </div>
 
-    <button onclick={reset_primary_color}>重置</button>
+    <button on-click={reset_primary_color}>重置</button>
 </div>
 ```
 
@@ -610,19 +610,19 @@ impl ThemeManager {
             <div class="theme-options">
                 <button
                     class="theme-option {current_theme == Theme::Light ? 'active' : ''}"
-                    onclick={set_theme, 'light'}
+                    on-click={set_theme, 'light'}
                 >
                     ☀️ 亮色
                 </button>
                 <button
                     class="theme-option {current_theme == Theme::Dark ? 'active' : ''}"
-                    onclick={set_theme, 'dark'}
+                    on-click={set_theme, 'dark'}
                 >
                     🌙 暗色
                 </button>
                 <button
                     class="theme-option {current_theme == Theme::Auto ? 'active' : ''}"
-                    onclick={set_theme, 'auto'}
+                    on-click={set_theme, 'auto'}
                 >
                     🖥️ 跟随系统
                 </button>

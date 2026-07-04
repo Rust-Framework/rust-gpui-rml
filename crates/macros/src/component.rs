@@ -60,108 +60,33 @@ fn gen_impl_i_model(struct_name: &Ident, fields: &Fields) -> TokenStream {
     }
 }
 
-/// 为 pub 字段注入版本追踪字段 + ComputedCache 字段 + InputState 存储 + 订阅 guard
+/// 为结构体注入单一 `__rml_state: rml_ui::RmlState` 字段
 ///
-/// Phase B-2：每个 pub 字段自动成为 observable 字段，宏注入以下字段（均为私有）：
-/// - `__rml_<field>_version: AtomicU64`（每个 pub 字段一个，作为版本计数器）
-/// - `__rml_computed_cache: ComputedCache`（每结构体一个，存储 #[computed] 结果）
+/// `RmlState` 统一承载框架运行时所需的全部状态：
+/// - 字段版本追踪（`HashMap<String, AtomicU64>`，替代旧每字段一个 AtomicU64 的设计）
+/// - `#[computed]` 缓存
+/// - `<input model={field}>` 双向绑定所需的 `InputState` entity 暂存与正向同步版本
+/// - 字段校验错误状态
+/// - `on_loaded` 一次性初始化守卫
+/// - 窗口句柄（由 `#[window]` 使用）
+/// - 具名插槽渲染闭包（`HashMap<&'static str, SlotRenderer>`）
 ///
-/// Phase B-3：双向绑定所需的状态存储：
-/// - `__rml_input_states: HashMap<String, Entity<InputState>>`（每结构体一个，惰性存储
-///   每个 `<input model={field}>` 绑定的 InputState entity，按字段名索引）
-/// - `__rml_input_state_versions: HashMap<String, u64>`（每结构体一个，记录每个字段上次
-///   正向同步到 InputState 的版本号，render 时对比决定是否需 set_value）
+/// 设计目标：把原本散落在用户结构体中的 7+ 类 `__rml_*` 仪式字段收敛为单一字段，
+/// 让 IDE 自动补全与 rustdoc 只显示一个入口，消除视觉噪声。
 ///
-/// Slot 注入：`#[component(slots = ["header", "footer"])]` 声明的每个插槽注入
-/// `__rml_slot_<name>: Option<gpui::AnyElement>` 私有字段，供父视图通过 setter 注入内容。
-///
-/// 注意：`cx.subscribe` 返回的 `Subscription` 调用 `.detach()` 后随 entity 生命周期存活，
-/// 不存储在结构体中（`Subscription` 非 `Sync`，存储会导致视图不满足 `Send + Sync`）。
-///
-/// 注入字段为私有，不会进入 `IModel::fields()`（其只收集 pub 字段）。
-/// `AtomicU64: Default = 0`，`ComputedCache::default() = 空 map`，
-/// `HashMap::default() = 空 map`，`Vec::default() = 空 vec`，
-/// `Option::default() = None`，`#[derive(Default)]` 兼容。
-pub fn inject_tracking_fields(fields: &mut Fields, slots: &[String]) {
+/// `slots` 参数仅为文档目的保留——插槽名通过 `RmlState::set_slot` 动态注册，
+/// 不再生成 per-slot 字段。父视图 codegen 调用 `__rml_set_slot_<name>()` setter，
+/// setter 内部调用 `self.__rml_state.set_slot("<name>", renderer)`。
+pub fn inject_tracking_fields(fields: &mut Fields, _slots: &[String]) {
     let Fields::Named(named) = fields else {
         return;
     };
 
-    // 收集所有具名字段（pub + private）——版本追踪需要覆盖全部字段，
-    // 因为 #[computed] 方法可能依赖私有字段。IModel 的 pub 过滤在 gen_impl_i_model 中独立处理。
-    let field_names: Vec<String> = named
-        .named
-        .iter()
-        .filter_map(|f| f.ident.as_ref().map(|i| i.to_string()))
-        .collect();
-
-    // 为每个字段注入 AtomicU64 版本计数器
-    for name in &field_names {
-        let version_field_name = format_ident!("__rml_{}_version", name);
-        let field: Field = parse_quote! {
-            #[allow(non_snake_case, dead_code)]
-            #version_field_name: std::sync::atomic::AtomicU64
-        };
-        named.named.push(field);
-    }
-
-    // 注入 ComputedCache（供 #[computed] 缓存包装使用）
-    let cache_field: Field = parse_quote! {
+    let state_field: Field = parse_quote! {
         #[allow(dead_code)]
-        __rml_computed_cache: rml_core::computed_cache::ComputedCache
+        __rml_state: rml_ui::RmlState
     };
-    named.named.push(cache_field);
-
-    // Phase B-3：注入 InputState 存储（供双向绑定 <input model={field}> 惰性初始化使用）
-    let input_states_field: Field = parse_quote! {
-        #[allow(dead_code)]
-        __rml_input_states: std::collections::HashMap<String, gpui::Entity<rml_ui::InputState>>
-    };
-    named.named.push(input_states_field);
-
-    // Phase B-3：注入正向同步版本追踪（记录每个字段上次同步到 InputState 的版本号）
-    // render 时对比 __rml_get_version(field) 与此值，若不同则调用 InputState::set_value
-    //
-    // 注意：不注入 Vec<Subscription> 字段——Subscription 非 Sync，会导致视图类型不满足
-    // Send + Sync 约束。改用 cx.subscribe(...).detach() 让订阅随 entity 生命周期存活。
-    let input_versions_field: Field = parse_quote! {
-        #[allow(dead_code)]
-        __rml_input_state_versions: std::collections::HashMap<String, u64>
-    };
-    named.named.push(input_versions_field);
-
-    // Phase B-3.1：注入字段校验错误状态（记录每个字段的校验失败信息）
-    // None = 校验通过，Some(msg) = 校验失败（红色边框 + tooltip 显示 msg）
-    // 反向闭包 parse 失败时设置 Some，成功时清除为 None；正向同步 set_value 后清除为 None
-    let field_errors_field: Field = parse_quote! {
-        #[allow(dead_code)]
-        __rml_field_errors: std::collections::HashMap<String, Option<gpui::SharedString>>
-    };
-    named.named.push(field_errors_field);
-
-    let loaded_field: Field = parse_quote! {
-        #[allow(dead_code)]
-        __rml_loaded: bool
-    };
-    named.named.push(loaded_field);
-
-    // Slot 字段注入：为 #[component(slots = ["header", ...])] 声明的每个插槽注入
-    // `__rml_slot_<name>: Option<rml_core::slot::SlotRenderer>` 私有字段。
-    //
-    // 用 `SlotRenderer`（`Box<dyn Fn(&mut Window, &mut App) -> AnyElement + Send + Sync>`）
-    // 而非 `AnyElement`，因为 `IModel: Send + Sync` 要求组件类型线程安全，
-    // 而 `AnyElement` 含 `Rc` 不满足 `Send`。闭包把 cx 作为参数，不捕获 cx，可满足约束。
-    //
-    // 父视图 codegen 通过 `__rml_set_slot_<name>()` setter 注入闭包，
-    // 组件 render 通过 `self.__rml_slot_<name>.as_ref().map(|f| f(window, cx))` 调用。
-    for slot_name in slots {
-        let field_name = format_ident!("__rml_slot_{}", slot_name);
-        let slot_field: Field = parse_quote! {
-            #[allow(non_snake_case, dead_code)]
-            #field_name: Option<rml_core::slot::SlotRenderer>
-        };
-        named.named.push(slot_field);
-    }
+    named.named.push(state_field);
 }
 
 /// 生成组件所需的全部 trait 实现（IModel + ILifecycle + IViewModel + IComponent）
@@ -213,10 +138,9 @@ pub fn expand_component_impls(
     } else {
         let setter_methods: Vec<TokenStream> = slots.iter().map(|slot_name| {
             let method_name = format_ident!("__rml_set_slot_{}", slot_name);
-            let field_name = format_ident!("__rml_slot_{}", slot_name);
             quote! {
                 pub fn #method_name(&mut self, renderer: rml_core::slot::SlotRenderer) {
-                    self.#field_name = Some(renderer);
+                    self.__rml_state.set_slot(#slot_name, renderer);
                 }
             }
         }).collect();

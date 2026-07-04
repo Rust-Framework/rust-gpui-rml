@@ -1,4 +1,4 @@
-﻿# 3.4 计算属性
+# 3.4 计算属性
 
 > **本节目标**：完整掌握 `#[computed]` 宏的依赖追踪、缓存机制、使用场景与最佳实践。
 
@@ -206,7 +206,7 @@ pub fn can_submit(&self) -> bool {
 ```
 
 ```html
-<button disabled={!can_submit} onclick={submit}>提交</button>
+<button disabled={!can_submit} on-click={submit}>提交</button>
 ```
 
 ### 场景五：聚合统计

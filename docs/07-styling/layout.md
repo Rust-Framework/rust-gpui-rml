@@ -529,7 +529,7 @@ pub fn is_compact(&self) -> bool {
             <h1 class="header-title">仪表盘</h1>
         </div>
         <div class="header-right">
-            <button class="btn-icon" onclick={toggle_notifications}>
+            <button class="btn-icon" on-click={toggle_notifications}>
                 🔔
             </button>
             <Avatar src={user.avatar} />
@@ -543,13 +543,13 @@ pub fn is_compact(&self) -> bool {
             <nav class="sidebar-nav">
                 <ul class="nav-list">
                     <li class="nav-item active">
-                        <a onclick={show_overview}>概览</a>
+                        <a on-click={show_overview}>概览</a>
                     </li>
                     <li class="nav-item">
-                        <a onclick={show_analytics}>分析</a>
+                        <a on-click={show_analytics}>分析</a>
                     </li>
                     <li class="nav-item">
-                        <a onclick={show_settings}>设置</a>
+                        <a on-click={show_settings}>设置</a>
                     </li>
                 </ul>
             </nav>

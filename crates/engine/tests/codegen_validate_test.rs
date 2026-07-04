@@ -135,7 +135,6 @@ fn make_ctx_with_validator(field: &str, ty: &str, validator_type: &str) -> Codeg
         model_fields: Vec::new(),
         user_components: HashMap::new(),
         is_contributehost: false,
-        contribution_bindings: false,
         ..Default::default()
     }
 }
@@ -237,7 +236,7 @@ fn gen_validator_calls_message_and_handles_pass() {
         else_section
     );
     assert!(
-        else_block.contains("__rml_field_errors.insert"),
+        else_block.contains("__rml_state.field_errors.insert"),
         "成功路径应清除错误状态，实际：\n{}",
         else_section
     );
@@ -271,7 +270,7 @@ fn gen_validator_calls_message_and_handles_fail() {
         .unwrap_or("");
     let fail_block = fail_section.split("} else {").next().unwrap_or("");
     assert!(
-        fail_block.contains("__rml_field_errors.insert"),
+        fail_block.contains("__rml_state.field_errors.insert"),
         "失败路径应设置错误状态，实际：\n{}",
         fail_block
     );

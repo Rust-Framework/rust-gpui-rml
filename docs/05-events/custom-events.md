@@ -222,7 +222,7 @@ pub on_change: Option<Arc<dyn Fn(&ChangeEvent)>>,
 自定义事件默认会冒泡，可以通过 `stop_propagation()` 阻止：
 
 ```html
-<div onclick={on_outer_click}>
+<div on-click={on_outer_click}>
     <SearchBox on_search={on_search} />
 </div>
 ```
@@ -236,7 +236,7 @@ pub fn perform_search(&mut self, ev: &ClickEvent, cx: &mut Context<Self>) {
         callback(&SearchEvent { /* ... */ });
     }
 
-    // 阻止冒泡，不触发外部 div 的 onclick
+    // 阻止冒泡，不触发外部 div 的 on-click
     ev.stop_propagation();
 }
 ```
@@ -324,15 +324,15 @@ impl Dialog {
 
 ```html
 <!-- components/dialog.rml -->
-<div if={is_open} class="dialog-overlay" onclick={on_overlay_click}>
-    <div class="dialog-content" onclick={on_content_click}>
+<div if={is_open} class="dialog-overlay" on-click={on_overlay_click}>
+    <div class="dialog-content" on-click={on_content_click}>
         <h2 class="dialog-title">{title}</h2>
         <div class="dialog-body">
             <slot></slot>
         </div>
         <div class="dialog-footer">
-            <button onclick={on_cancel_click}>取消</button>
-            <button onclick={on_confirm_click}>确认</button>
+            <button on-click={on_cancel_click}>取消</button>
+            <button on-click={on_confirm_click}>确认</button>
         </div>
     </div>
 </div>
@@ -343,7 +343,7 @@ impl Dialog {
 ```html
 <!-- views/user_view.rml -->
 <div>
-    <button onclick={show_delete_dialog}>删除用户</button>
+    <button on-click={show_delete_dialog}>删除用户</button>
 
     <Dialog
         title="确认删除"

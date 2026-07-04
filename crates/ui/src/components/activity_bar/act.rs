@@ -8,12 +8,14 @@ use rml_core::contribution::IContribution;
 
 use super::traits::IActivityAct;
 
+type ActClickHandler = Arc<dyn Fn(&mut Window, &mut App) + Send + Sync>;
+
 /// 活动栏底部动作项
 pub struct ActivityAct {
     id: String,
     icon: SharedString,
     title: SharedString,
-    on_click: Option<Arc<dyn Fn(&mut Window, &mut App) + Send + Sync>>,
+    on_click: Option<ActClickHandler>,
 }
 
 impl ActivityAct {

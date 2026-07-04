@@ -1,4 +1,4 @@
-﻿# 4.4 命令系统
+# 4.4 命令系统
 
 > **本节目标**：完整掌握 RML 的命令系统——ICommand trait、`#[command]` 宏、命令参数、命令的启用条件。
 
@@ -27,7 +27,7 @@ pub fn increment(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
 ```
 
 ```html
-<button onclick={increment}>+1</button>
+<button on-click={increment}>+1</button>
 ```
 
 ## 4.4.2 ICommand trait
@@ -98,7 +98,7 @@ pub fn increment(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
 ```
 
 ```html
-<button onclick={increment}>+1</button>
+<button on-click={increment}>+1</button>
 ```
 
 ### 单参数命令
@@ -112,7 +112,7 @@ pub fn delete_item(&mut self, id: u64, _: &ClickEvent, cx: &mut Context<Self>) {
 ```
 
 ```html
-<button onclick={delete_item, {item.id}}>删除</button>
+<button on-click={delete_item, {item.id}}>删除</button>
 ```
 
 ### 多参数命令
@@ -134,7 +134,7 @@ pub fn update_status(
 ```
 
 ```html
-<button onclick={update_status, {item.id}, 'completed'}>完成</button>
+<button on-click={update_status, {item.id}, 'completed'}>完成</button>
 ```
 
 ### 参数类型
@@ -143,9 +143,9 @@ pub fn update_status(
 
 | 参数类型          | 在 `.rml` 中的写法                  |
 | ------------- | ------------------------------ |
-| `i32`、`u64` 等 | `onclick={fn, 42}`             |
-| `SharedString` | `onclick={fn, 'hello'}` 或 `onclick={fn, {field}}` |
-| `bool`        | `onclick={fn, true}`           |
+| `i32`、`u64` 等 | `on-click={fn, 42}`             |
+| `SharedString` | `on-click={fn, 'hello'}` 或 `on-click={fn, {field}}` |
+| `bool`        | `on-click={fn, true}`           |
 | 自定义类型         | 需要实现 `FromStr` 或提供转换           |
 
 ## 4.4.5 命令的启用条件
@@ -166,7 +166,7 @@ pub fn can_increment(&self) -> bool {
 
 ```html
 <!-- 按钮在 can_increment 返回 false 时自动禁用 -->
-<button onclick={increment}>+1</button>
+<button on-click={increment}>+1</button>
 ```
 
 ### 用计算属性控制启用状态
@@ -181,7 +181,7 @@ pub fn can_submit(&self) -> bool {
 ```
 
 ```html
-<button disabled={!can_submit} onclick={submit}>提交</button>
+<button disabled={!can_submit} on-click={submit}>提交</button>
 ```
 
 ### 两种方式的对比
@@ -219,7 +219,7 @@ pub fn on_key_down(&mut self, ev: &KeyDownEvent, cx: &mut Context<Self>) {
 
 | 事件对象           | 触发事件       | 常用属性                    |
 | -------------- | ---------- | ----------------------- |
-| `ClickEvent`   | `onclick`  | `position`、`button`     |
+| `ClickEvent`   | `on-click`  | `position`、`button`     |
 | `ChangeEvent`  | `onchange` | `value`                 |
 | `InputEvent`   | `oninput`  | `value`                 |
 | `KeyDownEvent` | `onkeydown`| `key`、`modifiers`       |
@@ -265,7 +265,7 @@ pub fn handle_click(&mut self, ...) { ... }  // 应为 submit
 
 ```html
 <!-- 同一个命令绑定到不同事件 -->
-<button onclick={submit}>提交</button>
+<button on-click={submit}>提交</button>
 <input onkeydown={on_enter_key} />
 
 <!-- 也可以直接绑定到回车键 -->
@@ -474,7 +474,7 @@ async fn process_payment(amount: f64) -> Result<(), String> {
 
 ## 4.4.12 声明式命令绑定（command={field}）
 
-`onclick={method}` 是强类型直接调用——codegen 生成 `this.method(&ev, cx)`，类型安全但命令与事件绑定耦合。`command={field}` 则是声明式命令绑定（对齐 WPF `ICommand`）：ViewModel 持有 `Arc<RelayCommand>` 字段，UI 通过 `command={field}` 绑定，点击时经 `ICommand::can_execute` / `execute` 动态调度。
+`on-click={method}` 是强类型直接调用——codegen 生成 `this.method(&ev, cx)`，类型安全但命令与事件绑定耦合。`command={field}` 则是声明式命令绑定（对齐 WPF `ICommand`）：ViewModel 持有 `Arc<RelayCommand>` 字段，UI 通过 `command={field}` 绑定，点击时经 `ICommand::can_execute` / `execute` 动态调度。
 
 ### RelayCommand
 
@@ -526,7 +526,7 @@ impl ILifecycle for MainWindow {
 })
 ```
 
-`command` 与 `onclick` 同时声明时，`command` 优先。详见 [6.x menu-item · command 属性](../06-components/reference/menu-items.md)。
+`command` 与 `on-click` 同时声明时，`command` 优先。详见 [6.x menu-item · command 属性](../06-components/reference/menu-items.md)。
 
 ## 4.4.13 小结
 

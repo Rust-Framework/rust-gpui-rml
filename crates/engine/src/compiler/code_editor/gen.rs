@@ -106,6 +106,7 @@ mod tests {
             kind: ComponentKind::Stateful {
                 state_field: "editor_state",
             },
+            container: false,
         }
     }
 

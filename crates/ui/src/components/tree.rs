@@ -15,14 +15,16 @@ use gpui_component::{
     tree::{Tree as NativeTree, TreeItem, TreeState},
 };
 
+type TreeItemHandler = Rc<dyn Fn(TreeItem, &mut Window, &mut App) + 'static>;
+
 /// RML 树视图（`<Tree on-activate="..." on-select="..." />`，状态字段 `tree_state`）
 ///
 /// 接受 `Option<&Entity<TreeState>>`，支持 `on_loaded` 前首次渲染不 panic。
 #[derive(IntoElement)]
 pub struct Tree {
     state: Option<Entity<TreeState>>,
-    on_activate: Option<Rc<dyn Fn(TreeItem, &mut Window, &mut App) + 'static>>,
-    on_select: Option<Rc<dyn Fn(TreeItem, &mut Window, &mut App) + 'static>>,
+    on_activate: Option<TreeItemHandler>,
+    on_select: Option<TreeItemHandler>,
 }
 
 impl Tree {
@@ -45,7 +47,7 @@ impl Tree {
 
     pub fn on_activate_rc(
         mut self,
-        handler: Rc<dyn Fn(TreeItem, &mut Window, &mut App) + 'static>,
+        handler: TreeItemHandler,
     ) -> Self {
         self.on_activate = Some(handler);
         self
@@ -62,7 +64,7 @@ impl Tree {
 
     pub fn on_select_rc(
         mut self,
-        handler: Rc<dyn Fn(TreeItem, &mut Window, &mut App) + 'static>,
+        handler: TreeItemHandler,
     ) -> Self {
         self.on_select = Some(handler);
         self

@@ -23,7 +23,7 @@
 
 | 事件 | 说明 |
 |------|------|
-| `onclick` | codegen 支持，但滑块值变化通常需 gpui-component 的 `on_change` — **RML 未映射 `onchange` 给 Slider** |
+| `on-click` | codegen 支持，但滑块值变化通常需 gpui-component 的 `on_change` — **RML 未映射 `onchange` 给 Slider** |
 
 ## 数据绑定
 

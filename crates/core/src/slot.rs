@@ -18,7 +18,7 @@
 
 /// Slot 渲染器：每次调用生成新的 `AnyElement`。
 ///
-/// 子组件 render 时通过 `self.__rml_slot_<name>.as_ref().map(|f| f(window, cx))`
+/// 子组件 render 时通过 `self.__rml_state.slot(<name>).map(|f| f(window, cx))`
 /// 调用闭包生成 slot 内容。
 pub type SlotRenderer = Box<
     dyn Fn(&mut gpui::Window, &mut gpui::App) -> gpui::AnyElement + Send + Sync + 'static,

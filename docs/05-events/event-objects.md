@@ -16,7 +16,7 @@ pub fn on_click(&mut self, ev: &ClickEvent, cx: &mut ViewContext<Self>) {
 
 ## 5.2.2 ClickEvent
 
-点击事件对象，用于 `onclick`、`ondblclick`。
+点击事件对象，用于 `on-click`、`ondblclick`。
 
 ```rust
 pub struct ClickEvent {

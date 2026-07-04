@@ -1,4 +1,4 @@
-﻿# 4.3 元素引用
+# 4.3 元素引用
 
 > **本节目标**：掌握 `ref` 属性与 `ElementRef<T>` 的命令式访问能力，在需要直接操作 DOM 元素时游刃有余。
 
@@ -16,7 +16,7 @@
 ```html
 <!-- .rml 中用 ref 命名元素 -->
 <input ref="username_input" model={user_name} />
-<button ref="submit_btn" onclick={submit}>提交</button>
+<button ref="submit_btn" on-click={submit}>提交</button>
 ```
 
 ```rust
@@ -456,7 +456,7 @@ async fn authenticate(username: &str, password: &str) -> Result<(), AuthError> {
 
     <button
         ref="submit_btn"
-        onclick={submit}
+        on-click={submit}
         disabled={!can_submit}
     >
         {if is_submitting { "登录中..." } else { "登录" }}

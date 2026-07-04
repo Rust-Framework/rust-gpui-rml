@@ -19,7 +19,7 @@
 | 事件 | 回调签名 |
 |------|----------|
 | `onchange` | `fn(&mut self, state: &InputState, cx: &mut Context<Self>)` |
-| `onclick` | `fn(&mut self, ev: &ClickEvent, cx: &mut Context<Self>)` |
+| `on-click` | `fn(&mut self, ev: &ClickEvent, cx: &mut Context<Self>)` |
 
 ## 数据绑定
 

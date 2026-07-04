@@ -9,9 +9,12 @@ use rml_ui::TreeItem;
 ///
 /// `id` 用相对 `src/` 的路径（如 `cases/button_case.rml.rs`），用于后续打开文件。
 /// 文件夹优先，然后按名称排序。跳过 `target/`、`.git/` 等目录。
+///
+/// 路径解析：编译时 `CARGO_MANIFEST_DIR` 指向 `demo/`，运行时可靠定位 `demo/src`，
+/// 不依赖 `current_dir()`（运行时 cwd 可能是 exe 目录或任意工作目录）。
 pub fn build_source_tree() -> Vec<TreeItem> {
-    let workspace_root = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
-    let src_dir = workspace_root.join("src");
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let src_dir = std::path::Path::new(manifest_dir).join("src");
     if !src_dir.exists() {
         return Vec::new();
     }

@@ -9,10 +9,10 @@
 ```html
 <context-menu>
     <div class="file-row">Right-click me</div>
-    <menu-item label="Open" icon="FolderOpen" onclick={on_open} />
+    <menu-item label="Open" icon="FolderOpen" on-click={on_open} />
     <menu-separator />
     <menu-item label="New">
-        <menu-item label="File" icon="File" onclick={on_new_file} />
+        <menu-item label="File" icon="File" on-click={on_new_file} />
     </menu-item>
 </context-menu>
 ```

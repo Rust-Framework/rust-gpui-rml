@@ -239,7 +239,7 @@ impl PaymentView {
     <label>金额：</label>
     <input model={amount | CurrencyConverter} placeholder="¥0.00" />
     <p if={error.is_some()} class="error">{error}</p>
-    <button onclick={submit}>提交</button>
+    <button on-click={submit}>提交</button>
 
     <p>当前金额: {amount | CurrencyConverter}</p>
 </div>

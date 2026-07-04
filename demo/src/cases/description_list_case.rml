@@ -72,17 +72,17 @@
                 <h3>5. 元素子节点作为 value</h3>
                 <DescriptionList bordered="" columns="2">
                     <DescriptionItem label="角色">
-                        <Badge primary="">{role}</Badge>
+                        {role}
                     </DescriptionItem>
                     <DescriptionItem label="状态">
-                        <Badge success="">活跃</Badge>
+                        活跃
                     </DescriptionItem>
                 </DescriptionList>
             </div>
 
             <div class="demo-section">
                 <h3>6. items 绑定（批量数据）</h3>
-                <p>items={desitems} 从 ViewModel 绑定 Vec&lt;Arc&lt;dyn IValue&gt;&gt;，通过 as_contribution() 提取 name()/id() 构造 DescriptionItem：</p>
+                <p>items=&#123;desitems&#125; 从 ViewModel 绑定 Vec&lt;Arc&lt;dyn IValue&gt;&gt;，通过 as_contribution() 提取 name()/id() 构造 DescriptionItem：</p>
                 <descriptions items={desitems} bordered="" columns="2" label-width="100" />
             </div>
 

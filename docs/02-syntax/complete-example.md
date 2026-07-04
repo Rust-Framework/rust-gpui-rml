@@ -1,4 +1,4 @@
-﻿# 2.6 完整示例：Todo 应用
+# 2.6 完整示例：Todo 应用
 
 > **本节目标**：用一个完整的 Todo 应用串起本章所有语法点——标签映射、属性系统、指令系统、插值表达式。
 
@@ -30,7 +30,7 @@
             model={new_todo_text}
             onkeydown="on_enter_key"
         />
-        <button class="btn-add" onclick={add_todo}>添加</button>
+        <button class="btn-add" on-click={add_todo}>添加</button>
     </div>
 
     <!-- 统计信息 -->
@@ -51,7 +51,7 @@
             <span class={todo.done ? "done" : ""}>
                 {todo.text}
             </span>
-            <button class="btn-delete" onclick={delete_todo, {todo.id}}>
+            <button class="btn-delete" on-click={delete_todo, {todo.id}}>
                 ✕
             </button>
         </li>
@@ -99,9 +99,9 @@ class={todo.done ? "done" : ""}  <!-- 动态 class -->
 ### 事件绑定属性
 
 ```html
-onclick={add_todo}                          <!-- 无参数命令 -->
-onclick={toggle_todo, {todo.id}}            <!-- 带参数命令 -->
-onclick={delete_todo, {todo.id}}            <!-- 带参数命令 -->
+on-click={add_todo}                          <!-- 无参数命令 -->
+on-click={toggle_todo, {todo.id}}            <!-- 带参数命令 -->
+on-click={delete_todo, {todo.id}}            <!-- 带参数命令 -->
 onkeydown="on_enter_key"                    <!-- 方法名绑定 -->
 onchange={toggle_todo, {todo.id}}           <!-- change 事件 -->
 ```
@@ -264,7 +264,7 @@ pub fn completed_count(&self) -> usize {
 ### 3. 事件参数的传递
 
 ```html
-<button onclick={delete_todo, {todo.id}}>
+<button on-click={delete_todo, {todo.id}}>
 ```
 
 `{todo.id}` 在编译期被解析为表达式，运行时作为参数传递给 `delete_todo` 命令。

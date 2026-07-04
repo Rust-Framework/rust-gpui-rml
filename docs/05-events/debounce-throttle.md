@@ -1,4 +1,4 @@
-﻿# 5.5 防抖与节流
+# 5.5 防抖与节流
 
 > **本节目标**：掌握高频事件的性能优化策略——防抖（Debounce）与节流（Throttle）。
 
@@ -414,7 +414,7 @@ pub struct SearchResult {
             oninput={on_search_input}
             placeholder="搜索..."
         />
-        <button if={!search_text.is_empty()} onclick={clear_search}>✕</button>
+        <button if={!search_text.is_empty()} on-click={clear_search}>✕</button>
     </div>
 
     <div if={is_searching} class="loading">

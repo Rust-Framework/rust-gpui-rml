@@ -58,13 +58,13 @@ Demo 使用 `shell_chrome::map_activity_panels`。带 `bindings` 的 `#[contribu
 `demo/src/shell/main_window.rml` + `main_window.rml.rs`：
 
 ```html
-<slot_left>
+<template slot="left">
     <ActivityBar panels={activity_panels} on_panel_change="on_panel_change">
         <div if={active_panel_id == "samples"} class="nav-tree">
             <Tree on_activate="on_case_activate" />
         </div>
     </ActivityBar>
-</slot_left>
+</template>
 ```
 
 ```rust

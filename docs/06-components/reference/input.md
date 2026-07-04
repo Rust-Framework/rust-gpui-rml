@@ -32,7 +32,7 @@
 | 事件 | 回调签名 | 说明 |
 |------|----------|------|
 | `onchange` | `fn(&mut self, state: &InputState, cx: &mut Context<Self>)` | 输入内容变化；**仅 Input/TextInput 支持** |
-| `onclick` | `fn(&mut self, ev: &ClickEvent, cx: &mut Context<Self>)` | 点击 |
+| `on-click` | `fn(&mut self, ev: &ClickEvent, cx: &mut Context<Self>)` | 点击 |
 
 ## 数据绑定
 
@@ -73,7 +73,7 @@ input_state: Entity<InputState>,
 <dialog title="RML Demo" width="420">
     <div class="login-form">
         <input model={username} placeholder={t("login.username")} />
-        <Button label={t("login.submit")} primary="" onclick={on_login} />
+        <Button label={t("login.submit")} primary="" on-click={on_login} />
     </div>
 </dialog>
 ```

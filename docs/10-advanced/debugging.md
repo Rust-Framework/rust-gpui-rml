@@ -36,7 +36,7 @@ impl Render for LoginView {
 | ----------------- | --------------------- |
 | 生成的代码缺少某元素        | 模板语法错误，元素被静默忽略        |
 | 绑定路径不对            | ViewModel 字段名拼写错误     |
-| 事件未绑定             | `on:click` 写成 `onclick` |
+| 事件未绑定             | `on:click` 写成 `on-click` |
 | `r:if` 不生效        | 条件表达式返回非 bool         |
 
 ## 10.2.2 日志：追踪绑定与命令
@@ -165,7 +165,7 @@ pub fn debug_snapshot(&self, cx: &mut ViewContext<Self>) {
 
 ### 事件不触发
 
-1. 检查事件名拼写：`on:click` 而非 `onclick`（两者都支持，但混用易错）
+1. 检查事件名拼写：`on:click` 而非 `on-click`（两者都支持，但混用易错）
 2. 检查命令方法是否有 `#[command]` 宏
 3. 检查命令签名是否匹配事件载荷
 4. 检查元素是否被 `r:if="false"` 隐藏

@@ -54,7 +54,7 @@ pub(super) fn gen_model_input(
     let code = format!(
         r#"{{
             let __rml_input = {input_code};
-            let __rml_err: Option<gpui::SharedString> = self.__rml_field_errors.get({field:?}).and_then(|e| e.clone());
+            let __rml_err: Option<gpui::SharedString> = self.__rml_state.field_errors.get({field:?}).and_then(|e| e.clone());
             if let Some(__rml_err_msg) = __rml_err {{
                 let __rml_input = __rml_input.border_color(gpui::rgb(0xff0000));
                 gpui::div()
@@ -133,11 +133,11 @@ pub(super) fn gen_field_assign_expr(
 /// match ConverterName.convert_back(&value.to_string()) {
 ///     Some(v) => {
 ///         this.field = v;
-///         this.__rml_field_errors.insert("field".to_string(), None);
+///         this.__rml_state.field_errors.insert("field".to_string(), None);
 ///         this.__rml_bump_version("field");
 ///     }
 ///     None => {
-///         this.__rml_field_errors.insert("field".to_string(), Some("转换失败".into()));
+///         this.__rml_state.field_errors.insert("field".to_string(), Some("转换失败".into()));
 ///     }
 /// }
 /// ```
@@ -146,11 +146,11 @@ fn gen_field_assign_with_converter(field: &str, converter: &str) -> String {
         r#"match {converter}.convert_back(&value.to_string()) {{
     Some(v) => {{
         this.{field} = v;
-        this.__rml_field_errors.insert({field:?}.to_string(), None);
+        this.__rml_state.field_errors.insert({field:?}.to_string(), None);
         this.__rml_bump_version({field:?});
     }}
     None => {{
-        this.__rml_field_errors.insert({field:?}.to_string(), Some("转换失败".into()));
+        this.__rml_state.field_errors.insert({field:?}.to_string(), Some("转换失败".into()));
     }}
 }}"#,
         converter = converter,
@@ -170,15 +170,15 @@ fn gen_field_assign_with_validator(field: &str, ty: &str, validator_type: &str) 
         let __rml_validator = {validator_type}::default();
         let __rml_result = __rml_validator.valid_with_view(value.as_ref(), this as &dyn std::any::Any);
         if let Some(__rml_err_msg) = __rml_validator.message(&__rml_result) {{
-            this.__rml_field_errors.insert({field:?}.to_string(), Some(__rml_err_msg));
+            this.__rml_state.field_errors.insert({field:?}.to_string(), Some(__rml_err_msg));
         }} else {{
             this.{field} = v;
-            this.__rml_field_errors.insert({field:?}.to_string(), None);
+            this.__rml_state.field_errors.insert({field:?}.to_string(), None);
             this.__rml_bump_version({field:?});
         }}
     }}
     Err(_) => {{
-        this.__rml_field_errors.insert({field:?}.to_string(), Some({type_err:?}.into()));
+        this.__rml_state.field_errors.insert({field:?}.to_string(), Some({type_err:?}.into()));
     }}
 }}"#,
                 ty = ty,
@@ -194,10 +194,10 @@ fn gen_field_assign_with_validator(field: &str, ty: &str, validator_type: &str) 
     let __rml_validator = {validator_type}::default();
     let __rml_result = __rml_validator.valid_with_view(&__rml_value, this as &dyn std::any::Any);
     if let Some(__rml_err_msg) = __rml_validator.message(&__rml_result) {{
-        this.__rml_field_errors.insert({field:?}.to_string(), Some(__rml_err_msg));
+        this.__rml_state.field_errors.insert({field:?}.to_string(), Some(__rml_err_msg));
     }} else {{
         this.{field} = __rml_value;
-        this.__rml_field_errors.insert({field:?}.to_string(), None);
+        this.__rml_state.field_errors.insert({field:?}.to_string(), None);
         this.__rml_bump_version({field:?});
     }}
 }}"#,
@@ -214,11 +214,11 @@ fn gen_field_assign_expr_default(field: &str, ty: &str) -> String {
             r#"match value.parse::<{ty}>() {{
                 Ok(v) => {{
                     this.{field} = v;
-                    this.__rml_field_errors.insert({field:?}.to_string(), None);
+                    this.__rml_state.field_errors.insert({field:?}.to_string(), None);
                     this.__rml_bump_version({field:?});
                 }}
                 Err(_) => {{
-                    this.__rml_field_errors.insert({field:?}.to_string(), Some("请输入有效的整数".into()));
+                    this.__rml_state.field_errors.insert({field:?}.to_string(), Some("请输入有效的整数".into()));
                 }}
             }}"#,
             field = field,
@@ -228,11 +228,11 @@ fn gen_field_assign_expr_default(field: &str, ty: &str) -> String {
             r#"match value.parse::<{ty}>() {{
                 Ok(v) => {{
                     this.{field} = v;
-                    this.__rml_field_errors.insert({field:?}.to_string(), None);
+                    this.__rml_state.field_errors.insert({field:?}.to_string(), None);
                     this.__rml_bump_version({field:?});
                 }}
                 Err(_) => {{
-                    this.__rml_field_errors.insert({field:?}.to_string(), Some("请输入有效的数字".into()));
+                    this.__rml_state.field_errors.insert({field:?}.to_string(), Some("请输入有效的数字".into()));
                 }}
             }}"#,
             field = field,
@@ -240,13 +240,13 @@ fn gen_field_assign_expr_default(field: &str, ty: &str) -> String {
         ),
         "bool" => format!(
             r#"this.{field} = !value.is_empty();
-            this.__rml_field_errors.insert({field:?}.to_string(), None);
+            this.__rml_state.field_errors.insert({field:?}.to_string(), None);
             this.__rml_bump_version({field:?});"#,
             field = field
         ),
         _ => format!(
             r#"this.{field} = value.to_string();
-            this.__rml_field_errors.insert({field:?}.to_string(), None);
+            this.__rml_state.field_errors.insert({field:?}.to_string(), None);
             this.__rml_bump_version({field:?});"#,
             field = field
         ),
@@ -289,7 +289,7 @@ fn gen_numeric_field_assign_with_validation(
                 };
                 branches.push_str(&format!(
                     r#"        if {condition} {{
-            this.__rml_field_errors.insert({field:?}.to_string(), Some({msg:?}.into()));
+            this.__rml_state.field_errors.insert({field:?}.to_string(), Some({msg:?}.into()));
         }} else "#,
                     condition = condition,
                     field = field,
@@ -299,7 +299,7 @@ fn gen_numeric_field_assign_with_validation(
             ValidationRule::Custom(fn_name) => {
                 branches.push_str(&format!(
                     r#"if let Some(__rml_err) = Self::{fn_name}(value.as_ref()) {{
-            this.__rml_field_errors.insert({field:?}.to_string(), __rml_err);
+            this.__rml_state.field_errors.insert({field:?}.to_string(), __rml_err);
         }} else "#,
                     fn_name = fn_name,
                     field = field
@@ -312,7 +312,7 @@ fn gen_numeric_field_assign_with_validation(
     branches.push_str(&format!(
         r#"{{
             this.{field} = v;
-            this.__rml_field_errors.insert({field:?}.to_string(), None);
+            this.__rml_state.field_errors.insert({field:?}.to_string(), None);
             this.__rml_bump_version({field:?});
         }}"#,
         field = field
@@ -324,7 +324,7 @@ fn gen_numeric_field_assign_with_validation(
         {branches}
             }}
             Err(_) => {{
-                this.__rml_field_errors.insert({field:?}.to_string(), Some({type_err:?}.into()));
+                this.__rml_state.field_errors.insert({field:?}.to_string(), Some({type_err:?}.into()));
             }}
         }}"#,
         ty = ty,
@@ -348,7 +348,7 @@ fn gen_string_field_assign_with_validation(
                 let msg = custom_msg.unwrap_or("此项为必填");
                 branches.push_str(&format!(
                     r#"        if __rml_value.is_empty() {{
-            this.__rml_field_errors.insert({field:?}.to_string(), Some({msg:?}.into()));
+            this.__rml_state.field_errors.insert({field:?}.to_string(), Some({msg:?}.into()));
         }} else "#,
                     field = field,
                     msg = msg
@@ -373,7 +373,7 @@ fn gen_string_field_assign_with_validation(
                 };
                 branches.push_str(&format!(
                     r#"if {condition} {{
-            this.__rml_field_errors.insert({field:?}.to_string(), Some({msg:?}.into()));
+            this.__rml_state.field_errors.insert({field:?}.to_string(), Some({msg:?}.into()));
         }} else "#,
                     condition = condition,
                     field = field,
@@ -384,7 +384,7 @@ fn gen_string_field_assign_with_validation(
                 let msg = custom_msg.unwrap_or("格式不正确");
                 branches.push_str(&format!(
                     r#"if !rml::regex::Regex::new({pattern:?}).unwrap().is_match(&__rml_value) {{
-            this.__rml_field_errors.insert({field:?}.to_string(), Some({msg:?}.into()));
+            this.__rml_state.field_errors.insert({field:?}.to_string(), Some({msg:?}.into()));
         }} else "#,
                     pattern = pattern,
                     field = field,
@@ -394,7 +394,7 @@ fn gen_string_field_assign_with_validation(
             ValidationRule::Custom(fn_name) => {
                 branches.push_str(&format!(
                     r#"if let Some(__rml_err) = Self::{fn_name}(&__rml_value) {{
-            this.__rml_field_errors.insert({field:?}.to_string(), __rml_err);
+            this.__rml_state.field_errors.insert({field:?}.to_string(), __rml_err);
         }} else "#,
                     fn_name = fn_name,
                     field = field
@@ -407,7 +407,7 @@ fn gen_string_field_assign_with_validation(
     branches.push_str(&format!(
         r#"{{
             this.{field} = __rml_value;
-            this.__rml_field_errors.insert({field:?}.to_string(), None);
+            this.__rml_state.field_errors.insert({field:?}.to_string(), None);
             this.__rml_bump_version({field:?});
         }}"#,
         field = field

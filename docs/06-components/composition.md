@@ -525,7 +525,7 @@ fn get_user_avatar(user_id: u64) -> SharedString {
 <div class="user-management">
     <header class="page-header">
         <h1>用户管理</h1>
-        <Button variant="primary" onclick={show_add_form}>添加用户</Button>
+        <Button variant="primary" on-click={show_add_form}>添加用户</Button>
     </header>
 
     <SearchBox
@@ -559,8 +559,8 @@ fn get_user_avatar(user_id: u64) -> SharedString {
             <p>确定要删除用户 {deleting_user_name} 吗？</p>
         </template>
         <template slot="footer">
-            <Button onclick={handle_delete_cancel}>取消</Button>
-            <Button variant="danger" onclick={handle_delete_confirm}>确认删除</Button>
+            <Button on-click={handle_delete_cancel}>取消</Button>
+            <Button variant="danger" on-click={handle_delete_confirm}>确认删除</Button>
         </template>
     </Dialog>
 </div>

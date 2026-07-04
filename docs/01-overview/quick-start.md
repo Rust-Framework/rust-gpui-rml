@@ -1,4 +1,4 @@
-﻿# 1.3 快速开始
+# 1.3 快速开始
 
 > **本节目标**：15 分钟内从零跑通一个 RML 计数器应用，建立"`.rml` + `.rml.rs` + `main.rs`"三件套的肌肉记忆。
 
@@ -74,9 +74,9 @@ fn main() {
     </div>
 
     <div class="counter-buttons">
-        <button class="btn primary" onclick={increment}>➕ 增加</button>
-        <button class="btn danger" onclick={decrement} if={count > 0}>➖ 减少</button>
-        <button class="btn secondary" onclick={reset}>↺ 重置</button>
+        <button class="btn primary" on-click={increment}>➕ 增加</button>
+        <button class="btn danger" on-click={decrement} if={count > 0}>➖ 减少</button>
+        <button class="btn secondary" on-click={reset}>↺ 重置</button>
     </div>
 </div>
 ```
@@ -85,7 +85,7 @@ fn main() {
 
 - `{count}` —— 单向绑定，显示 ViewModel 的 `count` 字段
 - `if={count > 10}` —— 条件渲染指令，表达式为真时渲染
-- `onclick={increment}` —— 事件绑定，调用 ViewModel 的 `increment` 命令
+- `on-click={increment}` —— 事件绑定，调用 ViewModel 的 `increment` 命令
 - `class="btn primary"` —— 标准 HTML class 属性，映射到 GPUI 样式
 
 ## 1.3.5 编写业务逻辑（`.rml.rs`）
@@ -133,7 +133,7 @@ impl Counter {
 
 - `#[derive(IModel)]` —— 让结构体成为 GPUI Entity，字段自动成为响应式状态
 - `#[component]` —— 标记为 RML 组件，编译器会为其生成 `Render` 实现
-- `#[command]` —— 标记方法为 UI 可调用的命令，`.rml` 中的 `onclick={increment}` 直接绑定到这里
+- `#[command]` —— 标记方法为 UI 可调用的命令，`.rml` 中的 `on-click={increment}` 直接绑定到这里
 - **MVVM 数据驱动**：宏自动追踪 `self.<field>` 的修改并自动注入 `bump_version` + `cx.notify()`，**用户无需手写 `cx.notify()`**
 
 ## 1.3.6 编写入口（`main.rs`）
@@ -205,7 +205,7 @@ views/mod.rs            ← 模块导出
 - [ ] 创建三件套文件结构
 - [ ] 用 `#[derive(IModel)]` + `#[component]` 定义 ViewModel
 - [ ] 用 `#[command]` 暴露方法给 UI（无需手写 `cx.notify()`）
-- [ ] 在 `.rml` 中使用 `{}`、`if`、`onclick` 三种基础语法
+- [ ] 在 `.rml` 中使用 `{}`、`if`、`on-click` 三种基础语法
 - [ ] 配置 `build.rs` 的 `.assets(path, embed)` 双模式资源
 
 下一节 → [1.4 与原生 GPUI 的对比](./comparison.md)

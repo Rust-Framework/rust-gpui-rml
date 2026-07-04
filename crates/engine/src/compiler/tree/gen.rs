@@ -92,6 +92,7 @@ mod tests {
             kind: ComponentKind::Stateful {
                 state_field: "tree_state",
             },
+            container: false,
         }
     }
 

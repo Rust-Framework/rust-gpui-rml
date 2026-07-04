@@ -499,7 +499,7 @@ impl TwoWayBinding for ProgressBar {
             variant={upload_variant}
             show_label={true}
         />
-        <button onclick={cancel_upload}>取消</button>
+        <button on-click={cancel_upload}>取消</button>
     </div>
 
     <div if={upload_complete}>

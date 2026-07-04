@@ -115,7 +115,7 @@
                 <TabBar selected-index={active_tab} on-click={on_tab_select}>
                     <Tab>
                         <span>Account</span>
-                        <Badge label="3" />
+                        <Badge>3</Badge>
                     </Tab>
                     <Tab>
                         <span>Profile</span>

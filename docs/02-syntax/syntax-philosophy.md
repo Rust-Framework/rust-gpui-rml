@@ -52,7 +52,7 @@ RML 通过极简指令扩展能力，**无任何框架前缀**：
 | 列表渲染   | `v-for`       | `{items.map(...)}` | **`each={item in items}`** |
 | 双向绑定   | `v-model`     | `value + onChange` | **`model={field}`**      |
 | 显示/隐藏  | `v-show`      | `style={{display}}` | **`show={cond}`**        |
-| 事件绑定   | `@click`      | `onClick`      | **`onclick={fn}`**       |
+| 事件绑定   | `@click`      | `onClick`      | **`on-click={fn}`**       |
 | 插值     | `{{ var }}`   | `{var}`        | **`{var}`**              |
 | 框架前缀   | `v-`、`@`、`:`  | 无              | **无**                    |
 
@@ -154,7 +154,7 @@ RML 支持 HTML 风格注释：
     <h1>{title}</h1>
 
     <!-- 4. 绑定与指令 -->
-    <button onclick={increment}>+</button>
+    <button on-click={increment}>+</button>
 
 </div>
 ```

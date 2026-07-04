@@ -70,7 +70,7 @@ HTML 的 `<div class="flex">` 比 `div().flex()` 更接近人类认知：UI 结�
 <!-- RML：描述"是什么" -->
 <div class="flex flex-col gap-4 p-6">
     <h1>标题</h1>
-    <button onclick={submit}>提交</button>
+    <button on-click={submit}>提交</button>
 </div>
 ```
 
@@ -98,7 +98,7 @@ counter.rml.rs   ← 工程师编辑：状态、命令、生命周期
 
 - 标准 HTML 标签：`div`、`button`、`input`、`p`、`ul`、`li`
 - 标准 HTML 属性：`class`、`id`、`style`、`placeholder`、`type`
-- 标准事件模型：`onclick`、`oninput`、`onkeydown`
+- 标准事件模型：`on-click`、`oninput`、`onkeydown`
 
 任何写过 HTML 的开发者，打开 `.rml` 文件的第一秒就能读懂结构。RML 不发明新语法，只通过极简指令（`if`、`each`、`model`）扩展能力，且**无任何框架前缀**。
 

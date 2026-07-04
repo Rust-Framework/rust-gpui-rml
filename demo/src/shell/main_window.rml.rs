@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use gpui::{IntoElement, WeakEntity, Window};
 use rml::prelude::*;
@@ -7,7 +7,7 @@ use rml_core::command::{ICommand, RelayCommand};
 use rml_core::contribution::{ContributionOptions, IContribution, IContributionHost, VisualAbilityExt};
 use rml_core::i18n::{t_static, I18nExt};
 use rml_core::theme::ThemeExt;
-use rml_core::workbench::Uri;
+use rml_core::workbench::{IWorkbench, IWorkbenchManager, Uri};
 use rml_ui::{ActivityBar, IActivityPanel, VisualActivityPanel};
 
 use crate::lsp::LspClient;
@@ -16,17 +16,18 @@ use crate::shell::activity_panel::ActivityPanel;
 use crate::shell::case_view_model::CaseViewModel;
 use crate::shell::menu_view_model::MenuViewModel;
 use crate::shell::status_view_model::{build_status_view_models, ContribEntry, StatusViewModel};
-use crate::shell::workbench::DemoWorkbenchManager;
+use crate::shell::workbench::{register_workbench_abilities, CaseWorkbench, LspWorkbenchProvider};
 
 /// MainWindow 弱引用槽位——经 IAppContext::set_service 注册为单例，
 /// ActivityPanel / LspExplorerPanel / 菜单命令通过 get_service::<MainWindowRef>() 查询。
 pub struct MainWindowRef(pub WeakEntity<MainWindow>);
 
-/// MainWindow：`demo.shell` host + ViewModel。
+/// MainWindow：`demo.shell` host + ViewModel + IWorkbenchManager。
 ///
 /// 持有 `cases` / `menus` / `status` / `activities` 四个类型化集合，
 /// 直接绑定模板（tree / menu-bar / status-bar / ActivityBar）。
-/// Tab/资源生命周期委托给 `DemoWorkbenchManager`。
+/// Tab/资源生命周期由 `IWorkbenchManager` trait 直接管理，
+/// 状态存储在 `RwLock` 保护的 `workbenches` / `activated` 字段中。
 ///
 /// 菜单改用 `RelayCommand` 字段（WPF MVVM 模式），消除 menu_shell_contribs.rs 样板。
 #[window]
@@ -47,16 +48,20 @@ pub struct MainWindow {
     switch_en_command: Arc<dyn ICommand>,
     exit_command: Arc<dyn ICommand>,
 
-    // Tab 状态（manager 派生缓存，命令后同步）
+    // Tab 状态（workbenches 派生缓存，命令后同步）
     open_tabs: Vec<Arc<dyn IValue>>,
     selected_tab: usize,
     show_chrome: bool,
     slot_left_size: gpui::Pixels,
 
+    // IWorkbenchManager 状态（RwLock 保护，&self 方法可变）
+    workbenches: Arc<RwLock<Vec<Arc<dyn IWorkbench>>>>,
+    activated: Arc<RwLock<Option<Arc<dyn IWorkbench>>>>,
+    lsp_provider: Arc<LspWorkbenchProvider>,
+
     // 框架仪式
     activity_bar: Option<gpui::Entity<ActivityBar>>,
     entries: Arc<std::sync::RwLock<Vec<ContribEntry>>>,
-    manager: Option<Arc<DemoWorkbenchManager>>,
     lsp_client: Option<Arc<LspClient>>,
 }
 
@@ -110,54 +115,45 @@ impl Default for MainWindow {
             selected_tab: 0,
             show_chrome: false,
             slot_left_size: gpui::px(260.),
+            workbenches: Arc::new(RwLock::new(Vec::new())),
+            activated: Arc::new(RwLock::new(None)),
+            lsp_provider: Arc::new(LspWorkbenchProvider::new(None)),
             activity_bar: None,
             entries: Arc::new(std::sync::RwLock::new(Vec::new())),
-            manager: None,
             lsp_client: None,
-            // #[window] 注入字段
-            __rml_window_handle: None,
-            // 版本计数器（每个字段一个，含 __rml_window_handle 自身）
-            __rml_cases_version: Default::default(),
-            __rml_menus_version: Default::default(),
-            __rml_status_version: Default::default(),
-            __rml_activities_version: Default::default(),
-            __rml_open_welcome_command_version: Default::default(),
-            __rml_open_button_case_command_version: Default::default(),
-            __rml_open_menu_dropdown_case_command_version: Default::default(),
-            __rml_open_features_case_command_version: Default::default(),
-            __rml_toggle_theme_command_version: Default::default(),
-            __rml_switch_en_command_version: Default::default(),
-            __rml_exit_command_version: Default::default(),
-            __rml_open_tabs_version: Default::default(),
-            __rml_selected_tab_version: Default::default(),
-            __rml_show_chrome_version: Default::default(),
-            __rml_slot_left_size_version: Default::default(),
-            __rml_activity_bar_version: Default::default(),
-            __rml_entries_version: Default::default(),
-            __rml_manager_version: Default::default(),
-            __rml_lsp_client_version: Default::default(),
-            __rml___rml_window_handle_version: Default::default(),
-            // #[component] 注入的缓存 / 状态字段
-            __rml_computed_cache: Default::default(),
-            __rml_input_states: Default::default(),
-            __rml_input_state_versions: Default::default(),
-            __rml_field_errors: Default::default(),
-            __rml_loaded: false,
+            // #[window] 注入的单一状态字段（替代旧 25+ 个 __rml_* 仪式字段）
+            __rml_state: Default::default(),
         }
     }
 }
 
 impl ILifecycle for MainWindow {
     fn on_loaded(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
-        // 1. 注册 host handle + 触发该 host_id 的所有贡献注册（同步：register → handle.add → entries.push）
+        self.init_contribution_host(cx);
+        self.init_commands(cx);
+        self.project_entries();
+        self.init_services(cx);
+        self.init_lsp();
+        self.init_workbench(cx);
+        self.init_activity_bar(cx);
+        self.init_panel_observers(cx);
+        cx.notify();
+    }
+}
+
+impl MainWindow {
+    /// 注册 host handle 到 registry + 触发该 host_id 的所有 `#[contribute]` 批量注册。
+    fn init_contribution_host(&mut self, cx: &mut Context<Self>) {
         let handle = Arc::new(MainWindowHostHandle {
             id: Self::ID,
             entries: self.entries.clone(),
         });
         cx.get_contribution_registry().add(handle);
         rml_app::contribution::bootstrap_host_contributions(cx, Self::ID);
+    }
 
-        // 2. 初始化 RelayCommand 字段（WPF MVVM 模式）
+    /// 初始化 7 个 RelayCommand 字段（WPF MVVM 模式）+ 注册 StatusReady 视觉能力。
+    fn init_commands(&mut self, cx: &mut Context<Self>) {
         self.open_welcome_command = Arc::new(RelayCommand::new(cx, |this, cx| {
             this.open_case("welcome".to_string(), cx);
         }));
@@ -178,47 +174,41 @@ impl ILifecycle for MainWindow {
         }));
         self.exit_command = Arc::new(RelayCommand::action(|cx| cx.quit()));
 
-        // 2.5 注册 StatusReady 视觉能力（project_entries 前完成，使 as_visual() 查询生效）
+        // project_entries 前完成，使 as_visual() 查询生效
         crate::cases::status_bar_case::ensure_status_ready_registered();
+    }
 
-        // 3. 投影到类型化集合（cases/status/activities 经贡献；menus 手工构建）
-        self.project_entries();
-
-        // 4. MainWindowRef 单例（ActivityPanel/LspExplorerPanel on_loaded 经 IAppContext 查询）
+    /// 注册 MainWindowRef 单例（ActivityPanel/LspExplorerPanel 经 IAppContext 查询）。
+    fn init_services(&mut self, cx: &mut Context<Self>) {
         let shell_weak = cx.weak_entity();
         cx.set_service(Arc::new(MainWindowRef(shell_weak)));
+    }
 
-        // 5. 启动 LSP 子进程（失败时优雅降级）
+    /// 启动 LSP 子进程（失败时优雅降级）。
+    fn init_lsp(&mut self) {
         if let Ok(workspace_root) = std::env::current_dir() {
             match LspClient::spawn(&workspace_root) {
                 Ok(client) => self.lsp_client = Some(Arc::new(client)),
                 Err(e) => log::warn!("Failed to start LSP server: {e}"),
             }
         }
+    }
 
-        // 6. 构建 manager + 安装 + 同步 cases 副本到 provider
-        let manager = Arc::new(DemoWorkbenchManager::new(self.lsp_client.clone()));
-        manager.sync_cases(self.cases.clone());
-        cx.set_workbench_manager(manager.clone());
-        self.manager = Some(manager);
+    /// 初始化 workbench 状态：注册能力 + 构造 LSP provider + 打开 welcome tab。
+    fn init_workbench(&mut self, _cx: &mut Context<Self>) {
+        register_workbench_abilities();
+        self.lsp_provider = Arc::new(LspWorkbenchProvider::new(self.lsp_client.clone()));
 
-        // 7. 打开 welcome tab（经 manager）
-        if let Some(manager) = self.manager.clone() {
-            let uri: Uri = "rml://welcome".parse().unwrap();
-            if manager.open(&uri).is_some() {
-                self.sync_tab_state(&manager);
-            }
+        let uri: Uri = "rml://welcome".parse().unwrap();
+        if IWorkbenchManager::open(self, &uri).is_some() {
+            self.sync_tab_state();
         }
+    }
 
-        // 8. 构建 ActivityBar（从 activities 集合）
+    /// 构建 ActivityBar + 激活首项 + observe active_id 同步 slot_left_size。
+    fn init_activity_bar(&mut self, cx: &mut Context<Self>) {
         self.activity_bar = Some(cx.new(|_| ActivityBar::new(self.activities.clone())));
 
-        // observe ActivityPanel Entity（框架缓存）→ ActivityBar 重渲
-        let panel_entity = rml_app::contribution::visual_entity::<ActivityPanel>(cx);
-        cx.observe(&panel_entity, |_, _, cx| cx.notify())
-            .detach();
-
-        // 激活首项
         if let Some(bar) = &self.activity_bar {
             bar.update(cx, |bar, cx| bar.activate_first(cx));
         }
@@ -226,7 +216,6 @@ impl ILifecycle for MainWindow {
         self.show_chrome = true;
         self.slot_left_size = gpui::px(260.);
 
-        // observe ActivityBar active_id 变化 → 同步 slot_left_size
         if let Some(bar) = &self.activity_bar {
             cx.observe(bar, |this, bar, cx| {
                 let collapsed = bar.read(cx).active_id().is_none();
@@ -239,13 +228,15 @@ impl ILifecycle for MainWindow {
             })
             .detach();
         }
+    }
 
-        // 9. observe LspExplorerPanel Entity（框架缓存）→ ActivityBar 重渲
+    /// observe 框架缓存的 ActivityPanel / LspExplorerPanel Entity → 触发重渲。
+    fn init_panel_observers(&mut self, cx: &mut Context<Self>) {
+        let panel_entity = rml_app::contribution::visual_entity::<ActivityPanel>(cx);
+        cx.observe(&panel_entity, |_, _, cx| cx.notify()).detach();
+
         let lsp_panel_entity = rml_app::contribution::visual_entity::<LspExplorerPanel>(cx);
-        cx.observe(&lsp_panel_entity, |_, _, cx| cx.notify())
-            .detach();
-
-        cx.notify();
+        cx.observe(&lsp_panel_entity, |_, _, cx| cx.notify()).detach();
     }
 }
 
@@ -259,9 +250,13 @@ impl MainWindow {
             .filter_map(|(c, o)| CaseViewModel::from_contribution(c.clone(), o.clone()))
             .collect();
         self.status = build_status_view_models(&entries);
-        self.activities = entries
+        let mut activity_entries: Vec<_> = entries
             .iter()
             .filter(|(c, o)| o.effective_slot() == Some("activity") && c.as_visual().is_some())
+            .collect();
+        activity_entries.sort_by_key(|(_, o)| o.order);
+        self.activities = activity_entries
+            .into_iter()
             .filter_map(|(c, _)| {
                 VisualActivityPanel::new(c.clone()).map(|p| Arc::new(p) as Arc<dyn IActivityPanel>)
             })
@@ -318,17 +313,35 @@ impl MainWindow {
         ]
     }
 
-    /// 同步 tab 状态：从 manager 派生 open_tabs + selected_tab。
-    fn sync_tab_state(&mut self, manager: &DemoWorkbenchManager) {
-        self.open_tabs = manager.get_all_as_values();
-        self.selected_tab = manager.activated_index().unwrap_or(0);
+    /// 同步 tab 状态：从 workbenches/activated 派生 open_tabs + selected_tab。
+    fn sync_tab_state(&mut self) {
+        let activated_uri = self
+            .activated
+            .read()
+            .unwrap()
+            .as_ref()
+            .map(|a| a.uri().to_string());
+        let workbenches = self.workbenches.read().unwrap();
+        self.open_tabs = workbenches
+            .iter()
+            .map(|w| {
+                let iv: Arc<dyn IContribution> = w.clone();
+                iv as Arc<dyn IValue>
+            })
+            .collect();
+        self.selected_tab = activated_uri
+            .as_ref()
+            .and_then(|uri| workbenches.iter().position(|w| w.uri() == uri))
+            .unwrap_or(0);
     }
 
-    /// 渲染激活的 workbench 视图：直接委托 manager.render_activated，零中间枚举。
+    /// 渲染激活的 workbench 视图：读 activated → as_visual() → render。
     pub fn active_view(&self, window: &mut Window, cx: &mut gpui::Context<Self>) -> gpui::AnyElement {
-        if let Some(manager) = &self.manager {
-            if let Some(elem) = manager.render_activated(window, cx) {
-                return elem;
+        let activated = self.activated.read().unwrap().clone();
+        if let Some(wb) = activated {
+            let iv: &dyn IContribution = wb.as_ref();
+            if let Some(visual) = iv.as_visual() {
+                return visual.render(window, cx);
             }
         }
         gpui::div().into_any_element()
@@ -419,11 +432,9 @@ impl MainWindow {
 
     #[command]
     pub fn on_tab_click(&mut self, index: usize, cx: &mut Context<Self>) {
-        if let Some(manager) = self.manager.clone() {
-            manager.activate_by_index(index);
-            self.sync_tab_state(&manager);
-            cx.notify();
-        }
+        self.activate_by_index(index);
+        self.sync_tab_state();
+        cx.notify();
     }
 
     /// 由 ActivityPanel::on_case_activate 调用（经 MainWindowRef 回调）。
@@ -432,24 +443,20 @@ impl MainWindow {
         if case_id.starts_with("group.") {
             return;
         }
-        if let Some(manager) = self.manager.clone() {
-            let uri: Uri = format!("rml://{}", case_id).parse().unwrap();
-            if manager.open(&uri).is_some() {
-                self.sync_tab_state(&manager);
-                cx.notify();
-            }
+        let uri: Uri = format!("rml://{}", case_id).parse().unwrap();
+        if IWorkbenchManager::open(self, &uri).is_some() {
+            self.sync_tab_state();
+            cx.notify();
         }
     }
 
     /// 由 LspExplorerPanel::on_file_activate 调用（经 MainWindowRef 回调）。
     #[command]
     pub fn open_lsp_file(&mut self, relative_path: String, cx: &mut Context<Self>) {
-        if let Some(manager) = self.manager.clone() {
-            let uri: Uri = format!("lsp://{}", relative_path).parse().unwrap();
-            if manager.open(&uri).is_some() {
-                self.sync_tab_state(&manager);
-                cx.notify();
-            }
+        let uri: Uri = format!("lsp://{}", relative_path).parse().unwrap();
+        if IWorkbenchManager::open(self, &uri).is_some() {
+            self.sync_tab_state();
+            cx.notify();
         }
     }
 
@@ -472,5 +479,89 @@ impl MainWindow {
             build_status_view_models(&entries)
         };
         cx.notify();
+    }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+//  IWorkbenchManager 实现：MainWindow 直接管理 Tab/资源生命周期
+//
+//  点击案例树 → open_case → IWorkbenchManager::open → new Tab → TabWindow 渲染。
+//  状态存储在 RwLock 保护的 workbenches/activated 字段中，&self 方法可变。
+// ──────────────────────────────────────────────────────────────────────────
+
+impl MainWindow {
+    /// 按 URI schema 路由构造 workbench。无法识别的 schema 或找不到的 case 返回 None。
+    fn build_workbench(&self, uri: &Uri) -> Option<Arc<dyn IWorkbench>> {
+        match uri.scheme() {
+            "rml" => {
+                let case_id = uri.as_str().strip_prefix("rml://").unwrap_or("");
+                let case = self
+                    .cases
+                    .iter()
+                    .find(|c| c.id == case_id)
+                    .cloned()?;
+                Some(Arc::new(CaseWorkbench::new(uri.as_str().into(), case)))
+            }
+            "lsp" => Some(self.lsp_provider.build_workbench(uri)),
+            _ => None,
+        }
+    }
+
+    /// 按 index 激活 workbench（供 on_tab_click 调用）。
+    fn activate_by_index(&self, index: usize) {
+        let workbenches = self.workbenches.read().unwrap();
+        if let Some(wb) = workbenches.get(index) {
+            *self.activated.write().unwrap() = Some(wb.clone());
+        }
+    }
+}
+
+impl IWorkbenchManager for MainWindow {
+    fn open(&self, uri: &Uri) -> Option<Arc<dyn IWorkbench>> {
+        let uri_str = uri.as_str();
+        // 去重：已打开则直接激活
+        if let Some(wb) = self
+            .workbenches
+            .read()
+            .unwrap()
+            .iter()
+            .find(|w| w.uri() == uri_str)
+            .cloned()
+        {
+            *self.activated.write().unwrap() = Some(wb.clone());
+            return Some(wb);
+        }
+        let wb = self.build_workbench(uri)?;
+        self.workbenches.write().unwrap().push(wb.clone());
+        *self.activated.write().unwrap() = Some(wb.clone());
+        Some(wb)
+    }
+
+    fn close(&self, uri: &Uri) {
+        let uri_str = uri.as_str();
+        let mut workbenches = self.workbenches.write().unwrap();
+        workbenches.retain(|w| w.uri() != uri_str);
+        let mut activated = self.activated.write().unwrap();
+        if activated.as_ref().map(|a| a.uri() == uri_str).unwrap_or(false) {
+            *activated = workbenches.first().cloned();
+        }
+    }
+
+    fn get_all(&self) -> Vec<Arc<dyn IWorkbench>> {
+        self.workbenches.read().unwrap().clone()
+    }
+
+    fn get_activated(&self) -> Option<Arc<dyn IWorkbench>> {
+        self.activated.read().unwrap().clone()
+    }
+
+    fn get(&self, uri: &Uri) -> Option<Arc<dyn IWorkbench>> {
+        let uri_str = uri.as_str();
+        self.workbenches
+            .read()
+            .unwrap()
+            .iter()
+            .find(|w| w.uri() == uri_str)
+            .cloned()
     }
 }
