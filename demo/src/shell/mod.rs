@@ -1,7 +1,5 @@
 pub mod case_view_model;
-pub mod menu_shell_contribs;
 pub mod menu_view_model;
-pub mod shell_chrome;
 pub mod status_view_model;
 pub mod workbench;
 #[path = "activity_panel.rml.rs"]

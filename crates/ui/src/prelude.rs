@@ -8,7 +8,7 @@ pub use crate::{
     Disableable, Form, IActivityAct, IActivityPanel, Input, InputState,
     IWindowActions, Kbd, Label, List, Menu, MenuBar, ModernWindow, ModernWindowShell,
     Notification, NotificationKind, NotificationList, NotificationType, Popover, Progress,
-    ProgressCircle, Radio, Root, Select, Selectable, Separator, Sizable, Slider, StatusBar,
+    ProgressCircle, Radio, Root, Select, Selectable, Separator, Sizable, Slider,
     StatusBarAlign, StyledExt, Switch, Tab, TabBar, Table, Tag, TitleBar, Tooltip,
     Tree, NativeStatusBar, VisualActivityPanel, Window, WindowExt,
 };

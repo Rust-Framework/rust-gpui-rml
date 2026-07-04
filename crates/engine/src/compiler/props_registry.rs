@@ -74,9 +74,8 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
     ("TextInput", &["on_change"]),
     // Tree 专用（Stateful 组件，数据由 TreeState Entity 提供，不支持 items 绑定）
     ("Tree", &["on_activate", "on_select"]),
-    // MenuBar / StatusBar MVVM items 绑定（Vec<Arc<dyn IMenuItem>> / Vec<Arc<dyn IStatusBarItem>>）
-    ("MenuBar", &["items"]),
-    ("StatusBar", &["items"]),
+    // MenuBar / StatusBar 不支持 items 绑定（框架不定义 IMenuItem/IStatusBarItem 数据结构）
+    // 业务侧经命令式 render_menu_bar() / render_status_bar() 构建
     // Accordion 专用
     ("Accordion", &["multiple", "bordered", "on_toggle_click"]),
     // AccordionItem 专用（item builder 子标签，不在 component_lookup 中）
@@ -234,11 +233,11 @@ mod tests {
         assert!(!is_prop_registered("Tree", "items"));
         assert!(is_prop_registered("Tree", "on_activate"));
         assert!(is_prop_registered("Tree", "on_select"));
-        // MenuBar / StatusBar 支持 items 绑定（Vec<Arc<dyn IMenuItem>> / Vec<Arc<dyn IStatusBarItem>>）
-        assert!(is_prop_registered("MenuBar", "items"));
-        assert!(is_prop_registered("menu-bar", "items"));
-        assert!(is_prop_registered("status-bar", "items"));
-        assert!(is_prop_registered("StatusBar", "items"));
+        // MenuBar / StatusBar 不支持 items 绑定（框架不定义 IMenuItem/IStatusBarItem）
+        assert!(!is_prop_registered("MenuBar", "items"));
+        assert!(!is_prop_registered("menu-bar", "items"));
+        assert!(!is_prop_registered("status-bar", "items"));
+        assert!(!is_prop_registered("StatusBar", "items"));
     }
 
     #[test]

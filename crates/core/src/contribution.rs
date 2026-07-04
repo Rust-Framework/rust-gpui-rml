@@ -141,6 +141,21 @@ pub fn register_contribution_ability<T: IContribution + 'static>() {
     });
 }
 
+/// 为实现 `IVisualContribution` 但未使用 `#[contribute]` + `#[component]` 组合的类型注册视觉能力 cast。
+///
+/// `#[contribute]` + `#[component]` 会自动注册视觉能力；仅有 `#[contribute]` 的贡献
+/// 需手动调用此函数，使 `as_visual()` 查询生效。
+#[allow(unsafe_code)]
+pub fn register_visual_ability<T: IVisualContribution + 'static>() {
+    crate::ability::register::<T, dyn IVisualContribution>(|c| {
+        let any: &dyn Any = c;
+        any.downcast_ref::<T>().map(|s| {
+            let visual: &dyn IVisualContribution = s;
+            unsafe { crate::ability::erase(visual) }
+        })
+    });
+}
+
 /// 贡献点主机：主动受理方。host 自行决定如何存储/映射贡献。
 ///
 /// host 直接实现此 trait（不再经由 `IHostEntity` 钩子）。

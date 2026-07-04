@@ -219,7 +219,6 @@ pub fn gen_component(
     let is_container = matches!(component.kind, tags::ComponentKind::StatelessNoId)
         && canonical != "menu"
         && canonical != "MenuBar"
-        && canonical != "StatusBar"
         && canonical != "Avatar";
 
     if is_container {

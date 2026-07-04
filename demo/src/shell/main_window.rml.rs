@@ -170,6 +170,9 @@ impl ILifecycle for MainWindow {
         }));
         self.exit_command = Arc::new(RelayCommand::action(|cx| cx.quit()));
 
+        // 2.5 注册 StatusReady 视觉能力（project_entries 前完成，使 as_visual() 查询生效）
+        crate::cases::status_bar_case::ensure_status_ready_registered();
+
         // 3. 投影到类型化集合（cases/status/activities 经贡献；menus 手工构建）
         self.project_entries();
 
@@ -347,13 +350,16 @@ impl MainWindow {
     }
 
     /// 渲染菜单栏（从 `menus` ViewModel 树构建 `MenuBar` + `PopupMenu`）。
+    ///
+    /// 子菜单经 `dropdown_menu` 闭包 + `MenuViewModel::build_popup_menu` 递归构建。
+    /// `children` 在闭包外 clone 以满足 `'static` bound。
     pub fn render_menu_bar(
         &self,
         _window: &mut Window,
         _cx: &mut gpui::Context<Self>,
     ) -> gpui::AnyElement {
         use rml_ui::{MenuBar, configure_menu_bar_popup, menu_bar_button};
-        use gpui_component::menu::PopupMenu;
+        use gpui_component::menu::{DropdownMenu as _, PopupMenu};
         use gpui::{ParentElement, Styled};
 
         if self.menus.is_empty() {
@@ -362,7 +368,28 @@ impl MainWindow {
 
         let mut bar = MenuBar::new(("rml_menu_bar", 0usize));
         for (ix, m) in self.menus.iter().enumerate() {
-            let btn = menu_bar_button(("rml_menu_btn", ix), m.label.clone());
+            let btn: gpui::AnyElement = if m.has_children() {
+                let children = m.children.clone();
+                let label = m.label.clone();
+                menu_bar_button(("rml_menu_btn", ix), label)
+                    .dropdown_menu(move |menu, window, cx| {
+                        let menu = configure_menu_bar_popup(menu);
+                        MenuViewModel::build_popup_menu(menu, &children, window, cx)
+                    })
+                    .into_any_element()
+            } else {
+                let cmd = m.command.clone();
+                let mut btn = menu_bar_button(("rml_menu_btn", ix), m.label.clone());
+                if let Some(cmd) = cmd {
+                    btn = btn.on_click(move |_, window, app| {
+                        let mut ctx = rml_core::command::CallContext::new(window, app);
+                        if cmd.can_execute(&mut ctx) {
+                            cmd.execute(&mut ctx);
+                        }
+                    });
+                }
+                btn.into_any_element()
+            };
             bar = bar.child(btn);
         }
         bar.into_any_element()

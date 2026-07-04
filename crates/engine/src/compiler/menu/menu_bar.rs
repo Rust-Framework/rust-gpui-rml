@@ -25,25 +25,6 @@ pub fn gen_menu_bar(
     let bar_id = *id_counter;
     *id_counter += 1;
 
-    // MVVM items 绑定路径：<menu-bar items={menus} />
-    // 生成 rml_ui::render_menu_bar_from_items(self.menus.clone())
-    if let Some(items_expr) = elem.attributes.iter().find_map(|a| match a {
-        Attribute::Bind { name, expr } if name == "items" => Some(expr.as_str()),
-        _ => None,
-    }) {
-        let lv: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
-        let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
-        let rust_expr = crate::compiler::component::component_bind_rust_expr(
-            items_expr,
-            &lv,
-            &computed,
-        );
-        return Ok(format!(
-            "rml_ui::render_menu_bar_from_items({}.clone())",
-            rust_expr
-        ));
-    }
-
     // 收集 MenuItem 子节点
     let top_items: Vec<&Element> = elem
         .children

@@ -173,7 +173,7 @@ pub fn component_lookup_resolved(tag: &str) -> Option<ComponentTag> {
     component_lookup(tag).or_else(|| component_lookup(&normalize_component_tag(tag)))
 }
 
-/// 判断标签是否为扩展组件（PascalCase 或 kebab-case，不含特殊小写 `menu`/`status-bar`）
+/// 判断标签是否为扩展组件（PascalCase 或 kebab-case，不含特殊小写 `menu`/`accordion`）
 pub fn is_component(tag: &str) -> bool {
     if is_special_lowercase_component(tag) {
         return false;
@@ -187,7 +187,7 @@ pub fn is_component(tag: &str) -> bool {
         && component_lookup(&normalized).is_some()
 }
 
-/// 扩展组件中的 lowercase 标签（如 `menu`、`status-bar`、`accordion`），在 `component_lookup` 中注册
+/// 扩展组件中的 lowercase 标签（如 `menu`、`accordion`），在 `component_lookup` 中注册
 pub fn is_special_lowercase_component(tag: &str) -> bool {
     component_lookup(tag).is_some() && !tag.contains('-') && {
         !tag
@@ -401,12 +401,6 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             ctor_path: "rml_ui::MenuBar",
             kind: ComponentKind::Stateless,
         }),
-        // RML MVVM 状态栏（包装 NativeStatusBar，支持 items={...} 绑定）
-        // PascalCase: <StatusBar>，kebab-case: <status-bar>
-        "StatusBar" | "status-bar" => Some(ComponentTag {
-            ctor_path: "rml_ui::StatusBar",
-            kind: ComponentKind::StatelessNoId,
-        }),
         // Accordion：闭包式 builder，子节点为 <AccordionItem> / <item>
         "Accordion" | "accordion" => Some(ComponentTag {
             ctor_path: "rml_ui::Accordion",
@@ -563,17 +557,6 @@ mod normalize_tests {
         // tab-bar 含连字符，不属于 special_lowercase，但仍是 extension_component
         assert!(!is_special_lowercase_component("tab-bar"));
         assert!(is_extension_component("tab-bar"));
-    }
-
-    #[test]
-    fn component_lookup_status_bar_kebab() {
-        // <status-bar> → rml_ui::StatusBar（RML MVVM 包装）
-        let tag = component_lookup("status-bar").expect("status-bar should be registered");
-        assert_eq!(tag.ctor_path, "rml_ui::StatusBar");
-        assert_eq!(tag.kind, ComponentKind::StatelessNoId);
-        // <StatusBar> 也指向 rml_ui::StatusBar（不再是 NativeStatusBar 的别名）
-        let tag_pascal = component_lookup("StatusBar").expect("StatusBar should be registered");
-        assert_eq!(tag_pascal.ctor_path, "rml_ui::StatusBar");
     }
 
     #[test]

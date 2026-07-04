@@ -19,11 +19,8 @@ pub use alert_dialog::{
     AlertDialog, DialogAction, DialogButtonProps, DialogClose, DialogContent, DialogDescription,
     DialogFooter, DialogHeader, DialogTitle,
 };
-pub use menu::{
-    IMenuItem, Menu, MenuBar, MenuItem, configure_menu_bar_popup, menu_bar_button,
-    render_menu_bar_from_items,
-};
-pub use status_bar::{IStatusBarItem, NativeStatusBar, StatusBar, StatusBarAlign, StatusBarItem};
+pub use menu::{Menu, MenuBar, configure_menu_bar_popup, menu_bar_button};
+pub use status_bar::{NativeStatusBar, StatusBarAlign};
 pub use tab::{Tab, TabBar, TabItem, TabVariant};
 pub use table::{
     CellTemplate, DefaultTableDelegate, FooterTemplate, HeaderTemplate, Table, TableColumn,

@@ -6,8 +6,9 @@
 
 use std::sync::Arc;
 
-use gpui::SharedString;
-use rml_core::command::ICommand;
+use gpui::{Context, SharedString, Window};
+use gpui_component::menu::{PopupMenu, PopupMenuItem};
+use rml_core::command::{CallContext, ICommand};
 
 #[derive(Clone)]
 pub struct MenuViewModel {
@@ -53,5 +54,44 @@ impl MenuViewModel {
 
     pub fn has_children(&self) -> bool {
         !self.children.is_empty()
+    }
+
+    /// 递归构建 `PopupMenu`（`dropdown_menu` 闭包内调用）。
+    ///
+    /// `children` 在闭包外 clone 以满足 `'static` bound。
+    /// 由 `MainWindow::render_menu_bar()` 的顶层 `dropdown_menu` 闭包启动，
+    /// 子菜单经 `PopupMenu::submenu` 递归调用本方法。
+    pub fn build_popup_menu(
+        mut menu: PopupMenu,
+        items: &[MenuViewModel],
+        window: &mut Window,
+        cx: &mut Context<PopupMenu>,
+    ) -> PopupMenu {
+        for item in items {
+            if item.has_children() {
+                let children = item.children.clone();
+                let label = item.label.clone();
+                menu = menu.submenu(label, window, cx, {
+                    let children = children.clone();
+                    move |submenu, window, cx| {
+                        let submenu = rml_ui::configure_menu_bar_popup(submenu);
+                        Self::build_popup_menu(submenu, &children, window, cx)
+                    }
+                });
+            } else {
+                let label = item.label.clone();
+                let mut pmi = PopupMenuItem::new(label);
+                if let Some(cmd) = item.command.clone() {
+                    pmi = pmi.on_click(move |_, window, app| {
+                        let mut ctx = CallContext::new(window, app);
+                        if cmd.can_execute(&mut ctx) {
+                            cmd.execute(&mut ctx);
+                        }
+                    });
+                }
+                menu = menu.item(pmi);
+            }
+        }
+        menu
     }
 }

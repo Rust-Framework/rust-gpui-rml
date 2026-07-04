@@ -16,7 +16,7 @@ use std::sync::{Arc, Once, RwLock};
 use gpui::{AnyElement, App, Entity, SharedString, Window};
 use rml::prelude::*;
 use rml_core::contribution::{
-    register_contribution_ability, IContribution, IVisualContribution,
+    register_contribution_ability, register_visual_ability, IContribution, IVisualContribution,
 };
 use rml_core::workbench::{IWorkbench, IWorkbenchManager, IWorkbenchProvider, Uri};
 
@@ -29,18 +29,6 @@ use crate::shell::case_view_model::CaseViewModel;
 // ──────────────────────────────────────────────────────────────────────────
 
 static ABILITY_REGISTERED: Once = Once::new();
-
-/// 为 IVisualContribution 注册能力 cast（镜像 `register_contribution_ability`）。
-#[allow(unsafe_code)]
-fn register_visual_ability<T: IVisualContribution + 'static>() {
-    rml_core::ability::register::<T, dyn IVisualContribution>(|c| {
-        let any: &dyn Any = c;
-        any.downcast_ref::<T>().map(|s| {
-            let visual: &dyn IVisualContribution = s;
-            unsafe { rml_core::ability::erase(visual) }
-        })
-    });
-}
 
 fn register_workbench_abilities() {
     ABILITY_REGISTERED.call_once(|| {

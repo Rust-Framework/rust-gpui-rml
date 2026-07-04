@@ -1,11 +1,8 @@
-//! `StatusBar` —— RML MVVM 状态栏（gpui-component 无 items 绑定，由本 crate 定义）
+//! `StatusBar` —— 状态栏对齐枚举 + gpui-component `NativeStatusBar` re-export。
 //!
-//! 包装 gpui-component [`NativeStatusBar`]，提供 `IStatusBarItem` + `items={...}` 绑定。
-//! 手动 `.left()` / `.right()` 组装请使用 [`NativeStatusBar`]（RML 标签 `<NativeStatusBar>`）。
-
-use std::sync::Arc;
-
-use gpui::{App, IntoElement, ParentElement, RenderOnce, SharedString, Window};
+//! 框架不定义 `IStatusBarItem` 数据结构（WPF 风格——业务定义自己的 ViewModel）。
+//! 业务侧 `MainWindow::render_status_bar()` 经 `NativeStatusBar::new()` + `.left()` / `.right()`
+//! / `.child()` 组装，对齐信息由 `StatusBarAlign` 表达。
 
 pub use gpui_component::status_bar::StatusBar as NativeStatusBar;
 
@@ -15,97 +12,4 @@ pub enum StatusBarAlign {
     Left,
     Right,
     Center,
-}
-
-/// 状态栏项接口（object-safe）
-pub trait IStatusBarItem: Send + Sync + 'static {
-    fn content(&self) -> SharedString;
-    fn align(&self) -> StatusBarAlign {
-        StatusBarAlign::Left
-    }
-}
-
-/// 状态栏项默认实现
-pub struct StatusBarItem {
-    content: SharedString,
-    align: StatusBarAlign,
-}
-
-impl StatusBarItem {
-    pub fn new(content: impl Into<SharedString>) -> Self {
-        Self {
-            content: content.into(),
-            align: StatusBarAlign::Left,
-        }
-    }
-
-    pub fn align(mut self, a: StatusBarAlign) -> Self {
-        self.align = a;
-        self
-    }
-
-    pub fn into_arc(self) -> Arc<dyn IStatusBarItem> {
-        Arc::new(self)
-    }
-}
-
-impl IStatusBarItem for StatusBarItem {
-    fn content(&self) -> SharedString {
-        self.content.clone()
-    }
-
-    fn align(&self) -> StatusBarAlign {
-        self.align
-    }
-}
-
-/// RML 状态栏（`<status_bar items={...}>`）
-#[derive(IntoElement)]
-pub struct StatusBar {
-    items: Vec<Arc<dyn IStatusBarItem>>,
-}
-
-impl StatusBar {
-    pub fn new() -> Self {
-        Self { items: Vec::new() }
-    }
-
-    pub fn items(mut self, items: Vec<Arc<dyn IStatusBarItem>>) -> Self {
-        self.items = items;
-        self
-    }
-}
-
-impl Default for StatusBar {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl RenderOnce for StatusBar {
-    fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
-        let mut left_items: Vec<SharedString> = Vec::new();
-        let mut center_items: Vec<SharedString> = Vec::new();
-        let mut right_items: Vec<SharedString> = Vec::new();
-
-        for item in &self.items {
-            match item.align() {
-                StatusBarAlign::Left => left_items.push(item.content()),
-                StatusBarAlign::Center => center_items.push(item.content()),
-                StatusBarAlign::Right => right_items.push(item.content()),
-            }
-        }
-
-        let mut bar = NativeStatusBar::new();
-        for content in left_items {
-            bar = bar.left(content);
-        }
-        for content in right_items {
-            bar = bar.right(content);
-        }
-        for content in center_items {
-            bar = bar.child(content);
-        }
-        bar
-    }
 }

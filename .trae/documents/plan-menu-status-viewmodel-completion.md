@@ -8,42 +8,59 @@
 
 ### 已完成（Parts A/B/C/I）
 
-- **A1** [menu_bar.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/menu/menu_bar.rs)：`gen_menu_bar` 支持 `<menu-item each={m in menus}>`，生成 `self.menus.iter().map(|m| ...)` + `MenuBar::new(...).children(...)`。`gen_menu_bar_button_for_item` 处理 loop_var 上下文的 label/command/嵌套 submenu。
-- **A2/A3/A4** [item.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/menu/item.rs)：`gen_command_closure` 支持 loop_var（生成 `let __rml_cmd = {access}.clone(); if let Some(cmd) = &__rml_cmd { cmd.can_execute(...); cmd.execute(...); }`）；`icon` 支持 bind；`gen_popup_menu_body` 支持嵌套 `each`。
-- **B** [menu.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/ui/src/components/menu.rs)：`MenuBar` 为纯 `ParentElement` 容器，`IMenuItem`/`MenuItem`/`build_popup_menu_from_items` 已删除。
-- **C** [status_bar.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/ui/src/components/status_bar.rs)：`StatusBar` 为纯 `ParentElement` 容器，`IStatusBarItem`/`StatusBarItem` 已删除，`StatusBarAlign` 保留。
-- **I1** [props_registry.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/props_registry.rs)：`MenuBar`/`menu`/`StatusBar` 的 `items` 注册已移除，测试验证 NOT registered。
-- **I2** [setters.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/menu/setters.rs)：`bind_setter` 简化为始终返回 `None`。
-- **I4** [node.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/codegen/node.rs)：`<component>` 支持 `each` 指令，生成 `{iter_expr}.iter().map(|{item}| {code})` + `is_iter=true`。
+* **A1** [menu\_bar.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/menu/menu_bar.rs)：`gen_menu_bar` 支持 `<menu-item each={m in menus}>`，生成 `self.menus.iter().map(|m| ...)` + `MenuBar::new(...).children(...)`。`gen_menu_bar_button_for_item` 处理 loop\_var 上下文的 label/command/嵌套 submenu。
+
+* **A2/A3/A4** [item.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/menu/item.rs)：`gen_command_closure` 支持 loop\_var（生成 `let __rml_cmd = {access}.clone(); if let Some(cmd) = &__rml_cmd { cmd.can_execute(...); cmd.execute(...); }`）；`icon` 支持 bind；`gen_popup_menu_body` 支持嵌套 `each`。
+
+* **B** [menu.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/ui/src/components/menu.rs)：`MenuBar` 为纯 `ParentElement` 容器，`IMenuItem`/`MenuItem`/`build_popup_menu_from_items` 已删除。
+
+* **C** [status\_bar.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/ui/src/components/status_bar.rs)：`StatusBar` 为纯 `ParentElement` 容器，`IStatusBarItem`/`StatusBarItem` 已删除，`StatusBarAlign` 保留。
+
+* **I1** [props\_registry.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/props_registry.rs)：`MenuBar`/`menu`/`StatusBar` 的 `items` 注册已移除，测试验证 NOT registered。
+
+* **I2** [setters.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/menu/setters.rs)：`bind_setter` 简化为始终返回 `None`。
+
+* **I4** [node.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/codegen/node.rs)：`<component>` 支持 `each` 指令，生成 `{iter_expr}.iter().map(|{item}| {code})` + `is_iter=true`。
 
 ### 未完成（本计划范围）
 
 demo crate 当前**无法编译**——`main_window.rml.rs` 与 `shell_chrome.rs` 仍 import 已删除的 `IMenuItem`/`IStatusBarItem`/`MenuItem`/`StatusBarItem`。
 
-- **Part D**：创建 `MenuViewModel` + `StatusViewModel`
-- **Part E**：重构 `MainWindow`——`RelayCommand` 字段 + `Vec<MenuViewModel>`/`Vec<StatusViewModel>` 集合 + `build_menu_tree()` 方法
-- **Part F**：`StatusReady` 实现 `IVisualContribution`
-- **Part G**：更新 `main_window.rml` 模板——`each` 指令 + `<component>` 迭代
-- **Part H**：删除 `shell_chrome.rs` + `menu_shell_contribs.rs`，更新 `mod.rs`
+* **Part D**：创建 `MenuViewModel` + `StatusViewModel`
+
+* **Part E**：重构 `MainWindow`——`RelayCommand` 字段 + `Vec<MenuViewModel>`/`Vec<StatusViewModel>` 集合 + `build_menu_tree()` 方法
+
+* **Part F**：`StatusReady` 实现 `IVisualContribution`
+
+* **Part G**：更新 `main_window.rml` 模板——`each` 指令 + `<component>` 迭代
+
+* **Part H**：删除 `shell_chrome.rs` + `menu_shell_contribs.rs`，更新 `mod.rs`
 
 ## 关键设计决策
 
 ### 决策 1：菜单使用 `RelayCommand` 字段，不使用贡献注册
 
 **原因**：
-- `Arc<dyn IContribution>` 无法 downcast 为 `Arc<dyn ICommand>`（trait object 不可逆）
-- codegen（Part A2 已实现）在 loop_var 上下文生成 `cmd.can_execute()` / `cmd.execute()` 直接调用，要求字段类型为 `Option<Arc<dyn ICommand>>`
-- `RelayCommand` 实现 `ICommand`，可作为 `Arc<dyn ICommand>` 持有
-- 消除 323 行 `menu_shell_contribs.rs`（11 个 struct + `impl IContribution` + `impl ICommand` + `with_main_window` 样板），替换为 7 个 `RelayCommand::new` 一行初始化
+
+* `Arc<dyn IContribution>` 无法 downcast 为 `Arc<dyn ICommand>`（trait object 不可逆）
+
+* codegen（Part A2 已实现）在 loop\_var 上下文生成 `cmd.can_execute()` / `cmd.execute()` 直接调用，要求字段类型为 `Option<Arc<dyn ICommand>>`
+
+* `RelayCommand` 实现 `ICommand`，可作为 `Arc<dyn ICommand>` 持有
+
+* 消除 323 行 `menu_shell_contribs.rs`（11 个 struct + `impl IContribution` + `impl ICommand` + `with_main_window` 样板），替换为 7 个 `RelayCommand::new` 一行初始化
 
 **影响**：菜单不再经贡献系统注册。"host 接收贡献当场转化 ViewModel" 模式适用于 **cases / status / activities**，菜单改由 `MainWindow::build_menu_tree()` 手工构建树 + `RelayCommand` 字段绑定。
 
 ### 决策 2：菜单树整体硬编码，submenu root 不保留为贡献
 
 **原因**：
-- 用户要求"大幅度精简代码" + "消除 shell_chrome 之类的多余实现"
-- submenu root 标签经 `t_static()` 直接获取 i18n，无需经贡献 `name()` 间接获取
-- `build_menu_tree()` 在 `on_loaded` 中一次性构建，locale 切换时 `t_static()` 自动刷新
+
+* 用户要求"大幅度精简代码" + "消除 shell\_chrome 之类的多余实现"
+
+* submenu root 标签经 `t_static()` 直接获取 i18n，无需经贡献 `name()` 间接获取
+
+* `build_menu_tree()` 在 `on_loaded` 中一次性构建，locale 切换时 `t_static()` 自动刷新
 
 ### 决策 3：`MenuViewModel.command` 类型为 `Option<Arc<dyn ICommand>>`
 
@@ -188,17 +205,18 @@ pub fn build_status_view_models(entries: &[ContribEntry]) -> Vec<StatusViewModel
 }
 ```
 
----
+***
 
 ### Part E：重构 MainWindow
 
-**文件**: [main_window.rml.rs](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/shell/main_window.rml.rs)
+**文件**: [main\_window.rml.rs](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/shell/main_window.rml.rs)
 
 #### E1：更新 import
 
-移除：`IMenuItem` / `IStatusBarItem` / `StatusBarItem` / `build_menu_tree` / `ContribEntry`（from shell_chrome）
+移除：`IMenuItem` / `IStatusBarItem` / `StatusBarItem` / `build_menu_tree` / `ContribEntry`（from shell\_chrome）
 
 新增：
+
 ```rust
 use rml_core::command::{ICommand, RelayCommand};
 use rml_core::i18n::t_static;
@@ -247,6 +265,7 @@ pub struct MainWindow {
 但 `Arc<dyn ICommand>` 的 `Default` 需要 `Arc<dyn ICommand>: Default`。由于 `RelayCommand: Default`，`Arc::new(RelayCommand::default())` 可作为 `Arc<dyn ICommand>`。但 `#[derive(Default)]` 会尝试 `Arc::<dyn ICommand>::default()`，这需要 `dyn ICommand: Default`，不成立。
 
 **修正**：移除 `#[derive(Default)]`，手写 `impl Default for MainWindow`：
+
 ```rust
 impl Default for MainWindow {
     fn default() -> Self {
@@ -411,8 +430,9 @@ impl MainWindow {
 
 #### E5：删除 `project_chrome` / `build_status_items`
 
-- 删除 `fn project_chrome(&mut self)`（157-173 行区间）
-- 删除 `fn build_status_items(...)`（175-191 行区间）
+* 删除 `fn project_chrome(&mut self)`（157-173 行区间）
+
+* 删除 `fn build_status_items(...)`（175-191 行区间）
 
 #### E6：更新 `apply_switch_en`
 
@@ -429,11 +449,11 @@ pub(crate) fn apply_switch_en(&mut self, cx: &mut Context<Self>) {
 }
 ```
 
----
+***
 
 ### Part F：StatusReady 实现 IVisualContribution
 
-**文件**: [status_bar_case.rml.rs](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/cases/status_bar_case.rml.rs) L42-54
+**文件**: [status\_bar\_case.rml.rs](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/cases/status_bar_case.rml.rs) L42-54
 
 ```rust
 use gpui::{AnyElement, SharedString};
@@ -462,13 +482,13 @@ impl IVisualContribution for StatusReady {
 }
 ```
 
-**注意**：确认 `IVisualContribution` trait 的 `render` 签名为 `fn render(&self, &mut Window, &mut App) -> AnyElement`（对齐 project_memory 约束：`IVisualContribution::render` 直接接收 `&mut Window, &mut App`，不经 `RenderContext` 包装）。
+**注意**：确认 `IVisualContribution` trait 的 `render` 签名为 `fn render(&self, &mut Window, &mut App) -> AnyElement`（对齐 project\_memory 约束：`IVisualContribution::render` 直接接收 `&mut Window, &mut App`，不经 `RenderContext` 包装）。
 
----
+***
 
-### Part G：更新 main_window.rml 模板
+### Part G：更新 main\_window\.rml 模板
 
-**文件**: [main_window.rml](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/shell/main_window.rml)
+**文件**: [main\_window.rml](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/shell/main_window.rml)
 
 ```rml
 <tab-window
@@ -516,21 +536,26 @@ impl IVisualContribution for StatusReady {
 ```
 
 **codegen 行为验证**：
-- `<menu-item each={m in menus} label={m.label}>` → `self.menus.iter().map(|m| menu_bar_button(...m.label...).dropdown_menu(...))`，`is_iter=true` → `MenuBar::children(...)`
-- 嵌套 `<menu-item each={c in m.children} label={c.label} command={c.command} />` → 在 dropdown_menu 闭包内 `for c in m.children.iter() { menu = menu.item(...).on_click(...) }`
-- `command={c.command}` → `let __rml_cmd = c.command.clone(); if let Some(cmd) = &__rml_cmd { cmd.can_execute(...); cmd.execute(...); }`（`c.command` 为 `Option<Arc<dyn ICommand>>`）
-- `<component each={s in status} content={s.render(_window, cx)} />` → `self.status.iter().map(|s| s.render(_window, cx))`，`is_iter=true` → `StatusBar::children(...)`
 
-**嵌套 each 的 iterable 识别**：`m.children` 以 loop_var `m` 开头 → codegen 生成 `m.children.iter()`（不是 `self.m.children.iter()`），正确捕获外层 loop_var。
+* `<menu-item each={m in menus} label={m.label}>` → `self.menus.iter().map(|m| menu_bar_button(...m.label...).dropdown_menu(...))`，`is_iter=true` → `MenuBar::children(...)`
 
----
+* 嵌套 `<menu-item each={c in m.children} label={c.label} command={c.command} />` → 在 dropdown\_menu 闭包内 `for c in m.children.iter() { menu = menu.item(...).on_click(...) }`
 
-### Part H：删除 shell_chrome.rs + menu_shell_contribs.rs，更新 mod.rs
+* `command={c.command}` → `let __rml_cmd = c.command.clone(); if let Some(cmd) = &__rml_cmd { cmd.can_execute(...); cmd.execute(...); }`（`c.command` 为 `Option<Arc<dyn ICommand>>`）
+
+* `<component each={s in status} content={s.render(_window, cx)} />` → `self.status.iter().map(|s| s.render(_window, cx))`，`is_iter=true` → `StatusBar::children(...)`
+
+**嵌套 each 的 iterable 识别**：`m.children` 以 loop\_var `m` 开头 → codegen 生成 `m.children.iter()`（不是 `self.m.children.iter()`），正确捕获外层 loop\_var。
+
+***
+
+### Part H：删除 shell\_chrome.rs + menu\_shell\_contribs.rs，更新 mod.rs
 
 #### H1：删除文件
 
-- 删除 [shell_chrome.rs](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/shell/shell_chrome.rs)
-- 删除 [menu_shell_contribs.rs](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/shell/menu_shell_contribs.rs)
+* 删除 [shell\_chrome.rs](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/shell/shell_chrome.rs)
+
+* 删除 [menu\_shell\_contribs.rs](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/shell/menu_shell_contribs.rs)
 
 `#[contribute]` 宏生成的 `#[ctor::ctor]` 注册函数随文件删除自动失效，对应菜单贡献不再注册（符合设计——菜单改用 RelayCommand）。
 
@@ -551,13 +576,13 @@ pub mod main_window;
 pub use main_window::{MainWindow, MainWindowRef};
 ```
 
----
+***
 
 ## 假设与验证
 
 ### 假设
 
-1. `IVisualContribution::render` 签名为 `fn render(&self, &mut Window, &mut App) -> AnyElement`（对齐 project_memory）
+1. `IVisualContribution::render` 签名为 `fn render(&self, &mut Window, &mut App) -> AnyElement`（对齐 project\_memory）
 2. `t_static()` 返回 `SharedString`，`MenuViewModel::label` / `root()` / `leaf()` 接受 `SharedString`
 3. `RelayCommand::new(cx, |this, cx| ...)` 闭包签名 `Fn(&mut MainWindow, &mut Context<MainWindow>)`——`this` 方法需为 `pub` 或同 crate 可见
 4. `#[contribute]` 宏经 `#[ctor::ctor]` 自动注册，删除文件即取消注册
@@ -568,22 +593,33 @@ pub use main_window::{MainWindow, MainWindowRef};
 1. `cargo build -p rust-rml-engine` —— 确认 engine crate 编译（Parts A/I 已完成，应通过）
 2. `cargo build -p rust-rml-ui` —— 确认 ui crate 编译（Parts B/C 已完成，应通过）
 3. `cargo build -p rust-rml-demo` —— **核心验证**：确认 ViewModel + MainWindow + RML 模板编译通过
-4. `cargo test -p rust-rml-engine` —— 确认 props_registry 一致性测试通过
+4. `cargo test -p rust-rml-engine` —— 确认 props\_registry 一致性测试通过
 5. 运行 demo 手动验证：
-   - 菜单栏显示 File / View / Help 三组
-   - 点击 File → New 打开 welcome tab
-   - 点击 File → Open 打开 button case
-   - 点击 File → Exit 退出应用
-   - 点击 View → Theme Toggle 切换主题
-   - 点击 View → Lang EN 切换语言（菜单标签刷新）
-   - Help → Docs → Guide 打开 dropdown case
-   - Help → Docs → About 打开 welcome
-   - Help → Cases → Features 打开 features case
-   - 状态栏显示 StatusReady 文本
+
+   * 菜单栏显示 File / View / Help 三组
+
+   * 点击 File → New 打开 welcome tab
+
+   * 点击 File → Open 打开 button case
+
+   * 点击 File → Exit 退出应用
+
+   * 点击 View → Theme Toggle 切换主题
+
+   * 点击 View → Lang EN 切换语言（菜单标签刷新）
+
+   * Help → Docs → Guide 打开 dropdown case
+
+   * Help → Docs → About 打开 welcome
+
+   * Help → Cases → Features 打开 features case
+
+   * 状态栏显示 StatusReady 文本
 
 ### 风险点
 
-1. **`Arc<dyn ICommand>` 字段 + `#[derive(Default)]`**：`dyn ICommand` 无 `Default`，需手写 `impl Default`。已在 E2 修正。
-2. **嵌套 `each` 的 loop_var 捕获**：`<menu-item each={c in m.children}>` 在 dropdown_menu 闭包内，闭包为 `move`，外层 `m` 会被捕获。codegen（Part A4）生成 `for c in m.children.iter()`——需确认 `m` 在闭包作用域可见。
-3. **`s.render(_window, cx)` 借用**：`self.status.iter()` 借用 `&self.status`，`cx` 为 `&mut Context<Self>`——两者不冲突（不同借用目标）。
-4. **`StatusBarAlign` 导出**：`StatusViewModel` 引用 `rml_ui::StatusBarAlign`——已在 [prelude.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/ui/src/prelude.rs) 导出。
+1. **`Arc<dyn ICommand>`** **字段 +** **`#[derive(Default)]`**：`dyn ICommand` 无 `Default`，需手写 `impl Default`。已在 E2 修正。
+2. **嵌套** **`each`** **的 loop\_var 捕获**：`<menu-item each={c in m.children}>` 在 dropdown\_menu 闭包内，闭包为 `move`，外层 `m` 会被捕获。codegen（Part A4）生成 `for c in m.children.iter()`——需确认 `m` 在闭包作用域可见。
+3. **`s.render(_window, cx)`** **借用**：`self.status.iter()` 借用 `&self.status`，`cx` 为 `&mut Context<Self>`——两者不冲突（不同借用目标）。
+4. **`StatusBarAlign`** **导出**：`StatusViewModel` 引用 `rml_ui::StatusBarAlign`——已在 [prelude.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/ui/src/prelude.rs) 导出。
+

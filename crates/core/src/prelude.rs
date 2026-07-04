@@ -11,6 +11,7 @@ pub use crate::context::{ensure_service_collection, IAppContext, ServiceCollecti
 pub use crate::contribution::{
     ContributionAbilityExt, ContributionOptions, IContribution, IContributionHost,
     IContributionRegistry, IVisualContribution, VisualAbilityExt, register_contribution_ability,
+    register_visual_ability,
 };
 pub use crate::value::IValue;
 pub use crate::workbench::{IWorkbench, IWorkbenchManager, IWorkbenchProvider, Uri};
