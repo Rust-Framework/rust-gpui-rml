@@ -2,8 +2,9 @@
 //!
 //! 框架内部模块，业务代码通过 `rml_app::prelude::*` 或具体导入使用。
 //! 注册表实例通过 `IAppContext::get_service::<ContributionRegistry>()` 查询。
-//! Host 直接实现 `IContributionHost`，在 `on_loaded` 中调
-//! `cx.get_contribution_registry().add(...)` + `bootstrap_host_contributions(cx, id)` 注册自身。
+//! Host 在 `on_loaded` 中调 `cx.register_host(id, self.entries.clone())` +
+//! `bootstrap_host_contributions(cx, id)` 注册自身。Registry 存 `Arc<dyn IContributionHost>`
+//! （`entries.clone()` 经 unsized coercion 转入），`register` 时调 `host.add(c, opts)` 路由，不经 Entity 系统。
 
 mod entity_cache;
 mod global;

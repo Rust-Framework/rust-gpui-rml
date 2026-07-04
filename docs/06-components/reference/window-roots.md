@@ -115,6 +115,8 @@ Demo 主窗口使用的根类型，包裹 `TabWindowShell`。
 
 非插槽子节点为主内容区。
 
+> **关于 `<Tab>` vs `<tab-item>`**：tab_window 标题栏内的 TabBar 因 32px 高度限制，只能用 `<Tab>`（header-only）+ 外部 `<component content={active_view}>` 注入 body；独立 TabBar（非标题栏）可用 `<tab-item>` 一体化 header + body（WPF TabControl 模式）。详见 [tab-bar.md](./tab-bar.md)。
+
 ### 完整示例
 
 `demo/src/shell/main_window.rml`：
@@ -223,6 +225,7 @@ window.defer(cx, |window, cx| {
 
 ## 相关文档
 
+- [tab-bar.md](./tab-bar.md) — `<Tab>` vs `<tab-item>` 两种子项模式与 WPF TabControl 模式
 - [activity-bar.md](./activity-bar.md)、[menu.md](./menu.md)、[status-bar.md](./status-bar.md)
 - [插槽机制](../slots.md)
 - [自定义组件](../custom-components.md)

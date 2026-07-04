@@ -1,7 +1,8 @@
 //! 贡献注册表内部实现
 //!
-//! 框架内部：桥接 contribute → host，按 host_id 路由 register 调用到 host.add。
-//! Registry 仅存储 `IContributionHost`，不存储贡献本身。
+//! 框架内部：桥接 contribute → host，按 host_id 路由 register 调用到 host 的 `IContributionHost::add`。
+//! Registry 存储 `Arc<dyn IContributionHost>` trait object，经 trait 方法路由贡献，
+//! 不依赖具体存储类型、不经 Entity 系统、不存闭包。
 
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -34,9 +35,11 @@ impl Default for ContributionRegistry {
 }
 
 impl IContributionRegistry for ContributionRegistry {
-    fn add(&self, host: Arc<dyn IContributionHost>) {
-        let id = host.id().to_string();
-        self.hosts.write().unwrap().insert(id, host);
+    fn add(&self, host_id: &str, host: Arc<dyn IContributionHost>) {
+        self.hosts
+            .write()
+            .unwrap()
+            .insert(host_id.to_string(), host);
     }
 
     fn remove(&self, host_id: &str) {
@@ -52,11 +55,9 @@ impl IContributionRegistry for ContributionRegistry {
         let hosts = self.hosts.read().unwrap();
         if let Some(host) = hosts.get(host_id) {
             host.add(contribution, options);
-        } else {
-            // host 未注册时贡献被丢弃。要求 host 在 on_loaded 中先 registry.add(host) 注册自身，
-            // 再调用 bootstrap_host_contributions(cx, host_id) 触发该 host_id 的贡献注册。
-            let _ = (host_id, contribution, options);
         }
+        // host 未注册时贡献丢弃。要求 host 在 on_loaded 中先 register_host 注册自身（或共享存储），
+        // 再调用 bootstrap_host_contributions(cx, host_id) 触发该 host_id 的贡献注册。
     }
 
     fn unregister(&self, host_id: &str, contribution_id: &str) -> bool {

@@ -361,7 +361,7 @@ impl Builder {
         processor.generate(&output_dir)?;
 
         // 6. 扫描 `#[contribute]` 并生成统一注册函数。
-        //    host 不再由 build.rs 扫描——host 实现方在 `on_loaded` 中 `cx.get_contribution_registry().add(host)` 注册自身。
+        //    host 不再由 build.rs 扫描——host 实现方在 `on_loaded` 中 `cx.register_host(id, storage)` 注册自身。
         let contributions = contribution_generator::scan_contribution_registrars(&self.scan_dirs);
         contribution_generator::generate(&contributions, &output_dir)?;
 

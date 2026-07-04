@@ -45,8 +45,9 @@ pub fn contribute(args: TokenStream, input: TokenStream) -> TokenStream {
 /// 声明贡献点主机标记类型（通常标注主窗口 ViewModel）。
 ///
 /// 仅接受 `id = "..."` 参数，生成 `pub const ID: &'static str`。
-/// 用户需手写 host handle（实现 `IContributionHost`）并在 `on_loaded` 中
-/// `cx.get_contribution_registry().add(handle)` + `bootstrap_host_contributions(cx, Self::ID)`。
+/// 用户需持有 `entries: Arc<RwLock<Vec<(Arc<dyn IContribution>, ContributionOptions)>>>` 字段，
+/// 在 `on_loaded` 中 `cx.register_host(Self::ID, self.entries.clone())` +
+/// `bootstrap_host_contributions(cx, Self::ID)`。
 ///
 /// ```rust,ignore
 /// #[contributehost(id = "my.app")]

@@ -455,6 +455,15 @@ pub struct Tab {
     /// restarts in sync with the indicator slide.
     pub(super) indicator_epoch: u64,
     pub(super) on_click: Option<TabClickHandler>,
+    /// When true, render a close button at the end of the tab. The button is
+    /// only visible while the parent tab is hovered, and its click is wired to
+    /// `on_close` when set.
+    pub(super) closable: bool,
+    pub(super) on_close: Option<TabClickHandler>,
+    /// When true, the tab shrinks to share width with siblings (browser-like
+    /// compression). Switches from `flex_shrink_0` to `flex_1 + min_w_0` and
+    /// enables label ellipsis truncation. Set by TabBar when overflow detected.
+    pub(super) compress: bool,
 }
 
 impl From<&'static str> for Tab {
@@ -506,6 +515,9 @@ impl Default for Tab {
             variant: TabVariant::default(),
             size: Size::default(),
             on_click: None,
+            closable: false,
+            on_close: None,
+            compress: false,
         }
     }
 }
@@ -588,6 +600,34 @@ impl Tab {
         on_click: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
     ) -> Self {
         self.on_click = Some(Rc::new(on_click));
+        self
+    }
+
+    /// When true, render a close button at the end of the tab. Visibility of
+    /// the button is driven by parent-tab hover, and its click is wired to the
+    /// `on_close` handler when set.
+    pub fn closable(mut self, closable: bool) -> Self {
+        self.closable = closable;
+        self
+    }
+
+    /// Set the close handler invoked when the tab's close button is clicked.
+    /// The handler receives the same `(ClickEvent, Window, App)` signature as
+    /// `on_click`; the close button additionally calls `stop_propagation` so
+    /// the click does not also trigger tab selection.
+    pub fn on_close(
+        mut self,
+        on_close: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.on_close = Some(Rc::new(on_close));
+        self
+    }
+
+    /// Enable browser-like tab compression: the tab switches from fixed-width
+    /// (`flex_shrink_0`) to flexible (`flex_1 + min_w_0`) and the label gets
+    /// ellipsis truncation. Set by TabBar when overflow is detected.
+    pub(crate) fn compress(mut self, compress: bool) -> Self {
+        self.compress = compress;
         self
     }
 
@@ -728,7 +768,7 @@ impl RenderOnce for Tab {
             .justify_center()
             .overflow_hidden()
             .margins(inner_margins)
-            .flex_shrink_0()
+            .when_else(self.compress, |this| this.min_w_0(), |this| this.flex_shrink_0())
             .map(|this| match self.icon {
                 Some(icon) => this
                     .w(inner_height * 1.25)
@@ -741,7 +781,13 @@ impl RenderOnce for Tab {
                 None => this
                     .paddings(inner_paddings)
                     .map(|this| match self.label {
-                        Some(label) => this.child(label),
+                        Some(label) => {
+                            if self.compress {
+                                this.child(div().min_w_0().truncate().child(label))
+                            } else {
+                                this.child(label)
+                            }
+                        }
                         None => this,
                     })
                     .children(self.children),
@@ -763,14 +809,19 @@ impl RenderOnce for Tab {
             inner_content.into_any_element()
         };
 
+        // Per-tab group id used to drive close-button visibility via
+        // `group_hover` (parent hover → child opacity 1).
+        let group_name = format!("tab-{}", self.ix);
+
         self.base
             .id(self.ix)
+            .when(self.closable, |this| this.group(group_name.clone()))
             .relative()
             .flex()
             .flex_wrap()
             .gap_1()
             .items_center()
-            .flex_shrink_0()
+            .when_else(self.compress, |this| this.flex_1().min_w_0(), |this| this.flex_shrink_0())
             .h(height)
             .overflow_hidden()
             .text_color(tab_style.fg)
@@ -821,6 +872,23 @@ impl RenderOnce for Tab {
             .when_some(self.prefix, |this, prefix| this.child(prefix))
             .child(inner_element)
             .when_some(self.suffix, |this, suffix| this.child(suffix))
+            .when(self.closable && !self.disabled, |this| {
+                let on_close = self.on_close.clone();
+                let close_btn = div()
+                    .id(("tab-close", self.ix))
+                    .group_hover(group_name.clone(), |this| this.opacity(1.))
+                    .opacity(0.)
+                    .cursor_pointer()
+                    .px_0p5()
+                    .child(Icon::new(IconName::Close).xsmall())
+                    .when_some(on_close, |this, on_close| {
+                        this.on_click(move |event, window, cx| {
+                            cx.stop_propagation();
+                            on_close(event, window, cx);
+                        })
+                    });
+                this.child(close_btn)
+            })
             .on_mouse_down(MouseButton::Left, |_, _, cx| {
                 // Stop propagation behavior, for works on TitleBar.
                 // https://github.com/longbridge/gpui-component/issues/1836

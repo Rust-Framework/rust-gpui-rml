@@ -9,7 +9,7 @@ pub use crate::command::{CallContext, CommandAbilityExt, ICommand, RelayCommand}
 pub use crate::component::IComponent;
 pub use crate::context::{ensure_service_collection, IAppContext, ServiceCollection};
 pub use crate::contribution::{
-    ContributionAbilityExt, ContributionOptions, IContribution, IContributionHost,
+    ContributionAbilityExt, ContributionOptions, ContributionStorage, IContribution, IContributionHost,
     IContributionRegistry, IVisualContribution, VisualAbilityExt, register_contribution_ability,
     register_visual_ability,
 };

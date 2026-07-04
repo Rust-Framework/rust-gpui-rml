@@ -348,6 +348,21 @@ pub(super) fn gen_tab_window_wrapper(
                     method
                 ));
             }
+            Attribute::Event { name, handler } if name == "on_tab_close" => {
+                let method = match handler {
+                    EventHandler::Ident(m) | EventHandler::MethodName(m) => m.as_str(),
+                    EventHandler::WithArgs(m, _) => m.as_str(),
+                };
+                code.push_str(&format!(
+                    ".on_tab_close({{\n                    \
+                     let weak = cx.weak_entity();\n                    \
+                     move |index: usize, _window: &mut gpui::Window, app: &mut gpui::App| {{\n                        \
+                     if let Some(entity) = weak.upgrade() {{\n                            \
+                     entity.update(app, |this, cx| {{ this.{}(index, cx); }});\n                        \
+                     }}\n                    }}\n                }})",
+                    method
+                ));
+            }
             Attribute::Event { name, handler } if name == "on_chrome_toggle" => {
                 let method = match handler {
                     EventHandler::Ident(m) | EventHandler::MethodName(m) => m.as_str(),

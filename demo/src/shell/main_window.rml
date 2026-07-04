@@ -6,12 +6,13 @@
     icon={IconName::Frame}
     selected-index={selected_tab}
     on-tab-click="on_tab_click"
+    on-tab-close="on_tab_close"
     show-chrome={show_chrome}
     on-chrome-toggle="on_chrome_toggle"
     left-size={slot_left_size}>
 
     <template slot="tabs" each={w in workbenches}>
-        <Tab label={w.name()} />
+        <Tab label={w.name()} closable />
     </template>
 
     <template slot="left">

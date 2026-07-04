@@ -154,6 +154,8 @@ pub struct TabWindowShell {
     tab_children: Vec<TabItem>,
     selected_index: usize,
     on_tab_click: Option<TabClickHandler>,
+    /// 选项卡关闭按钮触发时调用，参数为被关闭选项卡的索引。
+    on_tab_close: Option<TabClickHandler>,
     on_chrome_toggle: Option<ChromeToggleHandler>,
     slot_left: Option<AnyElement>,
     slot_right: Option<AnyElement>,
@@ -177,6 +179,7 @@ impl TabWindowShell {
             tab_children: Vec::new(),
             selected_index: 0,
             on_tab_click: None,
+            on_tab_close: None,
             on_chrome_toggle: None,
             slot_left: None,
             slot_right: None,
@@ -247,6 +250,17 @@ impl TabWindowShell {
         f: impl Fn(usize, &mut Window, &mut App) + 'static,
     ) -> Self {
         self.on_tab_click = Some(Rc::new(f));
+        self
+    }
+
+    /// Set the close handler invoked when a tab's close button is clicked.
+    /// The parameter is the index of the closed tab. The close button only
+    /// renders on tabs whose `closable` flag is true.
+    pub fn on_tab_close(
+        mut self,
+        f: impl Fn(usize, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.on_tab_close = Some(Rc::new(f));
         self
     }
 
@@ -498,6 +512,10 @@ impl RenderOnce for TabWindowShell {
 
         if let Some(on_click) = self.on_tab_click {
             tab_bar = tab_bar.on_click(move |ix, window, cx| on_click(*ix, window, cx));
+        }
+
+        if let Some(on_close) = self.on_tab_close {
+            tab_bar = tab_bar.on_close(move |ix, window, cx| on_close(*ix, window, cx));
         }
 
         let mut title_row = h_flex()

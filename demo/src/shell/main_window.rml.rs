@@ -1,10 +1,11 @@
 use std::sync::{Arc, RwLock};
 
-use gpui::{IntoElement, WeakEntity, Window};
+use gpui::{IntoElement, ParentElement, Styled, WeakEntity, Window};
+use gpui_component::scroll::ScrollableElement as _;
 use rml::prelude::*;
 use rml_app::IAppContextExt;
 use rml_core::command::CommandAbilityExt;
-use rml_core::contribution::{ContributionOptions, IContribution, IContributionHost, VisualAbilityExt};
+use rml_core::contribution::{IContribution, VisualAbilityExt};
 use rml_core::i18n::{I18nExt, I18nState};
 use rml_core::observable::ObservableVec;
 use rml_core::theme::ThemeExt;
@@ -65,34 +66,6 @@ pub struct MainWindow {
     lsp_client: Option<Arc<LspClient>>,
 }
 
-/// MainWindow 的 host handle —— 直接操作共享的 `Arc<RwLock<Vec<ContribEntry>>>`。
-///
-/// 在 `on_loaded` 中创建并注册到 `ContributionRegistry`，替代旧的 channel 桥接。
-/// `bootstrap_host_contributions` 同步触发 `register → handle.add → entries.push`，
-/// 无需 drain。
-struct MainWindowHostHandle {
-    id: &'static str,
-    entries: Arc<std::sync::RwLock<Vec<ContribEntry>>>,
-}
-
-impl IContributionHost for MainWindowHostHandle {
-    fn id(&self) -> &'static str {
-        self.id
-    }
-
-    fn add(&self, contribution: Arc<dyn IContribution>, options: Option<ContributionOptions>) {
-        let opts = options.unwrap_or_default();
-        self.entries.write().unwrap().push((contribution, opts));
-    }
-
-    fn remove(&self, contribution_id: &str) {
-        self.entries
-            .write()
-            .unwrap()
-            .retain(|(c, _)| c.id() != contribution_id);
-    }
-}
-
 /// 手写 `Default`——`#[window]` 宏注入的版本计数器 / 缓存 / 状态字段全部用 `Default::default()` 初始化。
 impl Default for MainWindow {
     fn default() -> Self {
@@ -141,14 +114,12 @@ impl ILifecycle for MainWindow {
 }
 
 impl MainWindow {
-    /// 注册 host handle 到 registry + 触发该 host_id 的所有 `#[contribute]` 批量注册。
+    /// 注册 host 到 registry + 触发该 host_id 的所有 `#[contribute]` 批量注册。
+    /// `register_host` 存 `Arc<dyn IContributionHost>`（`entries.clone()` 经 unsized coercion 转入）；
+    /// `bootstrap` 同步触发 `register → host.add(c, opts) → storage.write().push`。
     /// `ensure_status_ready_registered` 在 bootstrap 后调用，使 `as_visual()` 查询生效。
     fn init_contribution_host(&mut self, cx: &mut Context<Self>) {
-        let handle = Arc::new(MainWindowHostHandle {
-            id: Self::ID,
-            entries: self.entries.clone(),
-        });
-        cx.get_contribution_registry().add(handle);
+        cx.register_host(Self::ID, self.entries.clone());
         rml_app::contribution::bootstrap_host_contributions(cx, Self::ID);
         crate::cases::status_bar_case::ensure_status_ready_registered();
     }
@@ -262,12 +233,20 @@ impl MainWindow {
     }
 
     /// 渲染激活的 workbench 视图：读 activated → as_visual() → render。
+    ///
+    /// 外层包裹 `overflow_y_scrollbar` 容器，确保案例内容超出视口时显示可见垂直滚动条。
+    /// `size_full()` 填满 tab-window 主体区域；`min_h_0()` 让 flex 子项可正确收缩。
     pub fn active_view(&self, window: &mut Window, cx: &mut gpui::Context<Self>) -> gpui::AnyElement {
         let activated = self.activated.read().unwrap().clone();
         if let Some(wb) = activated {
             let iv: &dyn IContribution = wb.as_ref();
             if let Some(visual) = iv.as_visual() {
-                return visual.render(window, cx);
+                return gpui::div()
+                    .size_full()
+                    .min_h_0()
+                    .overflow_y_scrollbar()
+                    .child(visual.render(window, cx))
+                    .into_any_element();
             }
         }
         gpui::div().into_any_element()
@@ -379,6 +358,20 @@ impl MainWindow {
         cx.notify();
     }
 
+    /// 关闭指定索引的 tab：调用 `IWorkbenchManager::close` 移除 workbench，
+    /// 若是当前激活项则切到首个剩余项；手动 bump `activated` 版本（close 仅 bump
+    /// `workbenches`）以触发 `selected_tab` computed 失效与 RML 重投影。
+    #[command]
+    pub fn on_tab_close(&mut self, index: usize, cx: &mut Context<Self>) {
+        let wb = self.workbenches.snapshot().get(index).cloned();
+        if let Some(wb) = wb {
+            let uri: Uri = wb.uri().parse().unwrap();
+            IWorkbenchManager::close(self, &uri);
+            self.__rml_bump_version("activated");
+            cx.notify();
+        }
+    }
+
     /// 由 ActivityPanel::on_case_activate 调用（经 MainWindowRef 回调）。
     #[command]
     pub fn open_case(&mut self, case_id: String, cx: &mut Context<Self>) {
@@ -469,10 +462,24 @@ impl IWorkbenchManager for MainWindow {
 
     fn close(&self, uri: &Uri) {
         let uri_str = uri.as_str();
+        let closed_index = self
+            .workbenches
+            .snapshot()
+            .iter()
+            .position(|w| w.uri() == uri_str);
         self.workbenches.remove_where(|w| w.uri() == uri_str);
         let mut activated = self.activated.write().unwrap();
         if activated.as_ref().map(|a| a.uri() == uri_str).unwrap_or(false) {
-            *activated = self.workbenches.snapshot().into_iter().next();
+            let new_snapshot = self.workbenches.snapshot();
+            // 就近左侧激活：关闭 index N → 激活 N-1；关闭首项 → 激活新首项；
+            // 无剩余 → None。匹配浏览器 Tab 关闭交互。
+            *activated = closed_index.and_then(|ix| {
+                if new_snapshot.is_empty() {
+                    None
+                } else {
+                    new_snapshot.get(ix.saturating_sub(1)).cloned()
+                }
+            });
         }
     }
 

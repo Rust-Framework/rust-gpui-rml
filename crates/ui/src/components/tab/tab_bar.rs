@@ -52,6 +52,8 @@ pub struct TabBar {
     size: Size,
     menu: bool,
     on_click: Option<TabBarClickHandler>,
+    /// 选项卡关闭按钮触发时调用，参数为被关闭选项卡的索引。
+    on_close: Option<TabBarClickHandler>,
 }
 
 impl TabBar {
@@ -71,6 +73,7 @@ impl TabBar {
             last_empty_space: div().w_3().into_any_element(),
             selected_index: None,
             on_click: None,
+            on_close: None,
             menu: false,
         }
     }
@@ -167,6 +170,18 @@ impl TabBar {
         F: Fn(&usize, &mut Window, &mut App) + 'static,
     {
         self.on_click = Some(Rc::new(on_click));
+        self
+    }
+
+    /// Set the on_close callback of the TabBar, fired when a tab's close button
+    /// is clicked. The parameter is the index of the closed tab.
+    ///
+    /// The close button only renders on tabs whose `closable` flag is true.
+    pub fn on_close<F>(mut self, on_close: F) -> Self
+    where
+        F: Fn(&usize, &mut Window, &mut App) + 'static,
+    {
+        self.on_close = Some(Rc::new(on_close));
         self
     }
 
@@ -476,6 +491,10 @@ impl RenderOnce for TabBar {
 
         let show_menu =
             self.menu && overflow_state.as_ref().map(|s| *s.read(cx)).unwrap_or(false);
+        // Raw overflow flag (not gated by `self.menu`): when true, tabs switch
+        // from fixed-width scroll mode to browser-like compression (flex_1 +
+        // min_w_0 + label ellipsis).
+        let is_overflow = overflow_state.as_ref().map(|s| *s.read(cx)).unwrap_or(false);
         let has_suffix_or_menu = self.suffix.is_some() || show_menu;
         let mut item_metas: Vec<(Option<SharedString>, Option<Icon>, bool)> = Vec::new();
         let selected_index = self.selected_index;
@@ -518,7 +537,8 @@ impl RenderOnce for TabBar {
                         h_flex()
                             .id("tabs-inner")
                             .relative()
-                            .overflow_x_scroll()
+                            .when(is_overflow, |this| this.overflow_x_hidden())
+                            .when(!is_overflow, |this| this.overflow_x_scroll())
                             .when_some(self.scroll_handle, |this, scroll_handle| {
                                 this.track_scroll(&scroll_handle)
                             })
@@ -531,7 +551,7 @@ impl RenderOnce for TabBar {
                             .child(
                                 h_flex()
                                     .gap(gap)
-                                    .flex_shrink_0()
+                                    .when_else(is_overflow, |this| this.flex_1().min_w_0(), |this| this.flex_shrink_0())
                                     .when_some(content_width_rc.clone(), |this, cw_rc| {
                                         this.on_prepaint(move |bounds, _, _| {
                                             *cw_rc.borrow_mut() = bounds.size.width;
@@ -549,7 +569,8 @@ impl RenderOnce for TabBar {
                                             .tab_bar_prefix(tab_bar_prefix)
                                             .into_header_tab()
                                             .with_variant(self.variant)
-                                            .with_size(self.size);
+                                            .with_size(self.size)
+                                            .compress(is_overflow);
                                         tab.indicator_active = has_indicator;
                                         tab.indicator_ready = indicator_ready;
                                         tab.indicator_epoch = indicator_epoch;
@@ -559,6 +580,9 @@ impl RenderOnce for TabBar {
                                             })
                                             .when_some(self.on_click.clone(), move |this, on_click| {
                                                 this.on_click(move |_, window, cx| on_click(&ix, window, cx))
+                                            })
+                                            .when_some(self.on_close.clone(), move |this, on_close| {
+                                                this.on_close(move |_, window, cx| on_close(&ix, window, cx))
                                             });
 
                                         if let Some(ref rc) = bounds_rc {

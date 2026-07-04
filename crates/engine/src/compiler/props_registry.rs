@@ -92,13 +92,14 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
         "menu", "track_scroll",
         "underline", "pill", "flat", "outline", "segmented",
     ]),
-    // Tab 专用（标签项，label/icon + variant 快捷方法 + prefix/suffix + on_click）
+    // Tab 专用（标签项，label/icon + variant 快捷方法 + prefix/suffix + on_click + closable）
     ("Tab", &[
         "label", "icon", "disabled", "selected", "prefix", "suffix", "on_click",
+        "closable",
         "underline", "pill", "flat", "outline", "segmented",
     ]),
-    // TabItem 专用（item builder 子标签，WPF TabItem 模式：title + body）
-    ("TabItem", &["title", "title_icon", "disabled", "on_click"]),
+    // TabItem 专用（item builder 子标签，WPF TabItem 模式：title + body + closable）
+    ("TabItem", &["title", "title_icon", "disabled", "on_click", "closable"]),
     // Table 专用（WPF DataGrid 风格表格）
     ("Table", &["columns", "rows", "delegate", "bordered", "borderless", "stripe"]),
     // Column 专用（item builder 子标签，不在 component_lookup 中）
@@ -178,7 +179,7 @@ pub static SHELL_PROPS: &[(&str, &[&str])] = &[
         "title", "width", "height", "startup", "icon",
         "tabs", "selected_index", "show_chrome",
         "left_size", "right_size", "bottom_size",
-        "on_tab_click", "on_chrome_toggle", "tab_item_template",
+        "on_tab_click", "on_tab_close", "on_chrome_toggle", "tab_item_template",
     ]),
     ("modern-window", &[
         "title", "width", "height", "startup", "icon",
@@ -308,6 +309,8 @@ mod tests {
         assert!(is_prop_registered("Tab", "prefix"));
         assert!(is_prop_registered("Tab", "suffix"));
         assert!(is_prop_registered("Tab", "on_click"));
+        assert!(is_prop_registered("Tab", "closable"));
+        assert!(is_prop_registered("TabItem", "closable"));
         assert!(is_prop_registered("Tab", "underline"));
         assert!(is_prop_registered("Tab", "pill"));
     }
@@ -343,6 +346,7 @@ mod tests {
     fn shell_props_recognized() {
         assert!(is_shell_prop_registered("tab-window", "tabs"));
         assert!(is_shell_prop_registered("tab-window", "on_tab_click"));
+        assert!(is_shell_prop_registered("tab-window", "on_tab_close"));
         assert!(is_shell_prop_registered("tab-window", "left_size"));
         assert!(is_shell_prop_registered("tab-window", "tab_item_template"));
         assert!(is_shell_prop_registered("modern-window", "menu"));

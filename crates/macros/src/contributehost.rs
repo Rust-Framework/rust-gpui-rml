@@ -3,9 +3,9 @@
 //! 宏仅负责生成 `pub const ID: &'static str`，作为 host_id 的单一来源。
 //!
 //! 用户职责：
-//! - 手写一个 host handle struct（实现 `IContributionHost`），持有 `Arc<RwLock<Vec<...>>>` 共享存储
-//! - 手写 `impl ILifecycle`（在 `on_loaded` 中创建 handle + `cx.get_contribution_registry().add(Arc::new(handle))` + `bootstrap_host_contributions(cx, Self::ID)`）
-//! - 自管贡献存储（如 `Arc<RwLock<Vec<(Arc<dyn IContribution>, ContributionOptions)>>>`，handle 持有 clone）
+//! - 持有 `entries: Arc<RwLock<Vec<(Arc<dyn IContribution>, ContributionOptions)>>>` 共享存储字段
+//! - 手写 `impl ILifecycle`（在 `on_loaded` 中 `cx.register_host(Self::ID, self.entries.clone())` + `bootstrap_host_contributions(cx, Self::ID)`）
+//! - 自管贡献投影（从 `entries` 投影到 cases/menus/status 等 ViewModel 集合）
 //!
 //! 宏展开顺序：`#[component]`/`#[window]`（内层先）→ `#[contributehost]`（外层）→ `#[contribute]`（最外层）。
 

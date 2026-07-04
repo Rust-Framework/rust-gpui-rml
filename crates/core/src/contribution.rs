@@ -9,7 +9,7 @@
 
 use std::any::Any;
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use gpui::{AnyElement, App, SharedString, Window};
 
@@ -158,17 +158,17 @@ pub fn register_visual_ability<T: IVisualContribution + 'static>() {
 
 /// 贡献点主机：主动受理方。host 自行决定如何存储/映射贡献。
 ///
-/// host 直接实现此 trait（不再经由 `IHostEntity` 钩子）。
 /// `add`/`remove` 均为 `&self`——host 使用 `RwLock`/`Arc<RwLock<Vec<...>>>` 等内部可变性结构。
-/// 默认空实现：host 按业务需要 override `add`。
+/// 默认空实现：host 按业务需要 override `add`/`remove`。
+///
+/// 框架为共享存储类型 `RwLock<Vec<(Arc<dyn IContribution>, ContributionOptions)>>` 提供默认 impl，
+/// 业务代码持有 `entries: Arc<RwLock<Vec<...>>>` 字段后，`entries.clone()` 经 unsized coercion
+/// 转为 `Arc<dyn IContributionHost>` 即可注册。需要自定义受理逻辑时，为自身类型 impl 本 trait。
 ///
 /// host 可通过 `c.as_command()`/`c.as_visual()` 查询贡献能力并分类存储。
-///
-/// `#[contributehost]` 宏生成 `pub const ID: &'static str`（inherent impl），
-/// 实现 trait 时 `fn id()` 返回 `Self::ID` 即可。
 pub trait IContributionHost: Send + Sync + 'static {
-    /// 运行时获取 host ID。
-    fn id(&self) -> &'static str;
+    /// 运行时获取 host ID。默认 `""`——共享存储 host 无固有 ID，由 `register_host(id, ...)` 外部传入。
+    fn id(&self) -> &'static str { "" }
 
     /// 受理贡献（统一入口）。host 自行决定如何存储/分发。
     /// `options` 为 `None` 时表示无元数据（order/group/kind 等），host 可按 `ContributionOptions::default()` 处理。
@@ -178,22 +178,42 @@ pub trait IContributionHost: Send + Sync + 'static {
     fn remove(&self, _contribution_id: &str) {}
 }
 
+/// 共享存储默认 host 实现：`Arc<RwLock<Vec<...>>>` 经 unsized coercion 转为 `Arc<dyn IContributionHost>`。
+/// 业务代码无需自定义 host 类型即可使用 `register_host(id, storage.clone())`。
+impl IContributionHost for RwLock<Vec<(Arc<dyn IContribution>, ContributionOptions)>> {
+    fn add(&self, contribution: Arc<dyn IContribution>, options: Option<ContributionOptions>) {
+        self.write().unwrap().push((contribution, options.unwrap_or_default()));
+    }
+
+    fn remove(&self, contribution_id: &str) {
+        self.write().unwrap().retain(|(c, _)| c.id() != contribution_id);
+    }
+}
+
+/// Host 共享存储类型别名 —— `Arc<RwLock<Vec<...>>>`。
+/// 经 `register_host` 注册到 registry（unsized coercion 为 `Arc<dyn IContributionHost>`），
+/// registry 调用 trait 方法写入/移除贡献，不经 Entity 系统，避免 `on_loaded` 中的重入 panic。
+pub type ContributionStorage = Arc<RwLock<Vec<(Arc<dyn IContribution>, ContributionOptions)>>>;
+
 /// 贡献注册表接口：桥接 contribute → host。
-/// 框架内实现，按 host_id 路由 register 调用到对应 host 的 add 方法。
-/// 所有方法 `&self` + 无 `cx` —— 内部 `RwLock` 可变性，`host.add` 直接调用。
+/// 框架内实现，按 host_id 路由 register 调用到对应 host 的 `IContributionHost::add`。
 ///
-/// Registry 仅存储 `IContributionHost`，不存储贡献本身。host 未注册时 `register` 直接 drop 贡献
-/// （warn 日志）。Host 必须在 `on_loaded` 中先经 `cx.get_contribution_registry().add(host)` 注册自身，
+/// Registry 存储 `Arc<dyn IContributionHost>` trait object，经 trait 方法路由贡献，
+/// 不依赖具体存储类型（依赖倒置）、不经 Entity 系统、不存 `WeakEntity` 闭包。
+/// 这避免了 `on_loaded` 中 `weak.update` 的重入 panic，同时允许业务代码自定义受理逻辑。
+///
+/// Host 必须在 `on_loaded` 中先经 `cx.register_host(id, host)` 注册自身（或共享存储），
 /// 再调用 `bootstrap_host_contributions(cx, id)` 触发该 host_id 的贡献注册。
 pub trait IContributionRegistry: Send + Sync {
-    /// 注册 host（Entity 在 `on_loaded` 时手动调用）。
-    fn add(&self, host: Arc<dyn IContributionHost>);
+    /// 注册 host。host 经 `Arc<dyn IContributionHost>` 提供 `add`/`remove` 能力，
+    /// registry 调用 trait 方法路由贡献，不依赖具体存储类型（依赖倒置）。
+    fn add(&self, host_id: &str, host: Arc<dyn IContributionHost>);
 
     /// 注销 host。
     fn remove(&self, host_id: &str);
 
     /// 向 host 注册贡献（`#[contribute]` 宏生成代码调用）。
-    /// `options` 为 `None` 时表示无元数据。
+    /// registry 经 `host.add(c, opts)` 路由到具体 host 的受理逻辑。
     fn register(
         &self,
         host_id: &str,

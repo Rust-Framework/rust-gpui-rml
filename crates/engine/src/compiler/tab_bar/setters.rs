@@ -18,6 +18,7 @@ use crate::parser::ast::EventHandler;
 /// - `underline=""` / `pill=""` / `flat=""` / `outline=""` / `segmented=""` → `.<name>()`（variant 快捷方法）
 /// - `menu="true"` → `.menu(true)`（仅 TabBar）
 /// - `icon="User"` → `.icon(rml_ui::IconName::User)`（仅 Tab）
+/// - `closable` / `closable="true"` → `.closable(true)`（Tab / TabItem 共用）
 pub fn static_setter(name: &str, value: &str, tag: &str) -> Option<String> {
     match name {
         "underline" | "pill" | "flat" | "outline" | "segmented" => {
@@ -35,6 +36,14 @@ pub fn static_setter(name: &str, value: &str, tag: &str) -> Option<String> {
             };
             Some(format!(".menu({})", bool_val))
         }
+        "closable" => {
+            let bool_val = if value.is_empty() || value.eq_ignore_ascii_case("true") {
+                "true"
+            } else {
+                "false"
+            };
+            Some(format!(".closable({})", bool_val))
+        }
         "icon" if tag == "Tab" => Some(format!(".icon(rml_ui::IconName::{})", value)),
         "title" if tag == "TabItem" => Some(format!(".title({:?})", value)),
         "title_icon" if tag == "TabItem" => Some(format!(".title_icon(rml_ui::IconName::{})", value)),
@@ -48,6 +57,7 @@ pub fn static_setter(name: &str, value: &str, tag: &str) -> Option<String> {
 /// - `prefix={expr}` / `suffix={expr}` → `.<name>(<expr>)`（element，不加 .clone()）
 /// - `last_empty_space={expr}` → `.last_empty_space(<expr>)`（TabBar）
 /// - `menu={bool expr}` → `.menu(<expr>)`（TabBar）
+/// - `closable={bool expr}` → `.closable(<expr>)`（Tab / TabItem 共用）
 pub fn bind_setter(
     name: &str,
     expr_str: &str,
@@ -61,6 +71,12 @@ pub fn bind_setter(
                 expr_str, loop_vars, computed,
             );
             Some(format!(".{}({})", name, rust_expr))
+        }
+        "closable" => {
+            let rust_expr = super::super::component::component_bind_rust_expr(
+                expr_str, loop_vars, computed,
+            );
+            Some(format!(".closable({})", rust_expr))
         }
         "prefix" | "suffix" => {
             let rust_expr = super::super::component::component_bind_rust_expr(

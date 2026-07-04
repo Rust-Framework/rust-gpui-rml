@@ -32,6 +32,8 @@ pub struct TabItem {
     pub(super) disabled: bool,
     pub(super) tab_bar_prefix: Option<bool>,
     pub(super) on_click: Option<TabClickHandler>,
+    /// 透传到 [`super::Tab::closable`]，控制是否在 header 末尾渲染关闭按钮。
+    pub(super) closable: bool,
 }
 
 
@@ -93,6 +95,12 @@ impl TabItem {
         self
     }
 
+    /// 透传到 [`super::Tab::closable`]，控制是否在 header 末尾渲染关闭按钮。
+    pub fn closable(mut self, closable: bool) -> Self {
+        self.closable = closable;
+        self
+    }
+
     /// 由 TabBar 在 render 时透传索引。
     pub(crate) fn ix(mut self, ix: usize) -> Self {
         self.ix = ix;
@@ -112,7 +120,8 @@ impl TabItem {
         let mut tab = super::Tab::new()
             .ix(self.ix)
             .tab_bar_prefix(self.tab_bar_prefix.unwrap_or(true))
-            .disabled(self.disabled);
+            .disabled(self.disabled)
+            .closable(self.closable);
         if let Some(label) = self.title_label {
             tab = tab.label(label);
         }
@@ -173,6 +182,7 @@ impl From<super::Tab> for TabItem {
             disabled: tab.disabled,
             tab_bar_prefix: tab.tab_bar_prefix,
             on_click: tab.on_click,
+            closable: tab.closable,
         }
     }
 }

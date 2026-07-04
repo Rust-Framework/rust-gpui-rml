@@ -11,7 +11,7 @@
 use std::sync::Arc;
 
 use gpui::App;
-use rml_core::contribution::IContributionRegistry;
+use rml_core::contribution::{IContributionHost, IContributionRegistry};
 use rml_core::context::IAppContext;
 
 use crate::contribution::ContributionRegistry;
@@ -24,6 +24,16 @@ pub trait IAppContextExt: IAppContext {
     /// 获取贡献注册表（trait object 视图，隐藏具体类型）。
     fn get_contribution_registry(&self) -> Arc<dyn IContributionRegistry> {
         self.get_required_service::<ContributionRegistry>() as Arc<dyn IContributionRegistry>
+    }
+
+    /// 注册 host。`host` 经 `Arc<dyn IContributionHost>` 提供 `add`/`remove` 能力，
+    /// registry 调用 trait 方法路由贡献，不依赖具体存储类型（依赖倒置）。
+    ///
+    /// 默认用法：host 持有 `entries: Arc<RwLock<Vec<...>>>` 共享存储（即 `ContributionStorage`），
+    /// `entries.clone()` 经 unsized coercion 转为 `Arc<dyn IContributionHost>`——
+    /// 业务代码无需自定义 host 类型。需要自定义受理逻辑时，为自身类型 impl `IContributionHost`。
+    fn register_host(&self, host_id: &str, host: Arc<dyn IContributionHost>) {
+        self.get_contribution_registry().add(host_id, host);
     }
 }
 

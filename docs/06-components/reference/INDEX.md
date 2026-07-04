@@ -35,6 +35,7 @@
 | [gpui-status-bar.md](./gpui-status-bar.md) | `StatusBar` | StatelessNoId（容器，gpui-component 原生） |
 | [status-bar.md](./status-bar.md) | `status_bar` | StatelessNoId（MVVM 绑定包装） |
 | [activity-bar.md](./activity-bar.md) | `ActivityBar` | Stateless（容器 + 数据绑定） |
+| [tab-bar.md](./tab-bar.md) | `TabBar` / `Tab` / `tab-item` | Stateless（容器 + 两种子项模式） |
 
 ## 数据 / 导航（Data / Navigation）
 
