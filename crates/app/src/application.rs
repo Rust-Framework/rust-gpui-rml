@@ -17,8 +17,11 @@
 //! ```
 
 use std::marker::PhantomData;
+use std::sync::Arc;
 
 use gpui::{px, App};
+use rml_core::context::ensure_service_collection;
+use rml_core::context::IAppContext;
 use rml_core::i18n::ensure_i18n;
 use rml_core::theme::ensure_theme;
 use rml_core::window::IWindow;
@@ -26,11 +29,15 @@ use rml_core::window::IWindow;
 use crate::lifecycle::IAppLifecycle;
 
 fn bootstrap_runtime(cx: &mut App) {
+    // 初始化 IAppContext 的 ServiceCollection（IServiceProvider 风格统一服务访问）
+    ensure_service_collection(cx);
+    // 注册 ContributionRegistry 为单例服务（替代原 OnceLock 静态存储）
+    cx.set_service(Arc::new(crate::contribution::ContributionRegistry::new()));
+
     ensure_i18n(cx);
     ensure_theme(cx);
     gpui_component::init(cx);
     gpui_component::Theme::global_mut(cx).font_size = px(14.);
-    crate::contribution::ensure_contribution_registry(cx);
     // 贡献注册由 host 在 on_loaded 中触发（__rml_install_host → bootstrap_host_contributions）
 }
 

@@ -168,7 +168,7 @@ pub(super) fn gen_render_impl_from_children(
     Ok(out)
 }
 
-/// 判断元素是否为窗口根节点（window/modern_window/tab_window）
+/// 判断元素是否为窗口根节点（window/modern-window/tab-window）
 fn root_tag_is_window(elem: &Element) -> bool {
     matches!(
         tags::root_tag_lookup(&elem.tag),

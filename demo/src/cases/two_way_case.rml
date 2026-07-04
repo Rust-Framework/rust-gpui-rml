@@ -25,13 +25,13 @@
             <div class="demo-section">
                 <h3>文本双向绑定</h3>
                 <p>输入姓名，下方文案实时更新：</p>
-                <input model={name} placeholder={t("demo.name_placeholder")} oninput={on_name_input} />
+                <input model={name} placeholder={t("demo.name_placeholder")} on-input={on_name_input} />
                 <p>当前姓名：{name}</p>
             </div>
             <div class="demo-section">
                 <h3>数值双向绑定</h3>
                 <p>输入年龄（0-150），下方文案实时更新：</p>
-                <input model={age} placeholder={t("demo.age_placeholder")} onchange={on_age_change} />
+                <input model={age} placeholder={t("demo.age_placeholder")} on-change={on_age_change} />
                 <p>当前年龄：{age}</p>
             </div>
             <div class="demo-section">

@@ -86,8 +86,8 @@ fn collect_model_input_handlers_recursive(
                     EventHandler::WithArgs(m, _) => m.clone(),
                 };
                 match name.as_str() {
-                    "oninput" => entry.on_input = Some(method),
-                    "onchange" => entry.on_change = Some(method),
+                    "on_input" => entry.on_input = Some(method),
+                    "on_change" => entry.on_change = Some(method),
                     _ => {}
                 }
             }

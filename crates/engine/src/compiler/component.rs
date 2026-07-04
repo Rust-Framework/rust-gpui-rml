@@ -120,7 +120,7 @@ pub fn gen_component(
             // 无参构造：TitleBar::new() / StatusBar::new()
             format!("{}::new()", component.ctor_path)
         }
-        tags::ComponentKind::Stateful { state_field: _ } if tag == "Tree" => {
+        tags::ComponentKind::Stateful { state_field: _ } if tags::canonical_tag(tag) == "Tree" => {
             // Tree 构造器使用 as_ref()，与其他 Stateful 组件不同，委托到独立模块
             return crate::compiler::tree::gen_tree(
                 elem,
@@ -131,7 +131,7 @@ pub fn gen_component(
                 loop_vars,
             );
         }
-        tags::ComponentKind::Stateful { state_field: _ } if tag == "CodeEditor" => {
+        tags::ComponentKind::Stateful { state_field: _ } if tags::canonical_tag(tag) == "CodeEditor" => {
             // CodeEditor：基于 Input 的代码编辑器，自动应用 mono 字体 + size_full
             // 字段必须为 Option<Entity<InputState>>，委托到独立 codegen 模块
             return crate::compiler::code_editor::gen_code_editor(
@@ -212,11 +212,15 @@ pub fn gen_component(
     //
     // 注：ModernWindowShell 不经此路径处理——它由 codegen 根元素处理路径
     // （gen_modern_window_wrapper）直接生成，不通过 component_lookup 路由表。
+    //
+    // 通过 canonical_tag 统一规范化 tag 名（kebab-case / 小写别名 → PascalCase），
+    // 避免字符串字面量比对漏洞（B2 统一规范）。
+    let canonical = tags::canonical_tag(&resolved);
     let is_container = matches!(component.kind, tags::ComponentKind::StatelessNoId)
-        && resolved != "menu"
-        && resolved != "MenuBar"
-        && resolved != "status_bar"
-        && resolved != "Avatar";
+        && canonical != "menu"
+        && canonical != "MenuBar"
+        && canonical != "StatusBar"
+        && canonical != "Avatar";
 
     if is_container {
         // 容器组件：所有 element/文本子节点作为 children
@@ -236,7 +240,7 @@ pub fn gen_component(
     } else if !label_set_by_attr {
         // 非容器组件：仅支持单个文本子节点作为 label
         // Avatar 无 .label() 方法，文本子节点映射到 .name()
-        let text_method = if resolved == "Avatar" { "name" } else { "label" };
+        let text_method = if canonical == "Avatar" { "name" } else { "label" };
         for child in &elem.children {
             if let Node::Text(text) = child {
                 code.push_str(&format!(".{}({:?})", text_method, text));
@@ -387,7 +391,7 @@ pub fn component_bind_rust_expr(
 /// 对于无法解析的表达式，回退到简单的 `self.<expr>` 引用。
 ///
 /// `tag` 参数保留用于未来组件专用 setter 扩展，当前无组件特定分支
-/// （ModernWindowShell 的 menu/status_bar/title setter 已移至 codegen 根元素处理路径）。
+/// （ModernWindowShell 的 menu/status-bar/title setter 已移至 codegen 根元素处理路径）。
 pub fn component_bind_setter(
     name: &str,
     expr_str: &str,
@@ -395,7 +399,7 @@ pub fn component_bind_setter(
     computed: &[&str],
     tag: &str,
 ) -> Option<String> {
-    // 组件专用 bind setter 委托（menu/MenuBar/status_bar 的 items 属性）
+    // 组件专用 bind setter 委托（menu/MenuBar/status-bar 的 items 属性）
     if let Some(s) = super::menu::bind_setter(name, expr_str, loop_vars, computed, tag) {
         return Some(s);
     }
@@ -469,20 +473,19 @@ pub fn component_bind_setter(
 /// `Fn(&ClickEvent, &mut Window, &mut App)`。通过 `cx.listener` 包装后可访问 `this`。
 ///
 /// 组件专用事件（Input/TextInput 的 onchange、Tree 的 on_activate、Accordion 的 on_toggle_click）
-/// 已迁移到各自的组件模块，本函数仅处理通用 `onclick` 事件并作为回退入口。
+/// 已迁移到各自的组件模块，本函数仅处理通用 `on_click` 事件并作为回退入口。
 ///
-/// `on_click`（下划线形式）作为 `onclick` 的别名，供 Tab/TabItem 等 tab 家族组件使用
-/// （与 props_registry 中登记的形式一致）。
+/// 声明式统一为 `on-click`（kebab-case），normalize 后内部 match `on_click`（snake_case）。
+/// 旧的单词条形式 `onclick` 已移除（无兼容性设计）。
 pub fn component_event_setter(name: &str, handler: &EventHandler, tag: &str) -> Option<String> {
-    // 组件专用事件 setter 委托（Input/TextInput 的 onchange）
-    if tag == "Input" || tag == "TextInput" {
-        if let Some(s) = super::input::event_setter(name, handler, tag) {
-            return Some(s);
-        }
+    // 组件专用事件 setter 委托（Input/TextInput 的 onchange 等）
+    // 统一委托子模块 event_setter，禁止硬编码 tag 判断
+    if let Some(s) = super::input::event_setter(name, handler, tag) {
+        return Some(s);
     }
 
     match name {
-        "onclick" | "on_click" => {
+        "on_click" => {
             let method = match handler {
                 EventHandler::Ident(m) | EventHandler::MethodName(m) => m,
                 EventHandler::WithArgs(m, _) => m,
@@ -829,9 +832,9 @@ mod tests {
     // ─── component_event_setter ───
 
     #[test]
-    fn event_setter_onclick_ident() {
+    fn event_setter_on_click_ident() {
         let handler = EventHandler::Ident("increment".into());
-        let code = component_event_setter("onclick", &handler, "Button").unwrap();
+        let code = component_event_setter("on_click", &handler, "Button").unwrap();
         assert!(code.starts_with(".on_click("));
         assert!(code.contains("gpui::ClickEvent"));
         assert!(code.contains("from_gpui_click(_ev)"));
@@ -839,24 +842,24 @@ mod tests {
     }
 
     #[test]
-    fn event_setter_onclick_method_name() {
+    fn event_setter_on_click_method_name() {
         let handler = EventHandler::MethodName("handle_click".into());
-        let code = component_event_setter("onclick", &handler, "Button").unwrap();
+        let code = component_event_setter("on_click", &handler, "Button").unwrap();
         assert!(code.contains("this.handle_click"));
     }
 
     #[test]
-    fn event_setter_onclick_with_args_empty() {
+    fn event_setter_on_click_with_args_empty() {
         let handler = EventHandler::WithArgs("increment".into(), vec![]);
-        let code = component_event_setter("onclick", &handler, "Button").unwrap();
+        let code = component_event_setter("on_click", &handler, "Button").unwrap();
         assert!(code.contains("this.increment"));
         assert!(!code.contains("p0"));
     }
 
     #[test]
-    fn event_setter_onclick_with_args_single() {
+    fn event_setter_on_click_with_args_single() {
         let handler = EventHandler::WithArgs("set_value".into(), vec!["42".into()]);
-        let code = component_event_setter("onclick", &handler, "Button").unwrap();
+        let code = component_event_setter("on_click", &handler, "Button").unwrap();
         assert!(code.contains("let p0 = 42.clone();"));
         assert!(code.contains("this.set_value(p0,"));
     }
@@ -864,17 +867,17 @@ mod tests {
     #[test]
     fn event_setter_non_click_returns_none() {
         let handler = EventHandler::Ident("handler".into());
-        // onchange 只在 Input/TextInput 上支持，Button 不支持
-        assert!(component_event_setter("onchange", &handler, "Button").is_none());
-        assert!(component_event_setter("oninput", &handler, "Input").is_none());
-        assert!(component_event_setter("onhover", &handler, "Button").is_none());
-        assert!(component_event_setter("oncustom", &handler, "Button").is_none());
+        // on_change 只在 Input/TextInput 上支持，Button 不支持
+        assert!(component_event_setter("on_change", &handler, "Button").is_none());
+        assert!(component_event_setter("on_input", &handler, "Input").is_none());
+        assert!(component_event_setter("on_hover", &handler, "Button").is_none());
+        assert!(component_event_setter("on_custom", &handler, "Button").is_none());
     }
 
     #[test]
-    fn event_setter_onchange_input_ident() {
+    fn event_setter_on_change_input_ident() {
         let handler = EventHandler::Ident("on_input_change".into());
-        let code = component_event_setter("onchange", &handler, "Input").unwrap();
+        let code = component_event_setter("on_change", &handler, "Input").unwrap();
         assert!(code.starts_with(".on_change("));
         assert!(code.contains("rml_ui::InputState"));
         assert!(code.contains("this.on_input_change"));
@@ -882,25 +885,25 @@ mod tests {
     }
 
     #[test]
-    fn event_setter_onchange_textinput() {
+    fn event_setter_on_change_textinput() {
         let handler = EventHandler::Ident("on_text_change".into());
-        let code = component_event_setter("onchange", &handler, "TextInput").unwrap();
+        let code = component_event_setter("on_change", &handler, "TextInput").unwrap();
         assert!(code.starts_with(".on_change("));
         assert!(code.contains("this.on_text_change"));
     }
 
     #[test]
-    fn event_setter_onchange_method_name() {
+    fn event_setter_on_change_method_name() {
         let handler = EventHandler::MethodName("handle_change".into());
-        let code = component_event_setter("onchange", &handler, "Input").unwrap();
+        let code = component_event_setter("on_change", &handler, "Input").unwrap();
         assert!(code.contains("this.handle_change"));
     }
 
     #[test]
-    fn event_setter_onchange_button_returns_none() {
-        // onchange 不支持在 Button 上
+    fn event_setter_on_change_button_returns_none() {
+        // on_change 不支持在 Button 上
         let handler = EventHandler::Ident("handler".into());
-        assert!(component_event_setter("onchange", &handler, "Button").is_none());
+        assert!(component_event_setter("on_change", &handler, "Button").is_none());
     }
 
     // ─── gen_component ───
@@ -988,7 +991,7 @@ mod tests {
                     value: "+".into(),
                 },
                 Attribute::Event {
-                    name: "onclick".into(),
+                    name: "on_click".into(),
                     handler: EventHandler::Ident("increment".into()),
                 },
             ],
@@ -1038,8 +1041,8 @@ mod tests {
     }
 
     #[test]
-    fn gen_component_input_with_onchange() {
-        // <Input placeholder="Enter name" onchange={on_input_change} />
+    fn gen_component_input_with_on_change() {
+        // <Input placeholder="Enter name" on-change={on_input_change} />
         let elem = make_element(
             "Input",
             vec![
@@ -1048,7 +1051,7 @@ mod tests {
                     value: "Enter name".into(),
                 },
                 Attribute::Event {
-                    name: "onchange".into(),
+                    name: "on_change".into(),
                     handler: EventHandler::Ident("on_input_change".into()),
                 },
             ],
@@ -1183,11 +1186,11 @@ mod tests {
 
     #[test]
     fn gen_component_statusbar_minimal() {
-        // <StatusBar /> → rml_ui::NativeStatusBar::new()
+        // <StatusBar /> → rml_ui::StatusBar::new()（RML MVVM 包装，非 NativeStatusBar）
         let elem = make_element("StatusBar", vec![], vec![]);
         let mut id = 0;
         let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
-        assert!(code.contains("rml_ui::NativeStatusBar::new()"));
+        assert!(code.contains("rml_ui::StatusBar::new()"));
     }
 
     #[test]

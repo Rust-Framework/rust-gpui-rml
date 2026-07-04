@@ -124,11 +124,11 @@ mod tests {
     }
 
     #[test]
-    fn gen_code_editor_with_onchange() {
+    fn gen_code_editor_with_on_change() {
         let elem = make_element(
             "CodeEditor",
             vec![Attribute::Event {
-                name: "onchange".into(),
+                name: "on_change".into(),
                 handler: EventHandler::Ident("on_editor_change".into()),
             }],
             vec![],

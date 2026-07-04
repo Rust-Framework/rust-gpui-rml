@@ -30,11 +30,11 @@
                 <p>在下方区域右键点击，触发上下文菜单：</p>
                 <context-menu>
                     <div>{t("case.menu.context.target")}</div>
-                    <menu-item label="Open" icon="FolderOpen" onclick={on_open} />
+                    <menu-item label="Open" icon="FolderOpen" on-click={on_open} />
                     <menu-separator />
-                    <menu-item label="Copy" icon="BookOpen" onclick={on_copy} />
-                    <menu-item label="Cut" onclick={on_cut} />
-                    <menu-item label="Paste" onclick={on_paste} />
+                    <menu-item label="Copy" icon="BookOpen" on-click={on_copy} />
+                    <menu-item label="Cut" on-click={on_cut} />
+                    <menu-item label="Paste" on-click={on_paste} />
                 </context-menu>
             </div>
 
@@ -44,8 +44,8 @@
                 <context-menu>
                     <div>{t("case.menu.context.target")}</div>
                     <menu-item label="New">
-                        <menu-item label="File" icon="File" onclick={on_new_file} />
-                        <menu-item label="Folder" icon="Folder" onclick={on_new_folder} />
+                        <menu-item label="File" icon="File" on-click={on_new_file} />
+                        <menu-item label="Folder" icon="Folder" on-click={on_new_folder} />
                     </menu-item>
                 </context-menu>
             </div>
@@ -55,10 +55,10 @@
                 <p>icon 属性添加图标，menu-separator 分组分隔：</p>
                 <context-menu>
                     <div>{t("case.menu.context.target")}</div>
-                    <menu-item label="Open" icon="FolderOpen" onclick={on_open} />
-                    <menu-item label="Copy" icon="BookOpen" onclick={on_copy} />
+                    <menu-item label="Open" icon="FolderOpen" on-click={on_open} />
+                    <menu-item label="Copy" icon="BookOpen" on-click={on_copy} />
                     <menu-separator />
-                    <menu-item label="Delete" icon="Settings" onclick={on_delete} />
+                    <menu-item label="Delete" icon="Settings" on-click={on_delete} />
                 </context-menu>
             </div>
         </Card>

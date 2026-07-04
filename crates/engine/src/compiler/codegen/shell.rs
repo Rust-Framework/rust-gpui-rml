@@ -1,7 +1,7 @@
 //! 窗口外壳包裹代码生成
 //!
-//! - `<modern_window>` → `ModernWindowShell` 包裹
-//! - `<tab_window>` → `TabWindowShell` 包裹 + 插槽分区
+//! - `<modern-window>` → `ModernWindowShell` 包裹
+//! - `<tab-window>` → `TabWindowShell` 包裹 + 插槽分区
 //!
 //! ## Slot 语法（Vue 风格）
 //!
@@ -10,16 +10,16 @@
 //! - `<template slot="menu">` → `.menu_slot(...)`
 //! - `<template slot="title">` → `.title_ext_slot(...)`
 //! - `<template slot="footer">` → `.status_slot(...)`
-//! - `<template slot="left">` → `.slot_left(...)`（仅 tab_window）
-//! - `<template slot="right">` → `.slot_right(...)`（仅 tab_window）
-//! - `<template slot="bottom">` → `.slot_bottom(...)`（仅 tab_window）
+//! - `<template slot="left">` → `.slot_left(...)`（仅 tab-window）
+//! - `<template slot="right">` → `.slot_right(...)`（仅 tab-window）
+//! - `<template slot="bottom">` → `.slot_bottom(...)`（仅 tab-window）
 //! - 其他子节点 → 主内容（`.child(...)`）
 
 use crate::compiler::expr;
 use crate::compiler::{CodegenCtx, CodegenError};
 use crate::parser::ast::{Attribute, Element, EventHandler, Node};
 
-/// 为 `<modern_window>` 根元素生成 ModernWindowShell 包裹代码
+/// 为 `<modern-window>` 根元素生成 ModernWindowShell 包裹代码
 ///
 /// - title 复用 IWindow::title()，不重复定义
 /// - menu/footer/icon 从根元素 Attribute::Bind 提取，使用表达式解析器处理 computed 方法
@@ -64,9 +64,9 @@ pub(super) fn gen_modern_window_wrapper(
                             code.push_str(&format!(".status_slot({})", rust_expr))
                         }
                         _ => {
-                            if crate::compiler::props_registry::is_shell_prop_registered("modern_window", name) {
+                            if crate::compiler::props_registry::is_shell_prop_registered("modern-window", name) {
                                 eprintln!(
-                                    "[rml warning] <modern_window> bind property `{}` is registered in SHELL_PROPS \
+                                    "[rml warning] <modern-window> bind property `{}` is registered in SHELL_PROPS \
                                      but has no mapping in gen_modern_window_wrapper; property will be silently dropped. \
                                      Add a match arm in crates/engine/src/compiler/codegen/shell.rs.",
                                     name
@@ -112,10 +112,10 @@ pub(super) fn gen_modern_window_wrapper(
 /// - `<template slot="menu">` → slot_menu
 /// - `<template slot="title">` → slot_title
 /// - `<template slot="footer">` → slot_footer
-/// - `<template slot="left">` → slot_left（仅 tab_window）
-/// - `<template slot="right">` → slot_right（仅 tab_window）
-/// - `<template slot="bottom">` → slot_bottom（仅 tab_window）
-/// - `<template slot="tabs">` → slot_tabs（仅 tab_window，收集所有子节点而非单一 content）
+/// - `<template slot="left">` → slot_left（仅 tab-window）
+/// - `<template slot="right">` → slot_right（仅 tab-window）
+/// - `<template slot="bottom">` → slot_bottom（仅 tab-window）
+/// - `<template slot="tabs">` → slot_tabs（仅 tab-window，收集所有子节点而非单一 content）
 /// - 其他子节点（含无 slot 属性的 `<template>`）→ body 主内容
 ///
 /// 返回 (menu, title, footer, left, right, bottom, tabs, body)
@@ -222,13 +222,13 @@ fn template_block_content(elem: &Element) -> Option<Node> {
     }
 }
 
-/// 从根 `<tab_window>` 的 bind/event 属性生成 `TabWindowShell` 包裹代码
+/// 从根 `<tab-window>` 的 bind/event 属性生成 `TabWindowShell` 包裹代码
 ///
 /// slot 参数命名与 `<template slot="name">` 的 name 一一对应：
 /// - slot_menu / slot_title / slot_footer / slot_left / slot_right / slot_bottom / slot_tabs
 ///
 /// 注意：slot_footer 在 builder 端映射到 `.status_slot(...)`，
-/// 因为 TabWindowShell 的 footer slot 装入 gpui-component 的 status_bar 控件。
+/// 因为 TabWindowShell 的 footer slot 装入 gpui-component 的 status-bar 控件。
 ///
 /// `slot_tabs` 为模板定制模式：每个元素是一个 `<Tab>` 子节点的 codegen 输出，
 /// 生成 `.tab_children(vec![<Tab1>, <Tab2>, ...])`。
@@ -258,7 +258,7 @@ pub(super) fn gen_tab_window_wrapper(
     let has_slot_tabs = slot_tabs.map_or(false, |t| !t.is_empty());
     if has_tabs_bind && has_slot_tabs {
         return Err(CodegenError {
-            message: "<tab_window> 不能同时使用 `tabs={...}` 属性和 `<template slot=\"tabs\">` 插槽".into(),
+            message: "<tab-window> 不能同时使用 `tabs={...}` 属性和 `<template slot=\"tabs\">` 插槽".into(),
         });
     }
 
@@ -314,9 +314,9 @@ pub(super) fn gen_tab_window_wrapper(
                     "right_size" => code.push_str(&format!(".right_size({})", rust_expr)),
                     "bottom_size" => code.push_str(&format!(".bottom_size({})", rust_expr)),
                     _ => {
-                        if crate::compiler::props_registry::is_shell_prop_registered("tab_window", name) {
+                        if crate::compiler::props_registry::is_shell_prop_registered("tab-window", name) {
                             eprintln!(
-                                "[rml warning] <tab_window> bind property `{}` is registered in SHELL_PROPS \
+                                "[rml warning] <tab-window> bind property `{}` is registered in SHELL_PROPS \
                                  but has no mapping in gen_tab_window_wrapper; property will be silently dropped. \
                                  Add a match arm in crates/engine/src/compiler/codegen/shell.rs.",
                                 name
@@ -494,7 +494,7 @@ mod tests {
     #[test]
     fn gen_tab_window_wrapper_with_slot_tabs() {
         let elem = Element {
-            tag: "tab_window".into(),
+            tag: "tab-window".into(),
             attributes: vec![],
             directives: vec![],
             children: vec![],
@@ -527,7 +527,7 @@ mod tests {
     #[test]
     fn gen_tab_window_wrapper_tabs_mutual_exclusion_error() {
         let elem = Element {
-            tag: "tab_window".into(),
+            tag: "tab-window".into(),
             attributes: vec![Attribute::Bind {
                 name: "tabs".into(),
                 expr: "tab_items".into(),
@@ -561,7 +561,7 @@ mod tests {
     #[test]
     fn gen_tab_window_wrapper_without_slot_tabs() {
         let elem = Element {
-            tag: "tab_window".into(),
+            tag: "tab-window".into(),
             attributes: vec![],
             directives: vec![],
             children: vec![],
@@ -588,7 +588,7 @@ mod tests {
     #[test]
     fn tab_item_template_generates_bare_closure_without_arc() {
         let elem = Element {
-            tag: "tab_window".into(),
+            tag: "tab-window".into(),
             attributes: vec![Attribute::Bind {
                 name: "tab_item_template".into(),
                 expr: "render_tab_item".into(),
@@ -630,7 +630,7 @@ mod tests {
         let mut c = ctx();
         c.computed_methods = vec!["tab_bar_items".to_string()];
         let elem = Element {
-            tag: "tab_window".into(),
+            tag: "tab-window".into(),
             attributes: vec![Attribute::Bind {
                 name: "tabs".into(),
                 expr: "tab_bar_items".into(),

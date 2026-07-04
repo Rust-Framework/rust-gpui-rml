@@ -33,8 +33,8 @@
                 <p>Available 可点击，Disabled 灰显且点击不触发回调：</p>
                 <dropdown-menu>
                     <Button label="可用/禁用" ghost="" />
-                    <menu-item label="Available" onclick={on_available} />
-                    <menu-item label="Disabled" disabled="" onclick={on_disabled} />
+                    <menu-item label="Available" on-click={on_available} />
+                    <menu-item label="Disabled" disabled="" on-click={on_disabled} />
                 </dropdown-menu>
             </div>
 
@@ -52,7 +52,7 @@
                 <p>checked={is_checked} 绑定字段，点击切换勾选状态：</p>
                 <dropdown-menu>
                     <Button label="勾选项" ghost="" />
-                    <menu-item label="Checkable" checked={is_checked} onclick={on_toggle_check} />
+                    <menu-item label="Checkable" checked={is_checked} on-click={on_toggle_check} />
                 </dropdown-menu>
             </div>
 
@@ -71,15 +71,15 @@
                 <dropdown-menu scrollable="" max-h="280">
                     <Button label="Features" ghost="" />
                     <menu-item header="" label="Actions" />
-                    <menu-item label="Available" onclick={on_available} />
-                    <menu-item label="Disabled" disabled="" onclick={on_disabled} />
-                    <menu-item label="Checkable" checked={is_checked} onclick={on_toggle_check} />
+                    <menu-item label="Available" on-click={on_available} />
+                    <menu-item label="Disabled" disabled="" on-click={on_disabled} />
+                    <menu-item label="Checkable" checked={is_checked} on-click={on_toggle_check} />
                     <menu-separator />
                     <menu-item label="Documentation" href="https://longbridge.github.io/gpui-component/" icon="Info" />
                     <menu-separator />
                     <menu-item label="Submenu">
-                        <menu-item label="Item A" onclick={on_nested_a} />
-                        <menu-item label="Item B" onclick={on_nested_b} />
+                        <menu-item label="Item A" on-click={on_nested_a} />
+                        <menu-item label="Item B" on-click={on_nested_b} />
                     </menu-item>
                 </dropdown-menu>
             </div>

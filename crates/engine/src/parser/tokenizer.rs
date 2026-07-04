@@ -219,7 +219,9 @@ fn skip_comment(chars: &mut CharStream) -> Result<(), ParseError> {
 fn read_tag_name(chars: &mut CharStream) -> Result<String, ParseError> {
     let mut name = String::new();
     while let Some(c) = chars.peek() {
-        if c.is_alphanumeric() || c == '-' || c == '_' || c == ':' {
+        // RML 强制 kebab-case 命名：接受字母数字、连字符 `-`、冒号 `:`
+        // 严格禁止下划线 `_` —— 遇到下划线时停止读取，触发解析错误
+        if c.is_alphanumeric() || c == '-' || c == ':' {
             name.push(c);
             chars.advance();
         } else {
@@ -434,6 +436,19 @@ impl<'a> CharStream<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// read_tag_name 拒绝下划线，强制 kebab-case
+    #[test]
+    fn read_tag_name_rejects_underscore() {
+        // <tab_bar> 应解析失败：遇到 `_` 时停止读取，tag 名为 "tab"
+        // 随后遇到 `_` 触发 "expected >" 或属性解析错误
+        let result = tokenize("<tab_bar></tab_bar>");
+        assert!(result.is_err(), "expected error for snake_case tag name");
+
+        // <tab-bar> 应正常解析
+        let result = tokenize("<tab-bar></tab-bar>");
+        assert!(result.is_ok(), "kebab-case tag name should parse");
+    }
 
     /// Token 的 span 应覆盖整个标签区间（字节偏移）
     #[test]

@@ -14,10 +14,14 @@
 use std::sync::Arc;
 
 use gpui::{App, WeakEntity};
-use rml_core::contribution::{ContributionOptions, IContribution, IContributionHost};
+use rml_core::contribution::{
+    ContributionOptions, IContribution, IContributionHost, IContributionRegistry,
+};
+use rml_core::context::IAppContext;
 use rml_core::flume;
 
 use super::global::bootstrap_host_contributions;
+use super::registry::ContributionRegistry;
 
 /// Host 操作队列（Entity host 在 `on_loaded`/render 中 drain）。
 pub enum HostOp {
@@ -62,14 +66,15 @@ pub fn install_entity_host<T: IContributionHost + 'static>(
     entity: gpui::Entity<T>,
     cx: &mut App,
 ) -> flume::Receiver<HostOp> {
-    use super::global::ContributionRegistryExt;
     let (tx, rx) = flume::unbounded();
     let handle = EntityHostHandle {
         id,
         weak: entity.downgrade(),
         tx,
     };
-    cx.get_contribution_registry().add_host(Arc::new(handle));
+    // 通过 IAppContext 查询 ContributionRegistry 单例（替代原 ContributionRegistryExt）
+    let registry = cx.get_required_service::<ContributionRegistry>();
+    registry.add_host(Arc::new(handle));
     // 触发该 host_id 的所有贡献注册（同步：register → handle.add → tx.send）
     bootstrap_host_contributions(cx, id);
     rx

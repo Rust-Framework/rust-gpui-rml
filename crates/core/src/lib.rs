@@ -20,6 +20,7 @@ pub use url;
 pub mod ability;
 pub mod assets;
 pub mod binding;
+pub mod context;
 pub mod i18n;
 pub mod theme;
 pub mod command;
@@ -42,6 +43,8 @@ pub mod view_model;
 pub mod window;
 
 pub mod prelude;
+
+pub use context::{ensure_service_collection, IAppContext, ServiceCollection};
 
 /// 重导出 GPUI 基础类型,供框架各层统一使用
 pub use gpui::{App, Context, Entity, IntoElement, Keystroke, Modifiers, Pixels, Point, Rgba, Render, SharedString, WeakEntity, Window};

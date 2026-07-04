@@ -9,7 +9,7 @@ use rml_core::i18n::t_static;
 /// - `hoverable` 启用悬浮提升
 /// - body 子节点直接作为卡片内容
 #[contribute(
-    host_id = "demo.activity",
+    host_id = "demo.shell",
     id = "components.slot",
     kind = "case",
     group = "components",

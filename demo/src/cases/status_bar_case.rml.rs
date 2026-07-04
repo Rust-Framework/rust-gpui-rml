@@ -1,9 +1,10 @@
-use gpui::SharedString;
+use gpui::{AnyElement, ParentElement, SharedString, Styled};
 use rml::prelude::*;
+use rml_core::contribution::IVisualContribution;
 use rml_core::i18n::t_static;
 
 #[contribute(
-    host_id = "demo.activity",
+    host_id = "demo.shell",
     id = "components.status_bar",
     kind = "case",
     group = "components",
@@ -50,5 +51,14 @@ impl IContribution for StatusReady {
     }
     fn name(&self) -> SharedString {
         t_static("shell.status_ready").into()
+    }
+}
+
+impl IVisualContribution for StatusReady {
+    fn render(&self, _window: &mut gpui::Window, _cx: &mut gpui::App) -> AnyElement {
+        gpui::div()
+            .text_xs()
+            .child(t_static("shell.status_ready"))
+            .into_any_element()
     }
 }

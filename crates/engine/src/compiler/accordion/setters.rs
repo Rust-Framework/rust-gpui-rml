@@ -139,7 +139,7 @@ mod tests {
     #[test]
     fn event_setter_on_toggle_click_returns_none_for_unknown() {
         let handler = EventHandler::Ident("on_toggle".into());
-        assert!(event_setter("onclick", &handler, "Accordion").is_none());
+        assert!(event_setter("on_click", &handler, "Accordion").is_none());
     }
 
     #[test]

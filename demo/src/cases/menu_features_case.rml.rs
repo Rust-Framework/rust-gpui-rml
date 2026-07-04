@@ -6,7 +6,7 @@ use rml_core::command::RelayCommand;
 use rml_core::i18n::t_static;
 
 #[contribute(
-    host_id = "demo.activity",
+    host_id = "demo.shell",
     id = "components.menu.features",
     kind = "case",
     group = "menu",

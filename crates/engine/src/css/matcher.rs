@@ -14,23 +14,56 @@
 use super::ast::*;
 use super::mapper;
 
-/// 元素匹配上下文：当前元素的 tag、class 列表、id
+/// 父元素信息（用于后代/子选择器匹配）
+///
+/// 使用 owned `String` 以避免跨层级生命周期复杂度。
+/// 由 codegen 在递归遍历 AST 时构建，从根到直接父元素排列。
+#[derive(Debug, Clone)]
+pub struct ParentInfo {
+    pub tag: String,
+    pub classes: Vec<String>,
+    pub id: Option<String>,
+}
+
+/// 元素匹配上下文：当前元素的 tag、class 列表、id + 父链
 #[derive(Debug, Clone)]
 pub struct ElementContext<'a> {
     pub tag: &'a str,
     pub classes: Vec<&'a str>,
     pub id: Option<&'a str>,
+    /// 父元素链（从根到直接父元素，不含当前元素）
+    pub parents: Vec<ParentInfo>,
 }
 
 impl<'a> ElementContext<'a> {
     pub fn new(tag: &'a str, classes: Vec<&'a str>, id: Option<&'a str>) -> Self {
-        Self { tag, classes, id }
+        Self {
+            tag,
+            classes,
+            id,
+            parents: Vec::new(),
+        }
     }
 
     /// 从 `class="a b c"` 字符串构建 classes 列表
     pub fn from_class_attr(tag: &'a str, class_value: &'a str, id: Option<&'a str>) -> Self {
         let classes: Vec<&str> = class_value.split_whitespace().collect();
         Self::new(tag, classes, id)
+    }
+
+    /// 带父链构建
+    pub fn with_parents(
+        tag: &'a str,
+        classes: Vec<&'a str>,
+        id: Option<&'a str>,
+        parents: Vec<ParentInfo>,
+    ) -> Self {
+        Self {
+            tag,
+            classes,
+            id,
+            parents,
+        }
     }
 }
 
@@ -42,10 +75,70 @@ pub fn matches_selector(sel: &Selector, ctx: &ElementContext) -> bool {
         Selector::Class(name) => ctx.classes.iter().any(|c| *c == name.as_str()),
         Selector::Id(name) => ctx.id == Some(name.as_str()),
         Selector::Compound(parts) => parts.iter().all(|p| matches_selector(p, ctx)),
-        // 后代/子选择器需要父元素上下文，此处简化为只匹配末端选择器
-        // 完整 DOM 树匹配需要 codegen 传递父链，留待后续增强
-        Selector::Descendant(_, descendant) => matches_selector(descendant, ctx),
-        Selector::Child(_, child) => matches_selector(child, ctx),
+        // 后代选择器 `A B`：B 匹配当前元素，A 匹配任一祖先
+        Selector::Descendant(ancestor, descendant) => {
+            if !matches_selector(descendant, ctx) {
+                return false;
+            }
+            matches_in_parents(ancestor, &ctx.parents)
+        }
+        // 子选择器 `A > B`：B 匹配当前元素，A 匹配直接父元素
+        Selector::Child(parent, child) => {
+            if !matches_selector(child, ctx) {
+                return false;
+            }
+            match ctx.parents.last() {
+                Some(immediate) => {
+                    let ancestors = &ctx.parents[..ctx.parents.len() - 1];
+                    matches_on_parent(parent, immediate, ancestors)
+                }
+                None => false,
+            }
+        }
+    }
+}
+
+/// 在父链中查找任一匹配给定选择器的元素
+///
+/// `parents` 从根到直接父元素排列；从直接父元素向根方向遍历。
+fn matches_in_parents(sel: &Selector, parents: &[ParentInfo]) -> bool {
+    for i in (0..parents.len()).rev() {
+        let ancestors = &parents[..i];
+        if matches_on_parent(sel, &parents[i], ancestors) {
+            return true;
+        }
+    }
+    false
+}
+
+/// 匹配选择器是否命中指定父元素（带其祖先链）
+///
+/// 处理后代/子组合器在父元素层级的递归匹配。
+fn matches_on_parent(sel: &Selector, parent: &ParentInfo, ancestors: &[ParentInfo]) -> bool {
+    match sel {
+        Selector::Universal => true,
+        Selector::Tag(name) => parent.tag == name.as_str(),
+        Selector::Class(name) => parent.classes.iter().any(|c| c == name),
+        Selector::Id(name) => parent.id.as_deref() == Some(name.as_str()),
+        Selector::Compound(parts) => parts.iter().all(|p| matches_on_parent(p, parent, ancestors)),
+        Selector::Descendant(ancestor, descendant) => {
+            if !matches_on_parent(descendant, parent, ancestors) {
+                return false;
+            }
+            matches_in_parents(ancestor, ancestors)
+        }
+        Selector::Child(par, child) => {
+            if !matches_on_parent(child, parent, ancestors) {
+                return false;
+            }
+            match ancestors.last() {
+                Some(immediate) => {
+                    let grand_ancestors = &ancestors[..ancestors.len() - 1];
+                    matches_on_parent(par, immediate, grand_ancestors)
+                }
+                None => false,
+            }
+        }
     }
 }
 
@@ -78,9 +171,24 @@ pub fn generate_styles(sheet: &StyleSheet, ctx: &ElementContext) -> String {
     mapper::map_declarations(&decl_refs, &sheet.variables)
 }
 
-/// 便捷入口：给定 class 属性值，返回样式代码
+/// 便捷入口：给定 class 属性值，返回样式代码（无父链）
 pub fn styles_for_class(sheet: &StyleSheet, tag: &str, class_value: &str, id: Option<&str>) -> String {
     let ctx = ElementContext::from_class_attr(tag, class_value, id);
+    generate_styles(sheet, &ctx)
+}
+
+/// 便捷入口：带父链返回样式代码
+///
+/// `parents` 从根到直接父元素排列。用于后代/子选择器匹配。
+pub fn styles_for_class_with_parents(
+    sheet: &StyleSheet,
+    tag: &str,
+    class_value: &str,
+    id: Option<&str>,
+    parents: &[ParentInfo],
+) -> String {
+    let classes: Vec<&str> = class_value.split_whitespace().collect();
+    let ctx = ElementContext::with_parents(tag, classes, id, parents.to_vec());
     generate_styles(sheet, &ctx)
 }
 
@@ -235,7 +343,7 @@ mod tests {
     }
 
     #[test]
-    fn descendant_matches_last_selector() {
+    fn descendant_matches_with_parent() {
         let sheet = sheet_with(Rule {
             selectors: vec![Selector::Descendant(
                 Box::new(Selector::Class("container".into())),
@@ -246,10 +354,256 @@ mod tests {
                 value: Value::Length(24.0, Unit::Px),
             }],
         });
-        // 简化匹配：只检查末端 .title
-        let ctx = ElementContext::from_class_attr("h1", "title", None);
+        // 有 .container 父元素 → 匹配
+        let parents = vec![ParentInfo {
+            tag: "div".into(),
+            classes: vec!["container".into()],
+            id: None,
+        }];
+        let ctx = ElementContext::with_parents("h1", vec!["title"], None, parents);
         let code = generate_styles(&sheet, &ctx);
         assert!(code.contains(".text_size(gpui::px(24"));
+    }
+
+    #[test]
+    fn descendant_does_not_match_without_parent() {
+        let sheet = sheet_with(Rule {
+            selectors: vec![Selector::Descendant(
+                Box::new(Selector::Class("container".into())),
+                Box::new(Selector::Class("title".into())),
+            )],
+            declarations: vec![Declaration {
+                property: "font-size".into(),
+                value: Value::Length(24.0, Unit::Px),
+            }],
+        });
+        // 无父链 → 不匹配（严格父链匹配，不再退化到末端选择器）
+        let ctx = ElementContext::from_class_attr("h1", "title", None);
+        let code = generate_styles(&sheet, &ctx);
+        assert!(code.is_empty(), "expected no match without .container parent");
+    }
+
+    #[test]
+    fn descendant_matches_ancestor_not_immediate_parent() {
+        let sheet = sheet_with(Rule {
+            selectors: vec![Selector::Descendant(
+                Box::new(Selector::Class("root".into())),
+                Box::new(Selector::Class("leaf".into())),
+            )],
+            declarations: vec![Declaration {
+                property: "margin".into(),
+                value: Value::Length(4.0, Unit::Px),
+            }],
+        });
+        // .root 是祖父，不是直接父元素 → 后代选择器仍应匹配
+        let parents = vec![
+            ParentInfo {
+                tag: "div".into(),
+                classes: vec!["root".into()],
+                id: None,
+            },
+            ParentInfo {
+                tag: "div".into(),
+                classes: vec!["middle".into()],
+                id: None,
+            },
+        ];
+        let ctx = ElementContext::with_parents("span", vec!["leaf"], None, parents);
+        let code = generate_styles(&sheet, &ctx);
+        assert!(code.contains(".m(gpui::px(4"));
+    }
+
+    #[test]
+    fn child_selector_matches_immediate_parent() {
+        let sheet = sheet_with(Rule {
+            selectors: vec![Selector::Child(
+                Box::new(Selector::Class("list".into())),
+                Box::new(Selector::Class("item".into())),
+            )],
+            declarations: vec![Declaration {
+                property: "padding".into(),
+                value: Value::Length(8.0, Unit::Px),
+            }],
+        });
+        // 直接父元素是 .list → 匹配
+        let parents = vec![ParentInfo {
+            tag: "ul".into(),
+            classes: vec!["list".into()],
+            id: None,
+        }];
+        let ctx = ElementContext::with_parents("li", vec!["item"], None, parents);
+        let code = generate_styles(&sheet, &ctx);
+        assert!(code.contains(".p(gpui::px(8"));
+    }
+
+    #[test]
+    fn child_selector_does_not_match_grandparent() {
+        let sheet = sheet_with(Rule {
+            selectors: vec![Selector::Child(
+                Box::new(Selector::Class("list".into())),
+                Box::new(Selector::Class("item".into())),
+            )],
+            declarations: vec![Declaration {
+                property: "padding".into(),
+                value: Value::Length(8.0, Unit::Px),
+            }],
+        });
+        // .list 是祖父，不是直接父元素 → 子选择器不匹配
+        let parents = vec![
+            ParentInfo {
+                tag: "div".into(),
+                classes: vec!["list".into()],
+                id: None,
+            },
+            ParentInfo {
+                tag: "div".into(),
+                classes: vec!["wrapper".into()],
+                id: None,
+            },
+        ];
+        let ctx = ElementContext::with_parents("li", vec!["item"], None, parents);
+        let code = generate_styles(&sheet, &ctx);
+        assert!(code.is_empty(), "child selector should not match grandparent");
+    }
+
+    #[test]
+    fn child_selector_no_parent_does_not_match() {
+        let sheet = sheet_with(Rule {
+            selectors: vec![Selector::Child(
+                Box::new(Selector::Class("list".into())),
+                Box::new(Selector::Class("item".into())),
+            )],
+            declarations: vec![Declaration {
+                property: "padding".into(),
+                value: Value::Length(8.0, Unit::Px),
+            }],
+        });
+        // 无父链 → 不匹配
+        let ctx = ElementContext::from_class_attr("li", "item", None);
+        let code = generate_styles(&sheet, &ctx);
+        assert!(code.is_empty());
+    }
+
+    #[test]
+    fn nested_combinator_descendant_of_child() {
+        // .root > .mid .leaf —— Descendant(Child(.root, .mid), .leaf)
+        let sheet = sheet_with(Rule {
+            selectors: vec![Selector::Descendant(
+                Box::new(Selector::Child(
+                    Box::new(Selector::Class("root".into())),
+                    Box::new(Selector::Class("mid".into())),
+                )),
+                Box::new(Selector::Class("leaf".into())),
+            )],
+            declarations: vec![Declaration {
+                property: "margin".into(),
+                value: Value::Length(2.0, Unit::Px),
+            }],
+        });
+        // 父链: [.root, .mid] → .mid 是 .root 的直接子元素，.leaf 是 .mid 的后代 → 匹配
+        let parents = vec![
+            ParentInfo {
+                tag: "div".into(),
+                classes: vec!["root".into()],
+                id: None,
+            },
+            ParentInfo {
+                tag: "div".into(),
+                classes: vec!["mid".into()],
+                id: None,
+            },
+        ];
+        let ctx = ElementContext::with_parents("span", vec!["leaf"], None, parents);
+        let code = generate_styles(&sheet, &ctx);
+        assert!(code.contains(".m(gpui::px(2"));
+    }
+
+    #[test]
+    fn nested_combinator_descendant_of_child_no_match() {
+        // .root > .mid .leaf —— Descendant(Child(.root, .mid), .leaf)
+        // 不匹配场景：.mid 的直接父是 .other 而非 .root → Child(.root, .mid) 失败
+        let sheet = sheet_with(Rule {
+            selectors: vec![Selector::Descendant(
+                Box::new(Selector::Child(
+                    Box::new(Selector::Class("root".into())),
+                    Box::new(Selector::Class("mid".into())),
+                )),
+                Box::new(Selector::Class("leaf".into())),
+            )],
+            declarations: vec![Declaration {
+                property: "margin".into(),
+                value: Value::Length(2.0, Unit::Px),
+            }],
+        });
+        // 父链 [.root, .other, .mid]：.mid 的直接父是 .other，不是 .root
+        let parents = vec![
+            ParentInfo {
+                tag: "div".into(),
+                classes: vec!["root".into()],
+                id: None,
+            },
+            ParentInfo {
+                tag: "div".into(),
+                classes: vec!["other".into()],
+                id: None,
+            },
+            ParentInfo {
+                tag: "div".into(),
+                classes: vec!["mid".into()],
+                id: None,
+            },
+        ];
+        let ctx = ElementContext::with_parents("span", vec!["leaf"], None, parents);
+        let code = generate_styles(&sheet, &ctx);
+        assert!(
+            code.is_empty(),
+            "should not match: .mid's immediate parent is .other, not .root"
+        );
+    }
+
+    #[test]
+    fn tag_child_selector_matches() {
+        // ul > li —— Child(Tag(ul), Tag(li))
+        let sheet = sheet_with(Rule {
+            selectors: vec![Selector::Child(
+                Box::new(Selector::Tag("ul".into())),
+                Box::new(Selector::Tag("li".into())),
+            )],
+            declarations: vec![Declaration {
+                property: "padding".into(),
+                value: Value::Length(4.0, Unit::Px),
+            }],
+        });
+        // 直接父是 ul → 匹配
+        let parents = vec![ParentInfo {
+            tag: "ul".into(),
+            classes: vec![],
+            id: None,
+        }];
+        let ctx = ElementContext::with_parents("li", vec![], None, parents);
+        let code = generate_styles(&sheet, &ctx);
+        assert!(code.contains(".p(gpui::px(4"));
+    }
+
+    #[test]
+    fn styles_for_class_with_parents_convenience() {
+        let sheet = sheet_with(Rule {
+            selectors: vec![Selector::Child(
+                Box::new(Selector::Class("parent".into())),
+                Box::new(Selector::Class("child".into())),
+            )],
+            declarations: vec![Declaration {
+                property: "margin".into(),
+                value: Value::Length(6.0, Unit::Px),
+            }],
+        });
+        let parents = vec![ParentInfo {
+            tag: "div".into(),
+            classes: vec!["parent".into()],
+            id: None,
+        }];
+        let code = styles_for_class_with_parents(&sheet, "span", "child", None, &parents);
+        assert!(code.contains(".m(gpui::px(6"));
     }
 
     #[test]

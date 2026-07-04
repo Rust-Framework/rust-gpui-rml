@@ -12,14 +12,16 @@
 
 use std::rc::Rc;
 use std::sync::Arc;
+use std::time::Duration;
 
 use gpui::{
-    AnyElement, App, InteractiveElement, IntoElement, MouseButton, ParentElement, RenderOnce,
-    SharedString, StatefulInteractiveElement as _, Styled, Window, WindowControlArea, div, px,
-    prelude::FluentBuilder as _,
+    Animation, AnimationExt as _, AnyElement, App, InteractiveElement, IntoElement, MouseButton,
+    ParentElement, RenderOnce, SharedString, StatefulInteractiveElement as _, Styled, Window,
+    WindowControlArea, div, px, prelude::FluentBuilder as _,
 };
 use gpui_component::{
     ActiveTheme, Icon, IconName, Size, Sizable as _,
+    animation::cubic_bezier,
     button::{Button, ButtonRounded, ButtonVariants as _},
     h_flex,
     resizable::{h_resizable, resizable_panel, v_resizable},
@@ -316,6 +318,7 @@ impl RenderOnce for TabWindowShell {
         let chrome_toggle = self.icon.map(|app_icon| {
             Button::new("tab-window-chrome-toggle")
                 .text()
+                .cursor_pointer()
                 .h(TITLE_BAR_HEIGHT)
                 .w(TITLE_BAR_HEIGHT)
                 .flex_shrink_0()
@@ -351,37 +354,101 @@ impl RenderOnce for TabWindowShell {
         let tab_top_inset = TITLE_BAR_HEIGHT - tab_row_height;
         tab_bar = tab_bar.h(tab_row_height);
 
-        // 菜单与标题随 show_chrome 展开/收起；切换按钮独立贴左，不在 prefix 内
-        if show_chrome {
-            let mut prefix_parts: SmallVec<[AnyElement; 2]> = SmallVec::new();
-            if let Some(menu) = self.menu_slot {
-                prefix_parts.push(
-                    div()
-                        .h_full()
-                        .flex_shrink_0()
-                        .child(menu)
-                        .into_any_element(),
-                );
+        // 菜单与标题随 show_chrome 展开/收起，并附加左右滑动动画。
+        // 始终构建 prefix_parts（不再按 show_chrome 闸门），用动画容器包裹实现滑入/滑出。
+        let mut prefix_parts: SmallVec<[AnyElement; 2]> = SmallVec::new();
+        if let Some(menu) = self.menu_slot {
+            prefix_parts.push(
+                div()
+                    .h_full()
+                    .flex_shrink_0()
+                    .child(menu)
+                    .into_any_element(),
+            );
+        }
+        if let Some(title) = self.title {
+            prefix_parts.push(
+                div()
+                    .px_2()
+                    .flex_shrink_0()
+                    .child(title)
+                    .into_any_element(),
+            );
+        }
+
+        if !prefix_parts.is_empty() {
+            // 用 use_keyed_state 跟踪上一次的 show_chrome（init 仅首次渲染调用），
+            // 后续渲染返回持久化 Entity，state.update 触发 cx.notify 重渲。
+            let chrome_state = window.use_keyed_state(
+                "tab-window-chrome-anim",
+                cx,
+                |_, _| self.show_chrome,
+            );
+            let prev_chrome = *chrome_state.read(cx);
+            let chrome_changed = prev_chrome != self.show_chrome;
+            let target_chrome = self.show_chrome;
+
+            // 状态变更时，动画结束后同步 keyed_state → 触发重渲使 chrome_changed 归 false。
+            if chrome_changed {
+                let state = chrome_state.clone();
+                cx.spawn(async move |cx| {
+                    cx.background_executor()
+                        .timer(Duration::from_secs_f64(0.25))
+                        .await;
+                    _ = state.update(cx, |s, _| *s = target_chrome);
+                })
+                .detach();
             }
-            if let Some(title) = self.title {
-                prefix_parts.push(
-                    div()
-                        .px_2()
-                        .flex_shrink_0()
-                        .child(title)
-                        .into_any_element(),
-                );
-            }
-            if !prefix_parts.is_empty() {
-                tab_bar = tab_bar.prefix(
-                    h_flex()
-                        .h_full()
-                        .items_center()
-                        .flex_shrink_0()
-                        .gap_1()
-                        .children(prefix_parts),
-                );
-            }
+
+            let anim = Animation::new(Duration::from_secs_f64(0.25))
+                .with_easing(cubic_bezier(0.4, 0., 0.2, 1.));
+
+            // with_animation 返回 AnimationElement<Div>，与 when 闭包的 Self 约束不兼容，
+            // 因此改用 if/else 分支 + into_any_element() 统一类型。
+            // 注意：with_animation 闭包是 Fn（每帧调用），不能在闭包内消费 prefix_parts。
+            // 故将 .children() 前置到 with_animation 之前，闭包仅应用动画样式。
+            let prefix: AnyElement = if chrome_changed {
+                h_flex()
+                    .h_full()
+                    .items_center()
+                    .flex_shrink_0()
+                    .gap_1()
+                    .overflow_hidden()
+                    .children(prefix_parts)
+                    .with_animation(
+                        "tab-window-chrome-slide",
+                        anim,
+                        move |this, delta| {
+                            // 展开：delta 0→1 对应 progress 0→1
+                            // 收起：delta 0→1 对应 progress 1→0
+                            let progress = if target_chrome { delta } else { 1.0 - delta };
+                            this.max_w(px(800.0) * progress).opacity(progress)
+                        },
+                    )
+                    .into_any_element()
+            } else if self.show_chrome {
+                h_flex()
+                    .h_full()
+                    .items_center()
+                    .flex_shrink_0()
+                    .gap_1()
+                    .overflow_hidden()
+                    .children(prefix_parts)
+                    .into_any_element()
+            } else {
+                h_flex()
+                    .h_full()
+                    .items_center()
+                    .flex_shrink_0()
+                    .gap_1()
+                    .overflow_hidden()
+                    .w_0()
+                    .opacity(0.0)
+                    .children(prefix_parts)
+                    .into_any_element()
+            };
+
+            tab_bar = tab_bar.prefix(prefix);
         }
 
         // 从 tabs（IValue）构建 TabItem 注入 TabBar

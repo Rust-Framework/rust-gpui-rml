@@ -1,54 +1,125 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
-use gpui::{BorrowAppContext, Global, IntoElement, WeakEntity, Window};
+use gpui::{IntoElement, WeakEntity, Window};
 use rml::prelude::*;
-use rml_core::contribution::{ContributionAbilityExt, IContribution, VisualAbilityExt};
-use rml_core::i18n::I18nExt;
+use rml_app::IAppContextExt;
+use rml_core::command::{ICommand, RelayCommand};
+use rml_core::contribution::{IContribution, VisualAbilityExt};
+use rml_core::i18n::{t_static, I18nExt};
 use rml_core::theme::ThemeExt;
-use rml_ui::{ActivityBar, IMenuItem, IStatusBarItem};
+use rml_core::workbench::Uri;
+use rml_ui::{ActivityBar, IActivityPanel, VisualActivityPanel};
 
-use crate::cases::{self, OpenTab};
-use crate::lsp::{CodeEditorTab, LspClient};
+use crate::lsp::LspClient;
 use crate::lsp::lsp_explorer_panel::LspExplorerPanel;
 use crate::shell::activity_panel::ActivityPanel;
-use crate::shell::shell_chrome::{
-    build_activity_panels_from, map_menu_items, map_status_items, ContribEntry,
-};
+use crate::shell::case_view_model::CaseViewModel;
+use crate::shell::menu_view_model::MenuViewModel;
+use crate::shell::status_view_model::{build_status_view_models, ContribEntry, StatusViewModel};
+use crate::shell::workbench::DemoWorkbenchManager;
 
-/// Demo：ActivityPanel 通过它回调 MainWindow::open_case（在 `on_loaded` 中注册）。
-pub struct DemoShellHost(pub WeakEntity<MainWindow>);
+/// MainWindow 弱引用槽位——经 IAppContext::set_service 注册为单例，
+/// ActivityPanel / LspExplorerPanel / 菜单命令通过 get_service::<MainWindowRef>() 查询。
+pub struct MainWindowRef(pub WeakEntity<MainWindow>);
 
-impl Global for DemoShellHost {}
-
-/// MainWindow：`demo.shell` host + 视觉消费者。
+/// MainWindow：`demo.shell` host + ViewModel。
 ///
-/// `#[window]` + `#[contributehost]` 叠加：用户手写 `impl IContributionHost`（override
-/// `add`/`remove`）+ `impl ILifecycle`（在 `on_loaded` 中调
-/// `__rml_install_host` + `drain_host_ops`）。宏仅生成 `pub const ID` + `__rml_install_host`。
+/// 持有 `cases` / `menus` / `status` / `activities` 四个类型化集合，
+/// 直接绑定模板（tree / menu-bar / status-bar / ActivityBar）。
+/// Tab/资源生命周期委托给 `DemoWorkbenchManager`。
 ///
-/// 贡献存储单一桶 `entries`：所有贡献（menu/status/case/activity）由 `add` 受理，
-/// 投影时经 `as_command()`/`as_visual()` 能力查询区分类型。
+/// 菜单改用 `RelayCommand` 字段（WPF MVVM 模式），消除 menu_shell_contribs.rs 样板。
 #[window]
 #[contributehost(id = "demo.shell")]
-#[derive(Default)]
 pub struct MainWindow {
+    // 直接绑定模板的集合（on_loaded 后一次性填充）
+    pub cases: Vec<CaseViewModel>,
+    pub menus: Vec<MenuViewModel>,
+    pub status: Vec<StatusViewModel>,
+    activities: Vec<Arc<dyn IActivityPanel>>,
+
+    // RelayCommand 字段（WPF MVVM 模式，7 个叶子命令）
+    open_welcome_command: Arc<dyn ICommand>,
+    open_button_case_command: Arc<dyn ICommand>,
+    open_menu_dropdown_case_command: Arc<dyn ICommand>,
+    open_features_case_command: Arc<dyn ICommand>,
+    toggle_theme_command: Arc<dyn ICommand>,
+    switch_en_command: Arc<dyn ICommand>,
+    exit_command: Arc<dyn ICommand>,
+
+    // Tab 状态（manager 派生缓存，命令后同步）
     open_tabs: Vec<Arc<dyn IValue>>,
     selected_tab: usize,
-    active_case_id: String,
     show_chrome: bool,
-    activity_bar: Option<gpui::Entity<ActivityBar>>,
-    status_items: Vec<Arc<dyn IStatusBarItem>>,
-    menu_items: Vec<Arc<dyn IMenuItem>>,
     slot_left_size: gpui::Pixels,
-    // 单一存储桶：所有贡献（menu/status/case/activity）
+
+    // 框架仪式
+    activity_bar: Option<gpui::Entity<ActivityBar>>,
     entries: std::sync::RwLock<Vec<ContribEntry>>,
-    // host handle receiver（drain 在 on_loaded / refresh 中进行）
     host_rx: Option<rml_core::flume::Receiver<rml_app::contribution::HostOp>>,
-    // LSP 子进程客户端
+    manager: Option<Arc<DemoWorkbenchManager>>,
     lsp_client: Option<Arc<LspClient>>,
-    // LSP 文件 Tab：key = "lsp://<relative_path>"
-    lsp_tabs: HashMap<String, gpui::Entity<CodeEditorTab>>,
+}
+
+/// 手写 `Default`——`Arc<dyn ICommand>` 无 `#[derive(Default)]`，
+/// 用 `RelayCommand::default()`（no-op）初始化所有命令字段，`on_loaded` 中替换为真实命令。
+/// `#[window]` 宏注入的版本计数器 / 缓存 / 状态字段全部用 `Default::default()` 初始化。
+impl Default for MainWindow {
+    fn default() -> Self {
+        let default_cmd: Arc<dyn ICommand> = Arc::new(RelayCommand::default());
+        Self {
+            cases: Vec::new(),
+            menus: Vec::new(),
+            status: Vec::new(),
+            activities: Vec::new(),
+            open_welcome_command: default_cmd.clone(),
+            open_button_case_command: default_cmd.clone(),
+            open_menu_dropdown_case_command: default_cmd.clone(),
+            open_features_case_command: default_cmd.clone(),
+            toggle_theme_command: default_cmd.clone(),
+            switch_en_command: default_cmd.clone(),
+            exit_command: default_cmd,
+            open_tabs: Vec::new(),
+            selected_tab: 0,
+            show_chrome: false,
+            slot_left_size: gpui::px(260.),
+            activity_bar: None,
+            entries: std::sync::RwLock::new(Vec::new()),
+            host_rx: None,
+            manager: None,
+            lsp_client: None,
+            // #[window] 注入字段
+            __rml_window_handle: None,
+            // 版本计数器（每个字段一个，含 __rml_window_handle 自身）
+            __rml_cases_version: Default::default(),
+            __rml_menus_version: Default::default(),
+            __rml_status_version: Default::default(),
+            __rml_activities_version: Default::default(),
+            __rml_open_welcome_command_version: Default::default(),
+            __rml_open_button_case_command_version: Default::default(),
+            __rml_open_menu_dropdown_case_command_version: Default::default(),
+            __rml_open_features_case_command_version: Default::default(),
+            __rml_toggle_theme_command_version: Default::default(),
+            __rml_switch_en_command_version: Default::default(),
+            __rml_exit_command_version: Default::default(),
+            __rml_open_tabs_version: Default::default(),
+            __rml_selected_tab_version: Default::default(),
+            __rml_show_chrome_version: Default::default(),
+            __rml_slot_left_size_version: Default::default(),
+            __rml_activity_bar_version: Default::default(),
+            __rml_entries_version: Default::default(),
+            __rml_host_rx_version: Default::default(),
+            __rml_manager_version: Default::default(),
+            __rml_lsp_client_version: Default::default(),
+            __rml___rml_window_handle_version: Default::default(),
+            // #[component] 注入的缓存 / 状态字段
+            __rml_computed_cache: Default::default(),
+            __rml_input_states: Default::default(),
+            __rml_input_state_versions: Default::default(),
+            __rml_field_errors: Default::default(),
+            __rml_loaded: false,
+        }
+    }
 }
 
 impl IContributionHost for MainWindow {
@@ -71,48 +142,76 @@ impl IContributionHost for MainWindow {
 
 impl ILifecycle for MainWindow {
     fn on_loaded(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
-        // 1. 注册 host handle + 触发 demo.shell 的所有贡献注册（同步入队）
+        // 1. 注册 host + drain（add 期间填充 entries 暂存）
         let rx = Self::__rml_install_host(cx.entity(), cx);
         self.host_rx = Some(rx);
-
-        // 2. drain 队列中的 HostOp → 调用自身 IContributionHost::add
         if let Some(rx) = &self.host_rx {
             rml_app::contribution::drain_host_ops(rx, self);
         }
 
-        // 3. 初始化 welcome tab / DemoShellHost / menu_commands
-        if self.open_tabs.is_empty() {
-            self.open_tabs.push(Arc::new(OpenTab {
-                id: "welcome".to_string(),
-                title: cx.t("shell.welcome").to_string(),
-            }) as Arc<dyn IValue>);
-            self.selected_tab = 0;
-            self.active_case_id = "welcome".to_string();
-        }
-        self.show_chrome = true;
+        // 2. 初始化 RelayCommand 字段（WPF MVVM 模式）
+        self.open_welcome_command = Arc::new(RelayCommand::new(cx, |this, cx| {
+            this.open_case("welcome".to_string(), cx);
+        }));
+        self.open_button_case_command = Arc::new(RelayCommand::new(cx, |this, cx| {
+            this.open_case("components.button".to_string(), cx);
+        }));
+        self.open_menu_dropdown_case_command = Arc::new(RelayCommand::new(cx, |this, cx| {
+            this.open_case("components.menu.dropdown".to_string(), cx);
+        }));
+        self.open_features_case_command = Arc::new(RelayCommand::new(cx, |this, cx| {
+            this.open_case("components.menu.features".to_string(), cx);
+        }));
+        self.toggle_theme_command = Arc::new(RelayCommand::new(cx, |this, cx| {
+            this.apply_toggle_theme(cx);
+        }));
+        self.switch_en_command = Arc::new(RelayCommand::new(cx, |this, cx| {
+            this.apply_switch_en(cx);
+        }));
+        self.exit_command = Arc::new(RelayCommand::action(|cx| cx.quit()));
 
+        // 3. 投影到类型化集合（cases/status/activities 经贡献；menus 手工构建）
+        self.project_entries();
+
+        // 4. MainWindowRef 单例（ActivityPanel/LspExplorerPanel on_loaded 经 IAppContext 查询）
         let shell_weak = cx.weak_entity();
-        cx.set_global(DemoShellHost(shell_weak));
+        cx.set_service(Arc::new(MainWindowRef(shell_weak)));
 
-        // 4. 刷新 shell chrome（从 entries 构建 menu/status items）
-        self.refresh_shell_chrome();
+        // 5. 启动 LSP 子进程（失败时优雅降级）
+        if let Ok(workspace_root) = std::env::current_dir() {
+            match LspClient::spawn(&workspace_root) {
+                Ok(client) => self.lsp_client = Some(Arc::new(client)),
+                Err(e) => log::warn!("Failed to start LSP server: {e}"),
+            }
+        }
 
-        // 5. 构建 ActivityBar：从 entries 中 slot="activity" 的视觉贡献
-        let panels = {
-            let entries = self.entries.read().unwrap();
-            build_activity_panels_from(&entries)
-        };
-        self.activity_bar = Some(cx.new(|_| ActivityBar::new(panels)));
+        // 6. 构建 manager + 安装 + 同步 cases 副本到 provider
+        let manager = Arc::new(DemoWorkbenchManager::new(self.lsp_client.clone()));
+        manager.sync_cases(self.cases.clone());
+        cx.set_workbench_manager(manager.clone());
+        self.manager = Some(manager);
+
+        // 7. 打开 welcome tab（经 manager）
+        if let Some(manager) = self.manager.clone() {
+            let uri: Uri = "rml://welcome".parse().unwrap();
+            manager.open(&uri);
+            self.sync_tab_state(&manager);
+        }
+
+        // 8. 构建 ActivityBar（从 activities 集合）
+        self.activity_bar = Some(cx.new(|_| ActivityBar::new(self.activities.clone())));
 
         // observe ActivityPanel Entity（框架缓存）→ ActivityBar 重渲
         let panel_entity = rml_app::contribution::visual_entity::<ActivityPanel>(cx);
-        cx.observe(&panel_entity, |_, _, cx| cx.notify()).detach();
+        cx.observe(&panel_entity, |_, _, cx| cx.notify())
+            .detach();
 
         // 激活首项
         if let Some(bar) = &self.activity_bar {
             bar.update(cx, |bar, cx| bar.activate_first(cx));
         }
 
+        self.show_chrome = true;
         self.slot_left_size = gpui::px(260.);
 
         // observe ActivityBar active_id 变化 → 同步 slot_left_size
@@ -129,78 +228,171 @@ impl ILifecycle for MainWindow {
             .detach();
         }
 
-        // 6. observe LspExplorerPanel Entity（框架缓存）→ ActivityBar 重渲
+        // 9. observe LspExplorerPanel Entity（框架缓存）→ ActivityBar 重渲
         let lsp_panel_entity = rml_app::contribution::visual_entity::<LspExplorerPanel>(cx);
         cx.observe(&lsp_panel_entity, |_, _, cx| cx.notify())
             .detach();
-
-        // 7. 启动 LSP 子进程（失败时优雅降级，demo 继续运行）
-        if let Ok(workspace_root) = std::env::current_dir() {
-            match LspClient::spawn(&workspace_root) {
-                Ok(client) => {
-                    self.lsp_client = Some(Arc::new(client));
-                }
-                Err(e) => {
-                    log::warn!("Failed to start LSP server: {e}");
-                }
-            }
-        }
 
         cx.notify();
     }
 }
 
 impl MainWindow {
-    fn refresh_shell_chrome(&mut self) {
+    /// 从 entries 暂存投影到 cases/status/activities 类型化集合。
+    /// menus 不经贡献系统，由 `build_menu_tree` 手工构建。
+    fn project_entries(&mut self) {
         let entries = self.entries.read().unwrap();
-        self.status_items = map_status_items(&entries);
-        self.menu_items = map_menu_items(&entries);
+        self.cases = entries
+            .iter()
+            .filter_map(|(c, o)| CaseViewModel::from_contribution(c.clone(), o.clone()))
+            .collect();
+        self.status = build_status_view_models(&entries);
+        self.activities = entries
+            .iter()
+            .filter(|(c, o)| o.effective_slot() == Some("activity") && c.as_visual().is_some())
+            .filter_map(|(c, _)| {
+                VisualActivityPanel::new(c.clone()).map(|p| Arc::new(p) as Arc<dyn IActivityPanel>)
+            })
+            .collect();
+        // menus 不经贡献系统，由 build_menu_tree 手工构建
+        self.menus = self.build_menu_tree();
     }
 
-    /// 渲染当前激活的 IVisualContribution 视图。
-    /// Entity 由框架实体缓存复用，状态持久。
-    pub fn active_case_view(
-        &mut self,
-        window: &mut gpui::Window,
-        cx: &mut gpui::Context<Self>,
-    ) -> gpui::AnyElement {
-        // LSP 文件 Tab 分流：懒加载 CodeEditorTab
-        if self.active_case_id.starts_with("lsp://") {
-            let tab_id = self.active_case_id.clone();
-            if !self.lsp_tabs.contains_key(&tab_id) {
-                if let Some(client) = self.lsp_client.clone() {
-                    if let Some(relative_path) = tab_id.strip_prefix("lsp://") {
-                        let full_path = std::env::current_dir()
-                            .unwrap_or_default()
-                            .join("src")
-                            .join(relative_path);
-                        let tab = CodeEditorTab::new(
-                            relative_path,
-                            &full_path,
-                            client,
-                            window,
-                            cx,
-                        );
-                        self.lsp_tabs.insert(tab_id.clone(), tab);
-                    }
-                }
-            }
-            if let Some(tab) = self.lsp_tabs.get(&tab_id) {
-                return tab.update(cx, |tab, cx| tab.render(window, cx).into_any_element());
-            }
-            return gpui::div().into_any_element();
-        }
+    /// 手工构建菜单树（消除 menu_shell_contribs.rs + shell_chrome.rs）。
+    /// 标签经 `t_static()` 获取 i18n；命令绑定到 RelayCommand 字段。
+    fn build_menu_tree(&self) -> Vec<MenuViewModel> {
+        vec![
+            MenuViewModel::root("menu.file", t_static("menu.file"), 0)
+                .child(MenuViewModel::leaf(
+                    "menu.file.new",
+                    t_static("menu.file_new"),
+                    0,
+                    self.open_welcome_command.clone(),
+                ))
+                .child(MenuViewModel::leaf(
+                    "menu.file.open",
+                    t_static("menu.file_open"),
+                    1,
+                    self.open_button_case_command.clone(),
+                ))
+                .child(MenuViewModel::leaf(
+                    "menu.file.exit",
+                    t_static("menu.file_exit"),
+                    2,
+                    self.exit_command.clone(),
+                )),
+            MenuViewModel::root("menu.view", t_static("menu.view"), 10)
+                .child(MenuViewModel::leaf(
+                    "menu.theme_toggle",
+                    t_static("menu.theme_toggle"),
+                    0,
+                    self.toggle_theme_command.clone(),
+                ))
+                .child(MenuViewModel::leaf(
+                    "menu.lang_en",
+                    t_static("menu.lang_en"),
+                    1,
+                    self.switch_en_command.clone(),
+                )),
+            MenuViewModel::root("menu.help", t_static("menu.help"), 20)
+                .child(
+                    MenuViewModel::root(
+                        "menu.help.docs",
+                        t_static("case.menu.help_center"),
+                        0,
+                    )
+                    .child(MenuViewModel::leaf(
+                        "menu.help.guide",
+                        t_static("case.menu.nested"),
+                        0,
+                        self.open_menu_dropdown_case_command.clone(),
+                    ))
+                    .child(MenuViewModel::leaf(
+                        "menu.help.about",
+                        t_static("menu.help_about"),
+                        1,
+                        self.open_welcome_command.clone(),
+                    )),
+                )
+                .child(
+                    MenuViewModel::root(
+                        "menu.help.cases",
+                        t_static("case.menu.features.group"),
+                        1,
+                    )
+                    .child(MenuViewModel::leaf(
+                        "menu.open_features",
+                        t_static("case.menu.features.title"),
+                        0,
+                        self.open_features_case_command.clone(),
+                    )),
+                ),
+        ]
+    }
 
-        let entries = self.entries.read().unwrap();
-        if let Some((c, _)) = entries
-            .iter()
-            .find(|(c, _)| c.id() == self.active_case_id)
-        {
-            if let Some(visual) = c.as_visual() {
-                return visual.render(window, cx);
+    /// 同步 tab 状态：从 manager 派生 open_tabs + selected_tab。
+    fn sync_tab_state(&mut self, manager: &DemoWorkbenchManager) {
+        self.open_tabs = manager.get_all_as_values();
+        self.selected_tab = manager.activated_index().unwrap_or(0);
+    }
+
+    /// 渲染激活的 workbench 视图（替代旧 active_case_view，LSP 分流由 manager 路由）。
+    pub fn active_view(&self, window: &mut Window, cx: &mut gpui::Context<Self>) -> gpui::AnyElement {
+        if let Some(manager) = &self.manager {
+            if let Some(wb) = manager.get_activated_demo() {
+                return wb.render(window, cx);
             }
         }
         gpui::div().into_any_element()
+    }
+
+    /// 渲染菜单栏（从 `menus` ViewModel 树构建 `MenuBar` + `PopupMenu`）。
+    pub fn render_menu_bar(
+        &self,
+        _window: &mut Window,
+        _cx: &mut gpui::Context<Self>,
+    ) -> gpui::AnyElement {
+        use rml_ui::{MenuBar, configure_menu_bar_popup, menu_bar_button};
+        use gpui_component::menu::PopupMenu;
+        use gpui::{ParentElement, Styled};
+
+        if self.menus.is_empty() {
+            return gpui::div().into_any_element();
+        }
+
+        let mut bar = MenuBar::new(("rml_menu_bar", 0usize));
+        for (ix, m) in self.menus.iter().enumerate() {
+            let btn = menu_bar_button(("rml_menu_btn", ix), m.label.clone());
+            bar = bar.child(btn);
+        }
+        bar.into_any_element()
+    }
+
+    /// 渲染状态栏（从 `status` ViewModel 列表构建 `NativeStatusBar`）。
+    pub fn render_status_bar(
+        &self,
+        window: &mut Window,
+        _cx: &mut gpui::Context<Self>,
+    ) -> gpui::AnyElement {
+        use gpui::ParentElement;
+        use rml_ui::{NativeStatusBar, StatusBarAlign};
+
+        let mut bar = NativeStatusBar::new();
+        for s in &self.status {
+            let content = s.render(window, _cx);
+            match s.align {
+                StatusBarAlign::Left => {
+                    bar = bar.left(content);
+                }
+                StatusBarAlign::Right => {
+                    bar = bar.right(content);
+                }
+                StatusBarAlign::Center => {
+                    bar = bar.child(content);
+                }
+            }
+        }
+        bar.into_any_element()
     }
 
     #[computed]
@@ -209,71 +401,40 @@ impl MainWindow {
     }
 
     #[command]
-    pub fn on_chrome_toggle(&mut self, cx: &mut Context<Self>) {
+    pub fn on_chrome_toggle(&mut self, _cx: &mut Context<Self>) {
         self.show_chrome = !self.show_chrome;
     }
 
+    #[command]
+    pub fn on_tab_click(&mut self, index: usize, cx: &mut Context<Self>) {
+        if let Some(manager) = self.manager.clone() {
+            manager.activate_by_index(index);
+            self.sync_tab_state(&manager);
+            cx.notify();
+        }
+    }
+
+    /// 由 ActivityPanel::on_case_activate 调用（经 MainWindowRef 回调）。
     #[command]
     pub fn open_case(&mut self, case_id: String, cx: &mut Context<Self>) {
         if case_id.starts_with("group.") {
             return;
         }
-        if !self
-            .open_tabs
-            .iter()
-            .any(|tab| tab.as_contribution().map(|c| c.id() == case_id).unwrap_or(false))
-        {
-            self.open_tabs.push(Arc::new(OpenTab {
-                id: case_id.clone(),
-                title: cx.t(cases::case_title_key(&case_id)).to_string(),
-            }) as Arc<dyn IValue>);
+        if let Some(manager) = self.manager.clone() {
+            let uri: Uri = format!("rml://{}", case_id).parse().unwrap();
+            manager.open(&uri);
+            self.sync_tab_state(&manager);
+            cx.notify();
         }
-        self.selected_tab = self
-            .open_tabs
-            .iter()
-            .position(|tab| tab.as_contribution().map(|c| c.id() == case_id).unwrap_or(false))
-            .unwrap_or(0);
-        self.active_case_id = case_id;
-        cx.notify();
     }
 
-    /// 由 LspExplorerPanel::on_file_activate 通过 DemoShellHost 回调。
-    /// 仅注册 Tab 元信息；CodeEditorTab Entity 在 active_case_view 中懒加载。
+    /// 由 LspExplorerPanel::on_file_activate 调用（经 MainWindowRef 回调）。
     #[command]
     pub fn open_lsp_file(&mut self, relative_path: String, cx: &mut Context<Self>) {
-        let tab_id = format!("lsp://{relative_path}");
-        if !self
-            .open_tabs
-            .iter()
-            .any(|tab| tab.as_contribution().map(|c| c.id() == tab_id).unwrap_or(false))
-        {
-            let title = std::path::Path::new(&relative_path)
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or(&relative_path)
-                .to_string();
-            self.open_tabs.push(Arc::new(OpenTab {
-                id: tab_id.clone(),
-                title,
-            }) as Arc<dyn IValue>);
-        }
-        self.selected_tab = self
-            .open_tabs
-            .iter()
-            .position(|tab| tab.as_contribution().map(|c| c.id() == tab_id).unwrap_or(false))
-            .unwrap_or(0);
-        self.active_case_id = tab_id;
-        cx.notify();
-    }
-
-    #[command]
-    pub fn on_tab_click(&mut self, index: usize, cx: &mut Context<Self>) {
-        if let Some(tab) = self.open_tabs.get(index) {
-            self.selected_tab = index;
-            self.active_case_id = tab
-                .as_contribution()
-                .map(|c| c.id().to_string())
-                .unwrap_or_default();
+        if let Some(manager) = self.manager.clone() {
+            let uri: Uri = format!("lsp://{}", relative_path).parse().unwrap();
+            manager.open(&uri);
+            self.sync_tab_state(&manager);
             cx.notify();
         }
     }
@@ -290,20 +451,12 @@ impl MainWindow {
 
     pub(crate) fn apply_switch_en(&mut self, cx: &mut Context<Self>) {
         cx.set_i18n("en-US");
-        // set_i18n 已触发 refresh_windows；手动刷新 tab 标题与 shell chrome
-        self.open_tabs = self
-            .open_tabs
-            .iter()
-            .map(|tab| {
-                let id = tab
-                    .as_contribution()
-                    .map(|c| c.id().to_string())
-                    .unwrap_or_default();
-                let title = cx.t(cases::case_title_key(&id)).to_string();
-                Arc::new(OpenTab { id, title }) as Arc<dyn IValue>
-            })
-            .collect();
-        self.refresh_shell_chrome();
+        // 刷新 menus（t_static 自动读取新 locale）+ status（名称经贡献 name() 刷新）
+        self.menus = self.build_menu_tree();
+        self.status = {
+            let entries = self.entries.read().unwrap();
+            build_status_view_models(&entries)
+        };
         cx.notify();
     }
 }

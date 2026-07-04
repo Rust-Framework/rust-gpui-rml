@@ -1,12 +1,12 @@
 //! 窗口/对话框 impl 代码生成
 //!
-//! - `<window>`/`<modern_window>`/`<tab_window>` → `impl IWindow`
+//! - `<window>`/`<modern-window>`/`<tab-window>` → `impl IWindow`
 //! - `<dialog>` → `open(window, cx)` / `close(cx)` 方法
 
 use crate::compiler::{CodegenCtx, CodegenError};
 use crate::parser::ast::{Attribute, Element};
 
-/// 从 `<window>`/`<modern_window>`/`<tab_window>` 根节点生成 `impl IWindow`
+/// 从 `<window>`/`<modern-window>`/`<tab-window>` 根节点生成 `impl IWindow`
 ///
 /// 提取 `title`/`width`/`height` 属性，生成完整的 `impl IWindow` 代码块。
 /// `chrome_transparent` 为 true 时生成 `WindowChrome::Transparent`。

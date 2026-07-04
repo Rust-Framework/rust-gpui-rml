@@ -36,4 +36,4 @@ pub mod table_case;
 #[path = "description_list_case.rml.rs"]
 pub mod description_list_case;
 
-pub use catalog::{case_title_key, OpenTab};
+pub use catalog::case_title_key;

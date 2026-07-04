@@ -30,7 +30,7 @@ fn ensure_desc_entry_registered() {
 }
 
 #[contribute(
-    host_id = "demo.activity",
+    host_id = "demo.shell",
     id = "components.description_list",
     kind = "case",
     group = "components",

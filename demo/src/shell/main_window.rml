@@ -1,4 +1,4 @@
-<tab_window
+<tab-window
     title="RML Showcase"
     width="1100"
     height="720"
@@ -16,7 +16,7 @@
     </template>
 
     <template slot="menu">
-        <menu-bar items={menu_items} />
+        <component content={self.render_menu_bar(_window, cx)} />
     </template>
 
     <template slot="title">
@@ -28,9 +28,9 @@
     </template>
 
     <template slot="footer">
-        <status_bar items={status_items} />
+        <component content={self.render_status_bar(_window, cx)} />
     </template>
 
-    <component content={self.active_case_view(_window, cx)} />
+    <component content={self.active_view(_window, cx)} />
 
-</tab_window>
+</tab-window>

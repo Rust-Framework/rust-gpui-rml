@@ -222,7 +222,7 @@ mod tests {
     #[test]
     fn event_setter_unknown_event_returns_none() {
         let handler = EventHandler::Ident("h".into());
-        assert!(event_setter("onchange", &handler, "TabBar").is_none());
+        assert!(event_setter("on_change", &handler, "TabBar").is_none());
         assert!(event_setter("on_toggle", &handler, "Tab").is_none());
     }
 }

@@ -31,11 +31,11 @@
                 <p>anchor="TopRight" 锚定右上角弹出，点击 Button 触发：</p>
                 <dropdown-menu anchor="TopRight">
                     <Button label="Options" ghost="" />
-                    <menu-item label="Custom Action" icon="Star" onclick={on_custom} />
+                    <menu-item label="Custom Action" icon="Star" on-click={on_custom} />
                     <menu-separator />
-                    <menu-item label="Standard Action" onclick={on_standard} />
+                    <menu-item label="Standard Action" on-click={on_standard} />
                     <menu-separator />
-                    <menu-item label="Exit" onclick={on_exit} />
+                    <menu-item label="Exit" on-click={on_exit} />
                 </dropdown-menu>
             </div>
 
@@ -44,11 +44,11 @@
                 <p>menu-separator 分组，icon 添加图标，观察菜单项视觉分组：</p>
                 <dropdown-menu anchor="TopRight">
                     <Button label="带图标的菜单" ghost="" />
-                    <menu-item label="Custom Action" icon="Star" onclick={on_custom} />
+                    <menu-item label="Custom Action" icon="Star" on-click={on_custom} />
                     <menu-separator />
-                    <menu-item label="Standard Action" icon="Check" onclick={on_standard} />
+                    <menu-item label="Standard Action" icon="Check" on-click={on_standard} />
                     <menu-separator />
-                    <menu-item label="Exit" icon="X" onclick={on_exit} />
+                    <menu-item label="Exit" icon="X" on-click={on_exit} />
                 </dropdown-menu>
             </div>
         </Card>

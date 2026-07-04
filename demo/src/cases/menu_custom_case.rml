@@ -32,10 +32,10 @@
                 <dropdown-menu>
                     <Button label="Settings" ghost="" />
                     <menu-item header="" label="Display" />
-                    <menu-item label="Dark Mode" onclick={on_toggle_dark} />
+                    <menu-item label="Dark Mode" on-click={on_toggle_dark} />
                     <menu-separator />
                     <menu-item label="Help Center" href="https://longbridge.github.io/gpui-component/" icon="Info" />
-                    <menu-item label="Sign Out" onclick={on_sign_out} />
+                    <menu-item label="Sign Out" on-click={on_sign_out} />
                 </dropdown-menu>
             </div>
 
@@ -44,7 +44,7 @@
                 <p>点击 Dark Mode 切换 dark_mode 字段，当前状态：{dark_mode_label}</p>
                 <dropdown-menu>
                     <Button label="Theme" ghost="" />
-                    <menu-item label="Dark Mode" checked={dark_mode} onclick={on_toggle_dark} />
+                    <menu-item label="Dark Mode" checked={dark_mode} on-click={on_toggle_dark} />
                 </dropdown-menu>
             </div>
 
@@ -55,7 +55,7 @@
                     <Button label="Account" ghost="" />
                     <menu-item label="Help Center" href="https://longbridge.github.io/gpui-component/" icon="Info" />
                     <menu-separator />
-                    <menu-item label="Sign Out" icon="LogOut" onclick={on_sign_out} />
+                    <menu-item label="Sign Out" icon="LogOut" on-click={on_sign_out} />
                 </dropdown-menu>
             </div>
         </Card>

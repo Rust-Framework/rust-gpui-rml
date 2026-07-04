@@ -3,6 +3,7 @@
 //! 为单个 AST 节点（元素/文本/插值/混合文本）生成构建代码。
 
 use crate::compiler::{CodegenCtx, CodegenError};
+use crate::css::ParentInfo;
 use crate::parser::ast::{Attribute, Directive, Element, Node};
 use crate::tags;
 use crate::compiler::component as comp;
@@ -12,10 +13,12 @@ use crate::compiler::menu;
 use super::attribute::{apply_bind_attr, apply_css_styles, apply_static_attr};
 use super::text::{gen_expr_code, gen_mixed_text};
 
-/// codegen 结果：元素代码 + 是否为迭代器
+/// codegen 结果：元素代码 + 是否迭代器
 pub type GenResult = (String, bool);
 
 /// 为单个节点生成构建代码，返回 (代码, 是否迭代器)
+///
+/// 公共入口，无父链（顶层调用）。内部委托 `gen_node_impl` 传递空父链。
 pub fn gen_node(
     node: &Node,
     ctx: &CodegenCtx,
@@ -23,10 +26,22 @@ pub fn gen_node(
     id_counter: &mut usize,
     loop_vars: &[String],
 ) -> Result<GenResult, CodegenError> {
+    gen_node_impl(node, ctx, depth, id_counter, loop_vars, &[])
+}
+
+/// 带父链的节点生成（供 `gen_element` 递归子节点时调用）
+fn gen_node_impl(
+    node: &Node,
+    ctx: &CodegenCtx,
+    depth: usize,
+    id_counter: &mut usize,
+    loop_vars: &[String],
+    parents: &[ParentInfo],
+) -> Result<GenResult, CodegenError> {
     let lv: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
     let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
     match node {
-        Node::Element(elem) => gen_element(elem, ctx, depth, id_counter, loop_vars),
+        Node::Element(elem) => gen_element(elem, ctx, depth, id_counter, loop_vars, parents),
         Node::Text(text) => Ok((format!("{:?}", text), false)),
         Node::Interpolation(expr_str) => {
             Ok((
@@ -40,18 +55,45 @@ pub fn gen_node(
     }
 }
 
+/// 从 AST Element 提取 ParentInfo（用于子节点的 CSS 父链匹配）
+fn build_parent_info(elem: &Element) -> ParentInfo {
+    let class_value: String = elem
+        .attributes
+        .iter()
+        .find_map(|attr| match attr {
+            Attribute::Static { name, value } if name == "class" => Some(value.clone()),
+            _ => None,
+        })
+        .unwrap_or_default();
+    let classes: Vec<String> = class_value.split_whitespace().map(|s| s.to_string()).collect();
+    let id: Option<String> = elem
+        .attributes
+        .iter()
+        .find_map(|attr| match attr {
+            Attribute::Static { name, value } if name == "id" => Some(value.clone()),
+            _ => None,
+        });
+    ParentInfo {
+        tag: elem.tag.clone(),
+        classes,
+        id,
+    }
+}
+
 fn gen_element(
     elem: &Element,
     ctx: &CodegenCtx,
     depth: usize,
     id_counter: &mut usize,
     loop_vars: &[String],
+    parents: &[ParentInfo],
 ) -> Result<GenResult, CodegenError> {
     let tag = &elem.tag;
 
     // 透明容器：<component content={expr} /> 直接嵌入表达式，不创建元素包装。
     // 用于在 RML 模板中注入动态 AnyElement/impl IntoElement（类似 WPF ContentControl）。
     // 表达式可引用 _window/cx（render 方法作用域内可用）。
+    // 支持 `each` 指令：<component each={s in status} content={s.render(_window, cx)} />
     if tag == "component" {
         let content_expr = elem.attributes.iter().find_map(|attr| {
             if let Attribute::Bind { name, expr } = attr {
@@ -62,7 +104,39 @@ fn gen_element(
             None
         });
         if let Some(expr) = content_expr {
-            return Ok((expr, false));
+            // `<component content={...} />` 表达式可引用 render 方法作用域内的 _window/cx，
+            // 将它们加入 loop_vars 避免被加 self. 前缀
+            let mut scope_vars: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
+            for v in ["_window", "cx"] {
+                if !scope_vars.contains(&v) {
+                    scope_vars.push(v);
+                }
+            }
+            let lv: Vec<&str> = scope_vars;
+            let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
+            let code = crate::compiler::codegen::gen_expr_code(&expr, &lv, &computed);
+
+            // 检测 each 指令
+            let each_clause = elem.directives.iter().find_map(|d| match d {
+                Directive::Each(c) => Some(c.clone()),
+                _ => None,
+            });
+            if let Some(clause) = each_clause {
+                // iterable 可能是 self.field 或 loop_var.field
+                let iter_expr = if loop_vars.iter().any(|lv| {
+                    clause.iterable == *lv || clause.iterable.starts_with(&format!("{}.", lv))
+                }) {
+                    clause.iterable.clone()
+                } else {
+                    format!("self.{}", clause.iterable)
+                };
+                let iter_code = format!(
+                    "{iter_expr}.iter().map(|{}| {})",
+                    clause.item, code
+                );
+                return Ok((iter_code, true));
+            }
+            return Ok((code, false));
         }
         return Err(CodegenError {
             message: "<component> 标签必须提供 content={expr} 属性".to_string(),
@@ -107,7 +181,7 @@ fn gen_element(
         return Ok((code, false));
     }
 
-    // 扩展组件（PascalCase、kebab-case 或特殊小写标签 menu/status_bar）
+    // 扩展组件（PascalCase、kebab-case 或特殊小写标签 menu/status-bar）
     if tags::is_extension_component(tag) {
         let code = comp::gen_component(elem, ctx, depth, id_counter, loop_vars)?;
         return Ok((code, false));
@@ -164,9 +238,9 @@ fn gen_element(
         code.push_str(&format!(".id((\"rml_el\", {}usize))", id_val));
     }
 
-    // 2b. 应用 CSS 样式（class/id 属性匹配全局样式表）
+    // 2b. 应用 CSS 样式（class/id 属性匹配全局样式表，支持父链后代/子选择器）
     if let Some(sheet) = &ctx.stylesheet {
-        let style_code = apply_css_styles(elem, tag, sheet);
+        let style_code = apply_css_styles(elem, tag, sheet, parents);
         if !style_code.is_empty() {
             code.push_str(&style_code);
         }
@@ -188,9 +262,13 @@ fn gen_element(
         }
     }
 
-    // 4. 处理子节点
+    // 4. 处理子节点（构建父链：当前元素 → child_parents）
+    let current_parent = build_parent_info(elem);
+    let mut child_parents = parents.to_vec();
+    child_parents.push(current_parent);
+
     for child in &elem.children {
-        let (child_code, is_iter) = gen_node(child, ctx, depth + 1, id_counter, &child_loop_vars)?;
+        let (child_code, is_iter) = gen_node_impl(child, ctx, depth + 1, id_counter, &child_loop_vars, &child_parents)?;
         if is_iter {
             code.push_str(&format!("\n            .children({})", child_code));
         } else {

@@ -26,15 +26,15 @@
                 <h3>基础计数</h3>
                 <p>{counter_text}</p>
                 <div class="button-row">
-                    <Button label="点击 +1" primary="" onclick={on_click} />
-                    <Button label="重置" ghost="" onclick={on_reset} />
+                    <Button label="点击 +1" primary="" on-click={on_click} />
+                    <Button label="重置" ghost="" on-click={on_reset} />
                 </div>
             </div>
             <div class="demo-section">
                 <h3>步长控制</h3>
                 <p>当前步长：{step}（每次点击 +步长）</p>
                 <div class="button-row">
-                    <Button label="步长 +1" onclick={on_inc_step} />
+                    <Button label="步长 +1" on-click={on_inc_step} />
                 </div>
             </div>
         </Card>

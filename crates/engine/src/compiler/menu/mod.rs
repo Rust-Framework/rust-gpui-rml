@@ -6,7 +6,7 @@
 //!
 //! - `dispatcher.rs`：标签识别（`is_menu_container` / `is_menu_tag`）+ 元素 codegen 分发（`gen_menu_element`）
 //! - `children.rs`：菜单子节点拆分与触发器子节点生成
-//! - `setters.rs`：menu / MenuBar / status_bar 专用 bind setter
+//! - `setters.rs`：menu / MenuBar / status-bar 专用 bind setter
 //! - `item.rs` / `menu_bar.rs` / `context.rs` / `dropdown.rs` / `app_menu_bar.rs` / `popup.rs` / `hoist.rs`：
 //!   各类菜单元素的具体 codegen 实现
 

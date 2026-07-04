@@ -4,7 +4,7 @@ use rml_core::i18n::{t_static, I18nState};
 use rml_core::theme::ThemeExt;
 
 #[contribute(
-    host_id = "demo.activity",
+    host_id = "demo.shell",
     id = "i18n.basic",
     kind = "case",
     group = "i18n",

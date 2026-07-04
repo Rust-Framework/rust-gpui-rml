@@ -545,15 +545,15 @@ fn model_with_converter_generates_forward_convert_call() {
     );
 }
 
-// ─── Phase B-3: oninput/onchange handler 注入测试 ───
+// ─── Phase B-3: on-input/on-change handler 注入测试 ───
 
 #[test]
-fn oninput_handler_injected_into_subscribe_callback() {
-    // <input model={name} oninput={handle_input} /> 应在 cx.subscribe 回调内注入 handler 调用
+fn on_input_handler_injected_into_subscribe_callback() {
+    // <input model={name} on-input={handle_input} /> 应在 cx.subscribe 回调内注入 handler 调用
     let ctx = make_ctx_with_field_types();
     let source = r#"
 <component>
-    <input model={name} oninput={handle_input} />
+    <input model={name} on-input={handle_input} />
 </component>
 "#;
     let code = compile(source, &ctx).expect("compile failed");
@@ -572,12 +572,12 @@ fn oninput_handler_injected_into_subscribe_callback() {
 }
 
 #[test]
-fn onchange_handler_separate_from_oninput() {
-    // oninput 和 onchange 可独立声明
+fn on_change_handler_separate_from_on_input() {
+    // on-input 和 on-change 可独立声明
     let ctx = make_ctx_with_field_types();
     let source = r#"
 <component>
-    <input model={count} onchange={handle_change} />
+    <input model={count} on-change={handle_change} />
 </component>
 "#;
     let code = compile(source, &ctx).expect("compile failed");
@@ -593,9 +593,9 @@ fn onchange_handler_separate_from_oninput() {
         "应调用 this.handle_change，实际：\n{}",
         code
     );
-    // 未声明 oninput 时不应生成 InputEvent 构造
+    // 未声明 on-input 时不应生成 InputEvent 构造
     assert!(
         !code.contains("convert::input("),
-        "未声明 oninput 时不应生成 InputEvent 构造"
+        "未声明 on-input 时不应生成 InputEvent 构造"
     );
 }

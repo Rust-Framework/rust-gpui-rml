@@ -123,7 +123,7 @@ pub fn is_builtin(tag: &str) -> bool {
 /// 将 kebab-case 扩展组件标签规范化为 PascalCase。
 ///
 /// 通用规则：`context-menu` → `ContextMenu`，`menu-item` → `MenuItem`。
-/// 已是 PascalCase、snake_case（`status_bar`）或无连字符的标签原样返回。
+/// 已是 PascalCase 或无连字符的标签原样返回。
 pub fn normalize_component_tag(tag: &str) -> String {
     if !tag.contains('-') {
         return tag.to_string();
@@ -154,16 +154,16 @@ pub fn normalize_component_tag(tag: &str) -> String {
 pub fn canonical_tag(tag: &str) -> String {
     let normalized = normalize_component_tag(tag);
     match normalized.as_str() {
+        // 小写无连字符别名（normalize_component_tag 不会转为 PascalCase，需手动映射）
         "accordion" => "Accordion".to_string(),
         "item" => "AccordionItem".to_string(),
-        "tab_bar" => "TabBar".to_string(),
         "tab" => "Tab".to_string(),
-        "tab_item" => "TabItem".to_string(),
         "table" => "Table".to_string(),
         "column" => "Column".to_string(),
         "descriptions" => "DescriptionList".to_string(),
         "description" => "DescriptionItem".to_string(),
         "separator" => "DescriptionSeparator".to_string(),
+        // kebab-case 形式（tab-bar / tab-item）由 normalize_component_tag 自动转为 PascalCase
         _ => normalized,
     }
 }
@@ -173,7 +173,7 @@ pub fn component_lookup_resolved(tag: &str) -> Option<ComponentTag> {
     component_lookup(tag).or_else(|| component_lookup(&normalize_component_tag(tag)))
 }
 
-/// 判断标签是否为扩展组件（PascalCase 或 kebab-case，不含特殊小写 `menu`/`status_bar`）
+/// 判断标签是否为扩展组件（PascalCase 或 kebab-case，不含特殊小写 `menu`/`status-bar`）
 pub fn is_component(tag: &str) -> bool {
     if is_special_lowercase_component(tag) {
         return false;
@@ -187,7 +187,7 @@ pub fn is_component(tag: &str) -> bool {
         && component_lookup(&normalized).is_some()
 }
 
-/// 扩展组件中的 lowercase 标签（如 `menu`、`status_bar`、`accordion`），在 `component_lookup` 中注册
+/// 扩展组件中的 lowercase 标签（如 `menu`、`status-bar`、`accordion`），在 `component_lookup` 中注册
 pub fn is_special_lowercase_component(tag: &str) -> bool {
     component_lookup(tag).is_some() && !tag.contains('-') && {
         !tag
@@ -204,10 +204,10 @@ pub fn is_extension_component(tag: &str) -> bool {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-//  根节点标记：`<window>` / `<modern_window>` / `<tab_window>` / `<dialog>` / `<component>`
+//  根节点标记：`<window>` / `<modern-window>` / `<tab-window>` / `<dialog>` / `<component>`
 //
 //  RML 根节点必须是这几种之一。编译器从根节点属性提取窗口/对话框配置，
-//  生成 `impl IWindow`（仅 `<window>`/`<modern_window>`/`<tab_window>`）
+//  生成 `impl IWindow`（仅 `<window>`/`<modern-window>`/`<tab-window>`）
 //  或对话框方法（`<dialog>`）+ `impl Render`。
 //  这些不是普通 HTML 标签，不参与 `BuiltinTag` 查找。
 // ──────────────────────────────────────────────────────────────────────────
@@ -217,9 +217,9 @@ pub fn is_extension_component(tag: &str) -> bool {
 pub enum RootTag {
     /// `<window>`：基础窗口（透明标题栏，`WindowChrome::Transparent`）
     Window,
-    /// `<modern_window>`：现代窗口（自绘 TitleBar/Menu/StatusBar）
+    /// `<modern-window>`：现代窗口（自绘 TitleBar/Menu/StatusBar）
     ModernWindow,
-    /// `<tab_window>`：TabBar 标题栏 + 可调整插槽高级窗口
+    /// `<tab-window>`：TabBar 标题栏 + 可调整插槽高级窗口
     TabWindow,
     /// `<dialog>`：模态对话框（非独立 OS 窗口，依赖父窗口的 Root 层渲染）
     ///
@@ -235,7 +235,7 @@ pub enum RootTag {
 pub fn is_root_tag(tag: &str) -> bool {
     matches!(
         tag,
-        "window" | "modern_window" | "tab_window" | "dialog" | "component"
+        "window" | "modern-window" | "tab-window" | "dialog" | "component"
     )
 }
 
@@ -243,8 +243,8 @@ pub fn is_root_tag(tag: &str) -> bool {
 pub fn root_tag_lookup(tag: &str) -> Option<RootTag> {
     match tag {
         "window" => Some(RootTag::Window),
-        "modern_window" => Some(RootTag::ModernWindow),
-        "tab_window" => Some(RootTag::TabWindow),
+        "modern-window" => Some(RootTag::ModernWindow),
+        "tab-window" => Some(RootTag::TabWindow),
         "dialog" => Some(RootTag::DialogWindow),
         "component" => Some(RootTag::Component),
         _ => None,
@@ -370,14 +370,15 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
         }),
         // 窗口外壳组件（RenderOnce，无 ElementId 参数）
         // TitleBar / NativeStatusBar 来自 gpui-component，供用户手动组装标题栏/状态栏
-        // 注：ModernWindowShell 不在此路由表中——它是 `<modern_window>` 根元素的内部实现，
+        // 注：ModernWindowShell 不在此路由表中——它是 `<modern-window>` 根元素的内部实现，
         // 由 codegen 直接生成包裹代码，不作为用户可用的 `<ModernWindowShell>` 标签
         "TitleBar" => Some(ComponentTag {
             ctor_path: "rml_ui::TitleBar",
             kind: ComponentKind::StatelessNoId,
         }),
         // gpui-component 原生状态栏容器（手动 .left() / .right() 组装）
-        "NativeStatusBar" | "StatusBar" => Some(ComponentTag {
+        // PascalCase: <NativeStatusBar>，kebab-case: <native-status-bar>
+        "NativeStatusBar" | "native-status-bar" => Some(ComponentTag {
             ctor_path: "rml_ui::NativeStatusBar",
             kind: ComponentKind::StatelessNoId,
         }),
@@ -392,7 +393,7 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             },
         }),
         // MVVM / 声明式菜单栏（ui crate MenuBar；声明式由 compiler/menu/ 生成 children）
-        "MenuBar" => Some(ComponentTag {
+        "MenuBar" | "menu-bar" => Some(ComponentTag {
             ctor_path: "rml_ui::MenuBar",
             kind: ComponentKind::Stateless,
         }),
@@ -400,7 +401,9 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             ctor_path: "rml_ui::MenuBar",
             kind: ComponentKind::Stateless,
         }),
-        "status_bar" => Some(ComponentTag {
+        // RML MVVM 状态栏（包装 NativeStatusBar，支持 items={...} 绑定）
+        // PascalCase: <StatusBar>，kebab-case: <status-bar>
+        "StatusBar" | "status-bar" => Some(ComponentTag {
             ctor_path: "rml_ui::StatusBar",
             kind: ComponentKind::StatelessNoId,
         }),
@@ -425,7 +428,8 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             kind: ComponentKind::Stateless,
         }),
         // TabBar：标签栏容器，子节点为 <Tab>（直接 .child(Tab::new()...)，非闭包）
-        "TabBar" | "tab_bar" => Some(ComponentTag {
+        // PascalCase: <TabBar>，kebab-case: <tab-bar>
+        "TabBar" | "tab-bar" => Some(ComponentTag {
             ctor_path: "rml_ui::TabBar",
             kind: ComponentKind::StatelessWithItems,
         }),
@@ -442,12 +446,12 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
 ///
 /// Accordion 支持三种形式：`AccordionItem`（PascalCase）、`item`（短标签）、`accordion-item`（kebab-case）。
 /// TabBar 支持三种形式：`Tab`（PascalCase）、`tab`（短标签）、`tab`（已是短形式）。
-/// 仅在 `<accordion>`/`<tab_bar>` 内合法，不在 `component_lookup` 中注册
+/// 仅在 `<accordion>`/`<tab-bar>` 内合法，不在 `component_lookup` 中注册
 /// （避免被误用为顶层扩展组件），在 validator 和 codegen 中通过此函数识别。
 pub fn is_item_builder_tag(tag: &str) -> bool {
     matches!(
         tag,
-        "AccordionItem" | "item" | "Tab" | "tab" | "TabItem" | "tab_item" | "Column" | "column"
+        "AccordionItem" | "item" | "Tab" | "tab" | "Column" | "column"
             | "DescriptionItem" | "description" | "DescriptionSeparator" | "separator"
     ) || normalize_component_tag(tag) == "AccordionItem"
         || normalize_component_tag(tag) == "Tab"
@@ -475,7 +479,13 @@ mod normalize_tests {
     fn passthrough_unchanged() {
         assert_eq!(normalize_component_tag("Button"), "Button");
         assert_eq!(normalize_component_tag("menu"), "menu");
-        assert_eq!(normalize_component_tag("status_bar"), "status_bar");
+    }
+
+    #[test]
+    fn kebab_normalizes_to_pascal() {
+        assert_eq!(normalize_component_tag("status-bar"), "StatusBar");
+        assert_eq!(normalize_component_tag("tab-bar"), "TabBar");
+        assert_eq!(normalize_component_tag("native-status-bar"), "NativeStatusBar");
     }
 
     #[test]
@@ -503,9 +513,18 @@ mod normalize_tests {
     }
 
     #[test]
+    fn canonical_tag_kebab_normalizes_to_pascal() {
+        // kebab-case tag 由 normalize_component_tag 自动转 PascalCase
+        assert_eq!(canonical_tag("tab-bar"), "TabBar");
+        assert_eq!(canonical_tag("status-bar"), "StatusBar");
+        assert_eq!(canonical_tag("native-status-bar"), "NativeStatusBar");
+        assert_eq!(canonical_tag("tab-item"), "TabItem");
+    }
+
+    #[test]
     fn canonical_tag_preserves_special_lowercase() {
+        // menu 是唯一保留的小写无连字符别名
         assert_eq!(canonical_tag("menu"), "menu");
-        assert_eq!(canonical_tag("status_bar"), "status_bar");
     }
 
     #[test]
@@ -535,18 +554,41 @@ mod normalize_tests {
     }
 
     #[test]
-    fn component_lookup_tab_bar_lowercase() {
-        let tag = component_lookup("tab_bar").expect("tab_bar should be registered");
+    fn component_lookup_tab_bar_kebab() {
+        // kebab-case <tab-bar> 直接命中 component_lookup
+        let tag = component_lookup("tab-bar").expect("tab-bar should be registered");
         assert_eq!(tag.ctor_path, "rml_ui::TabBar");
         assert_eq!(tag.kind, ComponentKind::StatelessWithItems);
-        assert!(component_lookup_resolved("tab_bar").is_some());
-        assert!(is_special_lowercase_component("tab_bar"));
-        assert!(is_extension_component("tab_bar"));
+        assert!(component_lookup_resolved("tab-bar").is_some());
+        // tab-bar 含连字符，不属于 special_lowercase，但仍是 extension_component
+        assert!(!is_special_lowercase_component("tab-bar"));
+        assert!(is_extension_component("tab-bar"));
     }
 
     #[test]
-    fn canonical_tag_maps_tab_bar_lowercase() {
-        assert_eq!(canonical_tag("tab_bar"), "TabBar");
+    fn component_lookup_status_bar_kebab() {
+        // <status-bar> → rml_ui::StatusBar（RML MVVM 包装）
+        let tag = component_lookup("status-bar").expect("status-bar should be registered");
+        assert_eq!(tag.ctor_path, "rml_ui::StatusBar");
+        assert_eq!(tag.kind, ComponentKind::StatelessNoId);
+        // <StatusBar> 也指向 rml_ui::StatusBar（不再是 NativeStatusBar 的别名）
+        let tag_pascal = component_lookup("StatusBar").expect("StatusBar should be registered");
+        assert_eq!(tag_pascal.ctor_path, "rml_ui::StatusBar");
+    }
+
+    #[test]
+    fn component_lookup_native_status_bar_kebab() {
+        // <native-status-bar> → rml_ui::NativeStatusBar（gpui-component 原生）
+        let tag = component_lookup("native-status-bar").expect("native-status-bar should be registered");
+        assert_eq!(tag.ctor_path, "rml_ui::NativeStatusBar");
+        assert_eq!(tag.kind, ComponentKind::StatelessNoId);
+        let tag_pascal = component_lookup("NativeStatusBar").expect("NativeStatusBar should be registered");
+        assert_eq!(tag_pascal.ctor_path, "rml_ui::NativeStatusBar");
+    }
+
+    #[test]
+    fn canonical_tag_maps_tab_bar_kebab() {
+        assert_eq!(canonical_tag("tab-bar"), "TabBar");
         assert_eq!(canonical_tag("tab"), "Tab");
         assert_eq!(canonical_tag("TabBar"), "TabBar");
         assert_eq!(canonical_tag("Tab"), "Tab");

@@ -10,5 +10,8 @@ pub mod parser;
 
 pub use ast::*;
 pub use mapper::map_declarations;
-pub use matcher::{generate_styles, matches_selector, styles_for_class, ElementContext};
+pub use matcher::{
+    generate_styles, matches_selector, styles_for_class, styles_for_class_with_parents,
+    ElementContext, ParentInfo,
+};
 pub use parser::{parse, ParseError};

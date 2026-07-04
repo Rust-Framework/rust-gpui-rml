@@ -4,7 +4,7 @@ use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
 
 #[contribute(
-    host_id = "demo.activity",
+    host_id = "demo.shell",
     id = "components.table",
     kind = "case",
     group = "components",
@@ -116,6 +116,14 @@ impl TableCase {
     </template>
     <template slot="footer">
         <span>共 3 条记录</span>
+    </template>
+</Table>
+
+<Table rows={user_rows} bordered="">
+    <Column key="name" title="姓名" />
+    <Column key="age" title="年龄" />
+    <template slot="cell" field="name">
+        <span style="color: blue;">第 {row_idx} 行</span>
     </template>
 </Table>"#
             .to_string()

@@ -23,9 +23,7 @@ pub use menu::{
     IMenuItem, Menu, MenuBar, MenuItem, configure_menu_bar_popup, menu_bar_button,
     render_menu_bar_from_items,
 };
-pub use status_bar::{
-    IStatusBarItem, NativeStatusBar, StatusBar, StatusBarAlign, StatusBarItem,
-};
+pub use status_bar::{IStatusBarItem, NativeStatusBar, StatusBar, StatusBarAlign, StatusBarItem};
 pub use tab::{Tab, TabBar, TabItem, TabVariant};
 pub use table::{
     CellTemplate, DefaultTableDelegate, FooterTemplate, HeaderTemplate, Table, TableColumn,

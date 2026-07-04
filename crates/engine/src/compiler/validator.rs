@@ -107,7 +107,7 @@ fn validate_element(
     }
 
     // Shell 根标签的 slot 名白名单校验
-    // 防止未知 slot 名（如 `<template slot="tabs">` 误用在 modern_window 上）静默落入 body
+    // 防止未知 slot 名（如 `<template slot="tabs">` 误用在 modern-window 上）静默落入 body
     if let Some(root_tag) = tags::root_tag_lookup(&elem.tag) {
         let allowed_slots: &[&str] = match root_tag {
             tags::RootTag::TabWindow => &[
@@ -148,7 +148,7 @@ fn validate_element(
 /// 校验扩展组件和 shell 根标签的未知属性
 ///
 /// - 扩展组件（`tags::is_extension_component`）：bind/event 属性用 `is_prop_registered` 校验
-/// - Shell 根标签（tab_window/modern_window/window/dialog）：bind/event 属性用 `is_shell_prop_registered` 校验
+/// - Shell 根标签（tab-window/modern-window/window/dialog）：bind/event 属性用 `is_shell_prop_registered` 校验
 /// - static 属性宽松处理（可能有自定义用途，不报错）
 fn validate_unknown_props(elem: &Element) -> Result<(), ValidationError> {
     let tag = &elem.tag;
@@ -170,7 +170,7 @@ fn validate_unknown_props(elem: &Element) -> Result<(), ValidationError> {
         return Ok(());
     }
 
-    // 扩展组件（PascalCase / kebab-case / 特殊小写如 menu/status_bar）
+    // 扩展组件（PascalCase / kebab-case / 特殊小写如 menu/status-bar）
     // 或 item builder 子标签（如 AccordionItem，不在 component_lookup 中，
     // 通过 is_item_builder_tag 识别）
     if tags::is_extension_component(tag) || tags::is_item_builder_tag(tag) {

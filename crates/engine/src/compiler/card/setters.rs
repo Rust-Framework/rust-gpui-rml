@@ -175,7 +175,7 @@ mod tests {
     #[test]
     fn static_setter_unknown_returns_none() {
         assert!(static_setter("label", "x", "Card").is_none());
-        assert!(static_setter("onclick", "", "Card").is_none());
+        assert!(static_setter("on_click", "", "Card").is_none());
         assert!(static_setter("primary", "", "Card").is_none());
     }
 

@@ -32,13 +32,13 @@
             <div class="demo-section">
                 <h3>切换语言</h3>
                 <p>点击按钮切换到 en-US，观察上方文案与界面语言变化：</p>
-                <Button label={t("menu.lang_en")} onclick={on_switch_en} />
+                <Button label={t("menu.lang_en")} on-click={on_switch_en} />
             </div>
 
             <div class="demo-section">
                 <h3>切换主题</h3>
                 <p>点击按钮在 dark/light 间切换，观察整体外观变化：</p>
-                <Button label={t("menu.theme_toggle")} onclick={on_toggle_theme} />
+                <Button label={t("menu.theme_toggle")} on-click={on_toggle_theme} />
             </div>
         </Card>
     </div>

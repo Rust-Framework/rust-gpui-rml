@@ -1,10 +1,10 @@
-//! menu / MenuBar / status_bar 专用 bind setter。
+//! menu / MenuBar / StatusBar 专用 bind setter。
 //!
 //! 由 `component::component_bind_setter` 在 tag 匹配 menu 类标签时委托调用。
 
 use crate::tags;
 
-/// menu / MenuBar / status_bar 专用 bind setter
+/// menu / MenuBar / StatusBar 专用 bind setter
 ///
 /// `items={expr}` → `.items(self.<expr>.clone())`
 ///
@@ -19,8 +19,8 @@ pub fn bind_setter(
     match name {
         "items"
             if matches!(
-                tags::normalize_component_tag(tag).as_str(),
-                "menu" | "MenuBar" | "status_bar"
+                tags::canonical_tag(tag).as_str(),
+                "MenuBar" | "StatusBar"
             ) =>
         {
             let rust_expr =

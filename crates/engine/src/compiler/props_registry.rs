@@ -18,10 +18,11 @@
 //!
 //! - **static**：静态属性 `label="..."` / `primary=""`，由 `component_static_setter` 处理
 //! - **bind**：绑定属性 `value={field}`，由 `component_bind_setter` 处理
-//! - **event**：事件属性 `onclick={fn}`，由 `component_event_setter` 处理
+//! - **event**：事件属性（声明式 `on-click={fn}` kebab-case，normalize 后内部 `on_click` snake_case），
+//!   由 `component_event_setter` 处理
 //! - **shell**：窗口外壳属性 `title="..."` / `tabs={...}`，由 `shell.rs` 处理
 //!
-//! 注册表合并所有分类，按组件列出完整属性清单。
+//! 注册表合并所有分类，按组件列出完整属性清单。条目统一使用 normalize 后的 snake_case 形式。
 
 // ──────────────────────────────────────────────────────────────────────────
 // 通用属性（所有 Stateless / Stateful 组件共享）
@@ -52,8 +53,10 @@ pub const COMMON_BIND_PROPS: &[&str] = &[
 ];
 
 /// 通用事件属性（来自 `component_event_setter` 的通用 match 分支）
+///
+/// 声明式 `on-click`（kebab-case），normalize 后内部 `on_click`（snake_case）。
 pub const COMMON_EVENT_PROPS: &[&str] = &[
-    "onclick",
+    "on_click",
 ];
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -62,17 +65,18 @@ pub const COMMON_EVENT_PROPS: &[&str] = &[
 
 /// 每个组件的专用属性清单（不含通用属性）
 ///
-/// key = RML 标签名（PascalCase 或 kebab-case），value = 专用属性列表
+/// key = canonical_tag 规范化后的 PascalCase 名（如 "StatusBar"），
+/// 或保留的小写无连字符别名（如 "menu"）。
+/// value = 专用属性列表
 pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
-    // Input / TextInput 专用
-    ("Input", &["onchange"]),
-    ("TextInput", &["onchange"]),
-    // Tree 专用
-    ("Tree", &["items", "on_activate", "on_select"]),
-    // MenuBar / menu / status_bar 专用（items 绑定）
+    // Input / TextInput 专用（声明式 on-change，内部 on_change）
+    ("Input", &["on_change"]),
+    ("TextInput", &["on_change"]),
+    // Tree 专用（Stateful 组件，数据由 TreeState Entity 提供，不支持 items 绑定）
+    ("Tree", &["on_activate", "on_select"]),
+    // MenuBar / StatusBar MVVM items 绑定（Vec<Arc<dyn IMenuItem>> / Vec<Arc<dyn IStatusBarItem>>）
     ("MenuBar", &["items"]),
-    ("menu", &["items"]),
-    ("status_bar", &["items"]),
+    ("StatusBar", &["items"]),
     // Accordion 专用
     ("Accordion", &["multiple", "bordered", "on_toggle_click"]),
     // AccordionItem 专用（item builder 子标签，不在 component_lookup 中）
@@ -169,15 +173,15 @@ pub fn is_prop_registered(tag: &str, attr: &str) -> bool {
 
 /// 窗口外壳组件的可绑定属性（由 `shell.rs` 处理）
 ///
-/// key = RML 根标签名，value = 该 shell 支持的所有属性
+/// key = RML 根标签名（kebab-case），value = 该 shell 支持的所有属性
 pub static SHELL_PROPS: &[(&str, &[&str])] = &[
-    ("tab_window", &[
+    ("tab-window", &[
         "title", "width", "height", "startup", "icon",
         "tabs", "selected_index", "show_chrome",
         "left_size", "right_size", "bottom_size",
         "on_tab_click", "on_chrome_toggle", "tab_item_template",
     ]),
-    ("modern_window", &[
+    ("modern-window", &[
         "title", "width", "height", "startup", "icon",
         "menu", "footer",
     ]),
@@ -225,19 +229,23 @@ mod tests {
 
     #[test]
     fn known_component_props_recognized() {
-        assert!(is_prop_registered("Input", "onchange"));
-        assert!(is_prop_registered("Tree", "items"));
+        assert!(is_prop_registered("Input", "on_change"));
+        // Tree 是 Stateful 组件，数据由 TreeState Entity 提供，不支持 items 绑定
+        assert!(!is_prop_registered("Tree", "items"));
         assert!(is_prop_registered("Tree", "on_activate"));
+        assert!(is_prop_registered("Tree", "on_select"));
+        // MenuBar / StatusBar 支持 items 绑定（Vec<Arc<dyn IMenuItem>> / Vec<Arc<dyn IStatusBarItem>>）
         assert!(is_prop_registered("MenuBar", "items"));
-        assert!(is_prop_registered("menu", "items"));
-        assert!(is_prop_registered("status_bar", "items"));
+        assert!(is_prop_registered("menu-bar", "items"));
+        assert!(is_prop_registered("status-bar", "items"));
+        assert!(is_prop_registered("StatusBar", "items"));
     }
 
     #[test]
     fn common_props_recognized_for_any_tag() {
         assert!(is_prop_registered("Button", "label"));
         assert!(is_prop_registered("Button", "primary"));
-        assert!(is_prop_registered("Button", "onclick"));
+        assert!(is_prop_registered("Button", "on_click"));
         assert!(is_prop_registered("Badge", "disabled"));
     }
 
@@ -306,10 +314,10 @@ mod tests {
     }
 
     #[test]
-    fn tab_bar_lowercase_alias_props_registered() {
-        // <tab_bar> 小写别名也应命中 TabBar 属性
-        assert!(is_prop_registered("tab_bar", "selected_index"));
-        assert!(is_prop_registered("tab_bar", "underline"));
+    fn tab_bar_kebab_alias_props_registered() {
+        // <tab-bar> kebab-case 别名也应命中 TabBar 属性
+        assert!(is_prop_registered("tab-bar", "selected_index"));
+        assert!(is_prop_registered("tab-bar", "underline"));
     }
 
     #[test]
@@ -334,18 +342,18 @@ mod tests {
 
     #[test]
     fn shell_props_recognized() {
-        assert!(is_shell_prop_registered("tab_window", "tabs"));
-        assert!(is_shell_prop_registered("tab_window", "on_tab_click"));
-        assert!(is_shell_prop_registered("tab_window", "left_size"));
-        assert!(is_shell_prop_registered("tab_window", "tab_item_template"));
-        assert!(is_shell_prop_registered("modern_window", "menu"));
-        assert!(is_shell_prop_registered("modern_window", "footer"));
+        assert!(is_shell_prop_registered("tab-window", "tabs"));
+        assert!(is_shell_prop_registered("tab-window", "on_tab_click"));
+        assert!(is_shell_prop_registered("tab-window", "left_size"));
+        assert!(is_shell_prop_registered("tab-window", "tab_item_template"));
+        assert!(is_shell_prop_registered("modern-window", "menu"));
+        assert!(is_shell_prop_registered("modern-window", "footer"));
         assert!(is_shell_prop_registered("window", "title"));
     }
 
     #[test]
     fn shell_props_for_returns_list() {
-        let props = shell_props_for("tab_window").expect("tab_window should be registered");
+        let props = shell_props_for("tab-window").expect("tab-window should be registered");
         assert!(props.contains(&"tabs"));
         assert!(props.contains(&"show_chrome"));
         assert!(props.contains(&"tab_item_template"));

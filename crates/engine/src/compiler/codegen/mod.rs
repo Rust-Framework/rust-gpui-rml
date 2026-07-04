@@ -46,8 +46,8 @@ use render::{gen_render_impl_from_children, ShellWrap};
 
 /// 生成 `impl Render for <ViewStruct>` 代码块（可能附带 `impl IWindow`）
 ///
-/// RML 根节点必须是 `<window>`、`<modern_window>`、`<tab_window>`、`<dialog>` 或 `<component>`：
-/// - `<window>`/`<modern_window>`/`<tab_window>`：生成 `impl IWindow` + `impl Render`
+/// RML 根节点必须是 `<window>`、`<modern-window>`、`<tab-window>`、`<dialog>` 或 `<component>`：
+/// - `<window>`/`<modern-window>`/`<tab-window>`：生成 `impl IWindow` + `impl Render`
 /// - `<dialog>`：生成 `open(window, cx)` / `close(cx)` 方法 + `impl Render`
 /// - `<component>`：仅生成 `impl Render`
 pub fn codegen(root: &crate::parser::ast::Node, ctx: &CodegenCtx) -> Result<String, CodegenError> {
@@ -58,7 +58,7 @@ pub fn codegen(root: &crate::parser::ast::Node, ctx: &CodegenCtx) -> Result<Stri
         _ => {
             return Err(CodegenError {
                 message: format!(
-                    "root element must be <window>, <modern_window>, <tab_window>, <dialog>, or <component>; got <{}>",
+                    "root element must be <window>, <modern-window>, <tab-window>, <dialog>, or <component>; got <{}>",
                     root
                 ),
             });

@@ -30,11 +30,11 @@
                 <p>check-side="Right" 勾选标记在右侧，点击 Edit 触发菜单：</p>
                 <dropdown-menu check-side="Right">
                     <Button label="Edit" ghost="" />
-                    <menu-item label="Save" onclick={on_save} />
-                    <menu-item label="Save As" onclick={on_save_as} />
+                    <menu-item label="Save" on-click={on_save} />
+                    <menu-item label="Save As" on-click={on_save_as} />
                     <menu-separator />
-                    <menu-item label="Find" onclick={on_find} />
-                    <menu-item label="Replace" onclick={on_replace} />
+                    <menu-item label="Find" on-click={on_find} />
+                    <menu-item label="Replace" on-click={on_replace} />
                 </dropdown-menu>
             </div>
 
@@ -43,7 +43,7 @@
                 <p>checked={word_wrap} 绑定字段，点击 Word Wrap 切换状态，观察勾选标记：</p>
                 <dropdown-menu check-side="Right">
                     <Button label="View" ghost="" />
-                    <menu-item label="Word Wrap" checked={word_wrap} onclick={on_toggle_wrap} />
+                    <menu-item label="Word Wrap" checked={word_wrap} on-click={on_toggle_wrap} />
                 </dropdown-menu>
             </div>
 
@@ -52,13 +52,13 @@
                 <p>Save/Save As 一组，Find/Replace 一组，观察视觉分组：</p>
                 <dropdown-menu check-side="Right">
                     <Button label="File" ghost="" />
-                    <menu-item label="Save" icon="Save" onclick={on_save} />
-                    <menu-item label="Save As" icon="FileText" onclick={on_save_as} />
+                    <menu-item label="Save" icon="Save" on-click={on_save} />
+                    <menu-item label="Save As" icon="FileText" on-click={on_save_as} />
                     <menu-separator />
-                    <menu-item label="Find" icon="Search" onclick={on_find} />
-                    <menu-item label="Replace" icon="Replace" onclick={on_replace} />
+                    <menu-item label="Find" icon="Search" on-click={on_find} />
+                    <menu-item label="Replace" icon="Replace" on-click={on_replace} />
                     <menu-separator />
-                    <menu-item label="Word Wrap" checked={word_wrap} onclick={on_toggle_wrap} />
+                    <menu-item label="Word Wrap" checked={word_wrap} on-click={on_toggle_wrap} />
                 </dropdown-menu>
             </div>
         </Card>

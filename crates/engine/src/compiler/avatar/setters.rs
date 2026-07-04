@@ -97,7 +97,7 @@ mod tests {
     #[test]
     fn static_setter_avatar_unknown_returns_none() {
         assert!(static_setter("label", "x", "Avatar").is_none());
-        assert!(static_setter("onclick", "", "Avatar").is_none());
+        assert!(static_setter("on_click", "", "Avatar").is_none());
     }
 
     // ─── static_setter: AvatarGroup ───

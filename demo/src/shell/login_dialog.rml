@@ -6,7 +6,7 @@
         <p>{t("login.hint")}</p>
         <div class="login-form">
             <input model={username} placeholder={t("login.username")} />
-            <Button label={t("login.submit")} primary="" onclick={on_login} />
+            <Button label={t("login.submit")} primary="" on-click={on_login} />
         </div>
     </div>
 </dialog>

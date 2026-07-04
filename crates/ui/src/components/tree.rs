@@ -15,13 +15,14 @@ use gpui_component::{
     tree::{Tree as NativeTree, TreeItem, TreeState},
 };
 
-/// RML 树视图（`<Tree on_activate="..." />`，状态字段 `tree_state`）
+/// RML 树视图（`<Tree on-activate="..." on-select="..." />`，状态字段 `tree_state`）
 ///
 /// 接受 `Option<&Entity<TreeState>>`，支持 `on_loaded` 前首次渲染不 panic。
 #[derive(IntoElement)]
 pub struct Tree {
     state: Option<Entity<TreeState>>,
     on_activate: Option<Rc<dyn Fn(TreeItem, &mut Window, &mut App) + 'static>>,
+    on_select: Option<Rc<dyn Fn(TreeItem, &mut Window, &mut App) + 'static>>,
 }
 
 impl Tree {
@@ -29,6 +30,7 @@ impl Tree {
         Self {
             state: state.cloned(),
             on_activate: None,
+            on_select: None,
         }
     }
 
@@ -48,6 +50,23 @@ impl Tree {
         self.on_activate = Some(handler);
         self
     }
+
+    /// 任意节点被选中时触发（包括分类文件夹）
+    pub fn on_select(
+        mut self,
+        handler: impl Fn(TreeItem, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.on_select = Some(Rc::new(handler));
+        self
+    }
+
+    pub fn on_select_rc(
+        mut self,
+        handler: Rc<dyn Fn(TreeItem, &mut Window, &mut App) + 'static>,
+    ) -> Self {
+        self.on_select = Some(handler);
+        self
+    }
 }
 
 impl RenderOnce for Tree {
@@ -57,6 +76,7 @@ impl RenderOnce for Tree {
         };
 
         let on_activate = self.on_activate.clone();
+        let on_select = self.on_select.clone();
         let state_clone = state.clone();
 
         NativeTree::new(&state, move |ix, entry, selected, _window, _cx| {
@@ -78,17 +98,28 @@ impl RenderOnce for Tree {
                         .child(entry.item().label.clone()),
                 );
 
-            if !entry.is_folder() && !entry.is_disabled() {
-                if let Some(handler) = on_activate.clone() {
-                    let tree_item = entry.item().clone();
-                    let state = state_clone.clone();
-                    item = item.on_click(move |_, window, cx| {
-                        state.update(cx, |s, cx| {
-                            s.set_selected_index(Some(ix), cx);
-                        });
-                        handler(tree_item.clone(), window, cx);
+            // 非禁用节点统一挂载 on_click：
+            // - on_select 对所有节点触发（含文件夹）
+            // - on_activate 仅对叶子节点触发
+            if !entry.is_disabled() {
+                let is_folder = entry.is_folder();
+                let tree_item = entry.item().clone();
+                let state = state_clone.clone();
+                let on_activate = on_activate.clone();
+                let on_select = on_select.clone();
+                item = item.on_click(move |_, window, cx| {
+                    state.update(cx, |s, cx| {
+                        s.set_selected_index(Some(ix), cx);
                     });
-                }
+                    if let Some(handler) = on_select.as_ref() {
+                        handler(tree_item.clone(), window, cx);
+                    }
+                    if !is_folder {
+                        if let Some(handler) = on_activate.as_ref() {
+                            handler(tree_item.clone(), window, cx);
+                        }
+                    }
+                });
             }
 
             item

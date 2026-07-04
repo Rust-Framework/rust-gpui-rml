@@ -1,23 +1,4 @@
-//! 案例目录 —— Tab 元信息
-
-use gpui::SharedString;
-use rml_core::contribution::IContribution;
-
-/// 已打开的 Tab 页签（实现 IContribution，由 TabWindowShell 直接消费）
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct OpenTab {
-    pub id: String,
-    pub title: String,
-}
-
-impl IContribution for OpenTab {
-    fn id(&self) -> &str {
-        &self.id
-    }
-    fn name(&self) -> SharedString {
-        self.title.clone().into()
-    }
-}
+//! 案例目录 —— 案例标题 i18n key
 
 /// 案例标题 i18n key
 pub fn case_title_key(id: &str) -> &'static str {

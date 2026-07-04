@@ -153,7 +153,10 @@ pub fn to_rust_code(expr: &Expr) -> String {
 pub fn to_rust_code_with_ctx(expr: &Expr, loop_vars: &[&str]) -> String {
     match expr {
         Expr::Field(name) => {
-            if loop_vars.iter().any(|v| *v == name) {
+            // `self` 是 Rust 关键字，直接输出（不加 self. 前缀）
+            if name == "self" {
+                "self".to_string()
+            } else if loop_vars.iter().any(|v| *v == name) {
                 name.clone()
             } else {
                 format!("self.{}", name)

@@ -56,7 +56,20 @@
             </div>
 
             <div class="demo-section">
-                <h3>5. 合并列</h3>
+                <h3>5. 单元格模板（Scoped Slot 参数访问）</h3>
+                <p>通过 <code>&lt;template slot="cell" field="name"&gt;</code> 自定义 name 列渲染，模板内可直接引用闭包参数 <code>row_idx</code>。</p>
+                <Table rows={user_rows} bordered="">
+                    <Column key="name" title="姓名" width="160" />
+                    <Column key="age" title="年龄" align="center" />
+                    <Column key="email" title="邮箱" />
+                    <template slot="cell" field="name">
+                        <span style="color: blue; font-weight: bold;">第 {row_idx} 行</span>
+                    </template>
+                </Table>
+            </div>
+
+            <div class="demo-section">
+                <h3>6. 合并列</h3>
                 <Table rows={merged_rows} bordered="">
                     <Column key="category" title="分类" width="120" />
                     <Column key="name" title="名称" />

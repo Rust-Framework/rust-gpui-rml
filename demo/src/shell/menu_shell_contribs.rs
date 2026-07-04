@@ -1,6 +1,6 @@
 //! Shell 菜单贡献：手写 `impl IContribution`（submenu root）+ `impl ICommand`（leaf）。
 //!
-//! 叶子项通过 `DemoShellHost` 全局获取 `WeakEntity<MainWindow>`，在 `execute` 中
+//! 叶子项通过 `IAppContext::get_service::<MainWindowRef>()` 获取 `WeakEntity<MainWindow>`，在 `execute` 中
 //! upgrade + update 调用 MainWindow 方法（与 `ActivityPanel::on_case_activate` 模式一致）。
 
 use gpui::SharedString;
@@ -8,18 +8,18 @@ use rml::prelude::*;
 use rml_core::command::{CallContext, ICommand};
 use rml_core::i18n::t_static;
 
-use crate::shell::{DemoShellHost, MainWindow};
+use crate::shell::{MainWindow, MainWindowRef};
 
-/// 命令执行 helper：从 `DemoShellHost` 全局获取 `MainWindow` 弱引用，
-/// upgrade 后在闭包中执行 MainWindow 方法。统一 6 处 `try_global`+`upgrade`+`update` 样板。
+/// 命令执行 helper：从 `IAppContext::get_service::<MainWindowRef>()` 获取 `MainWindow` 弱引用，
+/// upgrade 后在闭包中执行 MainWindow 方法。统一 6 处 `get_service`+`upgrade`+`update` 样板。
 fn with_main_window<F>(ctx: &mut CallContext, f: F)
 where
     F: FnOnce(&mut MainWindow, &mut gpui::Context<MainWindow>),
 {
     if let Some(host) = ctx
         .app
-        .try_global::<DemoShellHost>()
-        .and_then(|h| h.0.upgrade())
+        .get_service::<MainWindowRef>()
+        .and_then(|r| r.0.upgrade())
     {
         host.update(ctx.app, |this, cx| f(this, cx));
     }

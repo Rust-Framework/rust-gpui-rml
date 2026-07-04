@@ -381,17 +381,17 @@ mod tests {
         assert!(code.contains("rml_ui::TabBar::new"));
     }
 
-    /// <tab_bar> 小写标签通过 gen_component 入口调度
+    /// <tab-bar> kebab-case 标签通过 gen_component 入口调度
     #[test]
-    fn gen_tab_bar_lowercase_tag() {
+    fn gen_tab_bar_kebab_tag() {
         use crate::compiler::component::gen_component;
-        let elem = make_element("tab_bar", vec![], vec![]);
+        let elem = make_element("tab-bar", vec![], vec![]);
         let mut id = 0;
         let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
         assert!(code.contains("rml_ui::TabBar::new"));
     }
 
-    /// <tab> 短标签作为 <tab_bar> 子节点
+    /// <tab> 短标签作为 <tab-bar> 子节点
     #[test]
     fn gen_tab_bar_with_tab_short_form() {
         let tab = make_element(
@@ -402,7 +402,7 @@ mod tests {
             }],
             vec![],
         );
-        let bar = make_element("tab_bar", vec![], vec![Node::Element(tab)]);
+        let bar = make_element("tab-bar", vec![], vec![Node::Element(tab)]);
         let mut id = 0;
         let code = gen_tab_bar(&bar, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
         assert!(code.contains(".child("));

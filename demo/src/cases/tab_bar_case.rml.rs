@@ -3,7 +3,7 @@ use rml::prelude::*;
 use rml_core::i18n::t_static;
 
 #[contribute(
-    host_id = "demo.activity",
+    host_id = "demo.shell",
     id = "components.tab_bar",
     kind = "case",
     group = "components",

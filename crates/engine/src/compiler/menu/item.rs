@@ -4,7 +4,7 @@ use crate::compiler::codegen::gen_node;
 use crate::compiler::menu::hoist::MenuHoist;
 use crate::compiler::menu::popup::apply_popup_config;
 use crate::compiler::{CodegenCtx, CodegenError};
-use crate::parser::ast::{Attribute, Element, EventHandler, Node};
+use crate::parser::ast::{Attribute, Directive, Element, EventHandler, Node};
 
 /// 菜单子项标签（PascalCase、kebab-case；菜单内小写 `separator` 为别名）
 pub fn is_menu_item_tag(tag: &str) -> bool {
@@ -37,7 +37,31 @@ pub fn gen_popup_menu_body(
         lines.push(apply_popup_config(config)?);
     }
     for item in items {
-        lines.push(gen_menu_item_stmt(item, ctx, depth, id_counter, loop_vars, hoist)?);
+        // 检测 each 指令——运行时迭代子项
+        let each_clause = item.directives.iter().find_map(|d| match d {
+            Directive::Each(c) => Some(c.clone()),
+            _ => None,
+        });
+        if let Some(clause) = each_clause {
+            let mut child_loop_vars: Vec<String> = loop_vars.to_vec();
+            child_loop_vars.push(clause.item.clone());
+            let stmt = gen_menu_item_stmt(item, ctx, depth, id_counter, &child_loop_vars, hoist)?;
+            // iterable 可能是 self.field 或 loop_var.field
+            let iter_expr = if loop_vars
+                .iter()
+                .any(|lv| clause.iterable == *lv || clause.iterable.starts_with(&format!("{}.", lv)))
+            {
+                clause.iterable.clone()
+            } else {
+                format!("self.{}", clause.iterable)
+            };
+            lines.push(format!(
+                "for {} in {}.iter() {{\n                {}\n            }}",
+                clause.item, iter_expr, stmt
+            ));
+        } else {
+            lines.push(gen_menu_item_stmt(item, ctx, depth, id_counter, loop_vars, hoist)?);
+        }
     }
     lines.push("menu".to_string());
     Ok(lines.join("\n                "))
@@ -75,9 +99,7 @@ pub(crate) fn gen_menu_item_stmt(
     if !menu_children.is_empty() {
         let label_expr = bind_or_static_label(elem, loop_vars, ctx, hoist)?
             .unwrap_or_else(|| "\"\"".to_string());
-        let icon = static_attr(elem, "icon");
-        let icon_code = icon
-            .map(|i| format!("Some(rml_ui::IconName::{})", i))
+        let icon_code = bind_or_static_icon(elem, loop_vars, ctx, hoist)?
             .unwrap_or_else(|| "None".to_string());
         let body = gen_popup_menu_body(
             &menu_children,
@@ -96,7 +118,7 @@ pub(crate) fn gen_menu_item_stmt(
 
     if !custom_children.is_empty() {
         let onclick = if let Some(cmd_expr) = command_bind_expr(elem) {
-            gen_command_closure(&cmd_expr, ctx)?
+            gen_command_closure(&cmd_expr, ctx, loop_vars)?
         } else {
             gen_onclick_closure(elem, ctx)?
         };
@@ -130,9 +152,11 @@ pub(crate) fn gen_menu_item_stmt(
                 .unwrap_or_else(|| "\"\"".to_string()),
         };
         let icon = static_attr(elem, "icon");
-        if let Some(icon) = icon {
+        if icon.is_some() {
+            let icon_code = bind_or_static_icon(elem, loop_vars, ctx, hoist)?
+                .unwrap_or_else(|| "None".to_string());
             return Ok(format!(
-                "menu = menu.link_with_icon({label_expr}, rml_ui::IconName::{icon}, {href_expr});"
+                "menu = menu.link_with_icon({label_expr}, {icon_code}.unwrap(), {href_expr});"
             ));
         }
         return Ok(format!("menu = menu.link({label_expr}, {href_expr});"));
@@ -142,9 +166,9 @@ pub(crate) fn gen_menu_item_stmt(
         .unwrap_or_else(|| "\"\"".to_string());
     let disabled = bind_or_static_bool(elem, "disabled", loop_vars, ctx, hoist, false);
     let checked = bind_or_static_bool(elem, "checked", loop_vars, ctx, hoist, false);
-    let icon = static_attr(elem, "icon");
+    let icon_code = bind_or_static_icon(elem, loop_vars, ctx, hoist)?;
     let onclick = if let Some(cmd_expr) = command_bind_expr(elem) {
-        gen_command_closure(&cmd_expr, ctx)?
+        gen_command_closure(&cmd_expr, ctx, loop_vars)?
     } else {
         gen_onclick_closure(elem, ctx)?
     };
@@ -152,8 +176,17 @@ pub(crate) fn gen_menu_item_stmt(
     let mut stmt = format!(
         "menu = menu.item(\n                rml_ui::PopupMenuItem::new({label_expr})\n                    .disabled({disabled})\n                    .checked({checked})"
     );
-    if let Some(icon) = icon {
-        stmt.push_str(&format!("\n                    .icon(rml_ui::IconName::{icon})"));
+    if let Some(code) = icon_code {
+        // static: Some(rml_ui::IconName::Save) → .icon(rml_ui::IconName::Save)
+        // bind: m.icon → .icon(m.icon.clone())
+        if let Some(icon_name) = code
+            .strip_prefix("Some(rml_ui::IconName::")
+            .and_then(|s| s.strip_suffix(')'))
+        {
+            stmt.push_str(&format!("\n                    .icon(rml_ui::IconName::{icon_name})"));
+        } else {
+            stmt.push_str(&format!("\n                    .icon({code}.unwrap())"));
+        }
     }
     if !onclick.is_empty() {
         stmt.push_str(&format!("\n                    {onclick}"));
@@ -176,7 +209,7 @@ pub(crate) fn partition_menu_item_children(children: &[Node]) -> (Vec<&Element>,
 
 fn gen_onclick_closure(elem: &Element, ctx: &CodegenCtx) -> Result<String, CodegenError> {
     let handler = elem.attributes.iter().find_map(|a| match a {
-        Attribute::Event { name, handler } if name == "onclick" => Some(handler),
+        Attribute::Event { name, handler } if name == "on_click" => Some(handler),
         _ => None,
     });
     let Some(handler) = handler else {
@@ -202,23 +235,51 @@ fn command_bind_expr(elem: &Element) -> Option<String> {
 
 /// 生成声明式命令绑定闭包（Phase B-1：`command={field}`）
 ///
-/// 生成 `.on_click` 闭包，闭包内：
-/// 1. 通过 `entity.update` 克隆出 `Arc<dyn ICommand>`（释放 app 借用）
-/// 2. 构造 `CallContext`（持有外层 window + app）
-/// 3. `can_execute` 判断后 `execute`
-///
-/// `cmd_expr` 为 ViewModel 字段名（如 `save_command`），根据 `computed_methods`
-/// 判断是否为计算属性方法调用。
-fn gen_command_closure(cmd_expr: &str, ctx: &CodegenCtx) -> Result<String, CodegenError> {
-    let is_computed = ctx.computed_methods.iter().any(|c| c == cmd_expr);
-    let field_access = if is_computed {
-        format!("this.{}()", cmd_expr)
+/// 生成 `.on_click` 闭包。两种路径：
+/// - **loop_var 上下文**（如 `command={c.command}`）：直接克隆 loop_var 字段，
+///   闭包内处理 `Option<Arc<dyn ICommand>>`——`Some(cmd)` 时 `can_execute` + `execute`。
+/// - **entity 字段上下文**（如 `command={save_command}`）：通过 `entity.update` 克隆
+///   `Arc<dyn ICommand>`，再 `can_execute` + `execute`。
+fn gen_command_closure(
+    cmd_expr: &str,
+    ctx: &CodegenCtx,
+    loop_vars: &[String],
+) -> Result<String, CodegenError> {
+    // 检测 cmd_expr 是否以 loop_var 开头（如 "c.command"）
+    let loop_prefix = loop_vars.iter().find(|lv| {
+        cmd_expr == **lv || cmd_expr.starts_with(&format!("{}.", lv))
+    });
+
+    if let Some(_lv) = loop_prefix {
+        // loop_var 上下文：直接访问，不经 entity.update
+        // cmd_expr 形如 "c.command"，在迭代器中 c 是 &ViewModel，需通过表达式解析
+        let lv: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
+        let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
+        let access = if let Some(code) =
+            crate::compiler::codegen::try_gen_i18n_call(cmd_expr, &lv, &computed)
+        {
+            code
+        } else {
+            crate::compiler::expr::parse(cmd_expr)
+                .map(|p| crate::compiler::expr::to_rust_code_with_ctx(&p, &lv))
+                .unwrap_or_else(|_| cmd_expr.to_string())
+        };
+        // loop_var 字段为 Option<Arc<dyn ICommand>>，克隆后闭包内处理 Option
+        Ok(format!(
+            ".on_click({{\n                        let __rml_cmd = {access}.clone();\n                        move |_ev, window, app| {{\n                            if let Some(cmd) = &__rml_cmd {{\n                                let mut __rml_ctx = rml_core::command::CallContext::new(window, app);\n                                if cmd.can_execute(&mut __rml_ctx) {{\n                                    cmd.execute(&mut __rml_ctx);\n                                }}\n                            }}\n                        }}\n                    }})"
+        ))
     } else {
-        format!("this.{}", cmd_expr)
-    };
-    Ok(format!(
-        ".on_click({{\n                        let weak = __rml_menu_weak.clone();\n                        move |_ev, window, app| {{\n                            if let Some(entity) = weak.upgrade() {{\n                                let __rml_cmd = entity.update(app, |this, _cx| {{\n                                    {field_access}.clone()\n                                }});\n                                let mut __rml_ctx = rml_core::command::CallContext::new(window, app);\n                                if __rml_cmd.can_execute(&mut __rml_ctx) {{\n                                    __rml_cmd.execute(&mut __rml_ctx);\n                                }}\n                            }}\n                        }}\n                    }})"
-    ))
+        // entity 字段上下文：经 entity.update 克隆
+        let is_computed = ctx.computed_methods.iter().any(|c| c == cmd_expr);
+        let field_access = if is_computed {
+            format!("this.{}()", cmd_expr)
+        } else {
+            format!("this.{}", cmd_expr)
+        };
+        Ok(format!(
+            ".on_click({{\n                        let weak = __rml_menu_weak.clone();\n                        move |_ev, window, app| {{\n                            if let Some(entity) = weak.upgrade() {{\n                                let __rml_cmd = entity.update(app, |this, _cx| {{\n                                    {field_access}.clone()\n                                }});\n                                let mut __rml_ctx = rml_core::command::CallContext::new(window, app);\n                                if __rml_cmd.can_execute(&mut __rml_ctx) {{\n                                    __rml_cmd.execute(&mut __rml_ctx);\n                                }}\n                            }}\n                        }}\n                    }})"
+        ))
+    }
 }
 
 fn has_attr(elem: &Element, name: &str) -> bool {
@@ -253,6 +314,22 @@ fn bind_or_static_label(
         return Ok(Some(expr));
     }
     Ok(static_attr(elem, "label").map(|s| format!("{s:?}")))
+}
+
+/// icon 属性：优先 bind 表达式（如 `m.icon`，返回 `Option<IconName>` 或 `IconName`），
+/// 否则 static 属性（`icon="Save"` → `Some(rml_ui::IconName::Save)`）。
+///
+/// 返回 `Some(code)` 或 `None`，code 形如 `Some(rml_ui::IconName::Save)` 或 `m.icon.clone()`。
+fn bind_or_static_icon(
+    elem: &Element,
+    loop_vars: &[String],
+    ctx: &CodegenCtx,
+    hoist: &MenuHoist,
+) -> Result<Option<String>, CodegenError> {
+    if let Some(expr) = bind_attr(elem, "icon", loop_vars, ctx, hoist)? {
+        return Ok(Some(expr));
+    }
+    Ok(static_attr(elem, "icon").map(|i| format!("Some(rml_ui::IconName::{})", i)))
 }
 
 fn bind_or_static_bool(
@@ -366,9 +443,9 @@ mod tests {
     }
 
     #[test]
-    fn command_takes_precedence_over_onclick() {
-        // command 与 onclick 同时存在时，command 优先，不生成 onclick 的 method 调用
-        let src = r#"<MenuItem command={save} onclick={legacy} label="Save" />"#;
+    fn command_takes_precedence_over_on_click() {
+        // command 与 on-click 同时存在时，command 优先，不生成 on-click 的 method 调用
+        let src = r#"<MenuItem command={save} on-click={legacy} label="Save" />"#;
         let root = parser::parse(src).unwrap();
         let Node::Element(elem) = root else {
             panic!("expected element");
@@ -388,14 +465,14 @@ mod tests {
         // 不应出现 legacy 方法的直接调用（this.legacy 在 rml_convert 路径中）
         assert!(
             !code.contains("rml_convert::from_gpui_click"),
-            "command 优先时不应生成 onclick 的 rml_convert 路径"
+            "command 优先时不应生成 on-click 的 rml_convert 路径"
         );
     }
 
     #[test]
-    fn menu_item_without_command_uses_onclick() {
+    fn menu_item_without_command_uses_on_click() {
         // 无 command 属性时仍走 gen_onclick_closure
-        let src = r#"<MenuItem onclick={do_click} label="Click" />"#;
+        let src = r#"<MenuItem on-click={do_click} label="Click" />"#;
         let root = parser::parse(src).unwrap();
         let Node::Element(elem) = root else {
             panic!("expected element");
@@ -406,7 +483,7 @@ mod tests {
         let code = gen_menu_item_stmt(&elem, &ctx, 0, &mut id, &[], &hoist).unwrap();
         assert!(
             code.contains("rml_convert::from_gpui_click"),
-            "无 command 时应走 onclick 路径，实际：\n{}",
+            "无 command 时应走 on-click 路径，实际：\n{}",
             code
         );
         assert!(

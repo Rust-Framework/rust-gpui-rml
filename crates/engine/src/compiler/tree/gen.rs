@@ -120,4 +120,21 @@ mod tests {
         assert!(code.contains("cx.weak_entity()"));
         assert!(code.contains("this.on_activate"));
     }
+
+    #[test]
+    fn gen_tree_with_on_select() {
+        let elem = make_element(
+            "Tree",
+            vec![Attribute::Event {
+                name: "on_select".into(),
+                handler: EventHandler::Ident("on_select".into()),
+            }],
+            vec![],
+        );
+        let mut id = 0;
+        let code = gen_tree(&elem, tree_component(), &ctx(), 0, &mut id, &Vec::new()).unwrap();
+        assert!(code.contains(".on_select_rc("));
+        assert!(code.contains("cx.weak_entity()"));
+        assert!(code.contains("this.on_select"));
+    }
 }

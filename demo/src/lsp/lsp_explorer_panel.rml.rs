@@ -3,11 +3,11 @@ use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{TreeItem, TreeState};
 
-use crate::shell::DemoShellHost;
+use crate::shell::MainWindowRef;
 
 /// LspExplorerPanel：活动栏贡献，加载 demo 源码目录树形显示。
 ///
-/// 点击文件 → DemoShellHost → MainWindow::open_lsp_file 打开 CodeEditorTab。
+/// 点击文件 → IAppContext::get_service::<MainWindowRef>() → MainWindow::open_lsp_file。
 #[contribute(
     host_id = "demo.shell",
     id = "lsp_explorer",
@@ -57,8 +57,8 @@ impl LspExplorerPanel {
         let path = item_id.to_string();
         if path.ends_with(".rs") || path.ends_with(".rml") {
             if let Some(host) = cx
-                .try_global::<DemoShellHost>()
-                .and_then(|h| h.0.upgrade())
+                .get_service::<MainWindowRef>()
+                .and_then(|r| r.0.upgrade())
             {
                 host.update(cx, |main, cx| {
                     main.open_lsp_file(path, cx);
