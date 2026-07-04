@@ -126,3 +126,42 @@ fn empty_observable_fields_still_generates_match() {
         code
     );
 }
+
+#[test]
+fn observable_vec_fields_route_to_self_version() {
+    // ObservableVec<T> 字段应路由到 self.field.version()
+    let mut ctx = make_ctx();
+    ctx.field_types.insert(
+        "workbenches".to_string(),
+        "ObservableVec < Arc < dyn IWorkbench > >".to_string(),
+    );
+    ctx.field_types.insert(
+        "menus".to_string(),
+        "ObservableVec<MenuViewModel>".to_string(),
+    );
+    // 非 ObservableVec 字段不应路由
+    ctx.field_types.insert("count".to_string(), "i32".to_string());
+    let code = compile(RML_SOURCE, &ctx).expect("compile failed");
+    assert!(
+        code.contains(r#""workbenches" => self.workbenches.version()"#),
+        "missing ObservableVec version route for workbenches\n{}",
+        code
+    );
+    assert!(
+        code.contains(r#""menus" => self.menus.version()"#),
+        "missing ObservableVec version route for menus\n{}",
+        code
+    );
+    // count 是 i32，不应路由
+    assert!(
+        !code.contains(r#""count" => self.count.version()"#),
+        "i32 field should not route to .version()\n{}",
+        code
+    );
+    // 默认分支仍存在
+    assert!(
+        code.contains("_ => self.__rml_state.get_version(field)"),
+        "missing default arm for non-ObservableVec fields\n{}",
+        code
+    );
+}

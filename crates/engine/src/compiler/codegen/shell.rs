@@ -17,7 +17,7 @@
 
 use crate::compiler::expr;
 use crate::compiler::{CodegenCtx, CodegenError};
-use crate::parser::ast::{Attribute, Element, EventHandler, Node};
+use crate::parser::ast::{Attribute, Directive, Element, EventHandler, Node};
 
 /// 为 `<modern-window>` 根元素生成 ModernWindowShell 包裹代码
 ///
@@ -112,6 +112,7 @@ pub(super) fn gen_modern_window_wrapper(
 /// - `menu` / `title` / `footer`：modern-window 与 tab-window 共有
 /// - `left` / `right` / `bottom`：仅 tab-window
 /// - `tabs`：仅 tab-window，收集所有 `<Tab>` 子节点而非单一 content
+/// - `tabs_each`：仅 tab-window，`<template slot="tabs" each={item in iter}>` 的 each 子句
 /// - `body`：主内容（无 slot 属性的子节点）
 #[derive(Default)]
 pub(super) struct ShellSlots {
@@ -122,6 +123,7 @@ pub(super) struct ShellSlots {
     pub right: Option<Node>,
     pub bottom: Option<Node>,
     pub tabs: Vec<Node>,
+    pub tabs_each: Option<crate::parser::ast::EachClause>,
     pub body: Vec<Node>,
 }
 
@@ -156,6 +158,14 @@ pub(super) fn partition_slot_children(children: &[Node]) -> ShellSlots {
                             let tab_kids: Vec<Node> = elem.children.to_vec();
                             if !tab_kids.is_empty() {
                                 slots.tabs = tab_kids;
+                            }
+                            // 检测 each 指令：<template slot="tabs" each={w in workbenches}>
+                            // 模板定制模式下由 render.rs 生成 .map(|w| ...) 迭代代码
+                            for dir in &elem.directives {
+                                if let Directive::Each(each) = dir {
+                                    slots.tabs_each = Some(each.clone());
+                                    break;
+                                }
                             }
                         }
                         _ => {
@@ -193,10 +203,21 @@ fn template_block_content(elem: &Element) -> Option<Node> {
     }
 }
 
+/// `<template slot="tabs" each={item in iterable}>` 模板定制模式的 codegen 输出
+///
+/// `body` 是单个 `<Tab>` 子节点的 codegen 表达式（已用 `loop_vars=[item]` 生成），
+/// 在 `gen_tab_window_wrapper` 中包装为 `self.{iterable}.iter().map(|{item}| {body}).collect()`。
+pub(super) struct TabsEach {
+    pub item: String,
+    pub iterable: String,
+    pub body: String,
+}
+
 /// `<tab-window>` 各 slot 的 codegen 输出（由 render.rs 从 [`ShellSlots`] 生成）
 ///
 /// 字段命名与 `<template slot="name">` 一一对应。`tabs` 为模板定制模式下
 /// 各 `<Tab>` 子节点的 codegen 输出列表，与 `tabs={Vec<TabItem>}` 简单模式互斥。
+/// `tabs_each` 为 `each` 迭代模式（单个 `<Tab>` 模板 + 迭代表达式），与 `tabs` 列表模式互斥。
 #[derive(Default)]
 pub(super) struct TabWindowSlotCodes<'a> {
     pub menu: Option<&'a str>,
@@ -206,6 +227,7 @@ pub(super) struct TabWindowSlotCodes<'a> {
     pub right: Option<&'a str>,
     pub bottom: Option<&'a str>,
     pub tabs: Option<&'a [String]>,
+    pub tabs_each: Option<TabsEach>,
 }
 
 /// 从根 `<tab-window>` 的 bind/event 属性生成 `TabWindowShell` 包裹代码
@@ -236,9 +258,15 @@ pub(super) fn gen_tab_window_wrapper(
         matches!(a, Attribute::Bind { name, .. } if name == "tabs")
     });
     let has_slot_tabs = slots.tabs.is_some_and(|t| !t.is_empty());
-    if has_tabs_bind && has_slot_tabs {
+    let has_slot_tabs_each = slots.tabs_each.is_some();
+    if has_tabs_bind && (has_slot_tabs || has_slot_tabs_each) {
         return Err(CodegenError {
             message: "<tab-window> 不能同时使用 `tabs={...}` 属性和 `<template slot=\"tabs\">` 插槽".into(),
+        });
+    }
+    if has_slot_tabs && has_slot_tabs_each {
+        return Err(CodegenError {
+            message: "<tab-window> `<template slot=\"tabs\">` 不能同时使用 `each` 迭代和多个 `<Tab>` 子节点".into(),
         });
     }
 
@@ -357,7 +385,13 @@ pub(super) fn gen_tab_window_wrapper(
     if let Some(bottom) = slots.bottom {
         code.push_str(&format!(".slot_bottom(Some({bottom}))"));
     }
-    if let Some(tabs) = slots.tabs {
+    if let Some(each) = slots.tabs_each {
+        // each 模式：`.tab_children(self.{iterable}.iter().map(|{item}| {body}).collect())`
+        code.push_str(&format!(
+            ".tab_children(self.{}.iter().map(|{}| {}).collect())",
+            each.iterable, each.item, each.body
+        ));
+    } else if let Some(tabs) = slots.tabs {
         if !tabs.is_empty() {
             let joined = tabs.join(", ");
             code.push_str(&format!(".tab_children(vec![{}])", joined));
@@ -467,6 +501,26 @@ mod tests {
         assert!(slots.body.is_empty());
     }
 
+    /// `<template slot="tabs" each={w in workbenches}>` 提取 each 指令到 tabs_each
+    #[test]
+    fn partition_slot_children_extracts_tabs_each_directive() {
+        let mut tabs_tmpl = make_template_slot(
+            "tabs",
+            vec![Node::Element(make_tab("X"))],
+        );
+        tabs_tmpl.directives = vec![Directive::Each(crate::parser::ast::EachClause {
+            item: "w".into(),
+            index: None,
+            iterable: "workbenches".into(),
+        })];
+        let children = vec![Node::Element(tabs_tmpl)];
+        let slots = partition_slot_children(&children);
+        assert_eq!(slots.tabs.len(), 1);
+        let each = slots.tabs_each.expect("tabs_each should be set");
+        assert_eq!(each.item, "w");
+        assert_eq!(each.iterable, "workbenches");
+    }
+
     /// `gen_tab_window_wrapper` 生成 `.tab_children(vec![...])`
     #[test]
     fn gen_tab_window_wrapper_with_slot_tabs() {
@@ -547,6 +601,70 @@ mod tests {
         )
         .unwrap();
         assert!(!code.contains(".tab_children"));
+    }
+
+    /// `tabs_each` 模式生成 `.tab_children(self.{iterable}.iter().map(|{item}| {body}).collect())`
+    #[test]
+    fn gen_tab_window_wrapper_with_tabs_each() {
+        let elem = Element {
+            tag: "tab-window".into(),
+            attributes: vec![],
+            directives: vec![],
+            children: vec![],
+            slot_name: None,
+            ..Default::default()
+        };
+        let each = TabsEach {
+            item: "w".to_string(),
+            iterable: "workbenches".to_string(),
+            body: "rml_ui::Tab::new().label(w.name())".to_string(),
+        };
+        let code = gen_tab_window_wrapper(
+            &elem,
+            &ctx(),
+            "gpui::div()",
+            TabWindowSlotCodes {
+                tabs_each: Some(each),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert!(
+            code.contains(".tab_children(self.workbenches.iter().map(|w| rml_ui::Tab::new().label(w.name())).collect())"),
+            "each-mode tab_children must generate map expression, got: {code}"
+        );
+    }
+
+    /// `tabs={...}` bind 与 `tabs_each` 并存报错
+    #[test]
+    fn gen_tab_window_wrapper_tabs_each_mutual_exclusion_error() {
+        let elem = Element {
+            tag: "tab-window".into(),
+            attributes: vec![Attribute::Bind {
+                name: "tabs".into(),
+                expr: "tab_items".into(),
+            }],
+            directives: vec![],
+            children: vec![],
+            slot_name: None,
+            ..Default::default()
+        };
+        let each = TabsEach {
+            item: "w".to_string(),
+            iterable: "workbenches".to_string(),
+            body: "rml_ui::Tab::new()".to_string(),
+        };
+        let result = gen_tab_window_wrapper(
+            &elem,
+            &ctx(),
+            "gpui::div()",
+            TabWindowSlotCodes {
+                tabs_each: Some(each),
+                ..Default::default()
+            },
+        );
+        assert!(result.is_err());
+        assert!(result.unwrap_err().message.contains("不能同时使用"));
     }
 
     /// `tab_item_template={render_tab_item}` 生成 4 参裸闭包（无 Arc::new 双重包裹）

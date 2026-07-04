@@ -18,6 +18,7 @@ pub mod assets;
 pub mod binding;
 pub mod context;
 pub mod i18n;
+pub mod observable;
 pub mod theme;
 pub mod command;
 pub mod component;

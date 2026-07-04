@@ -22,6 +22,7 @@ pub use crate::events::*;
 pub use crate::i18n::{I18nExt, t, t_static};
 pub use crate::lifecycle::ILifecycle;
 pub use crate::model::{FieldMeta, IModel};
+pub use crate::observable::ObservableVec;
 pub use crate::two_way_binding::ITwoWayBinding;
 pub use crate::validate::{IValidate, ValidResult};
 pub use crate::view_model::IViewModel;

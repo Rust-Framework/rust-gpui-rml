@@ -1,57 +1,105 @@
-//! 菜单视图模型 —— 手工构建的类型化树结构。
+//! 菜单视图模型 —— 从贡献条目解包的类型化树结构。
 //!
-//! 供 MainWindow.menus 集合持有，`render_menu_bar` 直接消费。
-//! 菜单不经贡献系统注册（消除 menu_shell_contribs.rs 样板），
-//! 叶子节点的 command 字段持有 MainWindow 的 RelayCommand。
+//! 镜像 `StatusViewModel` 模式：`MenuViewModel::from_contribution` 按 `kind="menu"` 过滤，
+//! `build_menu_view_models` 按 `parent_id` 组织树、按 `order` 排序。
+//! 标签经 `contribution.name()` 动态获取，反映当前 locale。
+//! 叶子命令经 `contribution.as_command()` 提取，闭包内重新查询以保持借用安全。
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use gpui::{Context, SharedString, Window};
 use gpui_component::menu::{PopupMenu, PopupMenuItem};
-use rml_core::command::{CallContext, ICommand};
+use rml_core::command::{CallContext, CommandAbilityExt};
+use rml_core::contribution::{ContributionOptions, IContribution};
+
+use crate::shell::status_view_model::ContribEntry;
 
 #[derive(Clone)]
 pub struct MenuViewModel {
-    pub label: SharedString,
-    /// 叶子节点持有 RelayCommand（`Arc<dyn ICommand>`）；submenu root 为 `None`
-    pub command: Option<Arc<dyn ICommand>>,
-    /// 子菜单
+    pub id: SharedString,
+    pub parent_id: Option<SharedString>,
+    pub order: i32,
+    pub contribution: Arc<dyn IContribution>,
     pub children: Vec<MenuViewModel>,
 }
 
 impl MenuViewModel {
-    /// submenu root 构造（无命令）
-    pub fn root(label: SharedString) -> Self {
-        Self {
-            label,
-            command: None,
-            children: Vec::new(),
-        }
-    }
-
-    /// 叶子节点构造（带命令）
-    pub fn leaf(label: SharedString, command: Arc<dyn ICommand>) -> Self {
-        Self {
-            label,
-            command: Some(command),
-            children: Vec::new(),
-        }
-    }
-
-    pub fn child(mut self, child: MenuViewModel) -> Self {
-        self.children.push(child);
-        self
+    /// 动态标签 — 委托 `contribution.name()`，反映当前 locale。
+    pub fn label(&self) -> SharedString {
+        self.contribution.name()
     }
 
     pub fn has_children(&self) -> bool {
         !self.children.is_empty()
     }
 
+    /// 从贡献条目构造；非 menu 槽位返回 `None`。
+    pub fn from_contribution(
+        c: Arc<dyn IContribution>,
+        opts: ContributionOptions,
+    ) -> Option<Self> {
+        if opts.effective_slot() != Some("menu") {
+            return None;
+        }
+        Some(Self {
+            id: c.id().into(),
+            parent_id: opts.parent_id,
+            order: opts.order,
+            contribution: c,
+            children: Vec::new(),
+        })
+    }
+
+    /// 从贡献条目列表构建菜单树（按 `parent_id` 组织，按 `order` 排序）。
+    ///
+    /// 算法：平铺过滤 → 按 id 建表 → 遍历挂载到父节点 children → 每层排序。
+    /// 无法找到父节点的条目（parent_id 指向不存在的 id）视为根节点。
+    pub fn build_menu_view_models(entries: &[ContribEntry]) -> Vec<MenuViewModel> {
+        let mut nodes: HashMap<SharedString, MenuViewModel> = HashMap::new();
+        let mut parent_map: Vec<(SharedString, Option<SharedString>, i32)> = Vec::new();
+
+        for (c, o) in entries {
+            if let Some(vm) = Self::from_contribution(c.clone(), o.clone()) {
+                parent_map.push((vm.id.clone(), vm.parent_id.clone(), vm.order));
+                nodes.insert(vm.id.clone(), vm);
+            }
+        }
+
+        let mut roots: Vec<SharedString> = Vec::new();
+        for (id, parent_id, _) in &parent_map {
+            match parent_id {
+                Some(pid) if nodes.contains_key(pid) => {
+                    let child = match nodes.get(id).cloned() {
+                        Some(c) => c,
+                        None => continue,
+                    };
+                    if let Some(parent) = nodes.get_mut(pid) {
+                        parent.children.push(child);
+                    }
+                }
+                _ => {
+                    roots.push(id.clone());
+                }
+            }
+        }
+
+        let mut result: Vec<MenuViewModel> = roots
+            .into_iter()
+            .filter_map(|id| nodes.get(&id).cloned())
+            .collect();
+        result.sort_by_key(|m| m.order);
+        for m in &mut result {
+            m.children.sort_by_key(|c| c.order);
+        }
+        result
+    }
+
     /// 递归构建 `PopupMenu`（`dropdown_menu` 闭包内调用）。
     ///
-    /// `children` 在闭包外 clone 以满足 `'static` bound。
-    /// 由 `MainWindow::render_menu_bar()` 的顶层 `dropdown_menu` 闭包启动，
-    /// 子菜单经 `PopupMenu::submenu` 递归调用本方法。
+    /// 叶子节点经 `contribution.as_command()` 提取命令；
+    /// `contribution` Arc 在闭包外 clone 以满足 `'static` bound，
+    /// 闭包内重新调用 `as_command()` 获取 `&dyn ICommand` 借用。
     pub fn build_popup_menu(
         mut menu: PopupMenu,
         items: &[MenuViewModel],
@@ -61,7 +109,7 @@ impl MenuViewModel {
         for item in items {
             if item.has_children() {
                 let children = item.children.clone();
-                let label = item.label.clone();
+                let label = item.label();
                 menu = menu.submenu(label, window, cx, {
                     let children = children.clone();
                     move |submenu, window, cx| {
@@ -70,13 +118,16 @@ impl MenuViewModel {
                     }
                 });
             } else {
-                let label = item.label.clone();
+                let label = item.label();
                 let mut pmi = PopupMenuItem::new(label);
-                if let Some(cmd) = item.command.clone() {
+                let contrib = item.contribution.clone();
+                if contrib.as_command().is_some() {
                     pmi = pmi.on_click(move |_, window, app| {
-                        let mut ctx = CallContext::new(window, app);
-                        if cmd.can_execute(&mut ctx) {
-                            cmd.execute(&mut ctx);
+                        if let Some(cmd) = contrib.as_command() {
+                            let mut ctx = CallContext::new(window, app);
+                            if cmd.can_execute(&mut ctx) {
+                                cmd.execute(&mut ctx);
+                            }
                         }
                     });
                 }

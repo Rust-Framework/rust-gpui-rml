@@ -65,6 +65,18 @@ pub(super) fn gen_observable_impl(ctx: &CodegenCtx) -> String {
         }
     }
 
+    // ObservableVec<T> 字段：版本路由到 self.field.version()，而非 __rml_state.get_version
+    // 通过 field_types 中类型字符串包含 "ObservableVec" 识别
+    let mut version_route_arms = String::new();
+    for (field, ty) in &ctx.field_types {
+        if ty.contains("ObservableVec") {
+            version_route_arms.push_str(&format!(
+                "        \"{}\" => self.{}.version(),\n",
+                field, field
+            ));
+        }
+    }
+
     let field_names: Vec<String> = ctx
         .observable_fields
         .iter()
@@ -85,8 +97,13 @@ impl {view_name} {{
     }}
 
     /// 读取字段当前版本号
+    ///
+    /// ObservableVec<T> 字段路由到 `self.field.version()`（内部 AtomicU64），
+    /// 其他字段走 `__rml_state.get_version(field)`。
     fn __rml_get_version(&self, field: &str) -> u64 {{
-        self.__rml_state.get_version(field)
+        match field {{
+{version_route_arms}            _ => self.__rml_state.get_version(field),
+        }}
     }}
 
     /// 返回计算属性依赖字段版本号之和，作为缓存键
@@ -102,6 +119,7 @@ impl {view_name} {{
     }}
 }}"#,
         view_name = view_name,
+        version_route_arms = version_route_arms,
         deps_arms = deps_arms,
         changed_fields_array = changed_fields_array,
     )

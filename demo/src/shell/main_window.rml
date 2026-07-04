@@ -4,12 +4,15 @@
     height="720"
     startup="CenterScreen"
     icon={IconName::Frame}
-    tabs={tab_bar_items}
     selected-index={selected_tab}
     on-tab-click="on_tab_click"
     show-chrome={show_chrome}
     on-chrome-toggle="on_chrome_toggle"
     left-size={slot_left_size}>
+
+    <template slot="tabs" each={w in workbenches}>
+        <Tab label={w.name()} />
+    </template>
 
     <template slot="left">
         <ActivityBar ref="activity_bar" />

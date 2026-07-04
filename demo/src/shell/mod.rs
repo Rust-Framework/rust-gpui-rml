@@ -1,4 +1,5 @@
 pub mod case_view_model;
+pub mod menu_commands;
 pub mod menu_view_model;
 pub mod status_view_model;
 pub mod workbench;

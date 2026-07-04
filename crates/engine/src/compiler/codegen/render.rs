@@ -82,24 +82,80 @@ pub(super) fn gen_render_impl_from_children(
     let slot_right_code = gen_slot_code!(&slots.right);
     let slot_bottom_code = gen_slot_code!(&slots.bottom);
 
-    // slot_tabs：对每个 <Tab> 子节点调 tab_bar::tab::gen_tab_child 生成代码
-    // （模板定制模式，与 tabs={Vec<TabItem>} 简单模式互斥）
-    let slot_tabs_codes: Vec<String> = slots
-        .tabs
-        .iter()
-        .map(|node| {
-            if let Node::Element(tab_elem) = node {
-                crate::compiler::tab_bar::tab::gen_tab_child(tab_elem, ctx, &mut id_counter, &empty)
-            } else {
-                Err(CodegenError {
+    // slot_tabs：两种模式
+    // 1) each 模式：<template slot="tabs" each={w in workbenches}><Tab title={w.name()} /></template>
+    //    → codegen 单个 <Tab> 子节点（loop_vars=[w]），生成 .tab_children(self.workbenches.iter().map(|w| ...).collect())
+    // 2) 列表模式：<template slot="tabs"><Tab /><Tab /></template>
+    //    → codegen 每个 <Tab> 子节点，生成 .tab_children(vec![...])
+    // 与 tabs={Vec<TabItem>} 简单模式互斥
+    let slot_tabs_each: Option<shell::TabsEach> = if let Some(each) = &slots.tabs_each {
+        let item = each.item.clone();
+        let loop_vars = vec![item.clone()];
+        if slots.tabs.len() != 1 {
+            return Err(CodegenError {
+                message: format!(
+                    "<template slot=\"tabs\" each=\"...\"> 需要恰好 1 个 <Tab> 子节点，得到 {} 个",
+                    slots.tabs.len()
+                ),
+            });
+        }
+        let tab_elem = match &slots.tabs[0] {
+            Node::Element(e) => e,
+            other => {
+                return Err(CodegenError {
                     message: format!(
                         "<template slot=\"tabs\"> 仅支持 <Tab> 子节点，得到 {:?}",
-                        node
+                        other
                     ),
                 })
             }
+        };
+        let body = crate::compiler::tab_bar::tab::gen_tab_child(
+            tab_elem,
+            ctx,
+            &mut id_counter,
+            &loop_vars,
+        )?;
+        // 追加 .into() 将 Tab 转换为 TabItem（From<Tab> for TabItem 已定义），
+        // 使 .tab_children(...).collect() 推断为 Vec<TabItem>。
+        let body = format!("{}.into()", body);
+        Some(shell::TabsEach {
+            item: each.item.clone(),
+            iterable: each.iterable.clone(),
+            body,
         })
-        .collect::<Result<Vec<_>, _>>()?;
+    } else {
+        None
+    };
+
+    // 列表模式仅在非 each 模式下处理
+    let slot_tabs_codes: Vec<String> = if slot_tabs_each.is_none() {
+        slots
+            .tabs
+            .iter()
+            .map(|node| {
+                if let Node::Element(tab_elem) = node {
+                    let code = crate::compiler::tab_bar::tab::gen_tab_child(
+                        tab_elem,
+                        ctx,
+                        &mut id_counter,
+                        &empty,
+                    )?;
+                    // 追加 .into() 将 Tab 转换为 TabItem（同 each 模式）。
+                    Ok(format!("{}.into()", code))
+                } else {
+                    Err(CodegenError {
+                        message: format!(
+                            "<template slot=\"tabs\"> 仅支持 <Tab> 子节点，得到 {:?}",
+                            node
+                        ),
+                    })
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()?
+    } else {
+        Vec::new()
+    };
     let slot_tabs_ref: Option<Vec<String>> = if slot_tabs_codes.is_empty() {
         None
     } else {
@@ -127,6 +183,7 @@ pub(super) fn gen_render_impl_from_children(
                 right: slot_right_code.as_deref(),
                 bottom: slot_bottom_code.as_deref(),
                 tabs: slot_tabs_ref.as_deref(),
+                tabs_each: slot_tabs_each,
             },
         )?,
         ShellWrap::None => body,

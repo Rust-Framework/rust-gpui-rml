@@ -147,7 +147,11 @@ pub struct TabWindowShell {
     title_ext_slot: Option<AnyElement>,
     /// 业务数据载体（实现 IValue 的任意类型，通常为 IContribution）。
     /// `as_contribution()?.name()` 提供 tab title，`as_visual()?.render()` 提供 tab body。
+    /// 简单绑定模式：`tabs={tab_bar_items}`。
     tabs: Vec<Arc<dyn IValue>>,
+    /// 模板定制模式：`<template slot="tabs" each={w in workbenches}><Tab title={w.name()} /></template>`
+    /// 由 codegen 生成 `vec![TabItem, ...]` 注入。与 `tabs` 互斥（codegen 编译期校验）。
+    tab_children: Vec<TabItem>,
     selected_index: usize,
     on_tab_click: Option<TabClickHandler>,
     on_chrome_toggle: Option<ChromeToggleHandler>,
@@ -170,6 +174,7 @@ impl TabWindowShell {
             menu_slot: None,
             title_ext_slot: None,
             tabs: Vec::new(),
+            tab_children: Vec::new(),
             selected_index: 0,
             on_tab_click: None,
             on_chrome_toggle: None,
@@ -211,6 +216,16 @@ impl TabWindowShell {
 
     pub fn tabs(mut self, tabs: Vec<Arc<dyn IValue>>) -> Self {
         self.tabs = tabs;
+        self
+    }
+
+    /// 模板定制模式：直接注入预构建的 `TabItem` 列表。
+    ///
+    /// 由 RML codegen 从 `<template slot="tabs" each={w in workbenches}>`
+    /// 生成 `.tab_children(self.workbenches.iter().map(|w| ...).collect())`。
+    /// 与 [`tabs`](Self::tabs) 简单绑定模式互斥（codegen 编译期校验）。
+    pub fn tab_children(mut self, items: Vec<TabItem>) -> Self {
+        self.tab_children = items;
         self
     }
 
@@ -308,7 +323,7 @@ impl ParentElement for TabWindowShell {
 }
 
 impl RenderOnce for TabWindowShell {
-    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(mut self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let show_chrome = self.show_chrome;
 
         let on_chrome_toggle = self.on_chrome_toggle.clone();
@@ -454,19 +469,27 @@ impl RenderOnce for TabWindowShell {
             tab_bar = tab_bar.prefix(prefix);
         }
 
-        // 从 tabs（IValue）构建 TabItem 注入 TabBar
-        // as_contribution()?.name() 提供 title，as_visual()?.render() 提供 body
-        for value in &self.tabs {
-            let c = Arc::clone(value);
-            let title = c.as_contribution().map(|c| c.name()).unwrap_or_default();
-            let item = TabItem::new().title(title).body(move |window, cx| {
-                if let Some(visual) = c.as_visual() {
-                    visual.render(window, cx)
-                } else {
-                    gpui::div().into_any_element()
-                }
-            });
-            tab_bar = tab_bar.child(item);
+        // TabItem 注入：两种模式互斥
+        // 1) 模板定制模式：tab_children 非空 → 直接注入预构建的 TabItem
+        // 2) 简单绑定模式：tabs（IValue）非空 → 从 IValue 构建 TabItem
+        //    as_contribution()?.name() 提供 title，as_visual()?.render() 提供 body
+        if !self.tab_children.is_empty() {
+            for item in std::mem::take(&mut self.tab_children) {
+                tab_bar = tab_bar.child(item);
+            }
+        } else {
+            for value in &self.tabs {
+                let c = Arc::clone(value);
+                let title = c.as_contribution().map(|c| c.name()).unwrap_or_default();
+                let item = TabItem::new().title(title).body(move |window, cx| {
+                    if let Some(visual) = c.as_visual() {
+                        visual.render(window, cx)
+                    } else {
+                        gpui::div().into_any_element()
+                    }
+                });
+                tab_bar = tab_bar.child(item);
+            }
         }
 
         if let Some(suffix) = self.title_ext_slot {

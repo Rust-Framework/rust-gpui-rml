@@ -12,6 +12,7 @@ rust-rml-core = { workspace = true }
 rust-rml-ui = { workspace = true }
 gpui = { workspace = true }
 gpui-component = { workspace = true }
+flume = "0.12"
 lsp-server = "0.7"
 lsp-types = "0.97"
 url = "2"
