@@ -34,7 +34,13 @@ thread_local! {
     /// 方法退出时通过 `Drop` 恢复为 false。`get_or_compute` 在 debug 构建中检查此标记，
     /// 用于捕获 #[computed] 方法在非 render 线程被调用的误用。
     static IS_RENDER_THREAD: Cell<bool> = const { Cell::new(false) };
+
+    /// render 嵌套深度（debug 诊断：捕获同步重渲染导致的无限递归）
+    static RENDER_DEPTH: Cell<usize> = const { Cell::new(0) };
 }
+
+/// render 嵌套深度上限，超过即 panic（防止栈溢出导致进程崩溃，便于定位根因）
+const RENDER_DEPTH_LIMIT: usize = 30;
 
 /// 查询当前线程是否为 render 线程
 pub fn is_render_thread() -> bool {
@@ -61,6 +67,18 @@ impl RenderThreadGuard {
     /// 标记当前线程为 render 线程，返回守卫
     pub fn enter() -> Self {
         let prev = IS_RENDER_THREAD.with(|f| f.replace(true));
+        let depth = RENDER_DEPTH.with(|d| {
+            let v = d.get();
+            d.set(v + 1);
+            v
+        });
+        if depth >= RENDER_DEPTH_LIMIT {
+            panic!(
+                "RenderThreadGuard: render depth {depth} exceeded limit {RENDER_DEPTH_LIMIT} — \
+                 synchronous re-render loop detected. \
+                 This is caused by cx.notify() or entity update during render."
+            );
+        }
         Self { prev }
     }
 }
@@ -68,6 +86,7 @@ impl RenderThreadGuard {
 impl Drop for RenderThreadGuard {
     fn drop(&mut self) {
         IS_RENDER_THREAD.with(|f| f.set(self.prev));
+        RENDER_DEPTH.with(|d| d.set(d.get().saturating_sub(1)));
     }
 }
 

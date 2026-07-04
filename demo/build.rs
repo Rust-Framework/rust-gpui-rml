@@ -9,4 +9,9 @@ fn main() {
         .expect("OUT_DIR not set"))
         .build()
         .expect("RML build failed");
+
+    // Windows 默认主线程栈 1MB。GPUI 深层元素树（多 Tab + 组件嵌套）在 debug 构建下
+    // 栈帧较大，prepaint/paint 递归遍历可能溢出。通过 PE header 设置 8MB 栈预留。
+    #[cfg(target_os = "windows")]
+    println!("cargo:rustc-link-arg=/STACK:8388608");
 }

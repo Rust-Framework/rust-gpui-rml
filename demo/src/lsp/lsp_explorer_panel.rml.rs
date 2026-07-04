@@ -36,7 +36,6 @@ impl ILifecycle for LspExplorerPanel {
     fn on_loaded(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
         let items = crate::lsp::file_tree::build_source_tree();
         self.set_tree_items(items, cx);
-        cx.notify();
     }
 }
 

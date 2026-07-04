@@ -41,7 +41,6 @@ impl ILifecycle for ActivityPanel {
             self.main = Some(host.0.clone());
         }
         self.refresh_tree(cx);
-        cx.notify();
     }
 }
 

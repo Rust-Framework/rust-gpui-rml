@@ -137,7 +137,6 @@ impl ILifecycle for MainWindow {
         self.init_activity_bar(cx);
         self.init_panel_observers(cx);
         self.init_i18n_observer(cx);
-        cx.notify();
     }
 }
 
@@ -209,10 +208,14 @@ impl MainWindow {
     /// observe 框架缓存的 ActivityPanel / LspExplorerPanel Entity → 触发重渲。
     fn init_panel_observers(&mut self, cx: &mut Context<Self>) {
         let panel_entity = rml_app::contribution::visual_entity::<ActivityPanel>(cx);
-        cx.observe(&panel_entity, |_, _, cx| cx.notify()).detach();
+        cx.observe(&panel_entity, |_, _, cx| {
+            cx.notify();
+        }).detach();
 
         let lsp_panel_entity = rml_app::contribution::visual_entity::<LspExplorerPanel>(cx);
-        cx.observe(&lsp_panel_entity, |_, _, cx| cx.notify()).detach();
+        cx.observe(&lsp_panel_entity, |_, _, cx| {
+            cx.notify();
+        }).detach();
     }
 
     /// observe `I18nState` 全局变化 → 自动重建 menus/status ViewModel + 重渲。
