@@ -582,9 +582,9 @@ impl<'a> Parser<'a> {
         }
         // 后缀：f32 / f64 / u32 / i32 等
         while let Some(c) = self.peek() {
-            if matches!(c, 'f' | 'u' | 'i' | 'F' | 'U' | 'I') {
-                self.advance();
-            } else if self.peek().map(|c| c.is_ascii_digit()).unwrap_or(false) {
+            if matches!(c, 'f' | 'u' | 'i' | 'F' | 'U' | 'I')
+                || self.peek().map(|c| c.is_ascii_digit()).unwrap_or(false)
+            {
                 self.advance();
             } else {
                 break;

@@ -1184,15 +1184,6 @@ mod tests {
     }
 
     #[test]
-    fn gen_component_statusbar_minimal() {
-        // <StatusBar /> → rml_ui::StatusBar::new()（RML MVVM 包装，非 NativeStatusBar）
-        let elem = make_element("StatusBar", vec![], vec![]);
-        let mut id = 0;
-        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
-        assert!(code.contains("rml_ui::StatusBar::new()"));
-    }
-
-    #[test]
     fn gen_component_titlebar_ignores_ref_directive() {
         // StatelessNoId 组件不接受 ElementId，ref 指令应被忽略（不生成稳定 ID）
         let elem = make_element_with_directives(

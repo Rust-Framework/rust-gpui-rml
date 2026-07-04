@@ -72,9 +72,10 @@ impl CodeEditorTab {
             })
             .detach();
 
-            let mut view = Self::default();
-            view.editor_state = Some(editor_state);
-            view
+            Self {
+                editor_state: Some(editor_state),
+                ..Default::default()
+            }
         })
     }
 }

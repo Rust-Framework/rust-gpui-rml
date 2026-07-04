@@ -193,9 +193,11 @@ fn gen_element(
         _ => None,
     });
 
-    if model_field.is_some() && (tag == "input" || tag == "textarea") {
-        let code = super::binding::gen_model_input(elem, ctx, id_counter, model_field.unwrap())?;
-        return Ok((code, false));
+    if let Some(field) = &model_field {
+        if tag == "input" || tag == "textarea" {
+            let code = super::binding::gen_model_input(elem, ctx, id_counter, field.clone())?;
+            return Ok((code, false));
+        }
     }
 
     let builtin = tags::lookup(tag).ok_or_else(|| CodegenError {

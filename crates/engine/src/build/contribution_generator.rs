@@ -131,11 +131,11 @@ fn parse_host_id(attrs: &[syn::Attribute]) -> Option<String> {
 pub fn parse_contribution_registrars(
     rs_path: &Path,
     scan_root: &Path,
-) -> Result<Vec<ContributionRegistrar>, ()> {
-    let source = fs::read_to_string(rs_path).map_err(|_| ())?;
-    let file: File = syn::parse_str(&source).map_err(|_| ())?;
+) -> Option<Vec<ContributionRegistrar>> {
+    let source = fs::read_to_string(rs_path).ok()?;
+    let file: File = syn::parse_str(&source).ok()?;
 
-    let module_path = module_path_from_file(scan_root, rs_path).ok_or(())?;
+    let module_path = module_path_from_file(scan_root, rs_path)?;
 
     let mut out = Vec::new();
     for item in &file.items {
@@ -156,7 +156,7 @@ pub fn parse_contribution_registrars(
             host_id,
         });
     }
-    Ok(out)
+    Some(out)
 }
 
 /// `src/cases/foo.rml.rs` → `crate::cases::foo`
@@ -202,7 +202,7 @@ pub fn scan_contribution_registrars(
                 continue;
             }
             println!("cargo:rerun-if-changed={}", path.display());
-            if let Ok(mut found) = parse_contribution_registrars(path, dir) {
+            if let Some(mut found) = parse_contribution_registrars(path, dir) {
                 contributions.append(&mut found);
             }
         }

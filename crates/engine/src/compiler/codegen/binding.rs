@@ -268,7 +268,7 @@ fn gen_numeric_field_assign_with_validation(
         match rule {
             ValidationRule::Range { min, max } => {
                 let condition = match (min, max) {
-                    (Some(min), Some(max)) => format!("v < {min} || v > {max}"),
+                    (Some(min), Some(max)) => format!("!({min}..={max}).contains(&v)"),
                     (Some(min), None) => format!("v < {min}"),
                     (None, Some(max)) => format!("v > {max}"),
                     (None, None) => continue,

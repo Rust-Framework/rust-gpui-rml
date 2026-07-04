@@ -37,11 +37,7 @@ pub fn apply_popup_config(elem: &Element) -> Result<String, CodegenError> {
                 _ => {}
             },
             Attribute::Bind { name, expr } if name == "max_h" || name == "min_w" || name == "max_w" => {
-                lines.push(format!(
-                    "menu = menu.{}(gpui::px({} as f32));",
-                    name,
-                    format!("self.{}", expr)
-                ));
+                lines.push(format!("menu = menu.{name}(gpui::px(self.{expr} as f32));"));
             }
             _ => {}
         }

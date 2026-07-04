@@ -33,7 +33,7 @@ impl MenuHoist {
     pub fn apply_to_code(&self, code: &str, ctx: &CodegenCtx) -> String {
         let mut out = code.to_string();
         let mut sorted: Vec<_> = self.entries.iter().collect();
-        sorted.sort_by(|a, b| b.0.len().cmp(&a.0.len()));
+        sorted.sort_by_key(|a| std::cmp::Reverse(a.0.len()));
         for (expr, var) in sorted {
             let replacement = if is_copy_hoist(expr, ctx) {
                 var.clone()

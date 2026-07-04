@@ -161,10 +161,12 @@ pub fn parse_struct_metadata(source: &str) -> HashMap<String, StructMetadata> {
                 continue;
             }
             let struct_name = s.ident.to_string();
-            let mut meta = StructMetadata::default();
-            meta.is_component = has_component;
-            meta.is_contributehost = is_contributehost;
-            meta.contribution_bindings = contribution_bindings;
+            let mut meta = StructMetadata {
+                is_component: has_component,
+                is_contributehost,
+                contribution_bindings,
+                ..Default::default()
+            };
 
             // 解析 #[component(slots = ["header", "footer", ...])] 参数
             if has_component {

@@ -123,7 +123,7 @@ impl AssetsProcessor {
                 // 静态表 + ctor 自动 init
                 code.push_str("#[allow(dead_code)]\n");
                 code.push_str(
-                    "pub static RML_ASSETS: &[(&'static str, &'static [u8])] = &[\n",
+                    "pub static RML_ASSETS: &[(&str, &[u8])] = &[\n",
                 );
                 for (key, abs_path) in entries {
                     // include_bytes! 需要字面量路径,使用绝对路径字符串
