@@ -22,7 +22,7 @@ impl IContribution for ButtonCase {
         Self::CONTRIBUTION_ID
     }
     fn name(&self) -> SharedString {
-        t_static("case.button.title").into()
+        t_static("case.button.title")
     }
 }
 

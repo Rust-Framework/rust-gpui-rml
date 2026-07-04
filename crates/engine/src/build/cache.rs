@@ -42,7 +42,7 @@ impl Cache {
 
     /// 写回 JSON 文件。
     pub fn save(&self, path: &Path) -> std::io::Result<()> {
-        let s = serde_json::to_string_pretty(self).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+        let s = serde_json::to_string_pretty(self).map_err(std::io::Error::other)?;
         fs::write(path, s)
     }
 

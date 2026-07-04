@@ -20,7 +20,7 @@ impl IContribution for MenuDropdownCase {
         Self::CONTRIBUTION_ID
     }
     fn name(&self) -> SharedString {
-        t_static("case.menu.dropdown.title").into()
+        t_static("case.menu.dropdown.title")
     }
 }
 

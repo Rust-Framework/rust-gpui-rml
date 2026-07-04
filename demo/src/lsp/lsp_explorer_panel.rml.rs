@@ -25,7 +25,7 @@ impl IContribution for LspExplorerPanel {
         Self::CONTRIBUTION_ID
     }
     fn name(&self) -> SharedString {
-        t_static("shell.lsp_explorer").into()
+        t_static("shell.lsp_explorer")
     }
     fn icon(&self) -> Option<SharedString> {
         Some("FileCode".into())

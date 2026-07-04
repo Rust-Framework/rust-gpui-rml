@@ -90,7 +90,7 @@ pub fn gen_user_component(
     }
 
     code.push_str("    __rml_entity\n");
-    code.push_str("}");
+    code.push('}');
     Ok(code)
 }
 

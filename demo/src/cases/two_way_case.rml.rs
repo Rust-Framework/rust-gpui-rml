@@ -30,7 +30,7 @@ impl IContribution for TwoWayCase {
         Self::CONTRIBUTION_ID
     }
     fn name(&self) -> SharedString {
-        t_static("case.two_way.title").into()
+        t_static("case.two_way.title")
     }
 }
 

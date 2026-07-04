@@ -30,7 +30,7 @@ impl IContribution for MenuFeaturesCase {
         Self::CONTRIBUTION_ID
     }
     fn name(&self) -> SharedString {
-        t_static("case.menu.features.title").into()
+        t_static("case.menu.features.title")
     }
 }
 

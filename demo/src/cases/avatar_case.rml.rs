@@ -18,7 +18,7 @@ impl IContribution for AvatarCase {
         Self::CONTRIBUTION_ID
     }
     fn name(&self) -> SharedString {
-        t_static("case.avatar.title").into()
+        t_static("case.avatar.title")
     }
 }
 

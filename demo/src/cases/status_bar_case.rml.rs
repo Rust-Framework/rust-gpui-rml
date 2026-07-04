@@ -21,7 +21,7 @@ impl IContribution for StatusBarCase {
         Self::CONTRIBUTION_ID
     }
     fn name(&self) -> SharedString {
-        t_static("case.status_bar.title").into()
+        t_static("case.status_bar.title")
     }
 }
 
@@ -52,7 +52,7 @@ impl IContribution for StatusReady {
         Self::CONTRIBUTION_ID
     }
     fn name(&self) -> SharedString {
-        t_static("shell.status_ready").into()
+        t_static("shell.status_ready")
     }
 }
 

@@ -149,9 +149,7 @@ impl AssetsProcessor {
                 let root_str = self.root_dir.to_string_lossy().replace('\\', "/");
                 code.push_str("#[rml_core::ctor::ctor]\n");
                 code.push_str("fn __rml_assets_auto_init() {\n");
-                code.push_str(&format!(
-                    "    rml_core::assets::init(rml_core::assets::AssetSource::Filesystem {{\n"
-                ));
+                code.push_str("    rml_core::assets::init(rml_core::assets::AssetSource::Filesystem {\n");
                 code.push_str(&format!("        root: {:?},\n", root_str));
                 code.push_str("    });\n");
                 code.push_str("}\n");

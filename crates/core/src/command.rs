@@ -180,7 +180,7 @@ impl ICommand for RelayCommand {
     }
 
     fn can_execute(&self, _ctx: &mut CallContext) -> bool {
-        self.can_run.as_ref().map_or(true, |f| f())
+        self.can_run.as_ref().is_none_or(|f| f())
     }
 }
 

@@ -72,7 +72,7 @@ pub fn matches_selector(sel: &Selector, ctx: &ElementContext) -> bool {
     match sel {
         Selector::Universal => true,
         Selector::Tag(name) => ctx.tag == name.as_str(),
-        Selector::Class(name) => ctx.classes.iter().any(|c| *c == name.as_str()),
+        Selector::Class(name) => ctx.classes.contains(&name.as_str()),
         Selector::Id(name) => ctx.id == Some(name.as_str()),
         Selector::Compound(parts) => parts.iter().all(|p| matches_selector(p, ctx)),
         // 后代选择器 `A B`：B 匹配当前元素，A 匹配任一祖先

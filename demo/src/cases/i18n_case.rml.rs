@@ -19,7 +19,7 @@ impl IContribution for I18nCase {
         Self::CONTRIBUTION_ID
     }
     fn name(&self) -> SharedString {
-        t_static("case.i18n.title").into()
+        t_static("case.i18n.title")
     }
 }
 

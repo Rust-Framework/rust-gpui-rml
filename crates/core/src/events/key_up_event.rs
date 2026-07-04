@@ -8,21 +8,13 @@ use super::flags::EventFlags;
 
 /// 键盘释放事件（onkeyup）
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct KeyUpEvent {
     pub key: Keystroke,
     pub modifiers: Modifiers,
     flags: EventFlags,
 }
 
-impl Default for KeyUpEvent {
-    fn default() -> Self {
-        Self {
-            key: Keystroke::default(),
-            modifiers: Modifiers::default(),
-            flags: EventFlags::default(),
-        }
-    }
-}
 
 impl IEvent for KeyUpEvent {
     fn prevent_default(&mut self) {

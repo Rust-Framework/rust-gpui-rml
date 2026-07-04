@@ -359,16 +359,12 @@ impl Builder {
             println!("cargo:rerun-if-changed={}", assets_dir.display());
         }
         let processor = AssetsProcessor::new(&assets_dir, self.assets_mode);
-        if let Err(e) = processor.generate(&output_dir) {
-            return Err(e);
-        }
+        processor.generate(&output_dir)?;
 
         // 6. 扫描 `#[contribute]` 并生成统一注册函数。
         //    host 不再由 build.rs 扫描——host 实现方在 `on_loaded` 中 `cx.get_contribution_registry().add(host)` 注册自身。
         let contributions = contribution_generator::scan_contribution_registrars(&self.scan_dirs);
-        if let Err(e) = contribution_generator::generate(&contributions, &output_dir) {
-            return Err(e);
-        }
+        contribution_generator::generate(&contributions, &output_dir)?;
 
         Ok(())
     }
@@ -450,23 +446,6 @@ impl Builder {
     }
 }
 
-/// 从源码行中提取 `fn <name>` 的方法名
-#[allow(dead_code)]
-fn extract_fn_name(source: &str) -> Option<String> {
-    let after_computed = source.split("#[computed]").nth(1)?;
-    let after_fn = after_computed.split("fn").nth(1)?;
-    let name_part = after_fn.trim_start();
-    let name: String = name_part
-        .chars()
-        .take_while(|c| c.is_alphanumeric() || *c == '_')
-        .collect();
-    if name.is_empty() {
-        None
-    } else {
-        Some(name)
-    }
-}
-
 impl Default for Builder {
     fn default() -> Self {
         Self::new()
@@ -481,7 +460,7 @@ fn hash_str(s: &str) -> String {
 
 /// snake_case / kebab-case → PascalCase（如 "counter" → "Counter"，"my_view" → "MyView"）
 fn to_pascal_case(s: &str) -> String {
-    s.split(|c: char| c == '_' || c == '-')
+    s.split(['_', '-'])
         .filter(|p| !p.is_empty())
         .map(|p| {
             let mut chars = p.chars();

@@ -22,7 +22,6 @@ pub use crate::events::*;
 pub use crate::i18n::{I18nExt, t, t_static};
 pub use crate::lifecycle::ILifecycle;
 pub use crate::model::{FieldMeta, IModel};
-pub use crate::observable::ObservableVec;
 pub use crate::two_way_binding::ITwoWayBinding;
 pub use crate::validate::{IValidate, ValidResult};
 pub use crate::view_model::IViewModel;
@@ -33,9 +32,3 @@ pub use gpui::{
     App, AppContext, AsyncApp, AsyncWindowContext, Context, Entity, EventEmitter, Global, IntoElement,
     Keystroke, Modifiers, Pixels, Point, Render, SharedString, Task, WeakEntity, Window,
 };
-
-/// 文档兼容别名：旧示例代码使用 `ViewContext<T>`，实际为 `Context<T>`。
-///
-/// RML 文档统一用 `ViewContext<Self>` 表示视图上下文，但现代 GPUI
-/// 已将 `ViewContext` 合并入 `Context`。此别名让示例代码可编译。
-pub type ViewContext<'a, T> = Context<'a, T>;

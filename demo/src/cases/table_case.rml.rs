@@ -24,7 +24,7 @@ impl IContribution for TableCase {
         Self::CONTRIBUTION_ID
     }
     fn name(&self) -> SharedString {
-        t_static("case.table.title").into()
+        t_static("case.table.title")
     }
 }
 

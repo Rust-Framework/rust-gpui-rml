@@ -34,12 +34,12 @@ impl Default for ContributionRegistry {
 }
 
 impl IContributionRegistry for ContributionRegistry {
-    fn add_host(&self, host: Arc<dyn IContributionHost>) {
+    fn add(&self, host: Arc<dyn IContributionHost>) {
         let id = host.id().to_string();
         self.hosts.write().unwrap().insert(id, host);
     }
 
-    fn remove_host(&self, host_id: &str) {
+    fn remove(&self, host_id: &str) {
         self.hosts.write().unwrap().remove(host_id);
     }
 
@@ -53,8 +53,8 @@ impl IContributionRegistry for ContributionRegistry {
         if let Some(host) = hosts.get(host_id) {
             host.add(contribution, options);
         } else {
-            // host 未注册时贡献被丢弃。要求 host 在 on_loaded 中先 __rml_install_host 注册自身，
-            // 再触发该 host_id 的贡献注册（由 __rml_install_host 内部同步完成）。
+            // host 未注册时贡献被丢弃。要求 host 在 on_loaded 中先 registry.add(host) 注册自身，
+            // 再调用 bootstrap_host_contributions(cx, host_id) 触发该 host_id 的贡献注册。
             let _ = (host_id, contribution, options);
         }
     }

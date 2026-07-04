@@ -1,15 +1,11 @@
 //! `#[contributehost]` —— Host 标记宏（精简版）
 //!
-//! 宏仅负责：
-//! 1. 生成 `pub const ID: &'static str`
-//! 2. 生成 `pub fn __rml_install_host(this: &Entity<Self>, cx: &mut App) -> flume::Receiver<HostOp>`
-//!    （内部调 `rml_app::contribution::install_entity_host`：注册 handle + 触发 host_id 的贡献注册）
-//! 3. 编译期断言 `T: IContributionHost`（用户必须手写 impl）
+//! 宏仅负责生成 `pub const ID: &'static str`，作为 host_id 的单一来源。
 //!
 //! 用户职责：
-//! - 手写 `impl IContributionHost`（override `add`/`remove` 中需要的）
-//! - 手写 `impl ILifecycle`（在 `on_loaded` 中调 `Self::__rml_install_host` + `drain_host_ops`）
-//! - 自管贡献存储（如 `RwLock<Vec<(Arc<dyn IContribution>, ContributionOptions)>>`）
+//! - 手写一个 host handle struct（实现 `IContributionHost`），持有 `Arc<RwLock<Vec<...>>>` 共享存储
+//! - 手写 `impl ILifecycle`（在 `on_loaded` 中创建 handle + `cx.get_contribution_registry().add(Arc::new(handle))` + `bootstrap_host_contributions(cx, Self::ID)`）
+//! - 自管贡献存储（如 `Arc<RwLock<Vec<(Arc<dyn IContribution>, ContributionOptions)>>>`，handle 持有 clone）
 //!
 //! 宏展开顺序：`#[component]`/`#[window]`（内层先）→ `#[contributehost]`（外层）→ `#[contribute]`（最外层）。
 
@@ -96,32 +92,6 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
 
         impl #struct_name {
             pub const ID: &'static str = #id;
-
-            /// 注册 host handle + 触发该 host_id 的所有贡献注册。
-            ///
-            /// 由用户在 `impl ILifecycle::on_loaded` 中调用：
-            /// ```rust,ignore
-            /// fn on_loaded(&mut self, _: &mut Window, cx: &mut Context<Self>) {
-            ///     let rx = Self::__rml_install_host(cx.entity(), cx);
-            ///     self.host_rx = Some(rx);
-            ///     if let Some(rx) = &self.host_rx {
-            ///         rml_app::contribution::drain_host_ops(rx, self);
-            ///     }
-            ///     cx.notify();
-            /// }
-            /// ```
-            pub fn __rml_install_host(
-                this: gpui::Entity<Self>,
-                cx: &mut gpui::App,
-            ) -> rml_core::flume::Receiver<rml_app::contribution::HostOp> {
-                rml_app::contribution::install_entity_host(Self::ID, this, cx)
-            }
         }
-
-        // 编译期断言：目标类型必须实现 IContributionHost（用户手写）
-        const _: () = {
-            fn assert_host<T: rml_core::contribution::IContributionHost>() {}
-            fn check() { assert_host::<#struct_name>(); }
-        };
     }
 }

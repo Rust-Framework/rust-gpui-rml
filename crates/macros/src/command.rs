@@ -172,6 +172,9 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
         }
     }
 
+    // #[command] 方法经 RML 模板绑定调用（如 on-click={on_click}），编译器无法看到引用，
+    // 标记 #[allow(dead_code)] 消除误报。字段在方法内被读取，也随之消除"never read"误报。
+    item.attrs.push(parse_quote! { #[allow(dead_code)] });
     quote! { #item }
 }
 
@@ -298,63 +301,6 @@ fn parse_duration_ms(s: &str) -> Option<u64> {
     } else {
         s.parse().ok()
     }
-}
-
-// ──────────────────────────────────────────────────────────────────────────
-//  以下函数保留供未来元信息生成使用（当前未使用，标记 #[allow(dead_code)]）
-// ──────────────────────────────────────────────────────────────────────────
-
-/// 从方法参数中提取事件类型名
-///
-/// 约定：最后一个非 Context 引用参数是事件对象（如 `&ClickEvent`）
-#[allow(dead_code)]
-fn extract_event_type(
-    inputs: &syn::punctuated::Punctuated<FnArg, syn::token::Comma>,
-) -> String {
-    for arg in inputs.iter() {
-        if let FnArg::Typed(pat_type) = arg {
-            let ty_str = quote!(#pat_type.ty).to_string();
-            if ty_str.contains("Context") {
-                continue;
-            }
-            if let syn::Type::Reference(type_ref) = pat_type.ty.as_ref() {
-                let inner = &type_ref.elem;
-                let inner_str = quote!(#inner).to_string();
-                return inner_str
-                    .split("::")
-                    .last()
-                    .unwrap_or(&inner_str)
-                    .trim()
-                    .to_string();
-            }
-        }
-    }
-    String::new()
-}
-
-/// 提取命令参数（除 self、事件、Context 外的参数）
-#[allow(dead_code)]
-fn extract_params(
-    inputs: &syn::punctuated::Punctuated<FnArg, syn::token::Comma>,
-) -> Vec<(String, String)> {
-    let mut params = Vec::new();
-    for arg in inputs.iter() {
-        if let FnArg::Typed(pat_type) = arg {
-            let ty_str = quote!(#pat_type.ty).to_string();
-            if ty_str.contains("Context") {
-                continue;
-            }
-            if let syn::Type::Reference(_) = pat_type.ty.as_ref() {
-                continue;
-            }
-            if let Pat::Ident(pat_ident) = pat_type.pat.as_ref() {
-                let name = pat_ident.ident.to_string();
-                let ty = ty_str.trim().to_string();
-                params.push((name, ty));
-            }
-        }
-    }
-    params
 }
 
 #[cfg(test)]

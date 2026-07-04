@@ -38,7 +38,7 @@ fn bootstrap_runtime(cx: &mut App) {
     ensure_theme(cx);
     gpui_component::init(cx);
     gpui_component::Theme::global_mut(cx).font_size = px(14.);
-    // 贡献注册由 host 在 on_loaded 中触发（__rml_install_host → bootstrap_host_contributions）
+    // 贡献注册由 host 在 on_loaded 中手动触发（registry.add(host) → bootstrap_host_contributions）
 }
 
 /// 标记：未设置主窗口

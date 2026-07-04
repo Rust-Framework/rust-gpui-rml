@@ -62,9 +62,6 @@ pub fn configure_menu_bar_popup(menu: PopupMenu) -> PopupMenu {
     menu.min_w(px(MENU_BAR_POPUP_MIN_W_PX))
 }
 
-/// `<menu items={...}>` 兼容别名
-pub type Menu = MenuBar;
-
 /// 水平菜单栏（纯 `ParentElement` 容器——接收 `.child(...)` / `.children(...)`）
 ///
 /// 框架不定义 `IMenuItem` 数据结构（WPF 风格——业务定义自己的 ViewModel）。

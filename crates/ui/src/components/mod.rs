@@ -19,7 +19,7 @@ pub use alert_dialog::{
     AlertDialog, DialogAction, DialogButtonProps, DialogClose, DialogContent, DialogDescription,
     DialogFooter, DialogHeader, DialogTitle,
 };
-pub use menu::{Menu, MenuBar, configure_menu_bar_popup, menu_bar_button};
+pub use menu::{MenuBar, configure_menu_bar_popup, menu_bar_button};
 pub use status_bar::{NativeStatusBar, StatusBarAlign};
 pub use tab::{Tab, TabBar, TabItem, TabVariant};
 pub use table::{

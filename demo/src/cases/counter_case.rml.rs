@@ -21,7 +21,7 @@ impl IContribution for CounterCase {
         Self::CONTRIBUTION_ID
     }
     fn name(&self) -> SharedString {
-        t_static("case.counter.title").into()
+        t_static("case.counter.title")
     }
 }
 

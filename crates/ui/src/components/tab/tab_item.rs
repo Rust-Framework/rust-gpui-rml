@@ -19,6 +19,7 @@ use gpui_component::Icon;
 /// WPF TabItem 风格的 Tab 子项：title (header) + body (闭包模板)。
 ///
 /// 详见模块级文档。
+#[derive(Default)]
 pub struct TabItem {
     pub(super) ix: usize,
     pub(super) title_label: Option<SharedString>,
@@ -32,20 +33,6 @@ pub struct TabItem {
     pub(super) on_click: Option<Rc<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>>,
 }
 
-impl Default for TabItem {
-    fn default() -> Self {
-        Self {
-            ix: 0,
-            title_label: None,
-            title_icon: None,
-            title_children: Vec::new(),
-            body: None,
-            disabled: false,
-            tab_bar_prefix: None,
-            on_click: None,
-        }
-    }
-}
 
 impl TabItem {
     /// 创建一个空 TabItem。

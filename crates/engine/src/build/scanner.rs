@@ -258,11 +258,9 @@ pub fn parse_struct_metadata(source: &str) -> HashMap<String, StructMetadata> {
                         if visitor.uses_i18n
                             && (meta.observable_fields.contains(&"i18n_version".to_string())
                                 || meta.is_contributehost)
-                        {
-                            if !deps.contains(&"i18n_version".to_string()) {
+                            && !deps.contains(&"i18n_version".to_string()) {
                                 deps.push("i18n_version".to_string());
                             }
-                        }
                         meta.computed_methods.push(method_name.clone());
                         meta.computed_deps.insert(method_name.clone(), deps);
                         meta.computed_returns.insert(method_name.clone(), return_type);
@@ -358,12 +356,12 @@ fn insert_keyword_spaces(s: &str) -> String {
                 return None;
             }
             // 关键字前必须是词边界（非标识符字符）
-            if prev_char.map_or(false, is_ident_char) {
+            if prev_char.is_some_and(is_ident_char) {
                 return None;
             }
             // 关键字后必须紧跟标识符字符（说明缺少空格）
             let next = chars.get(i + kw_chars.len()).copied();
-            if !next.map_or(false, is_ident_char) {
+            if !next.is_some_and(is_ident_char) {
                 return None;
             }
             Some(*kw)
@@ -628,7 +626,7 @@ impl syn::parse::Parse for ValidateArgs {
                             let _: Token![,] = content.parse()?;
                         }
                     }
-                    if ident.to_string() == "length" {
+                    if ident == "length" {
                         // length 的 min/max 转为 i64（字符串长度）
                         rules.push(ValidationRule::Length {
                             min: min.map(|v| v as i64),

@@ -52,17 +52,13 @@ impl rml_core::lifecycle::ILifecycle for {view_name} {{}}
     let mut methods = String::new();
 
     if let Some(method) = on_loaded {
-        methods.push_str(&format!(
-            "    fn on_loaded(&mut self, window: &mut gpui::Window, cx: &mut gpui::Context<Self>) where Self: Sized {{\n"
-        ));
+        methods.push_str("    fn on_loaded(&mut self, window: &mut gpui::Window, cx: &mut gpui::Context<Self>) where Self: Sized {\n");
         methods.push_str(&format!("        self.{}(window, cx);\n", method));
         methods.push_str("    }\n");
     }
 
     if let Some(method) = on_unloaded {
-        methods.push_str(&format!(
-            "    fn on_unloaded(&mut self, cx: &mut gpui::Context<Self>) where Self: Sized {{\n"
-        ));
+        methods.push_str("    fn on_unloaded(&mut self, cx: &mut gpui::Context<Self>) where Self: Sized {\n");
         methods.push_str(&format!("        self.{}(cx);\n", method));
         methods.push_str("    }\n");
     }

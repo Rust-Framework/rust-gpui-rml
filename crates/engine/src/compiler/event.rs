@@ -91,11 +91,6 @@ pub fn apply_event(name: &str, handler: &EventHandler, _ctx: &CodegenCtx) -> Str
 
     match handler {
         EventHandler::Ident(method) | EventHandler::MethodName(method) => {
-            // .on_click(cx.listener(move |this, ev: &gpui::ClickEvent, _window, cx| {
-            //     let rml_ev = rml_convert::from_gpui_click(ev);
-            //     this.increment(&rml_ev, cx);
-            //     if rml_ev.is_propagation_stopped() { cx.stop_propagation(); }
-            // }))
             format!(
                 ".{}(cx.listener(move |this, ev: &{}, _window, cx| {{\n                    \
                  let rml_ev = {};\n                    this.{}(&rml_ev, cx);\n                    \

@@ -35,7 +35,7 @@ pub(crate) fn gen_expr_code(expr_str: &str, loop_vars: &[&str], computed: &[&str
         return code;
     }
     match expr::parse(expr_str) {
-        Ok(expr::Expr::Field(name)) if computed.iter().any(|c| *c == name.as_str()) => {
+        Ok(expr::Expr::Field(name)) if computed.contains(&name.as_str()) => {
             if loop_vars.iter().any(|v| *v == name) {
                 format!("{}()", name)
             } else {
@@ -45,9 +45,9 @@ pub(crate) fn gen_expr_code(expr_str: &str, loop_vars: &[&str], computed: &[&str
         Ok(parsed) => expr::to_rust_code_with_ctx(&parsed, loop_vars),
         Err(_) => {
             let trimmed = expr_str.trim();
-            if loop_vars.iter().any(|v| *v == trimmed) {
+            if loop_vars.contains(&trimmed) {
                 trimmed.to_string()
-            } else if computed.iter().any(|c| *c == trimmed) {
+            } else if computed.contains(&trimmed) {
                 format!("self.{}()", trimmed)
             } else {
                 format!("self.{}", trimmed)

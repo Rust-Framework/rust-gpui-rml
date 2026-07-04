@@ -23,14 +23,9 @@ use crate::workbench::WorkbenchManagerSlot;
 /// 这些方法是 `IAppContext::get_service::<T>()` 的语法糖，
 /// 不引入新的存储机制，仅转发到 `ServiceCollection`。
 pub trait IAppContextExt: IAppContext {
-    /// 获取贡献注册表（必需服务）。
-    fn contribution_registry(&self) -> Arc<ContributionRegistry> {
-        self.get_required_service::<ContributionRegistry>()
-    }
-
-    /// 获取贡献注册表的 trait object 视图。
-    fn contribution_registry_dyn(&self) -> Arc<dyn IContributionRegistry> {
-        self.contribution_registry() as Arc<dyn IContributionRegistry>
+    /// 获取贡献注册表（trait object 视图，隐藏具体类型）。
+    fn get_contribution_registry(&self) -> Arc<dyn IContributionRegistry> {
+        self.get_required_service::<ContributionRegistry>() as Arc<dyn IContributionRegistry>
     }
 
     /// 安装工作台管理器。

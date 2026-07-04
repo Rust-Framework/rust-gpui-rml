@@ -116,19 +116,3 @@ fn format_tag_hover(tag: &str) -> String {
 
     lines.join("\n")
 }
-
-/// 生成属性的悬停文档（预留，MVP 阶段悬停主要在标签上）
-#[allow(dead_code)]
-fn format_attr_hover(attr: &Attribute) -> String {
-    match attr {
-        Attribute::Static { name, value } => {
-            format!("**Static attribute**\n\n`{}=\"{}\"`", name, value)
-        }
-        Attribute::Bind { name, expr } => {
-            format!("**Bind attribute**\n\n`{}={{{}}}`", name, expr)
-        }
-        Attribute::Event { name, handler: _ } => {
-            format!("**Event attribute**\n\n`{}`", name)
-        }
-    }
-}

@@ -20,7 +20,7 @@ impl IContribution for TabBarCase {
         Self::CONTRIBUTION_ID
     }
     fn name(&self) -> SharedString {
-        t_static("case.tab_bar.title").into()
+        t_static("case.tab_bar.title")
     }
 }
 

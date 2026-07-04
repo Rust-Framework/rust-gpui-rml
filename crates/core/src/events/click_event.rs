@@ -20,7 +20,6 @@ pub struct ClickEvent {
 }
 
 impl ClickEvent {
-    /// 文档兼容别名：`old_value` / `prev_value` 同义
     pub fn new(position: Point<Pixels>) -> Self {
         Self {
             position,

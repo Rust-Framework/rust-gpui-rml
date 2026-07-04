@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use gpui::SharedString;
-use rml_core::contribution::{ContributionOptions, IContribution, IVisualContribution, VisualAbilityExt};
+use rml_core::contribution::{ContributionOptions, IContribution, VisualAbilityExt};
 use rml_core::i18n::t_static;
 use rml_ui::TreeItem;
 
@@ -22,8 +22,6 @@ pub struct CaseViewModel {
     pub name: SharedString,
     pub group: Option<SharedString>,
     pub order: i32,
-    /// "rml://{id}"，供 IWorkbenchManager 路由。
-    pub uri: SharedString,
     contribution: Arc<dyn IContribution>,
 }
 
@@ -42,7 +40,6 @@ impl CaseViewModel {
             name: c.name(),
             group: opts.group,
             order: opts.order,
-            uri: format!("rml://{}", c.id()).into(),
             contribution: c,
         })
     }

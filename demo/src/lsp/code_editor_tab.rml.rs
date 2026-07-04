@@ -7,7 +7,6 @@ use std::path::Path;
 use std::sync::Arc;
 
 use gpui_component::input::{InputState, TabSize};
-use lsp_types::Uri;
 use rml::prelude::*;
 
 use crate::lsp::{
@@ -18,12 +17,6 @@ use crate::lsp::{
 #[derive(Default)]
 pub struct CodeEditorTab {
     editor_state: Option<Entity<InputState>>,
-    #[allow(dead_code)]
-    file_path: String,
-    #[allow(dead_code)]
-    uri: Option<Uri>,
-    #[allow(dead_code)]
-    lsp_client: Option<Arc<LspClient>>,
 }
 
 impl CodeEditorTab {
@@ -81,9 +74,6 @@ impl CodeEditorTab {
 
             let mut view = Self::default();
             view.editor_state = Some(editor_state);
-            view.file_path = file_path.to_string();
-            view.uri = Some(uri);
-            view.lsp_client = Some(lsp_client);
             view
         })
     }

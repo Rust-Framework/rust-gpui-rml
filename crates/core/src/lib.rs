@@ -9,10 +9,6 @@
 /// （用户 crate 无需显式依赖 `ctor`）。
 pub use ctor;
 
-/// 重导出 `flume` crate,供 `#[contributehost]` 宏生成的 channel 代码使用
-/// （用户 crate 无需显式依赖 `flume`）。
-pub use flume;
-
 /// 重导出 `url` crate,供工作台 Uri 类型使用
 /// （用户 crate 无需显式依赖 `url`）。
 pub use url;
@@ -34,7 +30,6 @@ pub mod event;
 pub mod events;
 pub mod lifecycle;
 pub mod model;
-pub mod observable;
 pub mod slot;
 pub mod two_way_binding;
 pub mod validate;
@@ -48,5 +43,3 @@ pub use context::{ensure_service_collection, IAppContext, ServiceCollection};
 
 /// 重导出 GPUI 基础类型,供框架各层统一使用
 pub use gpui::{App, Context, Entity, IntoElement, Keystroke, Modifiers, Pixels, Point, Rgba, Render, SharedString, WeakEntity, Window};
-
-pub use observable::ObservableVec;

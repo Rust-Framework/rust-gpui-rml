@@ -44,14 +44,14 @@ pub(super) fn gen_modern_window_wrapper(
                 "menu" | "footer" => {
                     let rust_expr = match expr::parse(expr) {
                         Ok(expr::Expr::Field(field_name))
-                            if computed.iter().any(|c| *c == field_name.as_str()) =>
+                            if computed.contains(&field_name.as_str()) =>
                         {
                             format!("self.{}()", field_name)
                         }
                         Ok(parsed) => expr::to_rust_code_with_ctx(&parsed, &empty),
                         Err(_) => {
                             let trimmed = expr.trim();
-                            if computed.iter().any(|c| *c == trimmed) {
+                            if computed.contains(&trimmed) {
                                 format!("self.{}()", trimmed)
                             } else {
                                 format!("self.{}", trimmed)
@@ -78,7 +78,7 @@ pub(super) fn gen_modern_window_wrapper(
                 "icon" => {
                     let rust_expr = match expr::parse(expr) {
                         Ok(expr::Expr::Field(field_name))
-                            if computed.iter().any(|c| *c == field_name.as_str()) =>
+                            if computed.contains(&field_name.as_str()) =>
                         {
                             format!("self.{}()", field_name)
                         }
@@ -174,7 +174,7 @@ pub(super) fn partition_slot_children(
                         "tabs" => {
                             // tabs slot 收集所有子节点（应为 <Tab> 元素），
                             // 而非取单一 content —— 与其他单 Node slot 不同。
-                            let tab_kids: Vec<Node> = elem.children.iter().cloned().collect();
+                            let tab_kids: Vec<Node> = elem.children.to_vec();
                             if !tab_kids.is_empty() {
                                 slot_tabs = tab_kids;
                             }
@@ -255,7 +255,7 @@ pub(super) fn gen_tab_window_wrapper(
     let has_tabs_bind = elem.attributes.iter().any(|a| {
         matches!(a, Attribute::Bind { name, .. } if name == "tabs")
     });
-    let has_slot_tabs = slot_tabs.map_or(false, |t| !t.is_empty());
+    let has_slot_tabs = slot_tabs.is_some_and(|t| !t.is_empty());
     if has_tabs_bind && has_slot_tabs {
         return Err(CodegenError {
             message: "<tab-window> 不能同时使用 `tabs={...}` 属性和 `<template slot=\"tabs\">` 插槽".into(),
@@ -268,7 +268,7 @@ pub(super) fn gen_tab_window_wrapper(
                 if name == "icon" {
                     let rust_expr = match expr::parse(expr) {
                         Ok(expr::Expr::Field(field_name))
-                            if computed.iter().any(|c| *c == field_name.as_str()) =>
+                            if computed.contains(&field_name.as_str()) =>
                         {
                             format!("self.{}()", field_name)
                         }
@@ -391,16 +391,16 @@ pub(super) fn gen_tab_window_wrapper(
 /// 将 shell 根元素的 bind 表达式编译为 Rust 代码
 fn shell_bind_expr(expr: &str, computed: &[&str], loop_vars: &[&str]) -> String {
     let trimmed = expr.trim();
-    if computed.iter().any(|c| *c == trimmed) {
+    if computed.contains(&trimmed) {
         return format!("self.{}()", trimmed);
     }
     match expr::parse(expr) {
-        Ok(expr::Expr::Field(field_name)) if computed.iter().any(|c| *c == field_name.as_str()) => {
+        Ok(expr::Expr::Field(field_name)) if computed.contains(&field_name.as_str()) => {
             format!("self.{}()", field_name)
         }
         Ok(parsed) => expr::to_rust_code_with_ctx(&parsed, loop_vars),
         Err(_) => {
-            if computed.iter().any(|c| *c == trimmed) {
+            if computed.contains(&trimmed) {
                 format!("self.{}()", trimmed)
             } else {
                 format!("self.{}", trimmed)

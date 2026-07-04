@@ -409,7 +409,6 @@ impl TabVariant {
     }
 }
 
-#[allow(dead_code)]
 struct TabStyle {
     borders: Edges<Pixels>,
     border_color: Hsla,
@@ -654,12 +653,11 @@ impl RenderOnce for Tab {
             hover_style = self.variant.disabled(self.selected, cx);
         }
         let tab_bar_prefix = self.tab_bar_prefix.unwrap_or_default();
-        if !tab_bar_prefix {
-            if self.ix == 0 && self.variant == TabVariant::Tab {
+        if !tab_bar_prefix
+            && self.ix == 0 && self.variant == TabVariant::Tab {
                 tab_style.borders.left = px(0.);
                 hover_style.borders.left = px(0.);
             }
-        }
         let corner_radii = self
             .variant
             .corner_radii(self.size, self.selected, self.disabled, cx);

@@ -307,7 +307,7 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
 
     // 统一注册调用：始终 register（host 自行用 as_command()/as_visual() 分类）
     let register_call = quote! {
-        cx.contribution_registry().register(
+        cx.get_contribution_registry().register(
             #host_id,
             std::sync::Arc::new(#struct_name::default()),
             Some(

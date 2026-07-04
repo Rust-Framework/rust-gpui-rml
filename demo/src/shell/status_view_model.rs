@@ -5,7 +5,6 @@
 
 use std::sync::Arc;
 
-use gpui::SharedString;
 use rml_core::contribution::{ContributionOptions, IContribution, VisualAbilityExt};
 use rml_ui::StatusBarAlign;
 
@@ -14,7 +13,6 @@ pub type ContribEntry = (Arc<dyn IContribution>, ContributionOptions);
 
 #[derive(Clone)]
 pub struct StatusViewModel {
-    pub id: SharedString,
     pub align: StatusBarAlign,
     pub order: i32,
     contribution: Arc<dyn IContribution>,
@@ -36,7 +34,6 @@ impl StatusViewModel {
             _ => StatusBarAlign::Left,
         };
         Some(Self {
-            id: c.id().into(),
             align,
             order: opts.order,
             contribution: c,

@@ -20,7 +20,7 @@ impl IContribution for MenuContextCase {
         Self::CONTRIBUTION_ID
     }
     fn name(&self) -> SharedString {
-        t_static("case.menu.context.title").into()
+        t_static("case.menu.context.title")
     }
 }
 

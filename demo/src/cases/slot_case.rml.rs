@@ -24,7 +24,7 @@ impl IContribution for SlotCase {
         Self::CONTRIBUTION_ID
     }
     fn name(&self) -> SharedString {
-        t_static("case.slot.title").into()
+        t_static("case.slot.title")
     }
 }
 

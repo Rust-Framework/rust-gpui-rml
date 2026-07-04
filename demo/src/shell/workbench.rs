@@ -1,22 +1,23 @@
 //! IWorkbenchManager 实现 —— Tab/资源生命周期从 MainWindow 迁入。
 //!
-//! - `DemoWorkbenchManager`（`IWorkbenchManager`）：按 URI schema 路由到 provider，
-//!   维护 `Vec<DemoWorkbench>` + 激活态。
-//! - `CaseWorkbenchProvider` / `LspWorkbenchProvider`（`IWorkbenchProvider`）：
-//!   分别处理 `rml://` / `lsp://` URI。
+//! - `DemoWorkbenchManager`（`IWorkbenchManager`）：按 URI schema 路由，
+//!   `rml://` 直接查 cases，`lsp://` 委托 `LspWorkbenchProvider`。
+//!   维护 `Vec<Arc<dyn IWorkbench>>` + 激活态。
+//! - `LspWorkbenchProvider`（`IWorkbenchProvider`）：处理 `lsp://` URI。
 //! - `CaseWorkbench` / `LspWorkbench`：`IWorkbench + IContribution + IVisualContribution`
-//!   三 trait impl，供 TabWindowShell 经 `as_contribution()`/`as_visual()` 渲染。
-//! - `DemoWorkbench` 枚举：封装两种具体 workbench，便于 manager 内部存储与 render 分发
-//!   （`IWorkbench` trait 无 `render`/`id`，需枚举桥接）。
+//!   三 trait impl，供 MainWindow 经 `as_visual()` 渲染。
+//!
+//! `IWorkbench: IContribution`，manager 直接存储 `Arc<dyn IWorkbench>`，
+//! 通过 `as_visual()` 查询 render，通过 `uri()` 去重与查找，无需枚举桥接。
 
 use std::any::Any;
-use std::collections::HashMap;
 use std::sync::{Arc, Once, RwLock};
 
 use gpui::{AnyElement, App, Entity, SharedString, Window};
 use rml::prelude::*;
 use rml_core::contribution::{
     register_contribution_ability, register_visual_ability, IContribution, IVisualContribution,
+    VisualAbilityExt,
 };
 use rml_core::workbench::{IWorkbench, IWorkbenchManager, IWorkbenchProvider, Uri};
 
@@ -25,7 +26,7 @@ use crate::shell::case_view_model::CaseViewModel;
 
 // ──────────────────────────────────────────────────────────────────────────
 //  能力注册：CaseWorkbench / LspWorkbench 需注册 IContribution + IVisualContribution
-//  能力 cast，使 TabWindowShell 的 `as_contribution()`/`as_visual()` 查询生效。
+//  能力 cast，使 MainWindow 的 `as_visual()` 查询生效。
 // ──────────────────────────────────────────────────────────────────────────
 
 static ABILITY_REGISTERED: Once = Once::new();
@@ -71,6 +72,9 @@ impl IVisualContribution for CaseWorkbench {
 }
 
 impl IWorkbench for CaseWorkbench {
+    fn uri(&self) -> &str {
+        &self.uri
+    }
     fn close(&self) {}
     fn activate(&self) {}
     fn set(&self, _key: SharedString, _value: Box<dyn Any + Send + Sync>) {}
@@ -137,116 +141,12 @@ impl IVisualContribution for LspWorkbench {
 }
 
 impl IWorkbench for LspWorkbench {
+    fn uri(&self) -> &str {
+        &self.uri
+    }
     fn close(&self) {}
     fn activate(&self) {}
     fn set(&self, _key: SharedString, _value: Box<dyn Any + Send + Sync>) {}
-}
-
-// ──────────────────────────────────────────────────────────────────────────
-//  DemoWorkbench 枚举：manager 内部存储 + render 分发
-// ──────────────────────────────────────────────────────────────────────────
-
-/// 封装两种具体 workbench，便于 manager 内部 `Vec<DemoWorkbench>` 存储。
-///
-/// `IWorkbench` trait 无 `render`/`id`，需经枚举分发到具体类型。
-#[derive(Clone)]
-pub enum DemoWorkbench {
-    Case(Arc<CaseWorkbench>),
-    Lsp(Arc<LspWorkbench>),
-}
-
-impl DemoWorkbench {
-    pub fn as_workbench(&self) -> Arc<dyn IWorkbench> {
-        match self {
-            Self::Case(c) => c.clone(),
-            Self::Lsp(l) => l.clone(),
-        }
-    }
-
-    pub fn as_value(&self) -> Arc<dyn IValue> {
-        match self {
-            Self::Case(c) => c.clone(),
-            Self::Lsp(l) => l.clone(),
-        }
-    }
-
-    pub fn render(&self, window: &mut Window, cx: &mut App) -> AnyElement {
-        match self {
-            Self::Case(c) => c.render(window, cx),
-            Self::Lsp(l) => l.render(window, cx),
-        }
-    }
-
-    pub fn uri(&self) -> &str {
-        match self {
-            Self::Case(c) => &c.uri,
-            Self::Lsp(l) => &l.uri,
-        }
-    }
-}
-
-// ──────────────────────────────────────────────────────────────────────────
-//  CaseWorkbenchProvider：schema="rml"，从 cases 缓存查找
-// ──────────────────────────────────────────────────────────────────────────
-
-/// `rml://` URI 的 workbench 工厂。
-///
-/// 持有 `RwLock<HashMap<String, CaseViewModel>>` 副本（D3）——
-/// `IWorkbenchProvider::render` 无 cx 参数，无法读取 MainWindow Entity，
-/// 由 MainWindow 在 `on_loaded` drain 后一次性同步 cases 集合。
-pub struct CaseWorkbenchProvider {
-    cases: RwLock<HashMap<String, CaseViewModel>>,
-}
-
-impl CaseWorkbenchProvider {
-    pub fn new() -> Self {
-        Self {
-            cases: RwLock::new(HashMap::new()),
-        }
-    }
-
-    /// 同步 cases 副本（on_loaded drain 后调用）。
-    pub fn sync_cases(&self, cases: Vec<CaseViewModel>) {
-        let mut map = self.cases.write().unwrap();
-        map.clear();
-        for c in cases {
-            map.insert(c.id.to_string(), c);
-        }
-    }
-
-    /// demo 专用：返回 `DemoWorkbench` 供 manager 内部存储。
-    fn render_demo(&self, uri: &Uri) -> DemoWorkbench {
-        let case_id = uri.path().trim_start_matches('/');
-        let case = self
-            .cases
-            .read()
-            .unwrap()
-            .get(case_id)
-            .cloned()
-            .unwrap_or_else(|| panic!("case not found: {case_id}"));
-        DemoWorkbench::Case(Arc::new(CaseWorkbench::new(
-            uri.as_str().into(),
-            case,
-        )))
-    }
-}
-
-impl IContribution for CaseWorkbenchProvider {
-    fn id(&self) -> &str {
-        "case-provider"
-    }
-    fn name(&self) -> SharedString {
-        "Case Provider".into()
-    }
-}
-
-impl IWorkbenchProvider for CaseWorkbenchProvider {
-    fn schema(&self) -> SharedString {
-        "rml".into()
-    }
-    fn render(&self, uri: &Uri) -> Arc<dyn IWorkbench> {
-        self.render_demo(uri).as_workbench()
-    }
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -255,7 +155,7 @@ impl IWorkbenchProvider for CaseWorkbenchProvider {
 
 /// `lsp://` URI 的 workbench 工厂。
 ///
-/// `LspWorkbench` 的 `CodeEditorTab` Entity 延迟到首次 `render` 时创建（D4）——
+/// `LspWorkbench` 的 `CodeEditorTab` Entity 延迟到首次 `render` 时创建——
 /// `IWorkbenchProvider::render` 无 window/cx 参数，无法创建 Entity。
 pub struct LspWorkbenchProvider {
     lsp_client: Option<Arc<LspClient>>,
@@ -266,19 +166,19 @@ impl LspWorkbenchProvider {
         Self { lsp_client }
     }
 
-    /// demo 专用：返回 `DemoWorkbench` 供 manager 内部存储。
-    fn render_demo(&self, uri: &Uri) -> DemoWorkbench {
+    /// 构造 LspWorkbench（inherent 方法，避免与 trait `render` 同名阴影）。
+    fn build_workbench(&self, uri: &Uri) -> Arc<dyn IWorkbench> {
         let relative_path = uri.path().trim_start_matches('/').to_string();
         let title = std::path::Path::new(&relative_path)
             .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or(&relative_path)
             .into();
-        DemoWorkbench::Lsp(Arc::new(LspWorkbench::new(
+        Arc::new(LspWorkbench::new(
             uri.as_str().into(),
             title,
             self.lsp_client.clone(),
-        )))
+        ))
     }
 }
 
@@ -296,7 +196,7 @@ impl IWorkbenchProvider for LspWorkbenchProvider {
         "lsp".into()
     }
     fn render(&self, uri: &Uri) -> Arc<dyn IWorkbench> {
-        self.render_demo(uri).as_workbench()
+        self.build_workbench(uri)
     }
 }
 
@@ -304,14 +204,17 @@ impl IWorkbenchProvider for LspWorkbenchProvider {
 //  DemoWorkbenchManager：IWorkbenchManager 实现
 // ──────────────────────────────────────────────────────────────────────────
 
-/// demo 工作台管理器：按 URI schema 路由到 provider，维护 `Vec<DemoWorkbench>` + 激活态。
+/// demo 工作台管理器：按 URI schema 路由，维护 `Vec<Arc<dyn IWorkbench>>` + 激活态。
 ///
-/// 内部存储 `DemoWorkbench` 枚举（保留具体类型供 render 分发），
-/// `IWorkbenchManager` trait 方法经 `as_workbench()` 转换为 `Arc<dyn IWorkbench>`。
+/// `rml://` schema 直接查 `cases` 集合（单一数据源，无 provider 中转）；
+/// `lsp://` schema 委托 `LspWorkbenchProvider`（无状态工厂，无需数据同步）。
+///
+/// `IWorkbench: IContribution`，manager 直接存储 `Arc<dyn IWorkbench>`，
+/// 通过 `as_visual()` 查询 render，通过 `uri()` 去重与查找。
 pub struct DemoWorkbenchManager {
-    workbenches: RwLock<Vec<DemoWorkbench>>,
-    activated: RwLock<Option<DemoWorkbench>>,
-    case_provider: Arc<CaseWorkbenchProvider>,
+    workbenches: RwLock<Vec<Arc<dyn IWorkbench>>>,
+    activated: RwLock<Option<Arc<dyn IWorkbench>>>,
+    cases: RwLock<Vec<CaseViewModel>>,
     lsp_provider: Arc<LspWorkbenchProvider>,
 }
 
@@ -321,29 +224,34 @@ impl DemoWorkbenchManager {
         Self {
             workbenches: RwLock::new(Vec::new()),
             activated: RwLock::new(None),
-            case_provider: Arc::new(CaseWorkbenchProvider::new()),
+            cases: RwLock::new(Vec::new()),
             lsp_provider: Arc::new(LspWorkbenchProvider::new(lsp_client)),
         }
     }
 
-    /// 同步 cases 副本到 case provider（on_loaded drain 后调用）。
+    /// 同步 cases 到 manager（on_loaded 后调用）。单一数据源，无 provider 中转。
     pub fn sync_cases(&self, cases: Vec<CaseViewModel>) {
-        self.case_provider.sync_cases(cases);
+        *self.cases.write().unwrap() = cases;
     }
 
-    /// 供 TabWindowShell 渲染：返回 IValue 列表（DemoWorkbench.as_value）。
+    /// 供 TabWindowShell 渲染：返回 IValue 列表（trait upcast）。
     pub fn get_all_as_values(&self) -> Vec<Arc<dyn IValue>> {
         self.workbenches
             .read()
             .unwrap()
             .iter()
-            .map(|w| w.as_value())
+            .map(|w| {
+                let iv: Arc<dyn IContribution> = w.clone();
+                iv as Arc<dyn IValue>
+            })
             .collect()
     }
 
-    /// 供 MainWindow.active_view 调用：返回激活的 DemoWorkbench 用于 render。
-    pub fn get_activated_demo(&self) -> Option<DemoWorkbench> {
-        self.activated.read().unwrap().clone()
+    /// 供 MainWindow.active_view 调用：渲染激活的 workbench。
+    pub fn render_activated(&self, window: &mut Window, cx: &mut App) -> Option<AnyElement> {
+        let activated = self.activated.read().unwrap().clone()?;
+        let iv: &dyn IContribution = activated.as_ref();
+        Some(iv.as_visual()?.render(window, cx))
     }
 
     /// 供 MainWindow.on_tab_click 调用：按 index 激活。
@@ -363,8 +271,27 @@ impl DemoWorkbenchManager {
             .and_then(|a| workbenches.iter().position(|w| w.uri() == a.uri()))
     }
 
-    /// demo 专用 open：返回 DemoWorkbench（内部存储 + render 分发）。
-    fn open_demo(&self, uri: &Uri) -> DemoWorkbench {
+    /// 按 URI schema 路由构造 workbench。无法识别的 schema 或找不到的 case 返回 None。
+    fn build_workbench(&self, uri: &Uri) -> Option<Arc<dyn IWorkbench>> {
+        match uri.scheme() {
+            "rml" => {
+                let case_id = uri.path().trim_start_matches('/');
+                let case = self
+                    .cases
+                    .read()
+                    .unwrap()
+                    .iter()
+                    .find(|c| c.id == case_id)
+                    .cloned()?;
+                Some(Arc::new(CaseWorkbench::new(uri.as_str().into(), case)))
+            }
+            "lsp" => Some(self.lsp_provider.render(uri)),
+            _ => None,
+        }
+    }
+
+    /// demo 专用 open：返回 Option<Arc<dyn IWorkbench>>（内部存储 + 激活）。
+    fn open_workbench(&self, uri: &Uri) -> Option<Arc<dyn IWorkbench>> {
         let uri_str = uri.as_str();
         if let Some(wb) = self
             .workbenches
@@ -375,22 +302,18 @@ impl DemoWorkbenchManager {
             .cloned()
         {
             *self.activated.write().unwrap() = Some(wb.clone());
-            return wb;
+            return Some(wb);
         }
-        let demo_wb = match uri.scheme() {
-            "rml" => self.case_provider.render_demo(uri),
-            "lsp" => self.lsp_provider.render_demo(uri),
-            scheme => panic!("unknown workbench schema: {scheme}"),
-        };
-        self.workbenches.write().unwrap().push(demo_wb.clone());
-        *self.activated.write().unwrap() = Some(demo_wb.clone());
-        demo_wb
+        let wb = self.build_workbench(uri)?;
+        self.workbenches.write().unwrap().push(wb.clone());
+        *self.activated.write().unwrap() = Some(wb.clone());
+        Some(wb)
     }
 }
 
 impl IWorkbenchManager for DemoWorkbenchManager {
-    fn open(&self, uri: &Uri) -> Arc<dyn IWorkbench> {
-        self.open_demo(uri).as_workbench()
+    fn open(&self, uri: &Uri) -> Option<Arc<dyn IWorkbench>> {
+        self.open_workbench(uri)
     }
 
     fn close(&self, uri: &Uri) {
@@ -404,20 +327,11 @@ impl IWorkbenchManager for DemoWorkbenchManager {
     }
 
     fn get_all(&self) -> Vec<Arc<dyn IWorkbench>> {
-        self.workbenches
-            .read()
-            .unwrap()
-            .iter()
-            .map(|w| w.as_workbench())
-            .collect()
+        self.workbenches.read().unwrap().clone()
     }
 
     fn get_activated(&self) -> Option<Arc<dyn IWorkbench>> {
-        self.activated
-            .read()
-            .unwrap()
-            .as_ref()
-            .map(|w| w.as_workbench())
+        self.activated.read().unwrap().clone()
     }
 
     fn get(&self, uri: &Uri) -> Option<Arc<dyn IWorkbench>> {
@@ -427,6 +341,6 @@ impl IWorkbenchManager for DemoWorkbenchManager {
             .unwrap()
             .iter()
             .find(|w| w.uri() == uri_str)
-            .map(|w| w.as_workbench())
+            .cloned()
     }
 }

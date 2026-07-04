@@ -395,7 +395,7 @@ impl RenderOnce for TabWindowShell {
                     cx.background_executor()
                         .timer(Duration::from_secs_f64(0.25))
                         .await;
-                    _ = state.update(cx, |s, _| *s = target_chrome);
+                    state.update(cx, |s, _| *s = target_chrome);
                 })
                 .detach();
             }

@@ -17,7 +17,7 @@ impl IContribution for WelcomeCase {
         Self::CONTRIBUTION_ID
     }
     fn name(&self) -> SharedString {
-        t_static("shell.welcome").into()
+        t_static("shell.welcome")
     }
 }
 

@@ -16,7 +16,7 @@ pub fn install_contribution_bootstrap(f: fn(&mut App, &str)) {
     *CONTRIBUTION_BOOTSTRAP.lock().unwrap() = Some(f);
 }
 
-/// 由 `__rml_install_host` 调用：触发指定 host_id 的所有贡献注册。
+/// 由 host 的 `on_loaded` 手动调用：触发指定 host_id 的所有贡献注册。
 ///
 /// 内部回调 build.rs 生成的 `register_rml_contributions_for(cx, host_id)`，
 /// 该函数按 host_id match 调用所有 `#[contribute(host_id = "...")]` 的 `__rml_register_*`。

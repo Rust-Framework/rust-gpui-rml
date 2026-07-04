@@ -1,6 +1,5 @@
 //! RML 案例库模块
 
-pub mod catalog;
 #[path = "welcome_case.rml.rs"]
 pub mod welcome_case;
 #[path = "counter_case.rml.rs"]
@@ -35,5 +34,3 @@ pub mod slot_case;
 pub mod table_case;
 #[path = "description_list_case.rml.rs"]
 pub mod description_list_case;
-
-pub use catalog::case_title_key;

@@ -4,7 +4,7 @@ use gpui::{IntoElement, WeakEntity, Window};
 use rml::prelude::*;
 use rml_app::IAppContextExt;
 use rml_core::command::{ICommand, RelayCommand};
-use rml_core::contribution::{IContribution, VisualAbilityExt};
+use rml_core::contribution::{ContributionOptions, IContribution, IContributionHost, VisualAbilityExt};
 use rml_core::i18n::{t_static, I18nExt};
 use rml_core::theme::ThemeExt;
 use rml_core::workbench::Uri;
@@ -55,10 +55,37 @@ pub struct MainWindow {
 
     // 框架仪式
     activity_bar: Option<gpui::Entity<ActivityBar>>,
-    entries: std::sync::RwLock<Vec<ContribEntry>>,
-    host_rx: Option<rml_core::flume::Receiver<rml_app::contribution::HostOp>>,
+    entries: Arc<std::sync::RwLock<Vec<ContribEntry>>>,
     manager: Option<Arc<DemoWorkbenchManager>>,
     lsp_client: Option<Arc<LspClient>>,
+}
+
+/// MainWindow 的 host handle —— 直接操作共享的 `Arc<RwLock<Vec<ContribEntry>>>`。
+///
+/// 在 `on_loaded` 中创建并注册到 `ContributionRegistry`，替代旧的 channel 桥接。
+/// `bootstrap_host_contributions` 同步触发 `register → handle.add → entries.push`，
+/// 无需 drain。
+struct MainWindowHostHandle {
+    id: &'static str,
+    entries: Arc<std::sync::RwLock<Vec<ContribEntry>>>,
+}
+
+impl IContributionHost for MainWindowHostHandle {
+    fn id(&self) -> &'static str {
+        self.id
+    }
+
+    fn add(&self, contribution: Arc<dyn IContribution>, options: Option<ContributionOptions>) {
+        let opts = options.unwrap_or_default();
+        self.entries.write().unwrap().push((contribution, opts));
+    }
+
+    fn remove(&self, contribution_id: &str) {
+        self.entries
+            .write()
+            .unwrap()
+            .retain(|(c, _)| c.id() != contribution_id);
+    }
 }
 
 /// 手写 `Default`——`Arc<dyn ICommand>` 无 `#[derive(Default)]`，
@@ -84,8 +111,7 @@ impl Default for MainWindow {
             show_chrome: false,
             slot_left_size: gpui::px(260.),
             activity_bar: None,
-            entries: std::sync::RwLock::new(Vec::new()),
-            host_rx: None,
+            entries: Arc::new(std::sync::RwLock::new(Vec::new())),
             manager: None,
             lsp_client: None,
             // #[window] 注入字段
@@ -108,7 +134,6 @@ impl Default for MainWindow {
             __rml_slot_left_size_version: Default::default(),
             __rml_activity_bar_version: Default::default(),
             __rml_entries_version: Default::default(),
-            __rml_host_rx_version: Default::default(),
             __rml_manager_version: Default::default(),
             __rml_lsp_client_version: Default::default(),
             __rml___rml_window_handle_version: Default::default(),
@@ -122,32 +147,15 @@ impl Default for MainWindow {
     }
 }
 
-impl IContributionHost for MainWindow {
-    fn id(&self) -> &'static str {
-        Self::ID
-    }
-
-    fn add(&self, contribution: Arc<dyn IContribution>, options: Option<ContributionOptions>) {
-        let opts = options.unwrap_or_default();
-        self.entries.write().unwrap().push((contribution, opts));
-    }
-
-    fn remove(&self, contribution_id: &str) {
-        self.entries
-            .write()
-            .unwrap()
-            .retain(|(c, _)| c.id() != contribution_id);
-    }
-}
-
 impl ILifecycle for MainWindow {
     fn on_loaded(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
-        // 1. 注册 host + drain（add 期间填充 entries 暂存）
-        let rx = Self::__rml_install_host(cx.entity(), cx);
-        self.host_rx = Some(rx);
-        if let Some(rx) = &self.host_rx {
-            rml_app::contribution::drain_host_ops(rx, self);
-        }
+        // 1. 注册 host handle + 触发该 host_id 的所有贡献注册（同步：register → handle.add → entries.push）
+        let handle = Arc::new(MainWindowHostHandle {
+            id: Self::ID,
+            entries: self.entries.clone(),
+        });
+        cx.get_contribution_registry().add(handle);
+        rml_app::contribution::bootstrap_host_contributions(cx, Self::ID);
 
         // 2. 初始化 RelayCommand 字段（WPF MVVM 模式）
         self.open_welcome_command = Arc::new(RelayCommand::new(cx, |this, cx| {
@@ -197,8 +205,9 @@ impl ILifecycle for MainWindow {
         // 7. 打开 welcome tab（经 manager）
         if let Some(manager) = self.manager.clone() {
             let uri: Uri = "rml://welcome".parse().unwrap();
-            manager.open(&uri);
-            self.sync_tab_state(&manager);
+            if manager.open(&uri).is_some() {
+                self.sync_tab_state(&manager);
+            }
         }
 
         // 8. 构建 ActivityBar（从 activities 集合）
@@ -265,68 +274,44 @@ impl MainWindow {
     /// 标签经 `t_static()` 获取 i18n；命令绑定到 RelayCommand 字段。
     fn build_menu_tree(&self) -> Vec<MenuViewModel> {
         vec![
-            MenuViewModel::root("menu.file", t_static("menu.file"), 0)
+            MenuViewModel::root(t_static("menu.file"))
                 .child(MenuViewModel::leaf(
-                    "menu.file.new",
                     t_static("menu.file_new"),
-                    0,
                     self.open_welcome_command.clone(),
                 ))
                 .child(MenuViewModel::leaf(
-                    "menu.file.open",
                     t_static("menu.file_open"),
-                    1,
                     self.open_button_case_command.clone(),
                 ))
                 .child(MenuViewModel::leaf(
-                    "menu.file.exit",
                     t_static("menu.file_exit"),
-                    2,
                     self.exit_command.clone(),
                 )),
-            MenuViewModel::root("menu.view", t_static("menu.view"), 10)
+            MenuViewModel::root(t_static("menu.view"))
                 .child(MenuViewModel::leaf(
-                    "menu.theme_toggle",
                     t_static("menu.theme_toggle"),
-                    0,
                     self.toggle_theme_command.clone(),
                 ))
                 .child(MenuViewModel::leaf(
-                    "menu.lang_en",
                     t_static("menu.lang_en"),
-                    1,
                     self.switch_en_command.clone(),
                 )),
-            MenuViewModel::root("menu.help", t_static("menu.help"), 20)
+            MenuViewModel::root(t_static("menu.help"))
                 .child(
-                    MenuViewModel::root(
-                        "menu.help.docs",
-                        t_static("case.menu.help_center"),
-                        0,
-                    )
+                    MenuViewModel::root(t_static("case.menu.help_center"))
                     .child(MenuViewModel::leaf(
-                        "menu.help.guide",
                         t_static("case.menu.nested"),
-                        0,
                         self.open_menu_dropdown_case_command.clone(),
                     ))
                     .child(MenuViewModel::leaf(
-                        "menu.help.about",
                         t_static("menu.help_about"),
-                        1,
                         self.open_welcome_command.clone(),
                     )),
                 )
                 .child(
-                    MenuViewModel::root(
-                        "menu.help.cases",
-                        t_static("case.menu.features.group"),
-                        1,
-                    )
+                    MenuViewModel::root(t_static("case.menu.features.group"))
                     .child(MenuViewModel::leaf(
-                        "menu.open_features",
                         t_static("case.menu.features.title"),
-                        0,
                         self.open_features_case_command.clone(),
                     )),
                 ),
@@ -339,11 +324,11 @@ impl MainWindow {
         self.selected_tab = manager.activated_index().unwrap_or(0);
     }
 
-    /// 渲染激活的 workbench 视图（替代旧 active_case_view，LSP 分流由 manager 路由）。
+    /// 渲染激活的 workbench 视图：直接委托 manager.render_activated，零中间枚举。
     pub fn active_view(&self, window: &mut Window, cx: &mut gpui::Context<Self>) -> gpui::AnyElement {
         if let Some(manager) = &self.manager {
-            if let Some(wb) = manager.get_activated_demo() {
-                return wb.render(window, cx);
+            if let Some(elem) = manager.render_activated(window, cx) {
+                return elem;
             }
         }
         gpui::div().into_any_element()
@@ -359,8 +344,8 @@ impl MainWindow {
         _cx: &mut gpui::Context<Self>,
     ) -> gpui::AnyElement {
         use rml_ui::{MenuBar, configure_menu_bar_popup, menu_bar_button};
-        use gpui_component::menu::{DropdownMenu as _, PopupMenu};
-        use gpui::{ParentElement, Styled};
+        use gpui_component::menu::DropdownMenu as _;
+        use gpui::ParentElement;
 
         if self.menus.is_empty() {
             return gpui::div().into_any_element();
@@ -449,9 +434,10 @@ impl MainWindow {
         }
         if let Some(manager) = self.manager.clone() {
             let uri: Uri = format!("rml://{}", case_id).parse().unwrap();
-            manager.open(&uri);
-            self.sync_tab_state(&manager);
-            cx.notify();
+            if manager.open(&uri).is_some() {
+                self.sync_tab_state(&manager);
+                cx.notify();
+            }
         }
     }
 
@@ -460,9 +446,10 @@ impl MainWindow {
     pub fn open_lsp_file(&mut self, relative_path: String, cx: &mut Context<Self>) {
         if let Some(manager) = self.manager.clone() {
             let uri: Uri = format!("lsp://{}", relative_path).parse().unwrap();
-            manager.open(&uri);
-            self.sync_tab_state(&manager);
-            cx.notify();
+            if manager.open(&uri).is_some() {
+                self.sync_tab_state(&manager);
+                cx.notify();
+            }
         }
     }
 

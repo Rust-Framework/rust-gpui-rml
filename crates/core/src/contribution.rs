@@ -159,7 +159,7 @@ pub fn register_visual_ability<T: IVisualContribution + 'static>() {
 /// 贡献点主机：主动受理方。host 自行决定如何存储/映射贡献。
 ///
 /// host 直接实现此 trait（不再经由 `IHostEntity` 钩子）。
-/// `add`/`remove` 均为 `&self`——host 使用 `RwLock`/`ObservableVec` 等内部可变性结构。
+/// `add`/`remove` 均为 `&self`——host 使用 `RwLock`/`Arc<RwLock<Vec<...>>>` 等内部可变性结构。
 /// 默认空实现：host 按业务需要 override `add`。
 ///
 /// host 可通过 `c.as_command()`/`c.as_visual()` 查询贡献能力并分类存储。
@@ -183,14 +183,14 @@ pub trait IContributionHost: Send + Sync + 'static {
 /// 所有方法 `&self` + 无 `cx` —— 内部 `RwLock` 可变性，`host.add` 直接调用。
 ///
 /// Registry 仅存储 `IContributionHost`，不存储贡献本身。host 未注册时 `register` 直接 drop 贡献
-/// （warn 日志）。Host 必须在 `on_loaded` 中先经 `__rml_install_host` 注册自身，再触发该 host_id
-/// 的贡献注册。
+/// （warn 日志）。Host 必须在 `on_loaded` 中先经 `cx.get_contribution_registry().add(host)` 注册自身，
+/// 再调用 `bootstrap_host_contributions(cx, id)` 触发该 host_id 的贡献注册。
 pub trait IContributionRegistry: Send + Sync {
-    /// 注册 host（Entity 在 `on_loaded` 时通过 `__rml_install_host` 调用）。
-    fn add_host(&self, host: Arc<dyn IContributionHost>);
+    /// 注册 host（Entity 在 `on_loaded` 时手动调用）。
+    fn add(&self, host: Arc<dyn IContributionHost>);
 
     /// 注销 host。
-    fn remove_host(&self, host_id: &str);
+    fn remove(&self, host_id: &str);
 
     /// 向 host 注册贡献（`#[contribute]` 宏生成代码调用）。
     /// `options` 为 `None` 时表示无元数据。

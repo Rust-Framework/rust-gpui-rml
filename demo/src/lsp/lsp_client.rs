@@ -202,13 +202,6 @@ impl LspClient {
         self.send_notification("textDocument/didChange", params);
     }
 
-    pub fn close_document(&self, uri: &Uri) {
-        let params = serde_json::json!({
-            "textDocument": { "uri": uri.as_str() }
-        });
-        self.send_notification("textDocument/didClose", params);
-    }
-
     pub fn completion(&self, uri: &Uri, position: Position) -> Receiver<Result<Value>> {
         let params = serde_json::json!({
             "textDocument": { "uri": uri.as_str() },
@@ -231,11 +224,6 @@ impl LspClient {
             "position": position,
         });
         self.send_request("textDocument/definition", params)
-    }
-
-    pub fn shutdown(&self) {
-        let _ = self.send_request("shutdown", Value::Null);
-        self.send_notification("exit", Value::Null);
     }
 }
 

@@ -20,7 +20,7 @@ impl IContribution for AccordionCase {
         Self::CONTRIBUTION_ID
     }
     fn name(&self) -> SharedString {
-        t_static("case.accordion.title").into()
+        t_static("case.accordion.title")
     }
 }
 

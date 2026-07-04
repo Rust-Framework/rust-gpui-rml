@@ -28,7 +28,7 @@ impl IContribution for ActivityPanel {
         Self::CONTRIBUTION_ID
     }
     fn name(&self) -> SharedString {
-        t_static("shell.samples").into()
+        t_static("shell.samples")
     }
     fn icon(&self) -> Option<SharedString> {
         Some("BookOpen".into())

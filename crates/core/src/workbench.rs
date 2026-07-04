@@ -6,7 +6,7 @@
 //!
 //! 三接口分工：
 //! - `IWorkbenchManager`：调度者。资源生命周期与激活态入口（`open`/`close`/`get`…）。
-//! - `IWorkbench`：状态载体。单个已打开资源的会话句柄（`close`/`activate`/`set`）。
+//! - `IWorkbench`：状态载体 + 元数据。继承 `IContribution`（含 `id`/`name`），单个已打开资源的会话句柄。
 //! - `IWorkbenchProvider`：视图工厂。按 Uri schema 注册，`render(uri)` 把资源构造成 `IWorkbench`。
 //!
 //! 流程：`Manager.open(uri)` → `uri.scheme()` → 业务自持 map 查 `Provider` →
@@ -23,11 +23,15 @@ pub use url::Url as Uri;
 
 /// 工作台：一个已打开资源的会话句柄。
 ///
+/// 继承 `IContribution`——工作台同时是贡献（含 `id`/`name` 元数据），
+/// 可经 `as_visual()` 查询 `IVisualContribution` 能力获取 render。
 /// 业务实现此 trait；实例由 `IWorkbenchManager::open` 返回。
 /// `close`/`activate`/`set` 均为 `&self`——业务使用内部可变性，
 /// 并将 cx 相关 UI 工作延迟到具备 `&mut App` 的时机（如宿主实体的 `on_loaded`/observe 回调）。
-/// 加 `Any` supertrait——与 `IContribution` 一致，便于业务按需 downcast 到具体工作台类型。
-pub trait IWorkbench: Send + Sync + Any {
+pub trait IWorkbench: IContribution {
+    /// 此工作台的 Uri（唯一标识，用于去重与查找）。
+    fn uri(&self) -> &str;
+
     /// 关闭此工作台。
     fn close(&self);
 
@@ -43,8 +47,8 @@ pub trait IWorkbench: Send + Sync + Any {
 /// 业务实现并经 `rml_app::IAppContextExt::set_workbench_manager` 安装。
 /// 所有方法 `&self`——业务用 `RwLock`/channel 等内部可变性，UI 工作延迟处理。
 pub trait IWorkbenchManager: Send + Sync + 'static {
-    /// 打开资源；若已打开则激活现有工作台并返回。
-    fn open(&self, uri: &Uri) -> Arc<dyn IWorkbench>;
+    /// 打开资源；若已打开则激活现有工作台。无法识别 URI 时返回 `None`。
+    fn open(&self, uri: &Uri) -> Option<Arc<dyn IWorkbench>>;
 
     /// 关闭资源对应的工作台。
     fn close(&self, uri: &Uri);

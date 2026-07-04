@@ -33,7 +33,7 @@ thread_local! {
     /// 由 codegen 生成的 `Render::render` 方法入口通过 `RenderThreadGuard::enter()` 设置为 true，
     /// 方法退出时通过 `Drop` 恢复为 false。`get_or_compute` 在 debug 构建中检查此标记，
     /// 用于捕获 #[computed] 方法在非 render 线程被调用的误用。
-    static IS_RENDER_THREAD: Cell<bool> = Cell::new(false);
+    static IS_RENDER_THREAD: Cell<bool> = const { Cell::new(false) };
 }
 
 /// 查询当前线程是否为 render 线程
