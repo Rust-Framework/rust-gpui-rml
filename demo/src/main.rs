@@ -6,7 +6,6 @@ extern crate rust_rml_ui as rml_ui;
 
 mod app;
 mod cases;
-mod components;
 mod lsp;
 mod shell;
 
