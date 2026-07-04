@@ -18,6 +18,11 @@ pub fn is_menu_item_tag(tag: &str) -> bool {
 }
 
 /// 从菜单项子节点列表生成 PopupMenu builder 闭包体（不含外层 `|menu, window, cx| {`）
+///
+/// 参数较多但各调用点异构（`menu_param` / `config_elem` 在递归调用中不同），
+/// 强行分组反而增加构造样板。后续可考虑引入 `CodegenState` 统一封装
+/// `ctx`/`depth`/`id_counter`/`loop_vars`（跨 21 文件的 P1 重构）。
+#[allow(clippy::too_many_arguments)]
 pub fn gen_popup_menu_body(
     items: &[&Element],
     config_elem: Option<&Element>,

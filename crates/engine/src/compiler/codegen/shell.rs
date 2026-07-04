@@ -106,100 +106,71 @@ pub(super) fn gen_modern_window_wrapper(
     Ok(code)
 }
 
+/// Shell 根元素子节点按 slot 名分区后的结果
+///
+/// 由 [`partition_slot_children`] 产出。各字段对应 `<template slot="name">`：
+/// - `menu` / `title` / `footer`：modern-window 与 tab-window 共有
+/// - `left` / `right` / `bottom`：仅 tab-window
+/// - `tabs`：仅 tab-window，收集所有 `<Tab>` 子节点而非单一 content
+/// - `body`：主内容（无 slot 属性的子节点）
+#[derive(Default)]
+pub(super) struct ShellSlots {
+    pub menu: Option<Node>,
+    pub title: Option<Node>,
+    pub footer: Option<Node>,
+    pub left: Option<Node>,
+    pub right: Option<Node>,
+    pub bottom: Option<Node>,
+    pub tabs: Vec<Node>,
+    pub body: Vec<Node>,
+}
+
 /// 将 shell 根元素子节点拆分为插槽与主内容
 ///
 /// 识别 Vue 风格 `<template slot="name">...</template>` 形式：
-/// - `<template slot="menu">` → slot_menu
-/// - `<template slot="title">` → slot_title
-/// - `<template slot="footer">` → slot_footer
-/// - `<template slot="left">` → slot_left（仅 tab-window）
-/// - `<template slot="right">` → slot_right（仅 tab-window）
-/// - `<template slot="bottom">` → slot_bottom（仅 tab-window）
-/// - `<template slot="tabs">` → slot_tabs（仅 tab-window，收集所有子节点而非单一 content）
-/// - 其他子节点（含无 slot 属性的 `<template>`）→ body 主内容
-///
-/// 返回 (menu, title, footer, left, right, bottom, tabs, body)
-pub(super) fn partition_slot_children(
-    children: &[Node],
-) -> (
-    Option<Node>,
-    Option<Node>,
-    Option<Node>,
-    Option<Node>,
-    Option<Node>,
-    Option<Node>,
-    Vec<Node>,
-    Vec<Node>,
-) {
-    let mut slot_menu = None;
-    let mut slot_title = None;
-    let mut slot_footer = None;
-    let mut slot_left = None;
-    let mut slot_right = None;
-    let mut slot_bottom = None;
-    let mut slot_tabs = Vec::new();
-    let mut body = Vec::new();
+/// - `<template slot="menu">` → `ShellSlots::menu`
+/// - `<template slot="title">` → `ShellSlots::title`
+/// - `<template slot="footer">` → `ShellSlots::footer`
+/// - `<template slot="left">` → `ShellSlots::left`（仅 tab-window）
+/// - `<template slot="right">` → `ShellSlots::right`（仅 tab-window）
+/// - `<template slot="bottom">` → `ShellSlots::bottom`（仅 tab-window）
+/// - `<template slot="tabs">` → `ShellSlots::tabs`（仅 tab-window，收集所有子节点而非单一 content）
+/// - 其他子节点（含无 slot 属性的 `<template>`）→ `ShellSlots::body` 主内容
+pub(super) fn partition_slot_children(children: &[Node]) -> ShellSlots {
+    let mut slots = ShellSlots::default();
 
     for child in children {
         if let Node::Element(elem) = child {
-            // 仅识别 `<template slot="name">` 形式
             if elem.tag == "template" {
                 if let Some(name) = &elem.slot_name {
-                    let content = template_block_content(elem);
                     match name.as_str() {
-                        "menu" => {
-                            slot_menu = content;
-                            continue;
-                        }
-                        "title" => {
-                            slot_title = content;
-                            continue;
-                        }
-                        "footer" => {
-                            slot_footer = content;
-                            continue;
-                        }
-                        "left" => {
-                            slot_left = content;
-                            continue;
-                        }
-                        "right" => {
-                            slot_right = content;
-                            continue;
-                        }
-                        "bottom" => {
-                            slot_bottom = content;
-                            continue;
-                        }
+                        "menu" => slots.menu = template_block_content(elem),
+                        "title" => slots.title = template_block_content(elem),
+                        "footer" => slots.footer = template_block_content(elem),
+                        "left" => slots.left = template_block_content(elem),
+                        "right" => slots.right = template_block_content(elem),
+                        "bottom" => slots.bottom = template_block_content(elem),
                         "tabs" => {
                             // tabs slot 收集所有子节点（应为 <Tab> 元素），
                             // 而非取单一 content —— 与其他单 Node slot 不同。
                             let tab_kids: Vec<Node> = elem.children.to_vec();
                             if !tab_kids.is_empty() {
-                                slot_tabs = tab_kids;
+                                slots.tabs = tab_kids;
                             }
-                            continue;
                         }
                         _ => {
-                            // 未知 slot 名：忽略并落入 body（validator 应在编译期拦截）
+                            // 未知 slot 名：落入 body（validator 应在编译期拦截）
+                            slots.body.push(child.clone());
                         }
                     }
+                    continue;
                 }
             }
         }
-        body.push(child.clone());
+        slots.body.push(child.clone());
     }
 
-    (
-        slot_menu,
-        slot_title,
-        slot_footer,
-        slot_left,
-        slot_right,
-        slot_bottom,
-        slot_tabs,
-        body,
-    )
+    slots
 }
 
 /// 取 `<template slot="...">` 块的内部内容
@@ -222,6 +193,21 @@ fn template_block_content(elem: &Element) -> Option<Node> {
     }
 }
 
+/// `<tab-window>` 各 slot 的 codegen 输出（由 render.rs 从 [`ShellSlots`] 生成）
+///
+/// 字段命名与 `<template slot="name">` 一一对应。`tabs` 为模板定制模式下
+/// 各 `<Tab>` 子节点的 codegen 输出列表，与 `tabs={Vec<TabItem>}` 简单模式互斥。
+#[derive(Default)]
+pub(super) struct TabWindowSlotCodes<'a> {
+    pub menu: Option<&'a str>,
+    pub title: Option<&'a str>,
+    pub footer: Option<&'a str>,
+    pub left: Option<&'a str>,
+    pub right: Option<&'a str>,
+    pub bottom: Option<&'a str>,
+    pub tabs: Option<&'a [String]>,
+}
+
 /// 从根 `<tab-window>` 的 bind/event 属性生成 `TabWindowShell` 包裹代码
 ///
 /// slot 参数命名与 `<template slot="name">` 的 name 一一对应：
@@ -237,13 +223,7 @@ pub(super) fn gen_tab_window_wrapper(
     elem: &Element,
     ctx: &CodegenCtx,
     children_body: &str,
-    slot_menu: Option<&str>,
-    slot_title: Option<&str>,
-    slot_footer: Option<&str>,
-    slot_left: Option<&str>,
-    slot_right: Option<&str>,
-    slot_bottom: Option<&str>,
-    slot_tabs: Option<&[String]>,
+    slots: TabWindowSlotCodes,
 ) -> Result<String, CodegenError> {
     let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
     let empty: Vec<&str> = Vec::new();
@@ -255,7 +235,7 @@ pub(super) fn gen_tab_window_wrapper(
     let has_tabs_bind = elem.attributes.iter().any(|a| {
         matches!(a, Attribute::Bind { name, .. } if name == "tabs")
     });
-    let has_slot_tabs = slot_tabs.is_some_and(|t| !t.is_empty());
+    let has_slot_tabs = slots.tabs.is_some_and(|t| !t.is_empty());
     if has_tabs_bind && has_slot_tabs {
         return Err(CodegenError {
             message: "<tab-window> 不能同时使用 `tabs={...}` 属性和 `<template slot=\"tabs\">` 插槽".into(),
@@ -359,25 +339,25 @@ pub(super) fn gen_tab_window_wrapper(
         }
     }
 
-    if let Some(menu) = slot_menu {
+    if let Some(menu) = slots.menu {
         code.push_str(&format!(".menu_slot({menu})"));
     }
-    if let Some(title) = slot_title {
+    if let Some(title) = slots.title {
         code.push_str(&format!(".title_ext_slot({title})"));
     }
-    if let Some(footer) = slot_footer {
+    if let Some(footer) = slots.footer {
         code.push_str(&format!(".status_slot(Some({footer}))"));
     }
-    if let Some(left) = slot_left {
+    if let Some(left) = slots.left {
         code.push_str(&format!(".slot_left(Some({left}))"));
     }
-    if let Some(right) = slot_right {
+    if let Some(right) = slots.right {
         code.push_str(&format!(".slot_right(Some({right}))"));
     }
-    if let Some(bottom) = slot_bottom {
+    if let Some(bottom) = slots.bottom {
         code.push_str(&format!(".slot_bottom(Some({bottom}))"));
     }
-    if let Some(tabs) = slot_tabs {
+    if let Some(tabs) = slots.tabs {
         if !tabs.is_empty() {
             let joined = tabs.join(", ");
             code.push_str(&format!(".tab_children(vec![{}])", joined));
@@ -456,10 +436,9 @@ mod tests {
             vec![Node::Element(make_tab("A")), Node::Element(make_tab("B"))],
         );
         let children = vec![Node::Element(template)];
-        let (_, _, _, _, _, _, slot_tabs, body) =
-            partition_slot_children(&children);
-        assert_eq!(slot_tabs.len(), 2);
-        assert!(body.is_empty());
+        let slots = partition_slot_children(&children);
+        assert_eq!(slots.tabs.len(), 2);
+        assert!(slots.body.is_empty());
     }
 
     /// `<template slot="tabs"></template>`（空）不应设置 slot_tabs
@@ -467,11 +446,10 @@ mod tests {
     fn partition_slot_children_empty_tabs_slot() {
         let template = make_template_slot("tabs", vec![]);
         let children = vec![Node::Element(template)];
-        let (_, _, _, _, _, _, slot_tabs, body) =
-            partition_slot_children(&children);
-        assert!(slot_tabs.is_empty());
+        let slots = partition_slot_children(&children);
+        assert!(slots.tabs.is_empty());
         // 空的 tabs slot 不应落入 body
-        assert!(body.is_empty());
+        assert!(slots.body.is_empty());
     }
 
     /// 其他 slot（如 menu）仍正常工作，且 tabs 与之并存
@@ -483,11 +461,10 @@ mod tests {
             vec![Node::Element(make_tab("X"))],
         );
         let children = vec![Node::Element(menu_tmpl), Node::Element(tabs_tmpl)];
-        let (slot_menu, _, _, _, _, _, slot_tabs, body) =
-            partition_slot_children(&children);
-        assert!(slot_menu.is_some());
-        assert_eq!(slot_tabs.len(), 1);
-        assert!(body.is_empty());
+        let slots = partition_slot_children(&children);
+        assert!(slots.menu.is_some());
+        assert_eq!(slots.tabs.len(), 1);
+        assert!(slots.body.is_empty());
     }
 
     /// `gen_tab_window_wrapper` 生成 `.tab_children(vec![...])`
@@ -509,13 +486,10 @@ mod tests {
             &elem,
             &ctx(),
             "gpui::div()",
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            Some(&tabs_codes),
+            TabWindowSlotCodes {
+                tabs: Some(&tabs_codes),
+                ..Default::default()
+            },
         )
         .unwrap();
         assert!(code.contains(".tab_children(vec!["));
@@ -542,13 +516,10 @@ mod tests {
             &elem,
             &ctx(),
             "gpui::div()",
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            Some(&tabs_codes),
+            TabWindowSlotCodes {
+                tabs: Some(&tabs_codes),
+                ..Default::default()
+            },
         );
         assert!(result.is_err());
         assert!(result
@@ -572,13 +543,7 @@ mod tests {
             &elem,
             &ctx(),
             "gpui::div()",
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
+            TabWindowSlotCodes::default(),
         )
         .unwrap();
         assert!(!code.contains(".tab_children"));
@@ -602,13 +567,7 @@ mod tests {
             &elem,
             &ctx(),
             "gpui::div()",
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
+            TabWindowSlotCodes::default(),
         )
         .unwrap();
         // 应生成 .tab_item_template({ let weak = cx.weak_entity(); move |ix...| ... })
@@ -644,13 +603,7 @@ mod tests {
             &elem,
             &c,
             "gpui::div()",
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
+            TabWindowSlotCodes::default(),
         )
         .unwrap();
         // computed 方法应生成 self.tab_bar_items()（带括号）

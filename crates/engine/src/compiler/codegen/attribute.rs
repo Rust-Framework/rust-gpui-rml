@@ -5,7 +5,7 @@
 //! ## fallback 策略
 //!
 //! 未知属性不生成错误代码（避免把属性错当成文本子节点），改为输出 `eprintln!` warning
-//! + 返回空字符串。这样既能提醒开发者补全 setter 或注册 props_registry，又不会产生
+//! 并返回空字符串。这样既能提醒开发者补全 setter 或注册 props_registry，又不会产生
 //! 编译错误的 Rust 代码。
 
 use crate::css;

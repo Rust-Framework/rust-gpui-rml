@@ -47,55 +47,48 @@ pub(super) fn gen_render_impl_from_children(
     let mut id_counter: usize = 0;
     let empty: Vec<String> = Vec::new();
 
-    let (slot_menu, slot_title, slot_footer, slot_left, slot_right, slot_bottom, slot_tabs, body_children) =
-        if matches!(shell, ShellWrap::Tab | ShellWrap::Modern) {
-            shell::partition_slot_children(&elem.children)
-        } else {
-            (None, None, None, None, None, None, Vec::new(), elem.children.clone())
-        };
+    let slots = if matches!(shell, ShellWrap::Tab | ShellWrap::Modern) {
+        shell::partition_slot_children(&elem.children)
+    } else {
+        shell::ShellSlots {
+            body: elem.children.clone(),
+            ..Default::default()
+        }
+    };
 
-    let body = if body_children.is_empty() {
+    let body = if slots.body.is_empty() {
         "gpui::div()".to_string()
-    } else if body_children.len() == 1 {
-        let (code, _) = gen_node(&body_children[0], ctx, 0, &mut id_counter, &empty)?;
+    } else if slots.body.len() == 1 {
+        let (code, _) = gen_node(&slots.body[0], ctx, 0, &mut id_counter, &empty)?;
         code
     } else {
         let mut code = String::from("gpui::div()");
-        for child in &body_children {
+        for child in &slots.body {
             let (child_code, _) = gen_node(child, ctx, 0, &mut id_counter, &empty)?;
             code.push_str(&format!("\n            .child({})", child_code));
         }
         code
     };
 
-    let slot_menu_code = slot_menu
-        .as_ref()
-        .map(|node| gen_node(node, ctx, 0, &mut id_counter, &empty).map(|(c, _)| c))
-        .transpose()?;
-    let slot_title_code = slot_title
-        .as_ref()
-        .map(|node| gen_node(node, ctx, 0, &mut id_counter, &empty).map(|(c, _)| c))
-        .transpose()?;
-    let slot_footer_code = slot_footer
-        .as_ref()
-        .map(|node| gen_node(node, ctx, 0, &mut id_counter, &empty).map(|(c, _)| c))
-        .transpose()?;
-    let slot_left_code = slot_left
-        .as_ref()
-        .map(|node| gen_node(node, ctx, 0, &mut id_counter, &empty).map(|(c, _)| c))
-        .transpose()?;
-    let slot_right_code = slot_right
-        .as_ref()
-        .map(|node| gen_node(node, ctx, 0, &mut id_counter, &empty).map(|(c, _)| c))
-        .transpose()?;
-    let slot_bottom_code = slot_bottom
-        .as_ref()
-        .map(|node| gen_node(node, ctx, 0, &mut id_counter, &empty).map(|(c, _)| c))
-        .transpose()?;
+    macro_rules! gen_slot_code {
+        ($node:expr) => {
+            $node
+                .as_ref()
+                .map(|n| gen_node(n, ctx, 0, &mut id_counter, &empty).map(|(c, _)| c))
+                .transpose()?
+        };
+    }
+    let slot_menu_code = gen_slot_code!(&slots.menu);
+    let slot_title_code = gen_slot_code!(&slots.title);
+    let slot_footer_code = gen_slot_code!(&slots.footer);
+    let slot_left_code = gen_slot_code!(&slots.left);
+    let slot_right_code = gen_slot_code!(&slots.right);
+    let slot_bottom_code = gen_slot_code!(&slots.bottom);
 
     // slot_tabs：对每个 <Tab> 子节点调 tab_bar::tab::gen_tab_child 生成代码
     // （模板定制模式，与 tabs={Vec<TabItem>} 简单模式互斥）
-    let slot_tabs_codes: Vec<String> = slot_tabs
+    let slot_tabs_codes: Vec<String> = slots
+        .tabs
         .iter()
         .map(|node| {
             if let Node::Element(tab_elem) = node {
@@ -129,13 +122,15 @@ pub(super) fn gen_render_impl_from_children(
             elem,
             ctx,
             &body,
-            slot_menu_code.as_deref(),
-            slot_title_code.as_deref(),
-            slot_footer_code.as_deref(),
-            slot_left_code.as_deref(),
-            slot_right_code.as_deref(),
-            slot_bottom_code.as_deref(),
-            slot_tabs_ref.as_deref(),
+            shell::TabWindowSlotCodes {
+                menu: slot_menu_code.as_deref(),
+                title: slot_title_code.as_deref(),
+                footer: slot_footer_code.as_deref(),
+                left: slot_left_code.as_deref(),
+                right: slot_right_code.as_deref(),
+                bottom: slot_bottom_code.as_deref(),
+                tabs: slot_tabs_ref.as_deref(),
+            },
         )?,
         ShellWrap::None => body,
     };

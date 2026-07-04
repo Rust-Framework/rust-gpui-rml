@@ -7,9 +7,12 @@ use std::sync::Mutex;
 
 use gpui::App;
 
-/// 进程级回调：build.rs 生成的 `register_rml_contributions_for(cx, host_id)`。
+/// build.rs 生成的 `register_rml_contributions_for(cx, host_id)` 回调签名。
 /// 按 host_id 路由调用所有 `#[contribute(host_id = "...")]` 的 `__rml_register_*` 函数。
-static CONTRIBUTION_BOOTSTRAP: Mutex<Option<fn(&mut App, &str)>> = Mutex::new(None);
+type ContributionBootstrapFn = fn(&mut App, &str);
+
+/// 进程级回调：build.rs 生成的 `register_rml_contributions_for(cx, host_id)`。
+static CONTRIBUTION_BOOTSTRAP: Mutex<Option<ContributionBootstrapFn>> = Mutex::new(None);
 
 /// 由 build.rs 生成的 `#[ctor::ctor]` 函数调用，安装按 host_id 路由的注册回调。
 pub fn install_contribution_bootstrap(f: fn(&mut App, &str)) {
