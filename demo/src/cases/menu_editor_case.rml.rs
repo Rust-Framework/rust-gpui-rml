@@ -43,7 +43,7 @@ impl MenuEditorCase {
 
     #[computed]
     pub fn code_sample(&self) -> String {
-        r#"<dropdown-menu check_side="Right">
+        r#"<dropdown-menu check-side="Right">
     <Button label="Edit" ghost="" />
     <menu-item label="Save" onclick={on_save} />
     <menu-separator />

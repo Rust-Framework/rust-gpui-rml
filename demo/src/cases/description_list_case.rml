@@ -4,7 +4,7 @@
 
         <Card title="组件说明">
             <p>DescriptionList 是 gpui-component 描述列表组件的 RML 封装，用于呈现键值对形式的只读信息（如用户详情、产品属性）。</p>
-            <p>核心特性：默认 horizontal 布局，vertical 控制纵向；bordered 边框控制；columns 多列布局；label-width 标签列宽；items 绑定批量数据；description 子项支持 label 必填 + value/span 属性；separator 分隔符；value 支持文本属性、文本子节点、元素子节点三种形式。</p>
+            <p>核心特性：默认 horizontal 布局，vertical 控制纵向；bordered 边框控制；columns 多列布局；label-width 标签列宽；items 绑定批量数据（Vec&lt;Arc&lt;dyn IValue&gt;&gt;）；description 子项支持 label 必填 + value/span 属性；separator 分隔符；value 支持文本属性、文本子节点、元素子节点三种形式。</p>
             <p>支持大小写两种标签形式：DescriptionList/descriptions、DescriptionItem/description、separator（仅小写，避免与独立 Separator 组件冲突）。</p>
         </Card>
 
@@ -15,7 +15,7 @@
                 <div class="api-row"><span class="api-prop-name">bordered</span><span class="api-prop-type">布尔标志</span><span>显示边框</span></div>
                 <div class="api-row"><span class="api-prop-name">columns</span><span class="api-prop-type">数字</span><span>列数</span></div>
                 <div class="api-row"><span class="api-prop-name">label-width</span><span class="api-prop-type">像素值</span><span>标签列宽</span></div>
-                <div class="api-row"><span class="api-prop-name">items</span><span class="api-prop-type">绑定</span><span>批量数据绑定（Vec&lt;DescriptionItem&gt;）</span></div>
+                <div class="api-row"><span class="api-prop-name">items</span><span class="api-prop-type">绑定</span><span>批量数据绑定（Vec&lt;Arc&lt;dyn IValue&gt;&gt;）</span></div>
                 <div class="api-row"><span class="api-prop-name">description label</span><span class="api-prop-type">字符串</span><span>子项标签（必填）</span></div>
                 <div class="api-row"><span class="api-prop-name">description value</span><span class="api-prop-type">字符串/元素</span><span>子项值</span></div>
                 <div class="api-row"><span class="api-prop-name">description span</span><span class="api-prop-type">数字</span><span>跨列数</span></div>
@@ -82,7 +82,7 @@
 
             <div class="demo-section">
                 <h3>6. items 绑定（批量数据）</h3>
-                <p>items={desitems} 从 ViewModel 绑定 Vec&lt;DescriptionItem&gt;，与 inline 子元素共存：</p>
+                <p>items={desitems} 从 ViewModel 绑定 Vec&lt;Arc&lt;dyn IValue&gt;&gt;，通过 as_contribution() 提取 name()/id() 构造 DescriptionItem：</p>
                 <descriptions items={desitems} bordered="" columns="2" label-width="100" />
             </div>
 

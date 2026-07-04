@@ -25,7 +25,7 @@ impl IContribution for AvatarCase {
 impl AvatarCase {
     #[computed]
     pub fn code_sample(&self) -> String {
-        r#"<Avatar src="https://..." large="" />
+        r#"<Avatar src="https://..." size="large" />
 <Avatar name="Jason Lee" />
 <Avatar placeholder="Building2" />
 <AvatarGroup limit="3" ellipsis="">

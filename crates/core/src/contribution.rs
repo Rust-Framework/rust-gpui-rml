@@ -7,6 +7,7 @@
 //! `IContribution: IValue`——贡献是值对象的特化。UI 组件依赖 `IValue` 空接口，
 //! 通过 `as_contribution()`/`as_visual()` 能力查询按需提取元数据与视图。
 
+use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -123,6 +124,21 @@ impl ContributionAbilityExt for dyn IValue {
         let erased = crate::ability::query::<dyn IContribution>(self)?;
         Some(unsafe { crate::ability::restore::<dyn IContribution>(erased) })
     }
+}
+
+/// 为实现 `IContribution` 但未使用 `#[contribute]` 的类型注册能力 cast 函数。
+///
+/// 用于简单数据项（非 UI 贡献），使 `Arc<T>` 存储为 `Arc<dyn IValue>` 后
+/// 可通过 `as_contribution()` 查询到 `IContribution` 能力。
+#[allow(unsafe_code)]
+pub fn register_contribution_ability<T: IContribution + 'static>() {
+    crate::ability::register::<T, dyn IContribution>(|c| {
+        let any: &dyn Any = c;
+        any.downcast_ref::<T>().map(|s| {
+            let contrib: &dyn IContribution = s;
+            unsafe { crate::ability::erase(contrib) }
+        })
+    });
 }
 
 /// 贡献点主机：主动受理方。host 自行决定如何存储/映射贡献。

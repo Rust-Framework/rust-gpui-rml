@@ -52,7 +52,7 @@ impl MenuFeaturesCase {
 
     #[computed]
     pub fn code_sample(&self) -> String {
-        r#"<dropdown-menu scrollable="" max_h="280">
+        r#"<dropdown-menu scrollable="" max-h="280">
     <Button label="Features" ghost="" />
     <menu-item label="Available" onclick={on_available} />
     <menu-item label="Disabled" disabled="" onclick={on_disabled} />

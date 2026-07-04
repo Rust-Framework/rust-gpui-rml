@@ -27,7 +27,7 @@ RML **推荐使用小写语法** `<descriptions>` / `<description>` / `<separato
 最小示例 —— 水平布局，带边框，三列：
 
 ```html
-<descriptions bordered="" columns="3" label_width="120">
+<descriptions bordered="" columns="3" label-width="120">
     <description label="用户名" value="alice" />
     <description label="邮箱" value="alice@example.com" />
     <description label="手机号" value="13800138000" />
@@ -36,7 +36,7 @@ RML **推荐使用小写语法** `<descriptions>` / `<description>` / `<separato
 
 - `bordered=""` 启用边框
 - `columns="3"` 设置三列布局
-- `label_width="120"` 设置标签列宽 120px
+- `label-width="120"` 设置标签列宽 120px
 - `label="..."` 设置条目标签（**必填**，构造器参数）
 - `value="..."` 设置条目值
 
@@ -46,22 +46,27 @@ RML **推荐使用小写语法** `<descriptions>` / `<description>` / `<separato
 
 | 属性 | 类型 | 绑定 | 说明 |
 |------|------|------|------|
-| `vertical` | 布尔标志 | — | 垂直布局（标签与值上下排列） |
-| `horizontal` | 布尔标志 | — | 水平布局（标签与值左右排列，默认） |
+| `vertical` | 布尔标志 | `{expr}` | 纵向布局（默认横向，`vertical=""` / `vertical="true"` / `vertical={is_vertical}` 切换纵向） |
 | `bordered` | 布尔标志 | `{expr}` | 显示边框 |
 | `columns` | 数字 | `{expr}` | 列数（水平布局下生效） |
-| `label_width` | 像素值 | `{expr}` | 标签列宽（`gpui::Pixels`） |
-| `small` / `xsmall` / `large` | 布尔标志 | — | Sizable 通用尺寸 |
+| `label-width` | 像素值 | `{expr}` | 标签列宽（`gpui::Pixels`） |
+| `size` | `xsmall`/`small`/`medium`/`large` | `{expr}` | Sizable 通用尺寸 |
+| `items` | — | `{expr}` | 批量数据绑定（`Vec<Arc<dyn IValue>>`） |
 | `disabled` | 布尔 | `{expr}` | 禁用（Styled 通用） |
 
 布尔标志写法：`vertical=""` / `vertical="true"` 启用，`vertical="false"` 显式关闭。
 
-`vertical` 与 `horizontal` 互斥，同时声明时以后者生成的 `.layout(gpui::Axis::*)` 为准。
+默认横向布局，`vertical` 控制纵向。无需声明 `horizontal`。
 
-### `label_width` 类型说明
+### `label-width` 类型说明
 
-- 静态：`label_width="120"` → `.label_width(gpui::px(120.))`
-- 绑定：`label_width={width}` → `.label_width(self.width)`，要求 `width` 字段类型为 `gpui::Pixels`
+- 静态：`label-width="120"` → `.label_width(gpui::px(120.))`
+- 绑定：`label-width={width}` → `.label_width(self.width)`，要求 `width` 字段类型为 `gpui::Pixels`
+
+### `size` 属性
+
+- 静态：`size="small"` → `.with_size(Size::Small)`
+- 绑定：`size={size_value}` → `.with_size(self.size_value)`，要求字段类型实现 `Into<Size>`
 
 ## 子项属性
 
@@ -72,7 +77,7 @@ RML **推荐使用小写语法** `<descriptions>` / `<description>` / `<separato
 | `label` | 字符串 | `{expr}` | 条目标签（**必填**，构造器参数，无 `.label()` setter） |
 | `value` | 字符串 / 元素 | `{expr}` | 条目值 |
 | `span` | 数字 | `{expr}` | 跨列数 |
-| `small` / `xsmall` / `large` | 布尔标志 | — | Sizable 通用尺寸 |
+| `size` | `xsmall`/`small`/`medium`/`large` | `{expr}` | Sizable 通用尺寸 |
 | `disabled` | 布尔 | `{expr}` | 禁用 |
 
 ### `label` 必填约束
@@ -139,27 +144,32 @@ RML **推荐使用小写语法** `<descriptions>` / `<description>` / `<separato
 
 ## 布局方向
 
-### 水平布局（默认）
-
-标签与值左右排列，`columns` 控制列数：
+默认**水平布局**（标签与值左右排列），`columns` 控制列数：
 
 ```html
-<descriptions bordered="" columns="3" label_width="120">
+<descriptions bordered="" columns="3" label-width="120">
     <description label="姓名" value="张三" />
     <description label="年龄" value="28" />
     <description label="邮箱" value="zhangsan@example.com" />
 </descriptions>
 ```
 
-### 垂直布局
-
-`vertical=""` 切换为标签在上、值在下的纵向排列：
+`vertical=""` / `vertical="true"` / `vertical={is_vertical}` 切换为**垂直布局**（标签在上、值在下）：
 
 ```html
 <descriptions vertical="" bordered="">
     <description label="姓名" value="张三" />
     <description label="年龄" value="28" />
     <description label="邮箱" value="zhangsan@example.com" />
+</descriptions>
+```
+
+动态方向控制：
+
+```html
+<descriptions vertical={is_vertical} bordered="" columns="2" label-width="100">
+    <description label="字段 A" value="值 A" />
+    <description label="字段 B" value="值 B" />
 </descriptions>
 ```
 
@@ -184,7 +194,7 @@ RML **推荐使用小写语法** `<descriptions>` / `<description>` / `<separato
 所有支持绑定的属性均可使用 `{field}` 表达式：
 
 ```html
-<descriptions bordered="" columns="2" label_width={width}>
+<descriptions bordered="" columns="2" label-width={width}>
     <description label="用户名" value={user_name} />
     <description label="邮箱" value={user_email} />
     <description label="角色" value={role} span="2" />
@@ -195,12 +205,53 @@ RML **推荐使用小写语法** `<descriptions>` / `<description>` / `<separato
 
 | 属性 | 绑定字段类型 | 说明 |
 |------|-------------|------|
-| `label_width` | `gpui::Pixels` | `.label_width(self.width)` 直接传入 |
+| `label-width` | `gpui::Pixels` | `.label_width(self.width)` 直接传入 |
+| `vertical` | `bool` | `.layout(if self.flag { Vertical } else { Horizontal })` |
 | `bordered` | `bool` | `.bordered(self.flag)` |
 | `columns` | `usize` | `.columns(self.count)` |
+| `size` | `Size` | `.with_size(self.size)` |
+| `items` | `Vec<Arc<dyn IValue>>` | `.children(self.items.clone().into_iter().filter_map(...))` |
 | `value` | `String` / `SharedString` | `.value(self.field.clone())`（需 Clone） |
 | `span` | `usize` | `.span(self.span)` |
 | `label` | `String` / `SharedString` | `DescriptionItem::new(self.field.clone())` |
+
+## items 绑定
+
+`items={desitems}` 从 ViewModel 绑定 `Vec<Arc<dyn IValue>>`，批量注入 DescriptionItem。每个 `IValue` 通过 `as_contribution()` 能力查询提取 `name()` → label、`id()` → value，构造 `DescriptionItem::new(name()).value(id())`。
+
+```html
+<descriptions items={desitems} bordered="" columns="2" label-width="100" />
+```
+
+**数据项要求**：
+
+1. 实现 `IContribution` trait（自动获得 `IValue`）
+2. 通过 `register_contribution_ability::<T>()` 注册能力 cast 函数（在 `on_loaded` 中调用一次）
+
+```rust
+pub struct DescEntry {
+    name: SharedString,
+    id: String,
+}
+
+impl IContribution for DescEntry {
+    fn id(&self) -> &str { &self.id }
+    fn name(&self) -> SharedString { self.name.clone() }
+}
+
+// on_loaded 中注册：
+ensure_desc_entry_registered();  // 内部调用 register_contribution_ability::<DescEntry>()
+
+// 初始化数据：
+self.desitems = vec![
+    Arc::new(DescEntry { name: "产品名称".into(), id: "RML 框架".into() }),
+    Arc::new(DescEntry { name: "版本".into(), id: "1.0.0".into() }),
+];
+```
+
+**与 inline 子元素共存**：`items` 绑定与内联 `<description>` 子元素可同时使用，二者合并注入。
+
+> ⚠️ 未实现 `IContribution` 或未注册能力 cast 的 `IValue` 项会被 `filter_map` 静默过滤。
 
 ## Codegen 说明
 
@@ -209,7 +260,7 @@ RML 编译器将 `<descriptions>` + `<description>` 转译为直接 `.child()` �
 **输入**：
 
 ```html
-<descriptions bordered="" columns="3" label_width="120">
+<descriptions bordered="" columns="3" label-width="120">
     <description label="用户名" value="alice" />
     <separator />
     <description label="角色" span="2">
@@ -243,28 +294,28 @@ rml_ui::DescriptionList::new()
 
 ## 完整示例
 
-以下示例来自 `demo/src/cases/description_list_case.rml`，覆盖水平布局、垂直布局、小写标签、bind 绑定、元素子节点五种场景：
+以下示例来自 `demo/src/cases/description_list_case.rml`，覆盖水平布局、垂直布局、小写标签、bind 绑定、元素子节点、items 绑定、vertical 动态绑定七种场景：
 
 ### 1. 水平布局 + bordered + columns
 
 ```html
-<DescriptionList bordered="" columns="3" label_width="120">
-    <DescriptionItem label="用户名" value="alice" />
-    <DescriptionItem label="邮箱" value="alice@example.com" />
-    <DescriptionItem label="手机号" value="13800138000" />
-    <DescriptionItem label="角色" value="管理员" />
-    <DescriptionItem label="状态" value="活跃" span="2" />
-</DescriptionList>
+<descriptions bordered="" columns="3" label-width="120">
+    <description label="用户名" value="alice" />
+    <description label="邮箱" value="alice@example.com" />
+    <description label="手机号" value="13800138000" />
+    <description label="角色" value="管理员" />
+    <description label="状态" value="活跃" span="2" />
+</descriptions>
 ```
 
 ### 2. 垂直布局
 
 ```html
-<DescriptionList vertical="" bordered="">
-    <DescriptionItem label="姓名" value="张三" />
-    <DescriptionItem label="年龄" value="28" />
-    <DescriptionItem label="邮箱" value="zhangsan@example.com" />
-</DescriptionList>
+<descriptions vertical="" bordered="">
+    <description label="姓名" value="张三" />
+    <description label="年龄" value="28" />
+    <description label="邮箱" value="zhangsan@example.com" />
+</descriptions>
 ```
 
 ### 3. 小写标签 + separator
@@ -282,32 +333,69 @@ rml_ui::DescriptionList::new()
 ### 4. bind 绑定
 
 ```html
-<DescriptionList bordered="" columns="2" label_width={width}>
-    <DescriptionItem label="用户名" value={user_name} />
-    <DescriptionItem label="邮箱" value={user_email} />
-    <DescriptionItem label="角色" value={role} span="2" />
-</DescriptionList>
+<descriptions bordered="" columns="2" label-width={width}>
+    <description label="用户名" value={user_name} />
+    <description label="邮箱" value={user_email} />
+    <description label="角色" value={role} span="2" />
+</descriptions>
 ```
 
 ### 5. 元素子节点作为 value
 
 ```html
-<DescriptionList bordered="" columns="2">
-    <DescriptionItem label="角色">
+<descriptions bordered="" columns="2">
+    <description label="角色">
         <Badge primary="">{role}</Badge>
-    </DescriptionItem>
-    <DescriptionItem label="状态">
+    </description>
+    <description label="状态">
         <Badge success="">活跃</Badge>
-    </DescriptionItem>
-</DescriptionList>
+    </description>
+</descriptions>
+```
+
+### 6. items 绑定（批量数据）
+
+```html
+<descriptions items={desitems} bordered="" columns="2" label-width="100" />
+```
+
+### 7. vertical 绑定（动态方向）
+
+```html
+<descriptions vertical={is_vertical} bordered="" columns="2" label-width="100">
+    <description label="字段 A" value="值 A" />
+    <description label="字段 B" value="值 B" />
+</descriptions>
 ```
 
 ### Code-behind（Rust 侧）
 
 ```rust
+use std::sync::Arc;
+use std::sync::Once;
+
 use gpui::SharedString;
 use rml::prelude::*;
 use rml_core::i18n::t_static;
+
+/// DescriptionList items 绑定的演示数据项。
+pub struct DescEntry {
+    name: SharedString,
+    id: String,
+}
+
+impl IContribution for DescEntry {
+    fn id(&self) -> &str { &self.id }
+    fn name(&self) -> SharedString { self.name.clone() }
+}
+
+static DESC_ENTRY_REGISTERED: Once = Once::new();
+
+fn ensure_desc_entry_registered() {
+    DESC_ENTRY_REGISTERED.call_once(|| {
+        register_contribution_ability::<DescEntry>();
+    });
+}
 
 #[contribute(
     host_id = "demo.activity",
@@ -323,6 +411,8 @@ pub struct DescriptionListCase {
     pub user_email: String,
     pub role: String,
     pub width: gpui::Pixels,
+    pub is_vertical: bool,
+    pub desitems: Vec<Arc<dyn IValue>>,
 }
 
 impl IContribution for DescriptionListCase {
@@ -332,10 +422,18 @@ impl IContribution for DescriptionListCase {
 
 impl ILifecycle for DescriptionListCase {
     fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut gpui::Context<Self>) {
+        ensure_desc_entry_registered();
         self.user_name = "alice".into();
         self.user_email = "alice@example.com".into();
         self.role = "管理员".into();
         self.width = gpui::px(120.0);
+        self.is_vertical = true;
+        self.desitems = vec![
+            Arc::new(DescEntry { name: "产品名称".into(), id: "RML 框架".into() }),
+            Arc::new(DescEntry { name: "版本".into(), id: "1.0.0".into() }),
+            Arc::new(DescEntry { name: "许可证".into(), id: "MIT".into() }),
+            Arc::new(DescEntry { name: "作者".into(), id: "Rust 社区".into() }),
+        ];
     }
 }
 
@@ -357,11 +455,15 @@ impl DescriptionListCase {
 
 4. **`<Separator>`（PascalCase）误用为描述列表分隔符** —— `<Separator>` 是独立组件，不会被识别为 DescriptionList 子项。必须使用小写 `<separator />`。
 
-5. **`label_width` 绑定字段类型不匹配** —— 静态 `label_width="120"` 生成 `.label_width(gpui::px(120.))`，绑定 `label_width={width}` 生成 `.label_width(self.width)`，要求 `width: gpui::Pixels`。若字段为 `f32` 会导致 Rust 编译失败。
+5. **`label-width` 绑定字段类型不匹配** —— 静态 `label-width="120"` 生成 `.label_width(gpui::px(120.))`，绑定 `label-width={width}` 生成 `.label_width(self.width)`，要求 `width: gpui::Pixels`。若字段为 `f32` 会导致 Rust 编译失败。
 
 6. **`value` 属性与子节点同时存在** —— `value` 属性优先级最高，子节点被忽略。不会报错但可能造成困惑，建议二选一。
 
 7. **`ref` 指令无效** —— `DescriptionList::new()` 不接收 ElementId，`ref="name"` 会被静默忽略（不报错，但不生成稳定 ID）。如需引用，请在 code-behind 中通过其他方式管理状态。
+
+8. **`items` 绑定字段类型不匹配** —— `items={desitems}` 要求字段类型为 `Vec<Arc<dyn IValue>>`。数据项需实现 `IContribution` 并通过 `register_contribution_ability::<T>()` 注册，否则 `as_contribution()` 返回 `None`，项被静默过滤。
+
+9. **属性名使用下划线** —— RML 属性名必须使用 kebab-case（如 `label-width`），禁止下划线（如 `label_width`）。parser 的 `read_attr_name()` 拒绝 `_`，使用下划线会导致解析错误。
 
 ## 相关组件
 
@@ -374,6 +476,5 @@ impl DescriptionListCase {
 
 以下 gpui-component DescriptionList API 需在 Rust code-behind 中手写：
 
-- 动态增删条目 —— RML 仅支持静态声明 `<description>` 子项，运行时增删需通过编程方式操作
 - 自定义条目渲染（替换默认 label/value 布局）—— 需扩展 `DescriptionItem` 或手写 builder
 - `DescriptionText` 的复杂类型转换 —— RML 的 `value` 绑定生成 `.value(self.field.clone())`，若字段类型非 `String`/`SharedString` 需手动实现 `Into<DescriptionText>`

@@ -9,7 +9,7 @@ pub use crate::command::{CallContext, CommandAbilityExt, ICommand, RelayCommand}
 pub use crate::component::IComponent;
 pub use crate::contribution::{
     ContributionAbilityExt, ContributionOptions, IContribution, IContributionHost,
-    IContributionRegistry, IVisualContribution, VisualAbilityExt,
+    IContributionRegistry, IVisualContribution, VisualAbilityExt, register_contribution_ability,
 };
 pub use crate::value::IValue;
 pub use crate::workbench::{IWorkbench, IWorkbenchManager, IWorkbenchProvider, Uri};

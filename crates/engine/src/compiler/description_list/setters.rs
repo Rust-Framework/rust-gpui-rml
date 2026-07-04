@@ -83,7 +83,8 @@ pub fn static_setter(name: &str, value: &str, tag: &str) -> Option<String> {
 /// - `bordered={expr}` → `.bordered(self.expr)`
 /// - `columns={expr}` → `.columns(self.expr)`
 /// - `label_width={expr}` → `.label_width(self.expr)`
-/// - `items={data}` → `.children(self.data.clone())`（与 inline <description> 子元素共存）
+/// - `items={data}` → `.children(self.data.clone().into_iter().filter_map(|c| ...).collect())`
+///   data: Vec<Arc<dyn IValue>>，通过 as_contribution() 获取 name()/id() 构造 DescriptionItem
 ///
 /// DescriptionItem 属性：
 /// - `value={expr}` → `.value(self.expr.clone())`（DescriptionText: From<SharedString> 等需要 owned）
@@ -107,7 +108,10 @@ pub fn bind_setter(
             "bordered" | "columns" | "label_width" => {
                 Some(format!(".{}({})", name, rust_expr))
             }
-            "items" => Some(format!(".children({}.clone())", rust_expr)),
+            "items" => Some(format!(
+                ".children({}.clone().into_iter().filter_map(|c| c.as_contribution().map(|c| rml_ui::DescriptionItem::new(c.name()).value(c.id()))).collect::<Vec<_>>())",
+                rust_expr
+            )),
             _ => None,
         },
         "DescriptionItem" => match name {
@@ -289,7 +293,10 @@ mod tests {
     #[test]
     fn bind_setter_items() {
         let code = bind_setter("items", "desitems", &[], &[], "DescriptionList").unwrap();
-        assert_eq!(code, ".children(self.desitems.clone())");
+        assert_eq!(
+            code,
+            ".children(self.desitems.clone().into_iter().filter_map(|c| c.as_contribution().map(|c| rml_ui::DescriptionItem::new(c.name()).value(c.id()))).collect::<Vec<_>>())"
+        );
     }
 
     #[test]

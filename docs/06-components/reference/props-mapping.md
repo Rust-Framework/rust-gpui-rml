@@ -44,7 +44,7 @@ RML 通过两层机制确保 codegen 属性映射齐全：
 | `placeholder="..."` | `.placeholder("...")` | 输入占位符 |
 | `tooltip="..."` | `.tooltip("...")` | 工具提示 |
 | `primary` / `secondary` / `danger` / `success` / `warning` / `info` / `ghost` / `link` / `text` | `.primary()` 等 | Button variant |
-| `small` / `xsmall` / `large` | `.small()` 等 | Sizable 尺寸 |
+| `size="xsmall"` / `size="small"` / `size="medium"` / `size="large"` | `.with_size(Size::*)` | Sizable 尺寸 |
 | `compact` / `loading` | `.compact()` 等 | 状态 |
 | `disabled="true"` | `.disabled(true)` | 禁用 |
 | `selected="true"` | `.selected(true)` | 选中 |
@@ -80,10 +80,12 @@ RML 通过两层机制确保 codegen 属性映射齐全：
 | `status_bar` | `items` | 状态栏项数据绑定 |
 | `Accordion` | `multiple`, `bordered`, `on_toggle_click` | 多选/边框/切换事件 |
 | `AccordionItem` | `title`, `open`, `icon` | 子项标题/初始展开/图标 |
-| `DescriptionList` | `vertical`, `horizontal`, `bordered`, `columns`, `label_width` | 布局方向/边框/列数/标签列宽 |
-| `DescriptionItem` | `label`, `value`, `span` | 子项标签（构造器参数）/值/跨列 |
+| `DescriptionList` | `vertical`, `bordered`, `columns`, `label-width`, `size`, `items` | 布局方向/边框/列数/标签列宽/尺寸/批量数据绑定 |
+| `DescriptionItem` | `label`, `value`, `span`, `size` | 子项标签（构造器参数）/值/跨列/尺寸 |
 
 ## Shell 窗口属性
+
+> `.rml` 中使用 kebab-case（如 `selected-tab`、`show-chrome`），parser 的 `normalize_attr_name()` 自动转换为 snake_case 供内部查找。
 
 ### `<tab_window>`
 
@@ -94,11 +96,11 @@ RML 通过两层机制确保 codegen 属性映射齐全：
 | `startup` | static | 启动位置（如 `CenterScreen`） |
 | `icon` | bind | 图标（`IconName::Frame`） |
 | `tabs` | bind | TabBar 项列表 |
-| `selected_tab` | bind | 当前选中 tab 索引 |
-| `show_chrome` | bind | 是否显示窗口 chrome |
-| `left_size` / `right_size` / `bottom_size` | bind | 面板尺寸 |
-| `on_tab_click` | event | Tab 点击事件 |
-| `on_chrome_toggle` | event | Chrome 切换事件 |
+| `selected-tab` | bind | 当前选中 tab 索引 |
+| `show-chrome` | bind | 是否显示窗口 chrome |
+| `left-size` / `right-size` / `bottom-size` | bind | 面板尺寸 |
+| `on-tab-click` | event | Tab 点击事件 |
+| `on-chrome-toggle` | event | Chrome 切换事件 |
 
 ### `<modern_window>`
 
