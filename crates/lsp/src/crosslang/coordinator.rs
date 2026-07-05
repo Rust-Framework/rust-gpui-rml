@@ -264,6 +264,30 @@ mod tests {
         fn is_ready(&self) -> bool {
             false
         }
+        fn find_references(
+            &self,
+            _uri: &Url,
+            _pos: lsp_types::Position,
+            _include_declaration: bool,
+        ) -> Vec<SymbolLocation> {
+            Vec::new()
+        }
+        fn rename_member(
+            &self,
+            _rml_rs_uri: &Url,
+            _struct_name: &str,
+            _member: &str,
+            _new_name: &str,
+        ) -> Vec<lsp_types::TextEdit> {
+            Vec::new()
+        }
+        fn rename_struct(
+            &self,
+            _old_name: &str,
+            _new_name: &str,
+        ) -> std::collections::HashMap<Url, Vec<lsp_types::TextEdit>> {
+            std::collections::HashMap::new()
+        }
     }
 
     #[test]

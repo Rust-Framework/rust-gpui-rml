@@ -2,6 +2,9 @@
 
 pub mod common;
 
+#[path = "overflow_test_case.rml.rs"]
+pub mod overflow_test_case;
+
 #[path = "welcome_case.rml.rs"]
 pub mod welcome_case;
 #[path = "counter_case.rml.rs"]

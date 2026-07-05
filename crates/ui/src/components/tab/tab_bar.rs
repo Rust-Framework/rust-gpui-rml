@@ -8,7 +8,7 @@ use gpui::{
 };
 use smallvec::SmallVec;
 
-use super::{TabItem, TabVariant};
+use super::{Tab, TabItem, TabVariant};
 use gpui_component::animation::{Lerp, ease_in_out_cubic};
 use gpui_component::button::{Button, ButtonVariants as _};
 use gpui_component::menu::{DropdownMenu as _, PopupMenuItem};
@@ -500,6 +500,37 @@ impl RenderOnce for TabBar {
         let selected_index = self.selected_index;
         let on_click = self.on_click.clone();
 
+        // 测量层：独立的轻量级 Tab 列表，始终 flex_shrink_0 以测得自然内容宽度，
+        // 不参与 is_overflow 压缩，避免测量反馈循环（is_overflow 翻转导致测量元素
+        // 在 flex_shrink_0/flex_1 之间切换，进而反复触发 is_overflow 翻转）。
+        let variant = self.variant;
+        let size = self.size;
+        let measurement_tabs: Vec<Tab> = if enable_overflow {
+            self.children
+                .iter()
+                .enumerate()
+                .map(|(ix, item)| {
+                    let mut tab = Tab::new()
+                        .ix(ix)
+                        .tab_bar_prefix(item.tab_bar_prefix.unwrap_or(true))
+                        .disabled(item.disabled)
+                        .closable(item.closable)
+                        .with_variant(variant)
+                        .with_size(size)
+                        .measurement();
+                    if let Some(label) = &item.title_label {
+                        tab = tab.label(label.clone());
+                    }
+                    if let Some(icon) = &item.title_icon {
+                        tab = tab.icon(icon.clone());
+                    }
+                    tab
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
+
         let header = self.base
             .group("tab-bar")
             .relative()
@@ -522,6 +553,26 @@ impl RenderOnce for TabBar {
             .rounded(self.variant.tab_bar_radius(self.size, cx))
             .paddings(paddings)
             .refine_style(&self.style)
+            .when_some(content_width_rc.clone(), |this, cw_rc| {
+                // 独立测量层：absolute 出流 + opacity:0，
+                // 始终 flex_shrink_0 测量自然内容宽度，不受 is_overflow 压缩影响。
+                // 放在 header（relative）内而非 tabs-inner 内，避免被 overflow_x_hidden 裁剪。
+                // DOM 顺序在显示层之前，确保显示层在上层接收鼠标事件。
+                this.child(
+                    h_flex()
+                        .id("tab-bar-measure")
+                        .absolute()
+                        .top_0()
+                        .left_0()
+                        .opacity(0.)
+                        .flex_shrink_0()
+                        .gap(gap)
+                        .on_prepaint(move |bounds, _, _| {
+                            *cw_rc.borrow_mut() = bounds.size.width;
+                        })
+                        .children(measurement_tabs),
+                )
+            })
             .when_some(self.prefix, |this, prefix| this.child(prefix))
             .child(
                 h_flex()
@@ -552,11 +603,6 @@ impl RenderOnce for TabBar {
                                 h_flex()
                                     .gap(gap)
                                     .when_else(is_overflow, |this| this.flex_1().min_w_0(), |this| this.flex_shrink_0())
-                                    .when_some(content_width_rc.clone(), |this, cw_rc| {
-                                        this.on_prepaint(move |bounds, _, _| {
-                                            *cw_rc.borrow_mut() = bounds.size.width;
-                                        })
-                                    })
                                     .children(self.children.into_iter().enumerate().map(|(ix, item)| {
                                         item_metas.push((
                                             item.title_label.clone(),

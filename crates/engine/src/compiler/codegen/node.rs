@@ -1,4 +1,4 @@
-﻿//! 节点代码生成 —— `gen_node` + `gen_element`
+//! 节点代码生成 —— `gen_node` + `gen_element`
 //!
 //! 为单个 AST 节点（元素/文本/插值/混合文本）生成构建代码。
 
@@ -283,7 +283,7 @@ pub(crate) fn gen_element(
 
     if let Some(field) = &model_field {
         if tag == "input" || tag == "textarea" {
-            let code = super::binding::gen_model_input(elem, ctx, id_counter, field.clone())?;
+            let code = super::binding::gen_model_input(elem, ctx, id_counter, field.clone(), parents)?;
             return Ok((code, false));
         }
     }

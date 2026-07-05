@@ -54,8 +54,10 @@ fn map_declaration(decl: &Declaration, vars: &HashMap<String, Value>) -> Option<
         // ─── 文本 ───
         "font-size" => length_method("text_size", &value),
         "font-weight" => font_weight_method(&value),
+        "font-family" => font_family_method(&value),
         "text-align" => text_align_method(&value),
         "line-height" => length_method("line_height", &value),
+        "white-space" => white_space_method(&value),
 
         // ─── Flexbox ───
         "display" => match &value {
@@ -115,6 +117,16 @@ fn map_declaration(decl: &Declaration, vars: &HashMap<String, Value>) -> Option<
         "overflow" => match &value {
             Value::Keyword(k) if k == "hidden" => Some("overflow_hidden()".into()),
             Value::Keyword(k) if k == "scroll" => Some("overflow_scroll()".into()),
+            _ => None,
+        },
+        "overflow-x" => match &value {
+            Value::Keyword(k) if k == "hidden" => Some("overflow_hidden()".into()),
+            Value::Keyword(k) if k == "scroll" || k == "auto" => Some("overflow_x_scrollbar()".into()),
+            _ => None,
+        },
+        "overflow-y" => match &value {
+            Value::Keyword(k) if k == "hidden" => Some("overflow_hidden()".into()),
+            Value::Keyword(k) if k == "scroll" || k == "auto" => Some("overflow_y_scrollbar()".into()),
             _ => None,
         },
 
@@ -213,6 +225,43 @@ fn text_align_method(value: &Value) -> Option<String> {
             "left" => Some("text_left()".into()),
             "center" => Some("text_center()".into()),
             "right" => Some("text_right()".into()),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+/// font-family 映射
+///
+/// CSS `font-family: Consolas` / `font-family: "Arial"` 映射为 `.font_family("...")`。
+/// 对于逗号分隔的字体列表，仅取第一个可用字体。
+fn font_family_method(value: &Value) -> Option<String> {
+    let first = match &value {
+        Value::Keyword(k) => k.as_str(),
+        Value::String(s) => s.as_str(),
+        Value::List(items) => {
+            let item = items.first()?;
+            match item {
+                Value::Keyword(k) => k.as_str(),
+                Value::String(s) => s.as_str(),
+                _ => return None,
+            }
+        }
+        _ => return None,
+    };
+    Some(format!("font_family({:?})", first))
+}
+
+/// white-space 关键字映射
+///
+/// GPUI 仅支持 `Normal` / `Nowrap` 两种 whitespace 模式，因此 `pre` / `nowrap`
+/// 统一映射为 `.whitespace_nowrap()`（保留硬换行并禁止软换行），`normal` 映射为
+/// `.whitespace_normal()`。
+fn white_space_method(value: &Value) -> Option<String> {
+    match &value {
+        Value::Keyword(k) => match k.as_str() {
+            "nowrap" | "pre" => Some("whitespace_nowrap()".into()),
+            "normal" | "pre-wrap" | "pre-line" => Some("whitespace_normal()".into()),
             _ => None,
         },
         _ => None,
@@ -437,5 +486,26 @@ mod tests {
         let d = decl("cursor", Value::Keyword("pointer".into()));
         let code = map_declarations(&[d], &HashMap::new());
         assert!(code.is_empty());
+    }
+
+    #[test]
+    fn map_white_space_pre() {
+        let d = decl("white-space", Value::Keyword("pre".into()));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".whitespace_nowrap()"), "expected whitespace_nowrap, got: {}", code);
+    }
+
+    #[test]
+    fn map_overflow_x_scroll() {
+        let d = decl("overflow-x", Value::Keyword("auto".into()));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".overflow_x_scrollbar()"), "expected overflow_x_scrollbar, got: {}", code);
+    }
+
+    #[test]
+    fn map_font_family() {
+        let d = decl("font-family", Value::Keyword("Consolas".into()));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".font_family(\"Consolas\")"), "expected font_family, got: {}", code);
     }
 }

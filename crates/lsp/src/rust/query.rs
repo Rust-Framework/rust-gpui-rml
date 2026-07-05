@@ -153,4 +153,36 @@ pub trait RustSemanticQuery: Send + Sync {
     ///
     /// 首次加载耗时较长（30s+），加载完成前返回 false，查询降级返回空
     fn is_ready(&self) -> bool;
+
+    // ── references/rename 跨语言查询 ──
+
+    /// 在 .rml.rs 文件内查找符号引用
+    ///
+    /// 用于 references 请求光标在 .rml.rs 文件时委托查询。
+    fn find_references(
+        &self,
+        uri: &Url,
+        pos: Position,
+        include_declaration: bool,
+    ) -> Vec<SymbolLocation>;
+
+    /// 重命名 struct 字段或 impl 方法（#[command]/#[computed]）
+    ///
+    /// 返回该 .rml.rs 内所有需修改的 TextEdit。
+    fn rename_member(
+        &self,
+        rml_rs_uri: &Url,
+        struct_name: &str,
+        member: &str,
+        new_name: &str,
+    ) -> Vec<lsp_types::TextEdit>;
+
+    /// 全 workspace 重命名 #[component] struct
+    ///
+    /// 返回各文件需要修改的 TextEdit 列表。
+    fn rename_struct(
+        &self,
+        old_name: &str,
+        new_name: &str,
+    ) -> std::collections::HashMap<Url, Vec<lsp_types::TextEdit>>;
 }

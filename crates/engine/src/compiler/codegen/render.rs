@@ -38,7 +38,7 @@ pub(super) fn gen_render_impl_from_children(
     out.push_str("        }\n");
     out.push_str("        use gpui::{ParentElement, InteractiveElement, StatefulInteractiveElement, IntoElement, Styled};\n");
     out.push_str("        use rml_ui::{ContextMenuExt, DropdownMenu, PopupMenuItem, Side, h_flex};\n");
-    out.push_str("        use rml_ui::{ActiveTheme, ButtonVariants, Disableable, Sizable, Selectable, StyledExt};\n");
+    out.push_str("        use rml_ui::{ActiveTheme, ButtonVariants, Disableable, ScrollableElement, Sizable, Selectable, StyledExt};\n");
     out.push_str("        use rml::runtime::event_flow::convert as rml_convert;\n");
 
     let mut id_counter: usize = 0;

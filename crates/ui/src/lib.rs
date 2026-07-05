@@ -70,7 +70,8 @@ pub use gpui_component::{
 
 // 共享 trait 体系
 pub use gpui_component::{
-    button::ButtonVariants, ActiveTheme, Disableable, Selectable, Sizable, Size, StyledExt,
+    button::ButtonVariants, scroll::ScrollableElement, ActiveTheme, Disableable, Selectable,
+    Sizable, Size, StyledExt,
 };
 
 // 窗口组件：ModernWindowShell 内置封装 + 内置 Window/ModernWindow + 助手 trait

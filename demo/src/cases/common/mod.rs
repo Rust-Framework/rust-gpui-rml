@@ -6,6 +6,9 @@
 
 use rml_ui::{TableColumn, TableRow};
 
+const COL_PROP_WIDTH: f32 = 180.0;
+const COL_TYPE_WIDTH: f32 = 120.0;
+
 /// 构建 API 文档表格的列定义和行数据。
 ///
 /// 列结构固定为：属性 / 类型 / 说明（三列）。
@@ -23,8 +26,8 @@ use rml_ui::{TableColumn, TableRow};
 /// ```
 pub fn build_api_table(props: &[(&str, &str, &str)]) -> (Vec<TableColumn>, Vec<TableRow>) {
     let columns = vec![
-        TableColumn::new("prop", "属性"),
-        TableColumn::new("type", "类型"),
+        TableColumn::new("prop", "属性").width(gpui::px(COL_PROP_WIDTH)),
+        TableColumn::new("type", "类型").width(gpui::px(COL_TYPE_WIDTH)),
         TableColumn::new("desc", "说明"),
     ];
     let rows = props

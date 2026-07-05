@@ -464,6 +464,11 @@ pub struct Tab {
     /// compression). Switches from `flex_shrink_0` to `flex_1 + min_w_0` and
     /// enables label ellipsis truncation. Set by TabBar when overflow detected.
     pub(super) compress: bool,
+    /// When true, render as a measurement-only element: skip all interactions
+    /// (hover, group, on_click, on_mouse_down) but keep visual layout — including
+    /// the close button's width — for accurate width measurement. Used by
+    /// TabBar's independent measurement layer to avoid the overflow feedback loop.
+    pub(super) measurement: bool,
 }
 
 impl From<&'static str> for Tab {
@@ -518,6 +523,7 @@ impl Default for Tab {
             closable: false,
             on_close: None,
             compress: false,
+            measurement: false,
         }
     }
 }
@@ -631,6 +637,14 @@ impl Tab {
         self
     }
 
+    /// Render as a measurement-only element: skip all interactions but keep
+    /// visual layout for accurate width measurement. Used by TabBar's
+    /// independent measurement layer.
+    pub(crate) fn measurement(mut self) -> Self {
+        self.measurement = true;
+        self
+    }
+
     /// Set index to the tab.
     pub(crate) fn ix(mut self, ix: usize) -> Self {
         self.ix = ix;
@@ -684,6 +698,7 @@ impl Sizable for Tab {
 
 impl RenderOnce for Tab {
     fn render(self, _: &mut Window, cx: &mut App) -> impl IntoElement {
+        let m = self.measurement;
         let mut tab_style = if self.selected {
             self.variant.selected(cx)
         } else {
@@ -815,7 +830,7 @@ impl RenderOnce for Tab {
 
         self.base
             .id(self.ix)
-            .when(self.closable, |this| this.group(group_name.clone()))
+            .when(self.closable && !m, |this| this.group(group_name.clone()))
             .relative()
             .flex()
             .flex_wrap()
@@ -837,7 +852,7 @@ impl RenderOnce for Tab {
             .border_b(tab_style.borders.bottom)
             .border_color(outer_border_color)
             .corner_radii(corner_radii)
-            .when(!self.selected && !self.disabled, |this| {
+            .when(!self.selected && !self.disabled && !m, |this| {
                 this.hover(|this| {
                     this.text_color(hover_style.fg)
                         .bg(hover_style.bg)
@@ -873,28 +888,40 @@ impl RenderOnce for Tab {
             .child(inner_element)
             .when_some(self.suffix, |this, suffix| this.child(suffix))
             .when(self.closable && !self.disabled, |this| {
-                let on_close = self.on_close.clone();
-                let close_btn = div()
-                    .id(("tab-close", self.ix))
-                    .group_hover(group_name.clone(), |this| this.opacity(1.))
-                    .opacity(0.)
-                    .cursor_pointer()
-                    .px_0p5()
-                    .child(Icon::new(IconName::Close).xsmall())
-                    .when_some(on_close, |this, on_close| {
-                        this.on_click(move |event, window, cx| {
-                            cx.stop_propagation();
-                            on_close(event, window, cx);
+                let close_btn = if m {
+                    // 测量模式：只渲染 close 按钮的占位（确保宽度准确），无交互
+                    div()
+                        .opacity(0.)
+                        .px_0p5()
+                        .child(Icon::new(IconName::Close).xsmall())
+                        .into_any_element()
+                } else {
+                    let on_close = self.on_close.clone();
+                    div()
+                        .id(("tab-close", self.ix))
+                        .group_hover(group_name.clone(), |this| this.opacity(1.))
+                        .opacity(0.)
+                        .cursor_pointer()
+                        .px_0p5()
+                        .child(Icon::new(IconName::Close).xsmall())
+                        .when_some(on_close, |this, on_close| {
+                            this.on_click(move |event, window, cx| {
+                                cx.stop_propagation();
+                                on_close(event, window, cx);
+                            })
                         })
-                    });
+                        .into_any_element()
+                };
                 this.child(close_btn)
             })
-            .on_mouse_down(MouseButton::Left, |_, _, cx| {
-                // Stop propagation behavior, for works on TitleBar.
-                // https://github.com/longbridge/gpui-component/issues/1836
-                cx.stop_propagation();
+            .when(!m, |this| {
+                this.on_mouse_down(MouseButton::Left, |_, _, cx| {
+                    // Stop propagation behavior, for works on TitleBar.
+                    // https://github.com/longbridge/gpui-component/issues/1836
+                    cx.stop_propagation();
+                })
             })
-            .when(!self.disabled, |this| {
+            .when(!m && !self.disabled, |this| {
                 this.when_some(self.on_click.clone(), |this, on_click| {
                     this.on_click(move |event, window, cx| on_click(event, window, cx))
                 })

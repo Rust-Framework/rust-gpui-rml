@@ -1,4 +1,4 @@
-﻿//! RML 语法解析器
+//! RML 语法解析器
 //!
 //! 将 `.rml` 源码解析为 AST。包含词法分析（tokenizer）与语法分析（parser）。
 //! 详见文档 §2 RML 标记语言。
@@ -346,13 +346,26 @@ fn parse_event_handler(expr: &str) -> EventHandler {
 }
 
 /// 解析文本段：将 "text {expr} more" 拆分为 [Literal, Interpolation, Literal]
+///
+/// tokenizer 把来自 HTML 实体的 `{`/`}` 转义为 `\{`/`\}`，本函数需将其识别为
+/// 普通字符，避免被误当作插值表达式。
 fn parse_text_segments(raw: &str) -> Vec<TextSegment> {
     let mut segments = Vec::new();
     let mut current = String::new();
     let mut chars = raw.chars().peekable();
 
     while let Some(c) = chars.next() {
-        if c == '{' {
+        if c == '\\' {
+            // 转义序列：仅 `\{` 与 `\}` 表示字面 brace，其余原样保留反斜杠
+            if let Some(&next) = chars.peek() {
+                if next == '{' || next == '}' {
+                    current.push(next);
+                    chars.next();
+                    continue;
+                }
+            }
+            current.push('\\');
+        } else if c == '{' {
             if !current.is_empty() {
                 segments.push(TextSegment::Literal(std::mem::take(&mut current)));
             }
@@ -1057,6 +1070,39 @@ mod tests {
     fn parse_text_segments_empty_string() {
         let segs = parse_text_segments("");
         assert!(segs.is_empty());
+    }
+
+    #[test]
+    fn parse_text_segments_escaped_braces_as_literal() {
+        // tokenizer 把实体解码出的 { } 转义为 \{ \}，parser 应将其视为普通字符
+        let segs = parse_text_segments("use \\{item in items\\} syntax");
+        assert_eq!(segs.len(), 1);
+        assert!(matches!(&segs[0], TextSegment::Literal(s) if s == "use {item in items} syntax"));
+    }
+
+    #[test]
+    fn parse_text_segments_escaped_braces_mixed_with_interpolation() {
+        // 字面 brace 与真实插值共存
+        let segs = parse_text_segments("\\{literal\\} and {expr}");
+        assert_eq!(segs.len(), 2);
+        assert!(matches!(&segs[0], TextSegment::Literal(s) if s == "{literal} and "));
+        assert!(matches!(&segs[1], TextSegment::Interpolation(e) if e == "expr"));
+    }
+
+    #[test]
+    fn parse_entity_braces_in_text_not_interpolation() {
+        // 整体验证：HTML 实体 &#123;/&#125; 在文本中解码为字面 { }，不触发插值
+        let root = parse("<p>each=&#123;item in items&#125;</p>").unwrap();
+        match root {
+            Node::Element(e) => {
+                assert_eq!(e.children.len(), 1);
+                match &e.children[0] {
+                    Node::Text(t) => assert_eq!(t, "each={item in items}"),
+                    other => panic!("expected Text, got {:?}", other),
+                }
+            }
+            other => panic!("expected Element, got {:?}", other),
+        }
     }
 
     // ─── 辅助函数：normalize_attr_name ───

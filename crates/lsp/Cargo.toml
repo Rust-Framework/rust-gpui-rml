@@ -1,8 +1,8 @@
 [package]
 name = "rust-rml-lsp"
-version.workspace = true
-edition.workspace = true
-license.workspace = true
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
 description = "RML 语言服务器（LSP）——补全/诊断/悬停"
 
 [lib]
@@ -14,7 +14,7 @@ name = "rml-lsp"
 path = "src/main.rs"
 
 [dependencies]
-rust-rml-engine = { workspace = true }
+rust-rml-engine = { path = "../engine" }
 lsp-server = "0.7"
 lsp-types = "0.95"
 serde = { version = "1", features = ["derive"] }
@@ -25,22 +25,26 @@ anyhow = "1"
 # rust-analyzer 库依赖（库依赖模式：直接复用 RA 的 rust 语法服务）
 # 锁定到 2026-06-29 release（commit 972c4e7b），兼容 Rust 1.98 nightly (61d7280f3 2026-06-06)
 # 注意：RA 仓库内部 crate 不带 ra_ap_ 前缀（仅 crates.io 发布时添加），需用 package = "..." 重命名
-ra_ap_ide = { package = "ide", git = "https://github.com/rust-lang/rust-analyzer.git", tag = "2026-06-29", optional = true, default-features = false }
-ra_ap_ide-db = { package = "ide-db", git = "https://github.com/rust-lang/rust-analyzer.git", tag = "2026-06-29", optional = true, default-features = false }
-ra_ap_load-cargo = { package = "load-cargo", git = "https://github.com/rust-lang/rust-analyzer.git", tag = "2026-06-29", optional = true, default-features = false }
-ra_ap_hir = { package = "hir", git = "https://github.com/rust-lang/rust-analyzer.git", tag = "2026-06-29", optional = true, default-features = false }
-ra_ap_vfs = { package = "vfs", git = "https://github.com/rust-lang/rust-analyzer.git", tag = "2026-06-29", optional = true, default-features = false }
-ra_ap_project-model = { package = "project-model", git = "https://github.com/rust-lang/rust-analyzer.git", tag = "2026-06-29", optional = true, default-features = false }
-ra_ap_syntax = { package = "syntax", git = "https://github.com/rust-lang/rust-analyzer.git", tag = "2026-06-29", optional = true, default-features = false }
+#
+# 网络受限环境下暂时注释：cargo 即使在 default = [] 模式下也需解析 optional 依赖的 git 元信息。
+# 启用 rust-backend 时需先联网 `cargo fetch`，再取消注释下方依赖与 [features] 中的 rust-backend 段。
+# ra_ap_ide = { package = "ide", git = "https://github.com/rust-lang/rust-analyzer.git", tag = "2026-06-29", optional = true, default-features = false }
+# ra_ap_ide-db = { package = "ide-db", git = "https://github.com/rust-lang/rust-analyzer.git", tag = "2026-06-29", optional = true, default-features = false }
+# ra_ap_load-cargo = { package = "load-cargo", git = "https://github.com/rust-lang/rust-analyzer.git", tag = "2026-06-29", optional = true, default-features = false }
+# ra_ap_hir = { package = "hir", git = "https://github.com/rust-lang/rust-analyzer.git", tag = "2026-06-29", optional = true, default-features = false }
+# ra_ap_vfs = { package = "vfs", git = "https://github.com/rust-lang/rust-analyzer.git", tag = "2026-06-29", optional = true, default-features = false }
+# ra_ap_project-model = { package = "project-model", git = "https://github.com/rust-lang/rust-analyzer.git", tag = "2026-06-29", optional = true, default-features = false }
+# ra_ap_syntax = { package = "syntax", git = "https://github.com/rust-lang/rust-analyzer.git", tag = "2026-06-29", optional = true, default-features = false }
 
 [features]
 default = []
-rust-backend = [
-    "ra_ap_ide",
-    "ra_ap_ide-db",
-    "ra_ap_load-cargo",
-    "ra_ap_hir",
-    "ra_ap_vfs",
-    "ra_ap_project-model",
-    "ra_ap_syntax",
-]
+# rust-backend feature 暂时禁用（依赖未启用）。启用时需同时取消注释上方 ra_ap_* 依赖。
+# rust-backend = [
+#     "ra_ap_ide",
+#     "ra_ap_ide-db",
+#     "ra_ap_load-cargo",
+#     "ra_ap_hir",
+#     "ra_ap_vfs",
+#     "ra_ap_project-model",
+#     "ra_ap_syntax",
+# ]

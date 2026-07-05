@@ -6,6 +6,86 @@
 use crate::parser::span::Span;
 use crate::parser::ParseError;
 
+/// 解码 HTML 字符实体引用（数值与常见命名实体）。
+///
+/// RML 文本节点与静态属性值中允许使用 `&#123;`、`&#x7B;`、`&amp;` 等实体来书写
+/// 在 RML 语法中具有特殊含义的字符（如 `{ } | ( )`）。tokenizer 在产出 Token 前
+/// 将实体还原为实际字符，后续 codegen 即可直接渲染。
+///
+/// 当 `escape_braces` 为 `true` 时，解码出的 `{`/`}` 会转义为 `\{`/`\}`，
+/// 避免 parser 的文本插值扫描把它们误识别为 `{expr}`。该参数在文本节点
+/// 处传 `true`，在静态属性值处传 `false`（属性值不存在插值语义）。
+fn decode_html_entities(text: &str, escape_braces: bool) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut chars = text.char_indices().peekable();
+
+    while let Some((_start, c)) = chars.next() {
+        if c != '&' {
+            out.push(c);
+            continue;
+        }
+
+        // 收集从 `&` 开始到下一个 `;` 或分隔符之间的片段
+        let mut entity = String::new();
+        let mut has_semicolon = false;
+        while let Some((_, ch)) = chars.peek() {
+            if *ch == ';' {
+                has_semicolon = true;
+                chars.next(); // 消费 ';'
+                break;
+            }
+            // 实体字符限定为字母、数字、`#`、`x`、`X`；遇到其他字符则终止，
+            // 并将已收集字符作为普通文本保留
+            if ch.is_alphanumeric() || *ch == '#' {
+                entity.push(*ch);
+                chars.next();
+            } else {
+                break;
+            }
+        }
+
+        if !has_semicolon {
+            // 不是合法的实体引用，原样保留 `&` 与已收集字符
+            out.push('&');
+            out.push_str(&entity);
+            continue;
+        }
+
+        let decoded = if let Some(rest) = entity.strip_prefix("#x").or_else(|| entity.strip_prefix("#X")) {
+            u32::from_str_radix(rest, 16)
+                .ok()
+                .and_then(char::from_u32)
+        } else if let Some(rest) = entity.strip_prefix('#') {
+            rest.parse::<u32>().ok().and_then(char::from_u32)
+        } else {
+            match entity.as_str() {
+                "amp" => Some('&'),
+                "lt" => Some('<'),
+                "gt" => Some('>'),
+                "quot" => Some('"'),
+                "apos" => Some('\''),
+                _ => None,
+            }
+        };
+
+        match decoded {
+            Some('{') | Some('}') if escape_braces => {
+                out.push('\\');
+                out.push(decoded.unwrap());
+            }
+            Some(d) => out.push(d),
+            None => {
+                // 无法识别的实体，保留原样以避免信息丢失
+                out.push('&');
+                out.push_str(&entity);
+                out.push(';');
+            }
+        }
+    }
+
+    out
+}
+
 /// Token 种类
 #[derive(Debug, Clone)]
 pub enum TokenKind {
@@ -75,7 +155,7 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>, ParseError> {
             if !text_buf.is_empty() {
                 let (line, col) = chars.position();
                 let end_offset = chars.byte_position();
-                let text = std::mem::take(&mut text_buf);
+                let text = decode_html_entities(&std::mem::take(&mut text_buf), true);
                 let start = text_start;
                 tokens.push(Token {
                     kind: TokenKind::Text(text),
@@ -182,7 +262,7 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>, ParseError> {
     if !text_buf.is_empty() {
         let (line, col) = chars.position();
         let end_offset = chars.byte_position();
-        let text = text_buf;
+        let text = decode_html_entities(&text_buf, true);
         tokens.push(Token {
             kind: TokenKind::Text(text),
             line,
@@ -319,7 +399,7 @@ fn read_attr_value(chars: &mut CharStream) -> Result<AttrValue, ParseError> {
             while let Some(c) = chars.peek() {
                 if c == quote {
                     chars.advance();
-                    return Ok(AttrValue::Static(value));
+                    return Ok(AttrValue::Static(decode_html_entities(&value, false)));
                 }
                 value.push(c);
                 chars.advance();
@@ -507,6 +587,40 @@ mod tests {
         // 空格 1 字节后 class="c" 占 9 字节 → 13..22
         assert_eq!(attributes[1].name, "class");
         assert_eq!(attributes[1].span, Span::new(13, 22));
+    }
+
+    /// HTML 实体在文本节点中正确解码，且 `{`/`}` 被转义以避免触发插值
+    #[test]
+    fn text_decodes_html_entities() {
+        let tokens = tokenize("model=&#123;field&#125; and &#x7C;").unwrap();
+        assert_eq!(tokens.len(), 2); // Text + Eof
+        let TokenKind::Text(text) = &tokens[0].kind else {
+            panic!("expected text token");
+        };
+        assert_eq!(text, "model=\\{field\\} and |");
+    }
+
+    /// 静态属性值中的 HTML 实体被解码，且 `{`/`}` 不转义（属性值无插值语义）
+    #[test]
+    fn static_attr_decodes_html_entities() {
+        let tokens = tokenize(r#"<div title="use &#123;&#125;"></div>"#).unwrap();
+        let TokenKind::TagStart { attributes, .. } = &tokens[0].kind else {
+            panic!("expected TagStart");
+        };
+        let AttrValue::Static(value) = &attributes[0].value else {
+            panic!("expected static value");
+        };
+        assert_eq!(value, "use {}");
+    }
+
+    /// 非实体形式的 `&` 保持原样
+    #[test]
+    fn standalone_ampersand_preserved() {
+        let tokens = tokenize("A & B &unknown;").unwrap();
+        let TokenKind::Text(text) = &tokens[0].kind else {
+            panic!("expected text token");
+        };
+        assert_eq!(text, "A & B &unknown;");
     }
 
     /// 多字节字符（中文）下字节偏移按 UTF-8 累加

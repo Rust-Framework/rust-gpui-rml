@@ -128,8 +128,8 @@ fn main_loop(connection: &Connection, state: &mut ServerState) -> Result<()> {
 /// 构建 ServerCapabilities
 fn build_capabilities() -> ServerCapabilities {
     use lsp_types::{
-        CompletionOptions, HoverProviderCapability, TextDocumentSyncCapability,
-        TextDocumentSyncKind,
+        CompletionOptions, HoverProviderCapability, SignatureHelpOptions,
+        TextDocumentSyncCapability, TextDocumentSyncKind,
     };
 
     ServerCapabilities {
@@ -144,7 +144,13 @@ fn build_capabilities() -> ServerCapabilities {
         hover_provider: Some(HoverProviderCapability::Simple(true)),
         definition_provider: Some(lsp_types::OneOf::Left(true)),
         references_provider: Some(lsp_types::OneOf::Left(true)),
-        document_formatting_provider: None,
+        document_symbol_provider: Some(lsp_types::OneOf::Left(true)),
+        document_formatting_provider: Some(lsp_types::OneOf::Left(true)),
+        signature_help_provider: Some(SignatureHelpOptions {
+            trigger_characters: Some(vec![",".to_string(), "(".to_string()]),
+            retrigger_characters: None,
+            work_done_progress_options: Default::default(),
+        }),
         ..Default::default()
     }
 }

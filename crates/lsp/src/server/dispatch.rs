@@ -23,6 +23,26 @@ pub fn handle_request(
             handlers::hover::handle_hover(req.params, state)
                 .map(|v| v.and_then(|h| serde_json::to_value(h).ok()))
         }
+        "textDocument/definition" => {
+            handlers::definition::handle_definition(req.params, state)
+                .map(|v| v.and_then(|d| serde_json::to_value(d).ok()))
+        }
+        "textDocument/documentSymbol" => {
+            handlers::document_symbol::handle_document_symbol(req.params, state)
+                .map(|v| v.and_then(|s| serde_json::to_value(s).ok()))
+        }
+        "textDocument/references" => {
+            handlers::references::handle_references(req.params, state)
+                .map(|v| v.and_then(|r| serde_json::to_value(r).ok()))
+        }
+        "textDocument/formatting" => {
+            handlers::formatting::handle_formatting(req.params, state)
+                .map(|v| v.and_then(|e| serde_json::to_value(e).ok()))
+        }
+        "textDocument/signatureHelp" => {
+            handlers::signature_help::handle_signature_help(req.params, state)
+                .map(|v| v.and_then(|s| serde_json::to_value(s).ok()))
+        }
         _ => {
             log::debug!("unhandled request: {}", req.method);
             Ok(None)

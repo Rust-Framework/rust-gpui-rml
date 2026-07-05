@@ -7,8 +7,8 @@ use lsp_types::{Hover, HoverContents, MarkedString};
 
 use rust_rml_engine::compiler::props_registry;
 use rust_rml_engine::tags;
-use rust_rml_engine::parser::ast::{Attribute, Node};
 
+use crate::features::ast_util::find_element_at_offset;
 use crate::server::conv;
 use crate::workspace::Workspace;
 
@@ -35,28 +35,6 @@ pub fn hover(
         range: Some(range),
         contents: HoverContents::Scalar(MarkedString::String(content)),
     })
-}
-
-/// 递归查找包含字节偏移的元素
-fn find_element_at_offset(
-    node: &Node,
-    offset: usize,
-) -> Option<&rust_rml_engine::parser::ast::Element> {
-    match node {
-        Node::Element(elem) => {
-            if !elem.span.contains(offset) {
-                return None;
-            }
-            // 先在子节点中查找（更精确的定位）
-            for child in &elem.children {
-                if let Some(found) = find_element_at_offset(child, offset) {
-                    return Some(found);
-                }
-            }
-            Some(elem)
-        }
-        _ => None,
-    }
 }
 
 /// 生成标签的悬停文档

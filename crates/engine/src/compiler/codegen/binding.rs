@@ -1,10 +1,13 @@
-﻿//! 双向绑定与字段校验代码生成
+//! 双向绑定与字段校验代码生成
 //!
 //! - `gen_model_input`：`<input model={field}>` → `rml_ui::Input::new(&state)` + 双向同步
 //! - `gen_field_*`：VM↔UI 反向赋值代码（含 parse、校验链、bump_version）
 
 use crate::compiler::{CodegenCtx, CodegenError, ValidationRule, ValidationRuleSet};
+use crate::css;
 use crate::parser::ast::{Attribute, Element};
+
+use super::attribute::apply_css_styles;
 
 /// 生成带 model 指令的 Input 组件双向绑定代码
 ///
@@ -21,6 +24,7 @@ pub(super) fn gen_model_input(
     _ctx: &CodegenCtx,
     _id_counter: &mut usize,
     field: String,
+    parents: &[css::ParentInfo],
 ) -> Result<String, CodegenError> {
     let placeholder = elem.attributes.iter().find_map(|attr| {
         if let Attribute::Static { name, value, .. } = attr {
@@ -48,6 +52,13 @@ pub(super) fn gen_model_input(
                 input_code.push_str(&format!(".disabled({})", disabled_val));
             }
         }
+    }
+
+    // 应用 CSS 样式（class / 父链选择器）。model input 提前返回，因此需要在这里
+    // 手动应用全局样式表中匹配的样式，否则 `.demo-section input` 等规则会失效。
+    if let Some(sheet) = &_ctx.stylesheet {
+        let style_code = apply_css_styles(elem, &elem.tag, sheet, parents);
+        input_code.push_str(&style_code);
     }
 
     let wrapper_id = format!("rml_input_err:{}", field);

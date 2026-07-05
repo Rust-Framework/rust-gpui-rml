@@ -90,6 +90,12 @@
     color: var(--text);
 }
 
+.demo-section input,
+.demo-section Input {
+    width: 100%;
+    min-width: 240px;
+}
+
 .demo-section {
     display: flex;
     flex-direction: column;

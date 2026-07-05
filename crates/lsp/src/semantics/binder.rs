@@ -68,10 +68,10 @@ fn bind_element(elem: &Element, meta: Option<&StructMetadata>, diags: &mut Vec<S
     // 检查属性
     for attr in &elem.attributes {
         match attr {
-            Attribute::Bind { name: _, expr } => {
+            Attribute::Bind { name: _, expr, .. } => {
                 check_binding_expr(expr, elem.span, meta, diags);
             }
-            Attribute::Event { name: _, handler } => {
+            Attribute::Event { name: _, handler, .. } => {
                 check_event_handler(handler, elem.span, meta, diags);
             }
             Attribute::Static { .. } => {}
