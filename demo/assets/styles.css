@@ -81,13 +81,15 @@
     font-family: Consolas;
     font-size: 13px;
     line-height: 1.5;
-    background: var(--bg-color);
+    background: var(--code-bg);
     border: 1px solid var(--border);
     border-radius: 6px;
     padding: 12px 16px;
     white-space: pre;
     overflow-x: auto;
     color: var(--text);
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .demo-section input,

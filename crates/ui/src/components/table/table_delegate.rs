@@ -23,7 +23,7 @@
 //! }
 //! ```
 
-use gpui::{AnyElement, App, IntoElement, ParentElement, div};
+use gpui::{AnyElement, App, IntoElement, ParentElement, Styled, div};
 
 use super::table_column::TableColumn;
 use super::table_row::TableRow;
@@ -37,7 +37,11 @@ pub trait TableDelegate: 'static {
         column: &TableColumn,
         _cx: &mut App,
     ) -> AnyElement {
-        div().child(column.title.clone()).into_any_element()
+        div()
+            .whitespace_nowrap()
+            .overflow_hidden()
+            .child(column.title.clone())
+            .into_any_element()
     }
 
     /// 渲染单元格。默认实现返回 `row_data.cells[column.key]` 文本。
@@ -50,7 +54,11 @@ pub trait TableDelegate: 'static {
         _cx: &mut App,
     ) -> AnyElement {
         let text = row_data.get(&column.key);
-        div().child(text).into_any_element()
+        div()
+            .whitespace_nowrap()
+            .overflow_hidden()
+            .child(text)
+            .into_any_element()
     }
 }
 

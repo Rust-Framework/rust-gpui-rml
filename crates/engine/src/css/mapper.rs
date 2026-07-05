@@ -37,8 +37,14 @@ fn map_declaration(decl: &Declaration, vars: &HashMap<String, Value>) -> Option<
 
     match prop {
         // ─── 盒模型 ───
-        "width" => length_method("w", &value),
-        "height" => length_method("h", &value),
+        "width" => match &value {
+            Value::Length(n, Unit::Percent) if (*n - 100.0).abs() < 1e-6 => Some("w_full()".into()),
+            _ => length_or_percentage_method("w", &value),
+        },
+        "height" => match &value {
+            Value::Length(n, Unit::Percent) if (*n - 100.0).abs() < 1e-6 => Some("h_full()".into()),
+            _ => length_or_percentage_method("h", &value),
+        },
         "padding" => shorthand_padding(&value),
         "padding-top" => length_method("pt", &value),
         "padding-bottom" => length_method("pb", &value),
@@ -100,12 +106,12 @@ fn map_declaration(decl: &Declaration, vars: &HashMap<String, Value>) -> Option<
         "min-width" => match &value {
             Value::Number(n) if *n == 0.0 => Some("min_w_0()".into()),
             Value::Keyword(k) if k == "0" => Some("min_w_0()".into()),
-            _ => length_method("min_w", &value),
+            _ => length_or_percentage_method("min_w", &value),
         },
         "min-height" => match &value {
             Value::Number(n) if *n == 0.0 => Some("min_h_0()".into()),
             Value::Keyword(k) if k == "0" => Some("min_h_0()".into()),
-            _ => length_method("min_h", &value),
+            _ => length_or_percentage_method("min_h", &value),
         },
         "gap" => length_method("gap", &value),
 
@@ -161,6 +167,17 @@ fn length_method(method: &str, value: &Value) -> Option<String> {
         Value::Length(n, Unit::Pt) => Some(format!("{}(gpui::px({:?}))", method, n * 1.333)),
         Value::Number(n) => Some(format!("{}(gpui::px({:?}))", method, n)),
         _ => None,
+    }
+}
+
+/// 长度值或百分比 → GPUI 调用
+///
+/// 百分比映射为 `gpui::relative(分数)`，其中 100% = 1.0。width/height 100%
+/// 在外层已特殊处理为 `w_full()` / `h_full()`。
+fn length_or_percentage_method(method: &str, value: &Value) -> Option<String> {
+    match value {
+        Value::Length(n, Unit::Percent) => Some(format!("{}(gpui::relative({:?}))", method, n / 100.0)),
+        _ => length_method(method, value),
     }
 }
 
@@ -507,5 +524,26 @@ mod tests {
         let d = decl("font-family", Value::Keyword("Consolas".into()));
         let code = map_declarations(&[d], &HashMap::new());
         assert!(code.contains(".font_family(\"Consolas\")"), "expected font_family, got: {}", code);
+    }
+
+    #[test]
+    fn map_width_100_percent_to_w_full() {
+        let d = decl("width", Value::Length(100.0, Unit::Percent));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".w_full()"), "expected w_full, got: {}", code);
+    }
+
+    #[test]
+    fn map_width_50_percent_to_relative() {
+        let d = decl("width", Value::Length(50.0, Unit::Percent));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".w(gpui::relative(0.5))"), "expected relative, got: {}", code);
+    }
+
+    #[test]
+    fn map_min_width_percent_to_relative() {
+        let d = decl("min-width", Value::Length(100.0, Unit::Percent));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".min_w(gpui::relative(1.0))"), "expected min_w relative, got: {}", code);
     }
 }

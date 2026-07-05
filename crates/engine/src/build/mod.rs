@@ -174,7 +174,7 @@ impl Builder {
     /// 执行编译主流程。
     pub fn build(self) -> Result<(), BuildError> {
         // 所有 &self 借用必须在 self.output_dir 移动前完成
-        let stylesheet = self.load_stylesheets()?;
+        let (stylesheet, style_hash) = self.load_stylesheets()?;
         let rml_files = scanner::scan(&self.scan_dirs);
         for f in &rml_files {
             println!("cargo:rerun-if-changed={}", f.display());
@@ -211,17 +211,19 @@ impl Builder {
             message: format!("failed to create {}: {}", generated_dir.display(), e),
         })?;
 
-        // 2. 加载缓存，并校验 engine 源码哈希
+        // 2. 加载缓存，并校验 engine 源码哈希与 CSS 内容哈希
         //    engine 任何 src/**/*.rs 变化会让 engine_source_hash() 返回不同值，
-        //    此时缓存中的旧 entries 全部失效，强制重新生成所有 .rml。
+        //    CSS 文件内容变化会让 style_hash 返回不同值；
+        //    任一不匹配时缓存中的旧 entries 全部失效，强制重新生成所有 .rml。
         let cache_path = output_dir.join("rml_cache.json");
         println!("cargo:rerun-if-changed={}", cache_path.display());
         let mut cache = cache::Cache::load(&cache_path);
         let current_engine_hash = crate::engine_source_hash().to_string();
-        if !cache.is_valid_for_engine(&current_engine_hash) {
-            // engine 源码已变化或旧版缓存：失效所有条目，重新生成
+        if !cache.is_valid_for_engine(&current_engine_hash) || !cache.is_valid_for_style(&style_hash) {
+            // engine 源码或 CSS 已变化/旧版缓存：失效所有条目，重新生成
             cache.invalidate_all();
             cache.stamp_engine(current_engine_hash.clone());
+            cache.stamp_style(style_hash.clone());
         }
 
         // 3. 逐个编译
@@ -368,7 +370,7 @@ impl Builder {
     ///
     /// 除了通过 `.with_style()` 显式注册的文件外,还会自动扫描 `assets_dir` 根目录下的
     /// `.css` 文件(不递归子目录,避免误加载 `themes/` 等主题文件)。
-    fn load_stylesheets(&self) -> Result<Option<css::StyleSheet>, BuildError> {
+    fn load_stylesheets(&self) -> Result<(Option<css::StyleSheet>, String), BuildError> {
         let mut all_paths = self.style_paths.clone();
 
         // 自动发现 assets/ 根目录下的 CSS 文件(不递归,排除 themes/ 等子目录)
@@ -391,14 +393,17 @@ impl Builder {
         }
 
         if all_paths.is_empty() {
-            return Ok(None);
+            return Ok((None, hash_str("")));
         }
         let mut merged = css::StyleSheet::default();
+        let mut css_source = String::new();
         for path in &all_paths {
             println!("cargo:rerun-if-changed={}", path.display());
             let source = fs::read_to_string(path).map_err(|e| BuildError {
                 message: format!("read css {}: {}", path.display(), e),
             })?;
+            css_source.push_str(&source);
+            css_source.push('\n');
             match css::parse(&source) {
                 Ok(sheet) => {
                     // 合并规则（后者追加）
@@ -413,7 +418,7 @@ impl Builder {
                 }
             }
         }
-        Ok(Some(merged))
+        Ok((Some(merged), hash_str(&css_source)))
     }
 
     /// 扫描所有 `.rml.rs` code-behind 文件，提取每个 struct 的元信息。

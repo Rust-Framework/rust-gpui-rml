@@ -48,3 +48,6 @@ default = []
 #     "ra_ap_project-model",
 #     "ra_ap_syntax",
 # ]
+
+[dev-dependencies]
+crossbeam-channel = "0.5"

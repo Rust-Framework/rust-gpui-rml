@@ -6,7 +6,7 @@
 
 use rml_ui::{TableColumn, TableRow};
 
-const COL_PROP_WIDTH: f32 = 180.0;
+const COL_PROP_WIDTH: f32 = 220.0;
 const COL_TYPE_WIDTH: f32 = 120.0;
 
 /// 构建 API 文档表格的列定义和行数据。

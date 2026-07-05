@@ -29,6 +29,10 @@ pub struct Cache {
     /// 不匹配则该文件重新生成（即使 .rml 源未变）。
     #[serde(default)]
     pub codebehind_hash: HashMap<String, String>,
+    /// 上次构建时合并后的 CSS 内容哈希；不匹配则 entries 全部失效，
+    /// 确保 CSS 规则/变量变化能反映到生成的样式调用中。
+    #[serde(default)]
+    pub style_hash: Option<String>,
 }
 
 impl Cache {
@@ -63,10 +67,23 @@ impl Cache {
         self.engine_hash = Some(current_engine_hash);
     }
 
-    /// 清空所有 entries（用于 engine 变化时强制全部重新生成）。
+    /// 清空所有 entries（用于 engine/CSS 变化时强制全部重新生成）。
     pub fn invalidate_all(&mut self) {
         self.entries.clear();
         self.codebehind_hash.clear();
+    }
+
+    /// 判断缓存对当前 CSS 哈希是否有效。
+    pub fn is_valid_for_style(&self, current_style_hash: &str) -> bool {
+        match &self.style_hash {
+            Some(h) => h == current_style_hash,
+            None => false,
+        }
+    }
+
+    /// 标记缓存为当前 CSS 哈希对应。
+    pub fn stamp_style(&mut self, current_style_hash: String) {
+        self.style_hash = Some(current_style_hash);
     }
 
     /// 判断单个 `.rml` 文件的 code-behind（`.rml.rs`）是否与缓存中记录的哈希一致。

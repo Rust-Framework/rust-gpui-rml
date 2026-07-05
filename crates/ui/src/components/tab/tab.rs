@@ -719,7 +719,11 @@ impl RenderOnce for Tab {
             .variant
             .corner_radii(self.size, self.selected, self.disabled, cx);
         let inner_radius = self.variant.inner_radius(self.size, cx);
-        let inner_paddings = self.variant.inner_paddings(self.size);
+        let mut inner_paddings = self.variant.inner_paddings(self.size);
+        // 有关闭按钮时缩小右内边距，让关闭按钮紧贴文本
+        if self.closable {
+            inner_paddings.right = px(4.);
+        }
         let inner_margins = self.variant.inner_margins(self.size);
         let inner_height = self.variant.inner_height(self.size);
         let height = self.variant.height(self.size);
@@ -780,7 +784,6 @@ impl RenderOnce for Tab {
             .line_height(relative(1.))
             .whitespace_nowrap()
             .items_center()
-            .justify_center()
             .overflow_hidden()
             .margins(inner_margins)
             .when_else(self.compress, |this| this.min_w_0(), |this| this.flex_shrink_0())
@@ -834,7 +837,6 @@ impl RenderOnce for Tab {
             .relative()
             .flex()
             .flex_wrap()
-            .gap_1()
             .items_center()
             .when_else(self.compress, |this| this.flex_1().min_w_0(), |this| this.flex_shrink_0())
             .h(height)
@@ -890,10 +892,10 @@ impl RenderOnce for Tab {
             .when(self.closable && !self.disabled, |this| {
                 // 激活 tab 常显；非激活 tab 仅在父 tab hover 时显示
                 let btn_size = match self.size {
-                    Size::XSmall => px(16.),
-                    Size::Small => px(18.),
-                    Size::Large => px(22.),
-                    _ => px(20.),
+                    Size::XSmall => px(14.),
+                    Size::Small => px(16.),
+                    Size::Large => px(20.),
+                    _ => px(18.),
                 };
                 let close_btn = if m {
                     // 测量模式：尺寸须与正式按钮一致，确保宽度测量准确
@@ -903,7 +905,8 @@ impl RenderOnce for Tab {
                         .flex()
                         .items_center()
                         .justify_center()
-                        .child(Icon::new(IconName::Close).xsmall())
+                        .mr(px(2.))
+                        .child(Icon::new(IconName::Close).small())
                         .into_any_element()
                 } else {
                     let on_close = self.on_close.clone();
@@ -915,13 +918,14 @@ impl RenderOnce for Tab {
                         .items_center()
                         .justify_center()
                         .rounded(px(4.))
+                        .mr(px(2.))
                         .cursor_pointer()
                         .when(!self.selected, |this| {
                             this.opacity(0.)
                                 .group_hover(group_name.clone(), |this| this.opacity(1.))
                         })
                         .hover(move |this| this.bg(hover_bg))
-                        .child(Icon::new(IconName::Close).xsmall())
+                        .child(Icon::new(IconName::Close).small())
                         .when_some(on_close, |this, on_close| {
                             this.on_click(move |event, window, cx| {
                                 cx.stop_propagation();

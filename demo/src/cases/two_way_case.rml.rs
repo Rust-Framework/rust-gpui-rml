@@ -43,7 +43,7 @@ impl ILifecycle for TwoWayCase {
     fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
         let (cols, rows) = build_api_table(&[
             ("model", "字段引用", "双向绑定到 pub 字段"),
-            ("#[validate(range(min,max))]", "属性", "数值范围验证"),
+            ("#[validate]", "属性", "数值范围验证（如 range）"),
             ("placeholder", "字符串", "占位提示"),
             ("#[computed]", "方法", "依赖字段自动重算"),
             ("converter (|)", "IConverter", "model={price | Currency} 双向转换"),
