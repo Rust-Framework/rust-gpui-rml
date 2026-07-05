@@ -15,7 +15,7 @@
 use crate::derive_model::to_snake_case;
 use proc_macro2::TokenStream;
 use quote::{quote, format_ident};
-use syn::{Field, Fields, Ident, ItemStruct, Visibility, parse_quote};
+use syn::{Field, Fields, Ident, ItemStruct, Type, Visibility, parse_quote};
 
 /// 生成 `impl IModel`（同 derive_model 的核心逻辑）
 fn gen_impl_i_model(struct_name: &Ident, fields: &Fields) -> TokenStream {
@@ -89,6 +89,62 @@ pub fn inject_tracking_fields(fields: &mut Fields, _slots: &[String]) {
     named.named.push(state_field);
 }
 
+/// 提取 `ElementRef<T>` 类型参数 T
+///
+/// 匹配 `ElementRef<T>`、`rml_core::ElementRef<T>`、`rml_core::element_ref::ElementRef<T>`
+/// 等任意路径前缀的形式。仅检查最后一个路径段是否为 `ElementRef` 且带一个类型参数。
+fn extract_element_ref_inner(ty: &Type) -> Option<&Type> {
+    let path = match ty {
+        Type::Path(type_path) if type_path.qself.is_none() => &type_path.path,
+        _ => return None,
+    };
+    let last_segment = path.segments.last()?;
+    if last_segment.ident != "ElementRef" {
+        return None;
+    }
+    let args = match &last_segment.arguments {
+        syn::PathArguments::AngleBracketed(args) => args,
+        _ => return None,
+    };
+    let first_arg = args.args.first()?;
+    match first_arg {
+        syn::GenericArgument::Type(t) => Some(t),
+        _ => None,
+    }
+}
+
+/// 生成 `__rml_populate_refs` 方法
+///
+/// 扫描所有 `pub` 字段，对 `ElementRef<T>` 类型字段生成填充代码：
+/// 从 `self.__rml_state.ref_entities` 取出 `Entity<T>` 并注入到字段。
+///
+/// 字段名需与 RML 中 `ref="name"` 的 name 一致，否则不会被填充（保持 None）。
+/// 即使没有 `ElementRef<T>` 字段也生成空方法，使 render.rs 可无条件调用。
+pub fn gen_populate_refs_impl(struct_name: &Ident, fields: &Fields) -> TokenStream {
+    let populate_stmts: Vec<TokenStream> = fields.iter().filter_map(|f| {
+        let field_name = f.ident.as_ref()?;
+        let inner_ty = extract_element_ref_inner(&f.ty)?;
+        let field_name_str = field_name.to_string();
+        Some(quote! {
+            if let Some(__rml_boxed) = self.__rml_state.ref_entities.get(#field_name_str) {
+                if let Some(__rml_entity) = __rml_boxed.downcast_ref::<gpui::Entity<#inner_ty>>() {
+                    self.#field_name.set(__rml_entity.clone());
+                }
+            }
+        })
+    }).collect();
+
+    quote! {
+        #[allow(non_snake_case)]
+        impl #struct_name {
+            pub fn __rml_populate_refs(&mut self) {
+                use std::any::Any;
+                #(#populate_stmts)*
+            }
+        }
+    }
+}
+
 /// 生成组件所需的全部 trait 实现（IModel + ILifecycle + IViewModel + IComponent）
 ///
 /// 供 `#[component]` 和 `#[window]` 共用。
@@ -152,11 +208,18 @@ pub fn expand_component_impls(
         })
     };
 
+    // 生成 `__rml_populate_refs` 方法：将 RmlState.ref_entities 中的 Entity<T>
+    // 注入到对应的 ElementRef<T> 字段（字段名需与 ref="name" 的 name 一致）。
+    // 即使没有 ElementRef<T> 字段也生成空方法，使 render.rs 可无条件调用。
+    let populate_refs_impl = gen_populate_refs_impl(struct_name, fields);
+
     quote! {
         #impl_i_model
         #impl_i_view_model
         #impl_i_component
         #slot_setters
+
+        #populate_refs_impl
     }
 }
 
@@ -269,5 +332,117 @@ impl syn::parse::Parse for ComponentArgs {
         }
 
         Ok(ComponentArgs { slots })
+    }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+//  单元测试
+// ──────────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use quote::quote;
+
+    /// 解析 `ElementRef<T>` 类型，提取内部类型参数 T
+    #[test]
+    fn extract_element_ref_inner_basic() {
+        let ty: Type = syn::parse2(quote! { ElementRef<InputState> }).unwrap();
+        let inner = extract_element_ref_inner(&ty).expect("应识别 ElementRef<InputState>");
+        assert_eq!(quote!(#inner).to_string(), "InputState");
+    }
+
+    /// 解析带路径前缀的 `rml_core::ElementRef<T>`
+    #[test]
+    fn extract_element_ref_inner_with_path() {
+        let ty: Type = syn::parse2(quote! { rml_core::ElementRef<rml_ui::InputState> }).unwrap();
+        let inner = extract_element_ref_inner(&ty).expect("应识别带路径的 ElementRef<T>");
+        assert_eq!(quote!(#inner).to_string(), "rml_ui :: InputState");
+    }
+
+    /// 非 ElementRef 类型应返回 None
+    #[test]
+    fn extract_element_ref_inner_rejects_non_element_ref() {
+        let ty: Type = syn::parse2(quote! { Option<gpui::Entity<InputState>> }).unwrap();
+        assert!(extract_element_ref_inner(&ty).is_none());
+
+        let ty: Type = syn::parse2(quote! { Entity<InputState> }).unwrap();
+        assert!(extract_element_ref_inner(&ty).is_none());
+
+        let ty: Type = syn::parse2(quote! { String }).unwrap();
+        assert!(extract_element_ref_inner(&ty).is_none());
+    }
+
+    /// `gen_populate_refs_impl` 为含 `ElementRef<T>` 字段的结构体生成填充代码
+    #[test]
+    fn gen_populate_refs_impl_with_element_ref_field() {
+        let struct_def: syn::ItemStruct = syn::parse2(quote! {
+            pub struct MyView {
+                pub input_state: ElementRef<InputState>,
+                pub name: SharedString,
+            }
+        })
+        .unwrap();
+
+        let tokens = gen_populate_refs_impl(&struct_def.ident, &struct_def.fields);
+        let code = tokens.to_string();
+
+        // 应包含从 ref_entities 取出 Entity<InputState> 并 set 到字段
+        assert!(code.contains("ref_entities"), "应访问 ref_entities: {}", code);
+        assert!(
+            code.contains("downcast_ref"),
+            "应包含 downcast_ref 调用，实际：{}",
+            code
+        );
+        assert!(
+            code.contains("Entity < InputState"),
+            "应包含 Entity<InputState> 类型参数，实际：{}",
+            code
+        );
+        assert!(
+            code.contains("self . input_state . set"),
+            "应调用字段 .set()，实际：{}",
+            code
+        );
+    }
+
+    /// 多个 ElementRef<T> 字段都应被填充
+    #[test]
+    fn gen_populate_refs_impl_with_multiple_fields() {
+        let struct_def: syn::ItemStruct = syn::parse2(quote! {
+            pub struct MyView {
+                pub input_state: ElementRef<InputState>,
+                pub slider_state: ElementRef<SliderState>,
+                pub other: String,
+            }
+        })
+        .unwrap();
+
+        let tokens = gen_populate_refs_impl(&struct_def.ident, &struct_def.fields);
+        let code = tokens.to_string();
+
+        assert!(code.contains("input_state"));
+        assert!(code.contains("slider_state"));
+        // 非 ElementRef 字段不应出现在填充代码中
+        assert!(!code.contains("self . other"));
+    }
+
+    /// 无 ElementRef<T> 字段时生成空方法（仍可调用）
+    #[test]
+    fn gen_populate_refs_impl_empty_when_no_element_ref() {
+        let struct_def: syn::ItemStruct = syn::parse2(quote! {
+            pub struct MyView {
+                pub name: SharedString,
+                pub count: i32,
+            }
+        })
+        .unwrap();
+
+        let tokens = gen_populate_refs_impl(&struct_def.ident, &struct_def.fields);
+        let code = tokens.to_string();
+
+        // 仍生成方法签名，但不包含任何 downcast_ref 调用
+        assert!(code.contains("__rml_populate_refs"));
+        assert!(!code.contains("downcast_ref"));
     }
 }

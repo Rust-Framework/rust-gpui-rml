@@ -1,4 +1,4 @@
-//! 属性代码生成 —— 静态属性 / CSS 样式 / 内联样式 / 绑定属性
+﻿//! 属性代码生成 —— 静态属性 / CSS 样式 / 内联样式 / 绑定属性
 //!
 //! 将元素属性转换为 GPUI 构建器方法调用代码。
 //!
@@ -47,7 +47,7 @@ pub(super) fn apply_css_styles(
         .attributes
         .iter()
         .find_map(|attr| match attr {
-            Attribute::Static { name, value } if name == "class" => Some(value.clone()),
+            Attribute::Static { name, value, .. } if name == "class" => Some(value.clone()),
             _ => None,
         })
         .unwrap_or_default();
@@ -56,7 +56,7 @@ pub(super) fn apply_css_styles(
         .attributes
         .iter()
         .find_map(|attr| match attr {
-            Attribute::Static { name, value } if name == "id" => Some(value.as_str()),
+            Attribute::Static { name, value, .. } if name == "id" => Some(value.as_str()),
             _ => None,
         });
 

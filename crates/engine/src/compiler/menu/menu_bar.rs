@@ -1,4 +1,4 @@
-//! `MenuBar` 声明式 / `each` 迭代 codegen
+﻿//! `MenuBar` 声明式 / `each` 迭代 codegen
 //!
 //! 顶层容器统一生成为 `rml_ui::MenuBar`（ui crate 组件）；`<menu-item>` 子节点编译为
 //! `menu_bar_button` + `PopupMenu` 后作为 `MenuBar` 的 children。
@@ -144,7 +144,7 @@ fn gen_menu_bar_button_for_item(
                 .attributes
                 .iter()
                 .find_map(|a| match a {
-                    Attribute::Bind { name, expr } if name == "command" => Some(expr.clone()),
+                    Attribute::Bind { name, expr, .. } if name == "command" => Some(expr.clone()),
                     _ => None,
                 })
                 .unwrap();
@@ -228,8 +228,8 @@ fn gen_menu_bar_button_static(
         .attributes
         .iter()
         .find_map(|a| match a {
-            Attribute::Static { name, value } if name == "label" => Some(format!("{value:?}")),
-            Attribute::Bind { name, expr } if name == "label" => {
+            Attribute::Static { name, value, .. } if name == "label" => Some(format!("{value:?}")),
+            Attribute::Bind { name, expr, .. } if name == "label" => {
                 if let Some(code) =
                     crate::compiler::codegen::try_gen_i18n_call(expr, loop_vars, &ctx.computed_methods.iter().map(|s| s.as_str()).collect::<Vec<_>>())
                 {
@@ -299,10 +299,10 @@ fn bind_label_or_static(
     let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
     for attr in &elem.attributes {
         match attr {
-            Attribute::Static { name, value } if name == "label" => {
+            Attribute::Static { name, value, .. } if name == "label" => {
                 return Ok(format!("{value:?}"));
             }
-            Attribute::Bind { name, expr } if name == "label" => {
+            Attribute::Bind { name, expr, .. } if name == "label" => {
                 if let Some(code) = crate::compiler::codegen::try_gen_i18n_call(expr, &lv, &computed)
                 {
                     return Ok(code);
@@ -325,7 +325,7 @@ fn bind_expr_code(
     let lv: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
     let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
     let expr_str = elem.attributes.iter().find_map(|a| match a {
-        Attribute::Bind { name: n, expr } if n == name => Some(expr.clone()),
+        Attribute::Bind { name: n, expr, .. } if n == name => Some(expr.clone()),
         _ => None,
     })?;
     Some(crate::compiler::codegen::gen_expr_code(
@@ -362,7 +362,7 @@ fn gen_menu_bar_with_children_bind(
             message: "children={expr} 绑定缺失——此路径要求 children 属性".to_string(),
         })?;
     let cmd_expr = template_item.attributes.iter().find_map(|a| match a {
-        Attribute::Bind { name, expr } if name == "command" => Some(expr.clone()),
+        Attribute::Bind { name, expr, .. } if name == "command" => Some(expr.clone()),
         _ => None,
     });
     let onclick_code = if let Some(cmd) = &cmd_expr {

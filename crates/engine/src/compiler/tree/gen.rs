@@ -17,7 +17,7 @@ pub fn gen_tree(
     loop_vars: &[String],
 ) -> Result<String, CodegenError> {
     let state_field = match component.kind {
-        tags::ComponentKind::Stateful { state_field } => state_field,
+        tags::ComponentKind::Stateful { state_field, .. } => state_field,
         _ => {
             return Err(CodegenError {
                 message: "<Tree> component kind mismatch".into(),
@@ -32,21 +32,21 @@ pub fn gen_tree(
 
     for attr in &elem.attributes {
         match attr {
-            Attribute::Static { name, value } => {
+            Attribute::Static { name, value, .. } => {
                 if let Some(s) =
                     super::super::component::component_static_setter(name, value, &resolved)
                 {
                     code.push_str(&s);
                 }
             }
-            Attribute::Bind { name, expr } => {
+            Attribute::Bind { name, expr, .. } => {
                 if let Some(s) = super::super::component::component_bind_setter(
                     name, expr, &lv, &computed, &resolved,
                 ) {
                     code.push_str(&s);
                 }
             }
-            Attribute::Event { name, handler } => {
+            Attribute::Event { name, handler, .. } => {
                 if let Some(s) = super::setters::event_setter(name, handler, &resolved) {
                     code.push_str(&s);
                 } else if let Some(s) =
@@ -65,6 +65,7 @@ mod tests {
     use super::*;
     use crate::compiler::CodegenCtx;
     use crate::parser::ast::{Attribute, Element, EventHandler, Node};
+    use crate::parser::Span;
     use crate::tags::{ComponentKind, ComponentTag};
 
     fn ctx() -> CodegenCtx {
@@ -91,6 +92,7 @@ mod tests {
             ctor_path: "rml_ui::Tree",
             kind: ComponentKind::Stateful {
                 state_field: "tree_state",
+                state_ctor: "|_w, c| rml_ui::TreeState::new(c)",
             },
             container: false,
         }
@@ -112,6 +114,7 @@ mod tests {
             vec![Attribute::Event {
                 name: "on_activate".into(),
                 handler: EventHandler::Ident("on_activate".into()),
+                span: Span::empty(),
             }],
             vec![],
         );
@@ -129,6 +132,7 @@ mod tests {
             vec![Attribute::Event {
                 name: "on_select".into(),
                 handler: EventHandler::Ident("on_select".into()),
+                span: Span::empty(),
             }],
             vec![],
         );

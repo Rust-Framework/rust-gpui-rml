@@ -3,13 +3,26 @@
         <h2>{t("case.progress.title")}</h2>
 
         <Card title="组件说明">
-            <p>Progress 是 gpui-component 进度条组件的 RML 封装。通过 value 属性设置进度值（0-100）。</p>
+            <p>Progress 是 gpui-component 进度条组件的 RML 封装。通过 value 属性设置进度值（0-100），loading 属性切换加载中状态。</p>
         </Card>
 
         <Card title="基础用法">
-            <p>value 属性设置进度百分比。</p>
+            <p>value 属性设置进度百分比，{status_text}</p>
             <div v-flex="" gap-2="">
                 <Progress value={current} />
+            </div>
+        </Card>
+
+        <Card title="交互演示">
+            <p>通过命令修改 current 字段，实时反映到 value 绑定；切换 loading 状态用 if 条件渲染不同 Progress。</p>
+            <div h-flex="" gap-4="">
+                <Button label="减少 10" on-click={on_decrease} />
+                <Button label="增加 10" on-click={on_increase} />
+                <Button label="切换 loading" on-click={on_toggle_loading} />
+            </div>
+            <div v-flex="" gap-2="">
+                <Progress value={current} if={!loading} />
+                <Progress loading="" if={loading} />
             </div>
         </Card>
 
@@ -21,12 +34,7 @@
         </Card>
 
         <Card title="API">
-            <div class="api-table">
-                <div class="api-row api-header"><span class="api-prop-name">属性</span><span class="api-prop-type">类型</span><span>说明</span></div>
-                <div class="api-row"><span class="api-prop-name">value</span><span class="api-prop-type">f32</span><span>进度值 0-100</span></div>
-                <div class="api-row"><span class="api-prop-name">loading</span><span class="api-prop-type">布尔标志</span><span>加载中状态</span></div>
-                <div class="api-row"><span class="api-prop-name">size</span><span class="api-prop-type">small/medium/large</span><span>尺寸</span></div>
-            </div>
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
         </Card>
     </div>
 </component>

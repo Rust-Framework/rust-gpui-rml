@@ -1,4 +1,4 @@
-//! RML 语法解析器
+﻿//! RML 语法解析器
 //!
 //! 将 `.rml` 源码解析为 AST。包含词法分析（tokenizer）与语法分析（parser）。
 //! 详见文档 §2 RML 标记语言。
@@ -19,6 +19,23 @@ pub struct ParseError {
     pub message: String,
     pub line: usize,
     pub column: usize,
+    /// 错误所在行的源码片段（可选）
+    ///
+    /// 由 `parse()` 在返回错误前根据 `line` 从原始源码提取，供 Display 渲染上下文。
+    /// 直接构造的错误（如 tokenizer 内部）此字段为 `None`，由 `with_source` 填充。
+    pub source_snippet: Option<String>,
+}
+
+impl ParseError {
+    /// 根据原始源码填充 `source_snippet`
+    ///
+    /// 从源码按行号（1-based）提取错误所在行内容。若 `line` 为 0（占位）或越界，保持 `None`。
+    pub fn with_source(mut self, source: &str) -> Self {
+        if self.line > 0 {
+            self.source_snippet = source.lines().nth(self.line - 1).map(|s| s.to_string());
+        }
+        self
+    }
 }
 
 impl fmt::Display for ParseError {
@@ -27,7 +44,20 @@ impl fmt::Display for ParseError {
             f,
             "Parse error at {}:{}: {}",
             self.line, self.column, self.message
-        )
+        )?;
+        if let Some(snippet) = &self.source_snippet {
+            // 渲染源码上下文：
+            //   |
+            //   | <源码行>
+            //   |     ^^^
+            let caret_pad = " ".repeat(self.column.saturating_sub(1));
+            write!(
+                f,
+                "\n  |\n  | {}\n  | {}^",
+                snippet, caret_pad
+            )?;
+        }
+        Ok(())
     }
 }
 
@@ -37,9 +67,9 @@ impl std::error::Error for ParseError {}
 ///
 /// 要求源码有且仅有一个根元素。
 pub fn parse(source: &str) -> Result<Node, ParseError> {
-    let tokens = tokenizer::tokenize(source)?;
+    let tokens = tokenizer::tokenize(source).map_err(|e| e.with_source(source))?;
     let mut parser = Parser { tokens, pos: 0 };
-    let nodes = parser.parse_children()?;
+    let nodes = parser.parse_children().map_err(|e| e.with_source(source))?;
 
     // 找到第一个非空白文本的节点作为根
     let root = nodes.into_iter().find(|n| match n {
@@ -53,7 +83,9 @@ pub fn parse(source: &str) -> Result<Node, ParseError> {
             message: "no root element found".into(),
             line: 1,
             column: 1,
-        }),
+            source_snippet: None,
+        })
+        .map_err(|e| e.with_source(source)),
     }
 }
 
@@ -106,6 +138,7 @@ impl Parser {
                                 message: format!("expected </{}>", tag_owned),
                                 line,
                                 column: col,
+                                source_snippet: None,
                             });
                         }
                     };
@@ -172,7 +205,9 @@ impl Parser {
                 "else" => directives.push(Directive::Else),
                 "each" => {
                     if let AttrValue::Binding(expr) = attr.value {
-                        directives.push(Directive::Each(parse_each_expr(&expr)?));
+                        directives.push(Directive::Each(parse_each_expr(
+                            &expr, attr.line, attr.column,
+                        )?));
                     }
                 }
                 "key" => match attr.value {
@@ -180,6 +215,7 @@ impl Parser {
                     AttrValue::Static(v) => attributes.push(Attribute::Static {
                         name,
                         value: v,
+                        span: attr.span,
                     }),
                 },
                 "model" => {
@@ -224,16 +260,19 @@ impl Parser {
                     attributes.push(Attribute::Event {
                         name: name.to_string(),
                         handler,
+                        span: attr.span,
                     });
                 }
                 _ => match attr.value {
                     AttrValue::Static(v) => attributes.push(Attribute::Static {
                         name,
                         value: v,
+                        span: attr.span,
                     }),
                     AttrValue::Binding(expr) => attributes.push(Attribute::Bind {
                         name,
                         expr,
+                        span: attr.span,
                     }),
                 },
             }
@@ -251,7 +290,9 @@ impl Parser {
 }
 
 /// 解析 `each` 表达式：`item in items` 或 `index, item in items`
-fn parse_each_expr(expr: &str) -> Result<EachClause, ParseError> {
+///
+/// `line` / `column` 为 `each` 属性所在位置，用于错误诊断。
+fn parse_each_expr(expr: &str, line: usize, column: usize) -> Result<EachClause, ParseError> {
     let parts: Vec<&str> = expr.splitn(2, " in ").collect();
     if parts.len() != 2 {
         return Err(ParseError {
@@ -259,8 +300,9 @@ fn parse_each_expr(expr: &str) -> Result<EachClause, ParseError> {
                 "invalid each expression: {} (expected 'item in items')",
                 expr
             ),
-            line: 0,
-            column: 0,
+            line,
+            column,
+            source_snippet: None,
         });
     }
     let left = parts[0].trim();
@@ -454,6 +496,51 @@ mod tests {
         assert!(result.is_err());
     }
 
+    // ─── source_snippet：错误诊断源码上下文 ───
+
+    #[test]
+    fn parse_error_fills_source_snippet_from_source() {
+        // 第二行的 div 未闭合，错误应定位到第 2 行第 1 列
+        let src = "<window>\n<div></window>";
+        let result = parse(src);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.line, 2, "line should be 2, got: {}", err.line);
+        // source_snippet 应由 with_source 从源码第 2 行提取
+        assert!(err.source_snippet.is_some(), "source_snippet should be filled");
+        assert_eq!(err.source_snippet.as_deref(), Some("<div></window>"));
+    }
+
+    #[test]
+    fn parse_error_display_renders_source_snippet_with_caret() {
+        let src = "<window>\n  <div></window>";
+        let err = parse(src).unwrap_err();
+        let display = format!("{}", err);
+        // 应包含 "Parse error at 2:..." 行号
+        assert!(display.contains("Parse error at 2:"), "display: {}", display);
+        // 应包含源码上下文块
+        assert!(display.contains("|"), "missing context marker: {}", display);
+        // 应包含源码行内容
+        assert!(display.contains("  <div></window>"), "missing source line: {}", display);
+        // 应包含 ^ 指示符
+        assert!(display.contains("^"), "missing caret: {}", display);
+    }
+
+    #[test]
+    fn parse_error_each_uses_attr_position_not_placeholder() {
+        // each 表达式缺少 "in"，错误应使用属性所在行/列，而非 line:0/column:0
+        // each 必须用 {绑定} 语法，非 "静态字符串"
+        let src = "<window>\n  <div each={item items}></div>\n</window>";
+        let result = parse(src);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.message.contains("invalid each expression"), "msg: {}", err.message);
+        // 属性在第 2 行，错误行应透传自 attr.line（而非 line:0 占位）
+        assert_eq!(err.line, 2, "line should be 2, got: {}", err.line);
+        assert_ne!(err.line, 0, "line must not be placeholder 0");
+        assert_ne!(err.column, 0, "column must not be placeholder 0");
+    }
+
     // ─── parse() 主流程：属性解析 ───
 
     #[test]
@@ -463,7 +550,7 @@ mod tests {
             Node::Element(e) => {
                 assert_eq!(e.attributes.len(), 1);
                 match &e.attributes[0] {
-                    Attribute::Static { name, value } => {
+                    Attribute::Static { name, value, .. } => {
                         assert_eq!(name, "label");
                         assert_eq!(value, "Click");
                     }
@@ -481,7 +568,7 @@ mod tests {
             Node::Element(e) => {
                 assert_eq!(e.attributes.len(), 1);
                 match &e.attributes[0] {
-                    Attribute::Bind { name, expr } => {
+                    Attribute::Bind { name, expr, .. } => {
                         assert_eq!(name, "label");
                         assert_eq!(expr, "title");
                     }
@@ -499,7 +586,7 @@ mod tests {
             Node::Element(e) => {
                 assert_eq!(e.attributes.len(), 1);
                 match &e.attributes[0] {
-                    Attribute::Event { name, handler } => {
+                    Attribute::Event { name, handler, .. } => {
                         assert_eq!(name, "onclick");
                         assert!(matches!(handler, EventHandler::Ident(s) if s == "handle_click"));
                     }
@@ -703,7 +790,7 @@ mod tests {
                 assert!(e.directives.is_empty());
                 assert_eq!(e.attributes.len(), 1);
                 match &e.attributes[0] {
-                    Attribute::Static { name, value } => {
+                    Attribute::Static { name, value, .. } => {
                         assert_eq!(name, "key");
                         assert_eq!(value, "static-key");
                     }
@@ -816,7 +903,7 @@ mod tests {
 
     #[test]
     fn parse_each_expr_simple_item() {
-        let clause = parse_each_expr("item in items").unwrap();
+        let clause = parse_each_expr("item in items", 1, 1).unwrap();
         assert_eq!(clause.item, "item");
         assert_eq!(clause.index, None);
         assert_eq!(clause.iterable, "items");
@@ -824,7 +911,7 @@ mod tests {
 
     #[test]
     fn parse_each_expr_with_index() {
-        let clause = parse_each_expr("idx, item in items").unwrap();
+        let clause = parse_each_expr("idx, item in items", 1, 1).unwrap();
         assert_eq!(clause.item, "item");
         assert_eq!(clause.index.as_deref(), Some("idx"));
         assert_eq!(clause.iterable, "items");
@@ -832,23 +919,26 @@ mod tests {
 
     #[test]
     fn parse_each_expr_trims_whitespace() {
-        let clause = parse_each_expr("  item  in  items  ").unwrap();
+        let clause = parse_each_expr("  item  in  items  ", 1, 1).unwrap();
         assert_eq!(clause.item, "item");
         assert_eq!(clause.iterable, "items");
     }
 
     #[test]
     fn parse_each_expr_missing_in_returns_error() {
-        let result = parse_each_expr("item items");
+        let result = parse_each_expr("item items", 5, 10);
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert!(err.message.contains("invalid each expression"));
+        // 位置应从参数透传（而非 line:0/column:0 占位）
+        assert_eq!(err.line, 5);
+        assert_eq!(err.column, 10);
     }
 
     #[test]
     fn parse_each_expr_complex_iterable() {
         // 复杂表达式作为 iterable：`item in self.list.items`
-        let clause = parse_each_expr("item in self.list.items").unwrap();
+        let clause = parse_each_expr("item in self.list.items", 1, 1).unwrap();
         assert_eq!(clause.item, "item");
         assert_eq!(clause.iterable, "self.list.items");
     }

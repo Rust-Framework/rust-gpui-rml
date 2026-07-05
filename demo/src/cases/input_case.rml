@@ -3,22 +3,17 @@
         <h2>{t("case.input.title")}</h2>
 
         <Card title="组件说明">
-            <p>Input 是 gpui-component 文本输入组件的 RML 封装。Stateful 模式，需在 on_loaded 中初始化 InputState Entity。</p>
-            <p>placeholder 与 default_value 通过 InputState builder 链式调用设置，disabled 通过 Input 组件的 disabled 属性设置。</p>
+            <p>Input 是 gpui-component 文本输入组件的 RML 封装。Stateful 模式，通过 ref 指令惰性创建 InputState Entity，由 __rml_populate_refs 注入到对应的 ElementRef 字段。</p>
+            <p>placeholder 与 default_value 需在 InputState builder 上设置，disabled 通过 Input 组件 RML 属性设置。</p>
         </Card>
 
         <Card title="基础用法">
-            <p>placeholder 指定占位文本，default_value 设置初始值。</p>
+            <p>通过 ref 指令绑定到 ElementRef 字段，InputState Entity 在首次渲染时自动创建。</p>
             <Input ref="input_state" />
         </Card>
 
         <Card title="API">
-            <div class="api-table">
-                <div class="api-row api-header"><span class="api-prop-name">属性</span><span class="api-prop-type">类型</span><span>说明</span></div>
-                <div class="api-row"><span class="api-prop-name">placeholder</span><span class="api-prop-type">字符串</span><span>占位文本（InputState builder）</span></div>
-                <div class="api-row"><span class="api-prop-name">default_value</span><span class="api-prop-type">字符串</span><span>默认值（InputState builder）</span></div>
-                <div class="api-row"><span class="api-prop-name">disabled</span><span class="api-prop-type">布尔</span><span>禁用（Input 组件属性）</span></div>
-            </div>
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
         </Card>
     </div>
 </component>

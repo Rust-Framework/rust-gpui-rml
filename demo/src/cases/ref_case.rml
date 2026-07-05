@@ -1,0 +1,19 @@
+<component>
+    <div v-flex="" class="case-pane doc-pane">
+        <h2>{t("case.ref.title")}</h2>
+
+        <Card title="组件说明">
+            <p>ref 指令通过 ref="name" 声明元素引用名，关联到 ViewModel 中的 ElementRef&lt;T&gt; 字段。首次渲染后由 RML Runtime 调用 __rml_populate_refs 注入 Entity&lt;T&gt; 句柄，之后可通过 with_mut 命令式访问底层 state（focus / set_value / scroll 等）。</p>
+        </Card>
+
+        <Card title="基础用法">
+            <p>下方 Input 通过 ref="input_state" 绑定到 ElementRef&lt;InputState&gt; 字段：</p>
+            <Input ref="input_state" />
+            <p>注：on_loaded 阶段 ref_entities 尚未填充，ElementRef 仍为空；首次 render 后由 __rml_populate_refs 注入 Entity&lt;InputState&gt; 句柄。命令式访问通过 with_mut&#40;cx, &#124;state&#124; ...&#41; 调用，但 focus/set_value 等需要 Window 参数的方法需通过 cx.window&#40;&#41; 获取。</p>
+        </Card>
+
+        <Card title="API">
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+        </Card>
+    </div>
+</component>

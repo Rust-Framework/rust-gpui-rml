@@ -110,6 +110,13 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
     ("DescriptionList", &["vertical", "bordered", "columns", "label_width", "items"]),
     // DescriptionItem 专用（item builder 子标签，label 为构造器参数，value/span 为 setter）
     ("DescriptionItem", &["label", "value", "span"]),
+    // Popover 专用（浮动气泡容器：trigger slot + content 子节点 + anchor 定位 + default_open 非受控初始）
+    // 受控模式（open + on_open_change）需要特殊回调签名适配，待需求出现时再添加
+    ("Popover", &["anchor", "mouse_button", "appearance", "overlay_closable", "default_open"]),
+    // Icon 专用（RenderOnce 无 ElementId，name/path 为构造器参数，size 走通用 Sizable）
+    ("Icon", &["name", "path"]),
+    // Kbd 专用（RenderOnce 无 ElementId，key 为构造器参数，outline/appearance 为 setter）
+    ("Kbd", &["key", "outline", "appearance"]),
 ];
 
 /// 查询组件的所有已注册属性（通用 + 专用）

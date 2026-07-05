@@ -70,46 +70,11 @@
 }
 
 .doc-pane .card,
-.doc-pane .api-table,
 .doc-pane .code-block,
 .doc-pane .demo-section {
     width: 100%;
     max-width: 960px;
     margin: 0 auto;
-}
-
-.api-table {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    font-size: 13px;
-}
-
-.api-row {
-    display: flex;
-    flex-direction: row;
-    gap: 12px;
-    padding: 6px 8px;
-    border-bottom: 1px solid var(--border);
-}
-
-.api-row span {
-    flex: 1;
-}
-
-.api-prop-name {
-    flex: 0 0 160px;
-    font-weight: 600;
-}
-
-.api-prop-type {
-    flex: 0 0 100px;
-    color: var(--text-muted);
-}
-
-.api-header {
-    font-weight: 700;
-    background: var(--bg-color);
 }
 
 .code-block {

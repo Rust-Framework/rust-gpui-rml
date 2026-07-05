@@ -16,11 +16,23 @@
             </div>
         </Card>
 
-        <Card title="API">
-            <div class="api-table">
-                <div class="api-row api-header"><span class="api-prop-name">属性</span><span class="api-prop-type">类型</span><span>说明</span></div>
-                <div class="api-row"><span class="api-prop-name">子节点</span><span class="api-prop-type">元素[]</span><span>中央区域内容</span></div>
+        <Card title="动态状态(#[command] 事件)">
+            <p>点击按钮切换状态栏消息(演示 #[command] 事件处理):</p>
+            <div class="button-row">
+                <Button label="就绪" primary="" on-click={on_show_ready} />
+                <Button label="警告" warning="" on-click={on_show_warning} />
+                <Button label="错误" danger="" on-click={on_show_error} />
             </div>
+            <p>当前状态: {status_text}</p>
+            <div style="border: 1px solid #e0e0e0; overflow: hidden; border-radius: 4px;">
+                <NativeStatusBar>
+                    <span>{status_text}</span>
+                </NativeStatusBar>
+            </div>
+        </Card>
+
+        <Card title="API">
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
         </Card>
     </div>
 </component>

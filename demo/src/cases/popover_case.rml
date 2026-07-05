@@ -1,0 +1,50 @@
+<component>
+    <div v-flex="" class="case-pane doc-pane">
+        <h2>{t("case.popover.title")}</h2>
+
+        <Card title="组件说明">
+            <p>Popover 是浮动气泡容器，子节点通过 slot="trigger" 路由到 .trigger()，其余子节点作为 content 注入 .child()。anchor 属性控制气泡定位锚点，default-open 控制初始展开状态。</p>
+        </Card>
+
+        <Card title="基础用法">
+            <p>点击按钮展开气泡内容：</p>
+            <Popover>
+                <Button slot="trigger" label="点击展开" />
+                <div v-flex="" gap-2="" p-3="">
+                    <p>这是气泡内容。</p>
+                    <p>可以放置任意元素。</p>
+                </div>
+            </Popover>
+        </Card>
+
+        <Card title="锚点定位">
+            <p>anchor 属性控制气泡相对于 trigger 的定位：</p>
+            <div h-flex="" gap-4="">
+                <Popover anchor="bottom-left">
+                    <Button slot="trigger" label="bottom-left" />
+                    <div p-2="">左下角锚点</div>
+                </Popover>
+                <Popover anchor="bottom-center">
+                    <Button slot="trigger" label="bottom-center" />
+                    <div p-2="">中下角锚点</div>
+                </Popover>
+                <Popover anchor="bottom-right">
+                    <Button slot="trigger" label="bottom-right" />
+                    <div p-2="">右下角锚点</div>
+                </Popover>
+            </div>
+        </Card>
+
+        <Card title="默认展开">
+            <p>default-open="true" 让气泡初始处于展开状态：</p>
+            <Popover default-open="true">
+                <Button slot="trigger" label="已展开" />
+                <div p-2="">初始展开的气泡内容</div>
+            </Popover>
+        </Card>
+
+        <Card title="API">
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+        </Card>
+    </div>
+</component>

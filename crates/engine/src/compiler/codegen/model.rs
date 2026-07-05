@@ -1,4 +1,4 @@
-//! Model 字段收集 —— 提取 RML 中所有 `model={field}` 绑定的字段名
+﻿//! Model 字段收集 —— 提取 RML 中所有 `model={field}` 绑定的字段名
 
 use crate::compiler::InputHandlers;
 use crate::parser::ast::{Attribute, Directive, Element, EventHandler, Node};
@@ -80,7 +80,7 @@ fn collect_model_input_handlers_recursive(
     if let Some(field) = model_field {
         let entry = handlers.entry(field).or_default();
         for attr in &elem.attributes {
-            if let Attribute::Event { name, handler } = attr {
+            if let Attribute::Event { name, handler, .. } = attr {
                 let method = match handler {
                     EventHandler::Ident(m) | EventHandler::MethodName(m) => m.clone(),
                     EventHandler::WithArgs(m, _) => m.clone(),

@@ -1,4 +1,4 @@
-//! 单个 `<Tab>` 子节点 codegen —— 直接构造 `rml_ui::Tab::new()...` 表达式。
+﻿//! 单个 `<Tab>` 子节点 codegen —— 直接构造 `rml_ui::Tab::new()...` 表达式。
 //!
 //! 与 `accordion::item` 的闭包式 builder 不同，TabBar 的子节点通过
 //! `.child(Tab::new()...)` 直接注入，因此本模块生成的是普通构造表达式（非闭包）。
@@ -35,7 +35,7 @@ pub fn gen_tab_child(
     let mut label_set_by_attr = false;
     for attr in &elem.attributes {
         match attr {
-            Attribute::Static { name, value } => {
+            Attribute::Static { name, value, .. } => {
                 if let Some(s) = super::setters::static_setter(name, value, "Tab") {
                     code.push_str(&s);
                 } else if let Some(s) = super::super::component::component_static_setter(
@@ -47,7 +47,7 @@ pub fn gen_tab_child(
                     }
                 }
             }
-            Attribute::Bind { name, expr } => {
+            Attribute::Bind { name, expr, .. } => {
                 if let Some(s) =
                     super::setters::bind_setter(name, expr, &lv, &computed, "Tab")
                 {
@@ -61,7 +61,7 @@ pub fn gen_tab_child(
                     }
                 }
             }
-            Attribute::Event { name, handler } => {
+            Attribute::Event { name, handler, .. } => {
                 if let Some(s) = super::setters::event_setter(name, handler, "Tab") {
                     code.push_str(&s);
                 } else if let Some(s) = super::super::component::component_event_setter(

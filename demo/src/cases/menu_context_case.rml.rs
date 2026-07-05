@@ -1,6 +1,9 @@
 use gpui::SharedString;
 use rml::prelude::*;
 use rml_core::i18n::t_static;
+use rml_ui::{TableColumn, TableRow};
+
+use crate::cases::common::build_api_table;
 
 #[contribute(
     host_id = "demo.shell",
@@ -13,6 +16,8 @@ use rml_core::i18n::t_static;
 #[derive(Default)]
 pub struct MenuContextCase {
     pub last_action: String,
+    pub api_columns: Vec<TableColumn>,
+    pub api_rows: Vec<TableRow>,
 }
 
 impl IContribution for MenuContextCase {
@@ -21,6 +26,20 @@ impl IContribution for MenuContextCase {
     }
     fn name(&self) -> SharedString {
         t_static("case.menu.context.title")
+    }
+}
+
+impl ILifecycle for MenuContextCase {
+    fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
+        let (cols, rows) = build_api_table(&[
+            ("menu-item label", "字符串", "菜单项文案"),
+            ("menu-item icon", "图标名", "菜单项图标"),
+            ("menu-item onclick", "事件", "点击回调"),
+            ("menu-separator", "标签", "分组分隔线"),
+            ("menu-item 子节点", "menu-item", "子菜单"),
+        ]);
+        self.api_columns = cols;
+        self.api_rows = rows;
     }
 }
 

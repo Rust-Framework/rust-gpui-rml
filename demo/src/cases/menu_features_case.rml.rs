@@ -4,6 +4,9 @@ use gpui::SharedString;
 use rml::prelude::*;
 use rml_core::command::RelayCommand;
 use rml_core::i18n::t_static;
+use rml_ui::{TableColumn, TableRow};
+
+use crate::cases::common::build_api_table;
 
 #[contribute(
     host_id = "demo.shell",
@@ -23,6 +26,8 @@ pub struct MenuFeaturesCase {
     /// 类型为 `Arc<RelayCommand>`（具体类型）而非 `Arc<dyn ICommand>`，以便
     /// `#[derive(Default)]` 生效——框架已为 `RelayCommand` 实现 `Default`（no-op 空对象）。
     pub save_command: Arc<RelayCommand>,
+    pub api_columns: Vec<TableColumn>,
+    pub api_rows: Vec<TableRow>,
 }
 
 impl IContribution for MenuFeaturesCase {
@@ -41,6 +46,19 @@ impl ILifecycle for MenuFeaturesCase {
             this.last_action = "Save command executed".to_string();
             cx.notify();
         }));
+        let (cols, rows) = build_api_table(&[
+            ("scrollable", "布尔标志", "启用滚动"),
+            ("max-h", "数字", "最大高度（像素）"),
+            ("menu-item disabled", "布尔标志", "禁用项"),
+            ("menu-item checked", "布尔", "勾选状态"),
+            ("menu-item href", "URL", "外链跳转"),
+            ("menu-item icon", "图标名", "菜单项图标"),
+            ("menu-item header", "布尔标志", "分组标题"),
+            ("menu-item 子节点", "menu-item", "子菜单"),
+            ("menu-item command", "Arc<RelayCommand>", "声明式命令绑定"),
+        ]);
+        self.api_columns = cols;
+        self.api_rows = rows;
     }
 }
 

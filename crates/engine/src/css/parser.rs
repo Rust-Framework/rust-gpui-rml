@@ -10,11 +10,19 @@ use super::ast::*;
 pub struct ParseError {
     pub message: String,
     pub pos: usize,
+    /// 错误所在行（1-based），由 `err()` 根据 `pos` 计算
+    pub line: usize,
+    /// 错误所在列（1-based），由 `err()` 根据 `pos` 计算
+    pub column: usize,
 }
 
 impl std::fmt::Display for ParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "CSS parse error at {}: {}", self.pos, self.message)
+        write!(
+            f,
+            "CSS parse error at {}:{} (pos {}): {}",
+            self.line, self.column, self.pos, self.message
+        )
     }
 }
 
@@ -505,10 +513,34 @@ impl Parser {
     }
 
     fn err(&self, msg: &str) -> ParseError {
+        let (line, column) = self.pos_to_line_col(self.pos);
         ParseError {
             message: msg.to_string(),
             pos: self.pos,
+            line,
+            column,
         }
+    }
+
+    /// 根据字符偏移 `pos` 计算 1-based 行列
+    ///
+    /// 遍历 `chars[0..pos]`，遇 `\n` 行号+1、列号重置为 1，其余列号+1。
+    /// 错误是罕见事件，O(n) 遍历可接受，避免在每次 advance 时维护 line/column。
+    fn pos_to_line_col(&self, pos: usize) -> (usize, usize) {
+        let mut line = 1;
+        let mut column = 1;
+        for (i, c) in self.chars.iter().enumerate() {
+            if i >= pos {
+                break;
+            }
+            if *c == '\n' {
+                line += 1;
+                column = 1;
+            } else {
+                column += 1;
+            }
+        }
+        (line, column)
     }
 }
 
@@ -876,5 +908,53 @@ mod tests {
         let css = ".a { color: red; } .b { color: blue; }";
         let sheet = parse(css).unwrap();
         assert_eq!(sheet.rules.len(), 2);
+    }
+
+    // ─── line/column 错误诊断 ───
+
+    #[test]
+    fn error_reports_line_column_single_line() {
+        // 第 1 行第 6 列：".card {" 后缺少 }（在 expect 时报错）
+        let css = ".card { padding: 10px;";
+        let result = parse(css);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        // 单行：line=1, column 应大于 1
+        assert_eq!(err.line, 1, "line should be 1, got: {}", err.line);
+        assert!(err.column >= 1, "column should be >= 1, got: {}", err.column);
+        // Display 应包含 line:column
+        let display = format!("{}", err);
+        assert!(display.contains("1:"), "display: {}", display);
+    }
+
+    #[test]
+    fn error_reports_line_column_multi_line() {
+        // 第二行的 selector 解析失败
+        let css = ".a { color: red; }\n@@invalid";
+        let result = parse(css);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        // 错误在第 2 行
+        assert_eq!(err.line, 2, "line should be 2, got: {}", err.line);
+    }
+
+    #[test]
+    fn error_pos_to_line_col_handles_newlines() {
+        // 直接测试 pos_to_line_col 的换算逻辑
+        let css = "ab\ncd\nef";
+        let p = Parser {
+            chars: css.chars().collect(),
+            pos: 0,
+        };
+        // pos=0 → line 1, col 1
+        assert_eq!(p.pos_to_line_col(0), (1, 1));
+        // pos=2 → 'b' 仍是 line 1, col 3
+        assert_eq!(p.pos_to_line_col(2), (1, 3));
+        // pos=3 → '\n' 之后，line 2, col 1
+        assert_eq!(p.pos_to_line_col(3), (2, 1));
+        // pos=6 → 第二行末尾之后，line 3, col 1
+        assert_eq!(p.pos_to_line_col(6), (3, 1));
+        // pos=8 → line 3, col 3
+        assert_eq!(p.pos_to_line_col(8), (3, 3));
     }
 }

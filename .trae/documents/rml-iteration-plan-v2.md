@@ -51,15 +51,15 @@
 | 任务 | 涉及文件 | 说明 |
 |------|---------|------|
 | 1.1 实现 `else` 指令 codegen | `compiler/codegen/node.rs` | 在 if 分支后追踪同父的 else 节点，生成 `if cond { elem } else { else_elem }`；不支持 else if |
-| 1.2 实现 `once` 指令 codegen | `compiler/codegen/node.rs` + `ui/src/state.rs` | RmlState 增加 `rendered_once: HashSet<&'static str>`；codegen 生成首次渲染守卫 |
-| 1.3 实现 `html` 指令 codegen | `compiler/codegen/node.rs` | GPUI 无原生 HTML 渲染，降级为 `Label::new(raw)` 文本节点（明确文档说明此限制） |
-| 1.4 实现 `key` 指令消费 | `compiler/codegen/node.rs` | 列表渲染时基于 key 哈希生成稳定 element_id，而非数组索引 |
-| 1.5 修正 `show` 语义 | `compiler/codegen/node.rs` | 改为生成 `.when(!cond, \|d\| d.hidden())`，保留布局空间但隐藏视觉，与 if 区分 |
-| 1.6 修复 `ref` ElementRef 注入 | `compiler/codegen/node.rs` + `macros/src/component.rs` + `ui/src/state.rs` | RmlState 增加 `ref_handles: HashMap<String, ElementRef>`；codegen 生成 ref_handles.insert；宏侧识别 ref 字段从 ref_handles 取值 |
-| 1.7 Input 事件架构修复 | `compiler/input/event.rs` + `ui/src/components/` | Input 无 .on_change() 方法，通过 InputState EventEmitter<InputEvent> 发送事件。设计正确的 RML 事件映射架构（subscribe 模式而非方法调用） |
-| 1.8 解析器错误诊断增强 | `parser/{mod.rs, tokenizer.rs}` + `css/parser.rs` | RML ParseError 增加 source_snippet；CSS ParseError 增加 line/column |
-| 1.9 Attribute Span 保留 | `parser/ast.rs` + `compiler/codegen/node.rs` | Attribute::Static/Bind/Event 增加 span 字段，为 LSP 跳转预留 |
-| 1.10 指令 demo | `demo/src/cases/` | else/once/html/key/show/ref 各新增 demo 验证行为 |
+| 1.2 实现 `once` 指令 codegen | `compiler/codegen/node.rs` + `compiler/expr.rs` + `compiler/codegen/once.rs` + `ui/src/state.rs` | RmlState 增加 `once_cache: HashMap<&'static str, Box<dyn Any + Send + Sync>>` + `once_get_or_init<T>()` 方法；codegen 收集元素字段引用，首次渲染快照数据，后续渲染用快照重建元素（AnyElement 不可跨帧缓存，采用数据快照方案） |
+| 1.3 实现 `html` 指令 codegen | `compiler/codegen/node.rs` | GPUI 无原生 HTML 渲染，降级为 `rml_ui::Label::new(raw)` 文本节点；支持与 if/show/each 组合（条件/迭代渲染 Label） |
+| 1.4 实现 `key` 指令消费 | `compiler/codegen/node.rs` + `crates/core/src/element_id.rs` + `compiler/codegen/once.rs` | 新增 `rml_core::element_id::from_key<T: Hash>()` 运行时支持；codegen 在 id 生成处按 ref > key > 事件处理器优先级消费 key 表达式，生成 `.id(("rml_key", rml_core::element_id::from_key(&expr)))` NamedInteger id；key 表达式在 each 作用域内求值，引用循环变量（如 `item.id`）而非 `self.item.id`；once.rs `collect_element_fields` 添加 Key 指令字段收集（用 effective_refs 跳过循环变量） |
+| 1.5 修正 `show` 语义 | `compiler/codegen/node.rs` | `show={cond}` 改为生成 `.when(!cond, \|d\| d.invisible())`（GPUI `Visibility::Hidden`，CSS `visibility:hidden`），始终渲染元素但按条件隐藏视觉，保留布局空间 —— 与 `if`（`Display::None` 不占空间）明确区分。`if` 优先于 `show`（同时存在时 `show` 被忽略）。重构 `each` 包装到 `if`/`show` 之后，使条件按 item 逐项应用（修复 `each + if`/`each + show` 条件被忽略的预存缺陷）。同时修复 `each` iterable 引用外层循环变量时误加 `self.` 前缀的缺陷 |
+| 1.6 修复 `ref` ElementRef 注入 ✅ | `compiler/component.rs` + `macros/src/component.rs` + `ui/src/state.rs` + `compiler/codegen/render.rs` + `compiler/{tree,code_editor}/gen.rs` + `tags.rs` | **完成**。RmlState 增加 `ref_entities: HashMap<String, Box<dyn Any + Send + Sync>>` + `get_or_init_ref<T: 'static>()` 方法（Entity<T> 自身 Send + Sync 不依赖 T，故可类型擦除存储）；Stateful 组件 codegen 在 `ref="name"` 时生成 `get_or_init_ref("name", w, c, ctor_expr)` 调用，通过 `state_ctor` 闭包表达式适配不同构造函数签名（InputState::new(w,c) / SliderState::new() / TreeState::new(c)）；宏侧 `gen_populate_refs_impl` 扫描 `ElementRef<T>` 字段，生成 `__rml_populate_refs()` 方法从 `ref_entities` 取出 `Entity<T>` 并 `.set()` 到字段；render.rs 在渲染后调用 `self.__rml_populate_refs()`。新增 6 个宏侧测试 + 3 个 codegen 测试。input_case demo 已迁移至 `ElementRef<InputState>` + `ref="input_state"` 模式 |
+| 1.7 Input 事件架构修复 ✅ | `compiler/input/event.rs` + `compiler/component.rs` + `compiler/code_editor/gen.rs` + `ui/src/state.rs` | **完成**。Input element 无 `.on_change()`/`.on_enter()` 等方法（gpui-component 设计），事件通过 `InputState: EventEmitter<InputEvent>` 发送，用户通过 `cx.subscribe` 订阅。codegen 设计：①`component_event_setter` 对 Input 事件（on_change/on_enter/on_focus/on_blur）返回 None，跳过 setter 链；②`gen_component` Stateful 分支收集 Input 事件处理器，生成 block 表达式 `({ let __rml_entity = <entity>; <subscribe...>; Input::new(&__rml_entity) })`，subscription 句柄用 `detach()` 让其随 entity 生命周期自动销毁；③`RmlState` 增加 `subscribed_events: Mutex<HashSet<String>>` 字段 + `is_event_subscribed`/`mark_event_subscribed` 方法，防止 render 时重复 subscribe（每次 render 都会重新评估事件订阅代码）；④ref_key 作为 subscribe 标识键：`ref="name"` 优先，回退到 state_field 名。CodeEditor 路径同步重构。新增 8 个测试（6 个 event.rs + 2 个 gen_component） |
+| 1.8 解析器错误诊断增强 ✅ | `parser/{mod.rs, tokenizer.rs}` + `css/parser.rs` | **完成**。RML ParseError 增加 `source_snippet: Option<String>` 字段 + `with_source(source)` 方法，由 `parse()` 在返回错误前根据 `line` 从源码提取对应行内容；Display 渲染源码上下文块 `  \| <源码行>\n  \|   ^`。修复 `parse_each_expr` 的 `line:0/column:0` 占位缺陷：`RawAttribute` 增加 `line/column` 字段，`each` 属性位置透传到 `parse_each_expr` 签名。CSS ParseError 增加 `line/column` 字段，由 `Parser::pos_to_line_col(pos)` 根据 `pos` 计算（O(n) 遍历，错误罕见可接受，避免每次 advance 维护行列）。Display 格式 `CSS parse error at line:col (pos): msg`。新增 6 个测试（3 RML + 3 CSS） |
+| 1.9 Attribute Span 保留 ✅ | `parser/ast.rs` + `parser/tokenizer.rs` + `parser/mod.rs` + 全编译器模块 | **完成**。`Attribute::Static/Bind/Event` 三变体增加 `span: Span` 字段（半开字节区间 `[start, end)`），由 tokenizer 在构造 `RawAttribute` 时填充，`build_element` 透传到 AST。26 个编译器文件解构模式批量更新（match arm 添加 `..` 忽略 span，构造点添加 `span: Span::empty()` 或 `span: attr.span`）。13 个测试模块添加 `use crate::parser::Span;`。LSP 跳转预留接口就位 |
+| 1.10 指令 demo ✅ | `demo/src/cases/` | **完成**。新增 6 个指令专项 demo：else_case（if/else 双分支）、once_case（首次渲染快照 vs 实时对比）、html_case（降级为 Label 文本）、key_case（each + key 稳定 ElementId）、show_case（Visibility::Hidden 保留布局 vs if Display::None）、ref_case（ElementRef 字段绑定 + with_mut 命令式访问）。i18n 添加 6 个 case.{name}.title。修复 once codegen 单元素快照的多余括号 warning（`(expr,)` → `expr,`，由外层 `({snap})` 形成 1-tuple）。修复 html codegen 对 SharedString 字段的 move 问题（demo 中用 `html={field.clone()}` 表达式） |
 
 **验收标准**：
 - 9 个指令全部行为符合文档
@@ -83,9 +83,9 @@
 
 | 任务 | 涉及文件 | 说明 |
 |------|---------|------|
-| 2.1 Icon 集成 | `tags.rs`、`props_registry.rs`、`component.rs` | Stateless，支持 name/size/color |
-| 2.2 Kbd 集成 | 同上 | Stateless，支持 key/size |
-| 2.3 Tooltip 集成 | 同上 + `compiler/tooltip/` | Stateless，支持 label/placement/trigger |
+| 2.1 Icon 集成 ✅ | `tags.rs`、`props_registry.rs`、`component.rs`、`compiler/icon.rs` | **完成**。Icon 注册为 StatelessNoId（RenderOnce 无 ElementId），由专属 `compiler/icon.rs` 模块处理 name/path 属性提取：`name="Settings"` → `Icon::new(IconName::Settings)`，`path="..."` → `Icon::empty().path(...)`，name 优先于 path。size 走通用 Sizable setter 链。新增 6 个 icon codegen 测试 + icon_case demo（静态 IconName + computed 动态切换 + 自定义 path） |
+| 2.2 Kbd 集成 ✅ | `tags.rs`、`props_registry.rs`、`component.rs`、`compiler/kbd.rs` | **完成**。Kbd 注册为 StatelessNoId，由专属 `compiler/kbd.rs` 处理 key 属性：`key="cmd-a"` → `Kbd::new(Keystroke::parse("cmd-a").expect("valid keystroke"))`。专用 setter：outline/appearance。`key` 必填（缺失返回 CodegenError）。新增 6 个 kbd codegen 测试 + kbd_case demo（基础用法 + 样式变体） |
+| 2.3 Tooltip 集成 ✅ | `compiler/tooltip.rs` | **完成**。Tooltip 作为通用属性（非独立组件），由 `compiler/tooltip.rs` 提供 `static_setter`/`bind_setter`/`supports_tooltip`。组件白名单：Button/IconButton/DropdownButton/Toggle/Checkbox/Clipboard/Radio/Switch。`tooltip="text"` → `.tooltip("text")`，`tooltip={expr}` → `.tooltip(self.expr)`（bind 需先经 `component_bind_rust_expr` 转换）。移除 component.rs match 中的旧 tooltip setter，统一由 tooltip 模块处理。新增 6 个 tooltip 测试 + tooltip_case demo |
 | 2.4 Popover 集成 | 同上 + `compiler/popover/` | StatelessWithItems，支持 trigger/placement/content |
 | 2.5 Radio + RadioGroup 集成 | 同上 + `compiler/radio/` + `ui/src/state.rs` | RadioGroup 持有 selected_value；RmlState 增加 radio_states |
 | 2.6 Select 集成 | 同上 + `compiler/select/` + `ui/src/state.rs` | Stateless，支持 items/value/on-change；RmlState 增加 select_states |

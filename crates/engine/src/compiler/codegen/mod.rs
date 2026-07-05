@@ -30,6 +30,7 @@ mod lifecycle;
 mod model;
 mod node;
 mod observable;
+mod once;
 mod render;
 mod shell;
 mod text;

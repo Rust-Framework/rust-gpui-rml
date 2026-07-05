@@ -40,7 +40,7 @@ pub fn gen_description_item(
     let mut value_set_by_attr = false;
     for attr in &elem.attributes {
         match attr {
-            Attribute::Static { name, value } => {
+            Attribute::Static { name, value, .. } => {
                 if name == "label" {
                     continue;
                 }
@@ -57,7 +57,7 @@ pub fn gen_description_item(
                     code.push_str(&s);
                 }
             }
-            Attribute::Bind { name, expr } => {
+            Attribute::Bind { name, expr, .. } => {
                 if name == "label" {
                     continue;
                 }
@@ -78,7 +78,7 @@ pub fn gen_description_item(
                     code.push_str(&s);
                 }
             }
-            Attribute::Event { name, handler } => {
+            Attribute::Event { name, handler, .. } => {
                 if let Some(s) = super::super::component::component_event_setter(
                     name,
                     handler,
@@ -113,10 +113,10 @@ fn extract_required_label(
 ) -> Result<String, CodegenError> {
     for attr in &elem.attributes {
         match attr {
-            Attribute::Static { name, value } if name == "label" => {
+            Attribute::Static { name, value, .. } if name == "label" => {
                 return Ok(format!("{:?}", value));
             }
-            Attribute::Bind { name, expr } if name == "label" => {
+            Attribute::Bind { name, expr, .. } if name == "label" => {
                 let rust_expr =
                     super::super::component::component_bind_rust_expr(expr, loop_vars, computed);
                 return Ok(format!("{}.clone()", rust_expr));
@@ -183,6 +183,7 @@ mod tests {
     use super::*;
     use crate::compiler::CodegenCtx;
     use crate::parser::ast::{Attribute, Element, Node};
+    use crate::parser::Span;
 
     fn ctx() -> CodegenCtx {
         CodegenCtx {
@@ -209,8 +210,8 @@ mod tests {
         let elem = make_element(
             "description",
             vec![
-                Attribute::Static { name: "label".into(), value: "Name".into() },
-                Attribute::Static { name: "value".into(), value: "John".into() },
+                Attribute::Static { name: "label".into(), value: "Name".into(), span: Span::empty() },
+                Attribute::Static { name: "value".into(), value: "John".into(), span: Span::empty() },
             ],
             vec![],
         );
@@ -226,8 +227,8 @@ mod tests {
         let elem = make_element(
             "DescriptionItem",
             vec![
-                Attribute::Static { name: "label".into(), value: "Name".into() },
-                Attribute::Static { name: "value".into(), value: "John".into() },
+                Attribute::Static { name: "label".into(), value: "Name".into(), span: Span::empty() },
+                Attribute::Static { name: "value".into(), value: "John".into(), span: Span::empty() },
             ],
             vec![],
         );
@@ -240,7 +241,7 @@ mod tests {
     fn gen_item_missing_label_errors() {
         let elem = make_element(
             "description",
-            vec![Attribute::Static { name: "value".into(), value: "John".into() }],
+            vec![Attribute::Static { name: "value".into(), value: "John".into(), span: Span::empty() }],
             vec![],
         );
         let mut id = 0;
@@ -255,9 +256,9 @@ mod tests {
         let elem = make_element(
             "description",
             vec![
-                Attribute::Static { name: "label".into(), value: "Name".into() },
-                Attribute::Static { name: "value".into(), value: "John".into() },
-                Attribute::Static { name: "span".into(), value: "2".into() },
+                Attribute::Static { name: "label".into(), value: "Name".into(), span: Span::empty() },
+                Attribute::Static { name: "value".into(), value: "John".into(), span: Span::empty() },
+                Attribute::Static { name: "span".into(), value: "2".into(), span: Span::empty() },
             ],
             vec![],
         );
@@ -272,8 +273,8 @@ mod tests {
         let elem = make_element(
             "description",
             vec![
-                Attribute::Bind { name: "label".into(), expr: "item.label".into() },
-                Attribute::Static { name: "value".into(), value: "John".into() },
+                Attribute::Bind { name: "label".into(), expr: "item.label".into(), span: Span::empty() },
+                Attribute::Static { name: "value".into(), value: "John".into(), span: Span::empty() },
             ],
             vec![],
         );
@@ -288,8 +289,8 @@ mod tests {
         let elem = make_element(
             "description",
             vec![
-                Attribute::Static { name: "label".into(), value: "Name".into() },
-                Attribute::Bind { name: "value".into(), expr: "user.name".into() },
+                Attribute::Static { name: "label".into(), value: "Name".into(), span: Span::empty() },
+                Attribute::Bind { name: "value".into(), expr: "user.name".into(), span: Span::empty() },
             ],
             vec![],
         );
@@ -304,9 +305,9 @@ mod tests {
         let elem = make_element(
             "description",
             vec![
-                Attribute::Static { name: "label".into(), value: "Name".into() },
-                Attribute::Static { name: "value".into(), value: "John".into() },
-                Attribute::Bind { name: "span".into(), expr: "item_span".into() },
+                Attribute::Static { name: "label".into(), value: "Name".into(), span: Span::empty() },
+                Attribute::Static { name: "value".into(), value: "John".into(), span: Span::empty() },
+                Attribute::Bind { name: "span".into(), expr: "item_span".into(), span: Span::empty() },
             ],
             vec![],
         );
@@ -320,7 +321,7 @@ mod tests {
         // <description label="Name">John Doe</description>
         let elem = make_element(
             "description",
-            vec![Attribute::Static { name: "label".into(), value: "Name".into() }],
+            vec![Attribute::Static { name: "label".into(), value: "Name".into(), span: Span::empty() }],
             vec![Node::Text("John Doe".into())],
         );
         let mut id = 0;
@@ -335,8 +336,8 @@ mod tests {
         let elem = make_element(
             "description",
             vec![
-                Attribute::Static { name: "label".into(), value: "Name".into() },
-                Attribute::Static { name: "value".into(), value: "Attr".into() },
+                Attribute::Static { name: "label".into(), value: "Name".into(), span: Span::empty() },
+                Attribute::Static { name: "value".into(), value: "Attr".into(), span: Span::empty() },
             ],
             vec![Node::Text("Child".into())],
         );
@@ -352,7 +353,7 @@ mod tests {
         let badge = make_element("Badge", vec![], vec![Node::Text("Active".into())]);
         let elem = make_element(
             "description",
-            vec![Attribute::Static { name: "label".into(), value: "Status".into() }],
+            vec![Attribute::Static { name: "label".into(), value: "Status".into(), span: Span::empty() }],
             vec![Node::Element(badge)],
         );
         let mut id = 0;
@@ -367,7 +368,7 @@ mod tests {
         // <description label="Name" /> — 无 value 也无子节点
         let elem = make_element(
             "description",
-            vec![Attribute::Static { name: "label".into(), value: "Name".into() }],
+            vec![Attribute::Static { name: "label".into(), value: "Name".into(), span: Span::empty() }],
             vec![],
         );
         let mut id = 0;

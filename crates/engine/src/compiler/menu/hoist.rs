@@ -1,4 +1,4 @@
-//! 菜单闭包 `move` 捕获前，将 `self.*` 表达式提升为局部变量（满足 `'static`）
+﻿//! 菜单闭包 `move` 捕获前，将 `self.*` 表达式提升为局部变量（满足 `'static`）
 
 use std::collections::HashMap;
 
@@ -138,7 +138,7 @@ fn bind_expr(
     ctx: &CodegenCtx,
 ) -> Result<Option<String>, CodegenError> {
     let bind = elem.attributes.iter().find_map(|a| match a {
-        Attribute::Bind { name: n, expr } if n == name => Some(expr.clone()),
+        Attribute::Bind { name: n, expr, .. } if n == name => Some(expr.clone()),
         _ => None,
     });
     let Some(expr_str) = bind else {

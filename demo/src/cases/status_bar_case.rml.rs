@@ -4,6 +4,9 @@ use gpui::{AnyElement, ParentElement, SharedString, Styled};
 use rml::prelude::*;
 use rml_core::contribution::{register_visual_ability, IVisual};
 use rml_core::i18n::t_static;
+use rml_ui::{TableColumn, TableRow};
+
+use crate::cases::common::build_api_table;
 
 #[contribute(
     host_id = "demo.shell",
@@ -14,7 +17,11 @@ use rml_core::i18n::t_static;
 )]
 #[component]
 #[derive(Default)]
-pub struct StatusBarCase {}
+pub struct StatusBarCase {
+    pub last_action: String,
+    pub api_columns: Vec<TableColumn>,
+    pub api_rows: Vec<TableRow>,
+}
 
 impl IContribution for StatusBarCase {
     fn id(&self) -> &str {
@@ -25,9 +32,30 @@ impl IContribution for StatusBarCase {
     }
 }
 
-impl ILifecycle for StatusBarCase {}
+impl ILifecycle for StatusBarCase {
+    fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
+        let (cols, rows) = build_api_table(&[
+            ("kind = \"status\"", "贡献类型", "注册到状态栏插槽"),
+            ("host_id", "字符串", "宿主标识"),
+            ("order", "数字", "状态栏排序"),
+            ("IContribution::name", "方法", "状态栏显示文案"),
+            ("IVisual::render", "方法", "自定义状态栏渲染"),
+        ]);
+        self.api_columns = cols;
+        self.api_rows = rows;
+    }
+}
 
 impl StatusBarCase {
+    #[computed]
+    pub fn action_status(&self) -> String {
+        if self.last_action.is_empty() {
+            "尚未触发任何操作".to_string()
+        } else {
+            format!("上次操作：{}", self.last_action)
+        }
+    }
+
     #[computed]
     pub fn code_sample(&self) -> String {
         r#"#[contribute(host_id = "demo.shell", id = "status.ready", kind = "status", order = 0)]
@@ -37,8 +65,24 @@ pub struct StatusReady;
 impl IContribution for StatusReady {
     fn id(&self) -> &str { Self::CONTRIBUTION_ID }
     fn name(&self) -> SharedString { t_static("shell.status_ready").into() }
+}
+
+impl IVisual for StatusReady {
+    fn render(&self, _window: &mut gpui::Window, _cx: &mut gpui::App) -> AnyElement {
+        gpui::div().text_xs().child(t_static("shell.status_ready")).into_any_element()
+    }
 }"#
             .to_string()
+    }
+
+    #[command]
+    pub fn on_show_ready(&mut self, _: &ClickEvent, _: &mut Context<Self>) {
+        self.last_action = "查看就绪状态".to_string();
+    }
+
+    #[command]
+    pub fn on_show_case(&mut self, _: &ClickEvent, _: &mut Context<Self>) {
+        self.last_action = "查看案例状态".to_string();
     }
 }
 

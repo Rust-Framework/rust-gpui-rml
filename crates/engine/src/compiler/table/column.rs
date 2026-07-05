@@ -32,7 +32,7 @@ pub fn gen_column(
     // 3. 其余属性 → setter 链（委托 table setters → 公共 setter）
     for attr in &elem.attributes {
         match attr {
-            Attribute::Static { name, value } => {
+            Attribute::Static { name, value, .. } => {
                 if name == "key" || name == "title" {
                     continue;
                 }
@@ -44,7 +44,7 @@ pub fn gen_column(
                     code.push_str(&s);
                 }
             }
-            Attribute::Bind { name, expr } => {
+            Attribute::Bind { name, expr, .. } => {
                 if name == "key" || name == "title" {
                     continue;
                 }
@@ -88,10 +88,10 @@ fn extract_required_arg(
 ) -> Result<String, CodegenError> {
     for attr in &elem.attributes {
         match attr {
-            Attribute::Static { name: n, value } if n == name => {
+            Attribute::Static { name: n, value, .. } if n == name => {
                 return Ok(format!("{:?}", value));
             }
-            Attribute::Bind { name: n, expr } if n == name => {
+            Attribute::Bind { name: n, expr, .. } if n == name => {
                 let rust_expr = super::super::component::component_bind_rust_expr(
                     expr, loop_vars, computed,
                 );
@@ -110,6 +110,7 @@ mod tests {
     use super::*;
     use crate::compiler::CodegenCtx;
     use crate::parser::ast::{Attribute, Element, Node};
+    use crate::parser::Span;
 
     fn ctx() -> CodegenCtx {
         CodegenCtx {
@@ -136,8 +137,8 @@ mod tests {
         let elem = make_element(
             "Column",
             vec![
-                Attribute::Static { name: "key".into(), value: "name".into() },
-                Attribute::Static { name: "title".into(), value: "Name".into() },
+                Attribute::Static { name: "key".into(), value: "name".into(), span: Span::empty() },
+                Attribute::Static { name: "title".into(), value: "Name".into(), span: Span::empty() },
             ],
             vec![],
         );
@@ -152,10 +153,10 @@ mod tests {
         let elem = make_element(
             "Column",
             vec![
-                Attribute::Static { name: "key".into(), value: "age".into() },
-                Attribute::Static { name: "title".into(), value: "Age".into() },
-                Attribute::Static { name: "width".into(), value: "100".into() },
-                Attribute::Static { name: "align".into(), value: "center".into() },
+                Attribute::Static { name: "key".into(), value: "age".into(), span: Span::empty() },
+                Attribute::Static { name: "title".into(), value: "Age".into(), span: Span::empty() },
+                Attribute::Static { name: "width".into(), value: "100".into(), span: Span::empty() },
+                Attribute::Static { name: "align".into(), value: "center".into(), span: Span::empty() },
             ],
             vec![],
         );
@@ -171,8 +172,8 @@ mod tests {
         let elem = make_element(
             "column",
             vec![
-                Attribute::Static { name: "key".into(), value: "x".into() },
-                Attribute::Static { name: "title".into(), value: "X".into() },
+                Attribute::Static { name: "key".into(), value: "x".into(), span: Span::empty() },
+                Attribute::Static { name: "title".into(), value: "X".into(), span: Span::empty() },
             ],
             vec![],
         );
@@ -187,8 +188,8 @@ mod tests {
         let elem = make_element(
             "Column",
             vec![
-                Attribute::Bind { name: "key".into(), expr: "col_key".into() },
-                Attribute::Static { name: "title".into(), value: "Title".into() },
+                Attribute::Bind { name: "key".into(), expr: "col_key".into(), span: Span::empty() },
+                Attribute::Static { name: "title".into(), value: "Title".into(), span: Span::empty() },
             ],
             vec![],
         );
@@ -202,7 +203,7 @@ mod tests {
     fn gen_column_missing_key_errors() {
         let elem = make_element(
             "Column",
-            vec![Attribute::Static { name: "title".into(), value: "T".into() }],
+            vec![Attribute::Static { name: "title".into(), value: "T".into(), span: Span::empty() }],
             vec![],
         );
         let mut id = 0;
@@ -215,7 +216,7 @@ mod tests {
     fn gen_column_missing_title_errors() {
         let elem = make_element(
             "Column",
-            vec![Attribute::Static { name: "key".into(), value: "k".into() }],
+            vec![Attribute::Static { name: "key".into(), value: "k".into(), span: Span::empty() }],
             vec![],
         );
         let mut id = 0;
@@ -230,9 +231,9 @@ mod tests {
         let elem = make_element(
             "Column",
             vec![
-                Attribute::Static { name: "key".into(), value: "x".into() },
-                Attribute::Static { name: "title".into(), value: "X".into() },
-                Attribute::Bind { name: "width".into(), expr: "col_w".into() },
+                Attribute::Static { name: "key".into(), value: "x".into(), span: Span::empty() },
+                Attribute::Static { name: "title".into(), value: "X".into(), span: Span::empty() },
+                Attribute::Bind { name: "width".into(), expr: "col_w".into(), span: Span::empty() },
             ],
             vec![],
         );
@@ -246,8 +247,8 @@ mod tests {
         let elem = make_element(
             "Column",
             vec![
-                Attribute::Static { name: "key".into(), value: "x".into() },
-                Attribute::Static { name: "title".into(), value: "X".into() },
+                Attribute::Static { name: "key".into(), value: "x".into(), span: Span::empty() },
+                Attribute::Static { name: "title".into(), value: "X".into(), span: Span::empty() },
             ],
             vec![Node::Text("ignored".into())],
         );

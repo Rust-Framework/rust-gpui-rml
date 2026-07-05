@@ -602,6 +602,58 @@ fn is_ident_char(c: char) -> bool {
     c.is_ascii_alphanumeric() || c == '_'
 }
 
+/// 收集表达式中引用的顶层字段名（供 `once` 指令生成数据快照）
+///
+/// 顶层字段：直接通过 `self.X` 访问的字段。`user.name` 收集 `user`（不收集 `name`），
+/// `items.len()` 收集 `items`（不收集 `len`）。
+///
+/// 跳过 `self`（Rust 关键字）、`_window`/`cx`（render 方法参数）和 `loop_vars`（each 迭代变量）。
+/// 这些都不是视图结构体的字段，不应被快照。
+///
+/// 解析失败的表达式返回空 Vec（`gen_expr_code` 的 fallback 会把整串当作字段名生成 `self.X`，
+/// 但这种情况极罕见，且 `once` 用户通常会写可解析的表达式）。
+pub fn collect_fields(expr_str: &str, loop_vars: &[&str]) -> Vec<String> {
+    let parsed = match parse(expr_str) {
+        Ok(e) => e,
+        Err(_) => return Vec::new(),
+    };
+    let mut fields = Vec::new();
+    collect_fields_impl(&parsed, loop_vars, &mut fields);
+    fields
+}
+
+fn collect_fields_impl(expr: &Expr, loop_vars: &[&str], fields: &mut Vec<String>) {
+    match expr {
+        Expr::Field(name) => {
+            if name != "self"
+                && name != "_window"
+                && name != "cx"
+                && !loop_vars.contains(&name.as_str())
+            {
+                fields.push(name.clone());
+            }
+        }
+        Expr::Member(target, _) => collect_fields_impl(target, loop_vars, fields),
+        Expr::Index(target, index) => {
+            collect_fields_impl(target, loop_vars, fields);
+            collect_fields_impl(index, loop_vars, fields);
+        }
+        Expr::MethodCall(target, _, args) => {
+            collect_fields_impl(target, loop_vars, fields);
+            for arg in args {
+                collect_fields_impl(arg, loop_vars, fields);
+            }
+        }
+        Expr::BinaryOp(_, lhs, rhs) => {
+            collect_fields_impl(lhs, loop_vars, fields);
+            collect_fields_impl(rhs, loop_vars, fields);
+        }
+        Expr::Unary(_, e) => collect_fields_impl(e, loop_vars, fields),
+        Expr::Lit(_) => {}
+        Expr::Convert(target, _) => collect_fields_impl(target, loop_vars, fields),
+    }
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 //  单元测试
 // ──────────────────────────────────────────────────────────────────────────

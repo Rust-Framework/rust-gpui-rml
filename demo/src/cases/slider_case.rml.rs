@@ -1,7 +1,9 @@
 use gpui::SharedString;
 use rml::prelude::*;
 use rml_core::i18n::t_static;
-use rml_ui::SliderState;
+use rml_ui::{SliderState, TableColumn, TableRow};
+
+use crate::cases::common::build_api_table;
 
 #[contribute(
     host_id = "demo.shell",
@@ -15,6 +17,8 @@ use rml_ui::SliderState;
 pub struct SliderCase {
     pub slider_state: Option<gpui::Entity<SliderState>>,
     pub disabled_state: Option<gpui::Entity<SliderState>>,
+    pub api_columns: Vec<TableColumn>,
+    pub api_rows: Vec<TableRow>,
 }
 
 impl IContribution for SliderCase {
@@ -41,14 +45,13 @@ impl ILifecycle for SliderCase {
                 .max(100.0)
                 .default_value(30.0)
         }));
-    }
-}
-
-impl SliderCase {
-    #[computed]
-    pub fn code_sample(&self) -> String {
-        r#"<Slider ref="slider_state" />
-<Slider ref="disabled_state" disabled={true} />"#
-            .to_string()
+        let (cols, rows) = build_api_table(&[
+            ("disabled", "布尔", "禁用滑块交互"),
+            ("SliderState::min/max", "f32", "范围（on_loaded 中设置）"),
+            ("SliderState::step", "f32", "步长"),
+            ("SliderState::default_value", "f32", "初始值"),
+        ]);
+        self.api_columns = cols;
+        self.api_rows = rows;
     }
 }

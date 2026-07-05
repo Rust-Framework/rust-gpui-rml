@@ -1,0 +1,29 @@
+<component>
+    <div v-flex="" class="case-pane doc-pane">
+        <h2>{t("case.list.title")}</h2>
+
+        <Card title="组件说明">
+            <p>列表渲染案例演示 RML 的 each 指令。通过 each=&#123;item in items&#125; 遍历 Vec&lt;T&gt;，配合 content=&#123;expr&#125; 渲染每个元素。修改 Vec 字段后需调用 __rml_bump_version 通知框架重渲。</p>
+        </Card>
+
+        <Card title="基础列表">
+            <p>共 {item_count} 项：</p>
+            <div h-flex="" gap-2="" flex-wrap="">
+                <component each={item in items} content={self.render_item(item, _window, cx)} />
+            </div>
+        </Card>
+
+        <Card title="动态增删">
+            <p>点击按钮修改 items 字段，列表实时更新：</p>
+            <div h-flex="" gap-4="">
+                <Button label="添加项" on-click={on_add_item} />
+                <Button label="删除末项" on-click={on_remove_item} />
+            </div>
+            <p>当前项数：{item_count}</p>
+        </Card>
+
+        <Card title="API">
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+        </Card>
+    </div>
+</component>

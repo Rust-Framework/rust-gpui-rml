@@ -165,6 +165,7 @@ pub fn canonical_tag(tag: &str) -> String {
         "tab" => "Tab".to_string(),
         "table" => "Table".to_string(),
         "column" => "Column".to_string(),
+        "popover" => "Popover".to_string(),
         "descriptions" => "DescriptionList".to_string(),
         "description" => "DescriptionItem".to_string(),
         "separator" => "DescriptionSeparator".to_string(),
@@ -273,9 +274,23 @@ pub enum ComponentKind {
     /// 无状态无参组件：构造调用形如 `TitleBar::new()` / `StatusBar::new()`
     /// 用于无 `ElementId` 参数的 RenderOnce 组件
     StatelessNoId,
-    /// 有状态组件：构造调用形如 `Input::new(&self.<field>)`
-    /// 需要视图中持有对应 state entity 字段（如 `Entity<InputState>`）
-    Stateful { state_field: &'static str },
+    /// 有状态组件：构造调用形如 `Input::new(&entity)`
+    ///
+    /// 配合 `ref="name"` 指令，codegen 生成 `__rml_state.get_or_init_ref(...)` 调用，
+    /// 惰性创建 `Entity<T>` 并缓存到 `RmlState.ref_entities`，无需用户在 `on_loaded`
+    /// 中手动创建 entity。同时宏侧生成 `__rml_populate_refs()`，将 entity 注入
+    /// 用户声明的 `ElementRef<T>` 字段（字段名需与 ref name 一致）。
+    ///
+    /// - `state_field`：默认字段名（无 ref 时回退使用 `self.<state_field>.as_ref().expect(...)`，
+    ///   兼容用户自定义 `Option<Entity<T>>` + 手动 `on_loaded` 初始化的旧用法）
+    /// - `state_ctor`：state 构造闭包表达式字符串，签名 `(window, cx) -> T`。
+    ///   闭包返回类型推断 T，避免要求所有 state 类型构造函数签名一致
+    ///   （`InputState::new(w, c)` / `SliderState::new()` / `TreeState::new(c)` 三者签名不同，
+    ///   闭包适配器统一为 `|w, c| ...`）。
+    Stateful {
+        state_field: &'static str,
+        state_ctor: &'static str,
+    },
     /// Entity 引用组件：从 Host 的 `Entity<T>` 字段直接 clone
     /// 配合 `ref="field_name"` 指令指定字段名
     /// 生成 `self.<field>.as_ref().expect("init in on_loaded").clone()`
@@ -348,7 +363,7 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
         "Tag" => Some(ComponentTag {
             ctor_path: "rml_ui::Tag",
             kind: ComponentKind::Stateless,
-            container: false,
+            container: true,
         }),
         "Progress" => Some(ComponentTag {
             ctor_path: "rml_ui::Progress",
@@ -364,6 +379,7 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             ctor_path: "rml_ui::Slider",
             kind: ComponentKind::Stateful {
                 state_field: "slider_state",
+                state_ctor: "|_w, _c| rml_ui::SliderState::new()",
             },
             container: false,
         }),
@@ -376,6 +392,7 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             ctor_path: "rml_ui::Input",
             kind: ComponentKind::Stateful {
                 state_field: "input_state",
+                state_ctor: "|w, c| rml_ui::InputState::new(w, c)",
             },
             container: false,
         }),
@@ -383,6 +400,7 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             ctor_path: "rml_ui::Input",
             kind: ComponentKind::Stateful {
                 state_field: "input_state",
+                state_ctor: "|w, c| rml_ui::InputState::new(w, c)",
             },
             container: false,
         }),
@@ -392,6 +410,7 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             ctor_path: "rml_ui::Input",
             kind: ComponentKind::Stateful {
                 state_field: "editor_state",
+                state_ctor: "|w, c| rml_ui::InputState::new(w, c)",
             },
             container: false,
         }),
@@ -420,6 +439,7 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             ctor_path: "rml_ui::Tree",
             kind: ComponentKind::Stateful {
                 state_field: "tree_state",
+                state_ctor: "|_w, c| rml_ui::TreeState::new(c)",
             },
             container: false,
         }),
@@ -465,9 +485,31 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             kind: ComponentKind::StatelessWithItems,
             container: false,
         }),
+        // Icon：RenderOnce 无 ElementId，构造器接受 IconName 或 path 字符串
+        // 由专属 compiler/icon 模块处理 name/path 属性提取
+        "Icon" => Some(ComponentTag {
+            ctor_path: "rml_ui::Icon",
+            kind: ComponentKind::StatelessNoId,
+            container: false,
+        }),
+        // Kbd：RenderOnce 无 ElementId，构造器接受 Keystroke
+        // 由专属 compiler/kbd 模块处理 key 属性提取（Keystroke::parse）
+        "Kbd" => Some(ComponentTag {
+            ctor_path: "rml_ui::Kbd",
+            kind: ComponentKind::StatelessNoId,
+            container: false,
+        }),
         // Table：WPF DataGrid 风格声明式表格，子节点为 <Column> / <template slot="...">
         "Table" | "table" => Some(ComponentTag {
             ctor_path: "rml_ui::Table",
+            kind: ComponentKind::StatelessWithItems,
+            container: false,
+        }),
+        // Popover：浮动气泡容器，子节点通过 slot="trigger" 路由到 .trigger()，
+        // 其余子节点作为 content 注入 .child()。anchor/mouse_button/appearance 等
+        // 专用属性由 compiler/popover 模块处理。
+        "Popover" | "popover" => Some(ComponentTag {
+            ctor_path: "rml_ui::Popover",
             kind: ComponentKind::StatelessWithItems,
             container: false,
         }),

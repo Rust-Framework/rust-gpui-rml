@@ -1,6 +1,9 @@
 use gpui::SharedString;
 use rml::prelude::*;
 use rml_core::i18n::t_static;
+use rml_ui::{TableColumn, TableRow};
+
+use crate::cases::common::build_api_table;
 
 #[contribute(
     host_id = "demo.shell",
@@ -13,6 +16,8 @@ use rml_core::i18n::t_static;
 #[derive(Default)]
 pub struct TabBarCase {
     pub active_tab: usize,
+    pub api_columns: Vec<TableColumn>,
+    pub api_rows: Vec<TableRow>,
 }
 
 impl IContribution for TabBarCase {
@@ -24,7 +29,23 @@ impl IContribution for TabBarCase {
     }
 }
 
-impl ILifecycle for TabBarCase {}
+impl ILifecycle for TabBarCase {
+    fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
+        let (cols, rows) = build_api_table(&[
+            ("selected-index", "绑定", "当前选中索引"),
+            ("on-click", "事件", "点击回调，签名 fn(index: usize)"),
+            ("underline/pill/flat/outline/segmented", "布尔标志", "5 种 variant"),
+            ("menu", "布尔", "启用下拉菜单（标签过多时）"),
+            ("prefix/suffix", "绑定", "首尾注入元素"),
+            ("Tab label", "字符串", "标签标题"),
+            ("Tab icon", "图标名", "标签图标"),
+            ("Tab disabled", "布尔", "禁用标签"),
+            ("Tab selected", "布尔", "选中状态"),
+        ]);
+        self.api_columns = cols;
+        self.api_rows = rows;
+    }
+}
 
 impl TabBarCase {
     #[computed]

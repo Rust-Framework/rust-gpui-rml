@@ -1,5 +1,7 @@
 //! RML 案例库模块
 
+pub mod common;
+
 #[path = "welcome_case.rml.rs"]
 pub mod welcome_case;
 #[path = "counter_case.rml.rs"]
@@ -70,3 +72,47 @@ pub mod tree_case;
 pub mod slider_case;
 #[path = "code_editor_case.rml.rs"]
 pub mod code_editor_case;
+
+// Phase 4：6 个框架能力专项案例
+#[path = "expression_case.rml.rs"]
+pub mod expression_case;
+#[path = "conditional_case.rml.rs"]
+pub mod conditional_case;
+#[path = "list_case.rml.rs"]
+pub mod list_case;
+#[path = "template_slot_case.rml.rs"]
+pub mod template_slot_case;
+#[path = "validation_case.rml.rs"]
+pub mod validation_case;
+#[path = "theme_case.rml.rs"]
+pub mod theme_case;
+
+// M1'.10：6 个指令专项 demo
+#[path = "else_case.rml.rs"]
+pub mod else_case;
+#[path = "once_case.rml.rs"]
+pub mod once_case;
+#[path = "html_case.rml.rs"]
+pub mod html_case;
+#[path = "key_case.rml.rs"]
+pub mod key_case;
+#[path = "show_case.rml.rs"]
+pub mod show_case;
+#[path = "ref_case.rml.rs"]
+pub mod ref_case;
+
+// M2'.1：Icon 组件 demo
+#[path = "icon_case.rml.rs"]
+pub mod icon_case;
+
+// M2'.2：Kbd 组件 demo
+#[path = "kbd_case.rml.rs"]
+pub mod kbd_case;
+
+// M2'.3：Tooltip 通用属性 demo
+#[path = "tooltip_case.rml.rs"]
+pub mod tooltip_case;
+
+// M2'.4：Popover 容器 demo
+#[path = "popover_case.rml.rs"]
+pub mod popover_case;

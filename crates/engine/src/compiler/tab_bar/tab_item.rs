@@ -1,4 +1,4 @@
-//! `<tab-item>` 子节点 codegen — 生成 `TabItem::new().title(...).body(closure)` 表达式。
+﻿//! `<tab-item>` 子节点 codegen — 生成 `TabItem::new().title(...).body(closure)` 表达式。
 //!
 //! 与 [`super::tab`] 的关键差异：
 //! - `<Tab>` 仅有 header（label/icon/children），无 body 概念
@@ -51,7 +51,7 @@ pub fn gen_tab_item_child(
     let mut title_set_by_attr = false;
     for attr in &elem.attributes {
         match attr {
-            Attribute::Static { name, value } => {
+            Attribute::Static { name, value, .. } => {
                 if let Some(s) = super::setters::static_setter(name, value, "TabItem") {
                     code.push_str(&s);
                     if name == "title" {
@@ -63,7 +63,7 @@ pub fn gen_tab_item_child(
                     code.push_str(&s);
                 }
             }
-            Attribute::Bind { name, expr } => {
+            Attribute::Bind { name, expr, .. } => {
                 if let Some(s) =
                     super::setters::bind_setter(name, expr, &lv, &computed, "TabItem")
                 {
@@ -77,7 +77,7 @@ pub fn gen_tab_item_child(
                     code.push_str(&s);
                 }
             }
-            Attribute::Event { name, handler } => {
+            Attribute::Event { name, handler, .. } => {
                 if let Some(s) = super::setters::event_setter(name, handler, "TabItem") {
                     code.push_str(&s);
                 } else if let Some(s) =
@@ -146,6 +146,7 @@ mod tests {
     use super::*;
     use crate::compiler::CodegenCtx;
     use crate::parser::ast::{Attribute, Directive, EachClause, Element, EventHandler, Node};
+    use crate::parser::Span;
 
     fn ctx() -> CodegenCtx {
         CodegenCtx {
@@ -190,6 +191,7 @@ mod tests {
             vec![Attribute::Static {
                 name: "title".into(),
                 value: "A".into(),
+                span: Span::empty(),
             }],
             vec![],
         );
@@ -209,6 +211,7 @@ mod tests {
             vec![Attribute::Static {
                 name: "title".into(),
                 value: "A".into(),
+                span: Span::empty(),
             }],
             vec![Node::Element(div)],
         );
@@ -229,6 +232,7 @@ mod tests {
             vec![Attribute::Bind {
                 name: "title".into(),
                 expr: "tab.title".into(),
+                span: Span::empty(),
             }],
             vec![Directive::Each(EachClause {
                 item: "tab".into(),
@@ -253,6 +257,7 @@ mod tests {
             vec![Attribute::Static {
                 name: "title_icon".into(),
                 value: "User".into(),
+                span: Span::empty(),
             }],
             vec![],
         );
@@ -278,6 +283,7 @@ mod tests {
             vec![Attribute::Static {
                 name: "title".into(),
                 value: "A".into(),
+                span: Span::empty(),
             }],
             vec![],
         );
@@ -296,10 +302,12 @@ mod tests {
                 Attribute::Static {
                     name: "title".into(),
                     value: "A".into(),
+                    span: Span::empty(),
                 },
                 Attribute::Static {
                     name: "disabled".into(),
                     value: "true".into(),
+                    span: Span::empty(),
                 },
             ],
             vec![],
@@ -318,6 +326,7 @@ mod tests {
             vec![Attribute::Bind {
                 name: "title".into(),
                 expr: "tab.title".into(),
+                span: Span::empty(),
             }],
             vec![Directive::Each(EachClause {
                 item: "tab".into(),
@@ -343,10 +352,12 @@ mod tests {
                 Attribute::Static {
                     name: "title".into(),
                     value: "A".into(),
+                    span: Span::empty(),
                 },
                 Attribute::Event {
                     name: "on_click".into(),
                     handler: EventHandler::Ident("on_tab_click".into()),
+                    span: Span::empty(),
                 },
             ],
             vec![],

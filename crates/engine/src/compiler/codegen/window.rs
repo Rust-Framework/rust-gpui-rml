@@ -1,4 +1,4 @@
-//! 窗口/对话框 impl 代码生成
+﻿//! 窗口/对话框 impl 代码生成
 //!
 //! - `<window>`/`<modern-window>`/`<tab-window>` → `impl IWindow`
 //! - `<dialog>` → `open(window, cx)` / `close(cx)` 方法
@@ -192,7 +192,7 @@ fn gen_window_extra_methods(
 /// 从元素属性中提取静态属性值
 pub(super) fn extract_static_attr(elem: &Element, name: &str) -> Option<String> {
     elem.attributes.iter().find_map(|attr| match attr {
-        Attribute::Static { name: n, value } if n == name => Some(value.clone()),
+        Attribute::Static { name: n, value, .. } if n == name => Some(value.clone()),
         _ => None,
     })
 }

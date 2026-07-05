@@ -8,14 +8,7 @@
         </Card>
 
         <Card title="API">
-            <div class="api-table">
-                <div class="api-row api-header"><span class="api-prop-name">特性</span><span class="api-prop-type">类型</span><span>说明</span></div>
-                <div class="api-row"><span class="api-prop-name">t("key")</span><span class="api-prop-type">模板函数</span><span>引用 i18n 资源</span></div>
-                <div class="api-row"><span class="api-prop-name">cx.set_i18n</span><span class="api-prop-type">方法</span><span>切换 locale</span></div>
-                <div class="api-row"><span class="api-prop-name">cx.set_theme</span><span class="api-prop-type">方法</span><span>切换 dark/light 主题</span></div>
-                <div class="api-row"><span class="api-prop-name">cx.observe_global::&lt;I18nState&gt;</span><span class="api-prop-type">监听</span><span>语言变化触发重渲</span></div>
-                <div class="api-row"><span class="api-prop-name">cx.current_theme</span><span class="api-prop-type">方法</span><span>获取当前主题名</span></div>
-            </div>
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
         </Card>
 
         <Card title="示例代码">
@@ -31,8 +24,12 @@
 
             <div class="demo-section">
                 <h3>切换语言</h3>
-                <p>点击按钮切换到 en-US，观察上方文案与界面语言变化：</p>
-                <Button label={t("menu.lang_en")} on-click={on_switch_en} />
+                <p>点击按钮切换语言，观察上方文案与界面语言变化：</p>
+                <div class="button-row">
+                    <Button label="中文" on-click={on_switch_zh} />
+                    <Button label={t("menu.lang_en")} on-click={on_switch_en} />
+                </div>
+                <p>{lang_label}</p>
             </div>
 
             <div class="demo-section">

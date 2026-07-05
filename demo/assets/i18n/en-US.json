@@ -157,6 +157,8 @@
 
   "tree.group.menu": "Menu",
 
+  "tree.group.framework": "Framework",
+
   "tree.case.menu.context": "Context menu",
 
   "tree.case.menu.dropdown": "Dropdown menu",
@@ -297,7 +299,39 @@
 
   "case.slider.title": "Slider",
 
-  "case.code_editor.title": "CodeEditor"
+  "case.code_editor.title": "CodeEditor",
+
+  "case.expression.title": "Expression",
+
+  "case.conditional.title": "Conditional",
+
+  "case.list.title": "List",
+
+  "case.template_slot.title": "Template",
+
+  "case.validation.title": "Validation",
+
+  "case.theme.title": "Theme",
+
+  "case.else.title": "Else Directive",
+
+  "case.once.title": "Once Directive",
+
+  "case.html.title": "Html Directive",
+
+  "case.key.title": "Key Directive",
+
+  "case.show.title": "Show Directive",
+
+  "case.ref.title": "Ref Directive",
+
+  "case.icon.title": "Icon",
+
+  "case.kbd.title": "Kbd",
+
+  "case.tooltip.title": "Tooltip",
+
+  "case.popover.title": "Popover"
 
 }
 

@@ -1,4 +1,4 @@
-//! `MenuItem` / `MenuSeparator` → PopupMenu builder 链
+﻿//! `MenuItem` / `MenuSeparator` → PopupMenu builder 链
 
 use crate::compiler::codegen::gen_node;
 use crate::compiler::menu::hoist::MenuHoist;
@@ -214,7 +214,7 @@ pub(crate) fn partition_menu_item_children(children: &[Node]) -> (Vec<&Element>,
 
 fn gen_onclick_closure(elem: &Element, ctx: &CodegenCtx) -> Result<String, CodegenError> {
     let handler = elem.attributes.iter().find_map(|a| match a {
-        Attribute::Event { name, handler } if name == "on_click" => Some(handler),
+        Attribute::Event { name, handler, .. } if name == "on_click" => Some(handler),
         _ => None,
     });
     let Some(handler) = handler else {
@@ -233,7 +233,7 @@ fn gen_onclick_closure(elem: &Element, ctx: &CodegenCtx) -> Result<String, Codeg
 /// 检测 `command={field}` 绑定属性，返回原始表达式（未经 self. 前缀处理）
 fn command_bind_expr(elem: &Element) -> Option<String> {
     elem.attributes.iter().find_map(|a| match a {
-        Attribute::Bind { name, expr } if name == "command" => Some(expr.clone()),
+        Attribute::Bind { name, expr, .. } if name == "command" => Some(expr.clone()),
         _ => None,
     })
 }
@@ -289,7 +289,7 @@ pub(super) fn gen_command_closure(
 
 fn has_attr(elem: &Element, name: &str) -> bool {
     elem.attributes.iter().any(|a| match a {
-        Attribute::Static { name: n, value } if n == name => {
+        Attribute::Static { name: n, value, .. } if n == name => {
             value.is_empty() || value.eq_ignore_ascii_case("true")
         }
         _ => false,
@@ -304,7 +304,7 @@ fn has_bind(elem: &Element, name: &str) -> bool {
 
 fn static_attr(elem: &Element, name: &str) -> Option<String> {
     elem.attributes.iter().find_map(|a| match a {
-        Attribute::Static { name: n, value } if n == name => Some(value.clone()),
+        Attribute::Static { name: n, value, .. } if n == name => Some(value.clone()),
         _ => None,
     })
 }
@@ -366,7 +366,7 @@ fn bind_attr(
     let lv: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
     let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
     let bind = elem.attributes.iter().find_map(|a| match a {
-        Attribute::Bind { name: n, expr } if n == name => Some(expr.clone()),
+        Attribute::Bind { name: n, expr, .. } if n == name => Some(expr.clone()),
         _ => None,
     });
     let Some(expr_str) = bind else {

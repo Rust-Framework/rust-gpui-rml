@@ -1,0 +1,28 @@
+<component>
+    <div v-flex="" class="case-pane doc-pane">
+        <h2>{t("case.once.title")}</h2>
+
+        <Card title="组件说明">
+            <p>once 指令标记元素仅首次渲染时求值，后续渲染复用首次快照。适合展示静态内容或避免重复计算。counter 字段每次点击递增，但 once 区域显示的值保持首次渲染时的快照。</p>
+        </Card>
+
+        <Card title="实时 vs 一次性">
+            <p>counter（实时）：{counter}</p>
+            <div h-flex="" gap-4="">
+                <Button label="counter + 1" on-click={on_increment} />
+            </div>
+            <div v-flex="" gap-2="">
+                <Card title="实时区域（无 once）">
+                    <p>每次 render 重新求值：counter = {counter}</p>
+                </Card>
+                <Card title="快照区域（once）" once="">
+                    <p>首次渲染后冻结：counter = {counter}</p>
+                </Card>
+            </div>
+        </Card>
+
+        <Card title="API">
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+        </Card>
+    </div>
+</component>

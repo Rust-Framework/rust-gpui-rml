@@ -1,0 +1,48 @@
+<component>
+    <div v-flex="" class="case-pane doc-pane">
+        <h2>{t("case.conditional.title")}</h2>
+
+        <Card title="组件说明">
+            <p>条件渲染案例演示 RML 的 if 指令。if=&#123;expr&#125; 在条件为真时渲染元素，if=&#123;!expr&#125; 在条件为假时渲染。支持多分支条件渲染。</p>
+        </Card>
+
+        <Card title="Tab 切换（多分支 if）">
+            <p>当前 Tab：{tab_label}</p>
+            <div h-flex="" gap-4="">
+                <Button label="概览" on-click={on_tab_overview} />
+                <Button label="详情" on-click={on_tab_detail} />
+                <Button label="设置" on-click={on_tab_settings} />
+            </div>
+            <div v-flex="" gap-2="">
+                <Card title="概览内容" if={tab_index == 0}>
+                    <p>这是概览页面，展示项目基本信息。</p>
+                </Card>
+                <Card title="详情内容" if={tab_index == 1}>
+                    <p>这是详情页面，展示项目的详细数据。</p>
+                </Card>
+                <Card title="设置内容" if={tab_index == 2}>
+                    <p>这是设置页面，配置项目选项。</p>
+                </Card>
+            </div>
+        </Card>
+
+        <Card title="布尔切换（if + if 取反）">
+            <p>show_detail = {show_detail}</p>
+            <div h-flex="" gap-4="">
+                <Button label="切换显示" on-click={on_toggle_detail} />
+            </div>
+            <div v-flex="" gap-2="">
+                <Card title="详情已显示" if={show_detail}>
+                    <p>show_detail 为 true 时渲染此卡片。</p>
+                </Card>
+                <Card title="详情已隐藏" if={!show_detail}>
+                    <p>show_detail 为 false 时渲染此卡片。</p>
+                </Card>
+            </div>
+        </Card>
+
+        <Card title="API">
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+        </Card>
+    </div>
+</component>

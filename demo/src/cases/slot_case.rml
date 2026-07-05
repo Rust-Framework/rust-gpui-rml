@@ -8,12 +8,7 @@
         </Card>
 
         <Card title="API">
-            <div class="api-table">
-                <div class="api-row api-header"><span class="api-prop-name">属性</span><span class="api-prop-type">类型</span><span>说明</span></div>
-                <div class="api-row"><span class="api-prop-name">title</span><span class="api-prop-type">字符串</span><span>卡片标题</span></div>
-                <div class="api-row"><span class="api-prop-name">hoverable</span><span class="api-prop-type">布尔标志</span><span>悬浮提升效果</span></div>
-                <div class="api-row"><span class="api-prop-name">children</span><span class="api-prop-type">子节点</span><span>卡片 body 内容</span></div>
-            </div>
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
         </Card>
 
         <Card title="示例代码">
@@ -43,6 +38,18 @@
                 <Card title={t("case.slot.header")} hoverable="">
                     <p>{t("case.slot.body")}</p>
                     <Button label={t("case.slot.footer")} primary="" />
+                </Card>
+            </div>
+
+            <div class="demo-section">
+                <h3>动态绑定(model + 布尔字段)</h3>
+                <p>输入标题和内容,点击按钮切换 hoverable,观察 Card 实时变化:</p>
+                <input model={card_title} placeholder="输入卡片标题" />
+                <input model={card_body} placeholder="输入卡片内容" />
+                <p>当前 hoverable: {hoverable}</p>
+                <Button label="切换 hoverable" on-click={on_toggle_hoverable} />
+                <Card title={card_title} hoverable={hoverable}>
+                    <p>{card_body}</p>
                 </Card>
             </div>
         </Card>

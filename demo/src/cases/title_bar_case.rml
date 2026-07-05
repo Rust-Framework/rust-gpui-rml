@@ -16,11 +16,22 @@
             </div>
         </Card>
 
-        <Card title="API">
-            <div class="api-table">
-                <div class="api-row api-header"><span class="api-prop-name">属性</span><span class="api-prop-type">类型</span><span>说明</span></div>
-                <div class="api-row"><span class="api-prop-name">子节点</span><span class="api-prop-type">元素[]</span><span>中央区域内容</span></div>
+        <Card title="动态绑定(model 双向绑定)">
+            <p>输入标题文本,观察 TitleBar 中央内容实时更新(演示 model 双向绑定):</p>
+            <input model={title} placeholder="输入标题文本" />
+            <p>当前标题: {title}</p>
+            <div class="button-row">
+                <Button label="重置标题" on-click={on_reset_title} />
             </div>
+            <div style="border: 1px solid #e0e0e0; overflow: hidden; border-radius: 4px;">
+                <TitleBar>
+                    <span>{title}</span>
+                </TitleBar>
+            </div>
+        </Card>
+
+        <Card title="API">
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
         </Card>
     </div>
 </component>

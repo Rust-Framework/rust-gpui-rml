@@ -27,7 +27,7 @@ pub fn gen_item_builder(
     // 静态/绑定属性 → 先调 accordion 专用 setter，未命中回退到公共 setter
     for attr in &elem.attributes {
         match attr {
-            Attribute::Static { name, value } => {
+            Attribute::Static { name, value, .. } => {
                 if let Some(s) =
                     super::setters::static_setter(name, value, "AccordionItem")
                 {
@@ -38,7 +38,7 @@ pub fn gen_item_builder(
                     code.push_str(&s);
                 }
             }
-            Attribute::Bind { name, expr } => {
+            Attribute::Bind { name, expr, .. } => {
                 if let Some(s) = super::setters::bind_setter(
                     name, expr, &lv, &computed, "AccordionItem",
                 ) {

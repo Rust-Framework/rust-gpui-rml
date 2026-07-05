@@ -1,0 +1,52 @@
+<component>
+    <div v-flex="" class="case-pane doc-pane">
+        <h2>{t("case.kbd.title")}</h2>
+
+        <Card title="组件说明">
+            <p>Kbd 组件渲染键盘按键组合。构造器接受 Keystroke 类型：key="cmd-a" 生成 Kbd::new(Keystroke::parse("cmd-a").expect(...))。RenderOnce 无 ElementId，由专属 compiler/kbd 模块处理 key 属性提取。平台相关显示：macOS 显示 ⌘A，Windows 显示 Ctrl+A。</p>
+        </Card>
+
+        <Card title="基础用法">
+            <p>修饰键 + 字母：</p>
+            <div h-flex="" gap-2="">
+                <Kbd key="cmd-a" />
+                <Kbd key="ctrl-c" />
+                <Kbd key="ctrl-shift-c" />
+                <Kbd key="alt-tab" />
+            </div>
+            <p>功能键：</p>
+            <div h-flex="" gap-2="">
+                <Kbd key="enter" />
+                <Kbd key="escape" />
+                <Kbd key="backspace" />
+                <Kbd key="delete" />
+                <Kbd key="space" />
+                <Kbd key="tab" />
+            </div>
+            <p>方向键：</p>
+            <div h-flex="" gap-2="">
+                <Kbd key="up" />
+                <Kbd key="down" />
+                <Kbd key="left" />
+                <Kbd key="right" />
+            </div>
+        </Card>
+
+        <Card title="样式变体">
+            <p>outline 样式：</p>
+            <div h-flex="" gap-2="">
+                <Kbd key="cmd-a" outline="" />
+                <Kbd key="ctrl-shift-v" outline="" />
+            </div>
+            <p>appearance=false（仅文本，无背景）：</p>
+            <div h-flex="" gap-2="">
+                <Kbd key="cmd-a" appearance="false" />
+                <Kbd key="ctrl-c" appearance="false" />
+            </div>
+        </Card>
+
+        <Card title="API">
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+        </Card>
+    </div>
+</component>

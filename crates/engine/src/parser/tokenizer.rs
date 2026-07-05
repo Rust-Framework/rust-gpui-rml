@@ -34,6 +34,10 @@ pub struct RawAttribute {
     pub value: AttrValue,
     /// 属性名+值的字节区间（属性级诊断定位用）
     pub span: Span,
+    /// 属性名所在行（1-based），供 build_element 错误诊断使用
+    pub line: usize,
+    /// 属性名所在列（1-based）
+    pub column: usize,
 }
 
 /// 属性值
@@ -100,6 +104,7 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>, ParseError> {
                         message: format!("expected '>' after </{}", tag),
                         line,
                         column: col,
+                        source_snippet: None,
                     });
                 }
                 chars.advance();
@@ -130,6 +135,7 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>, ParseError> {
                         message: "expected '>' after '/'".into(),
                         line,
                         column: col,
+                        source_snippet: None,
                     });
                 }
                 chars.advance();
@@ -160,6 +166,7 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>, ParseError> {
                     message: format!("expected '>' or '/>' after tag <{}", tag),
                     line,
                     column: col,
+                    source_snippet: None,
                 });
             }
         } else {
@@ -213,6 +220,7 @@ fn skip_comment(chars: &mut CharStream) -> Result<(), ParseError> {
         message: "unterminated comment".into(),
         line,
         column: col,
+        source_snippet: None,
     })
 }
 
@@ -234,6 +242,7 @@ fn read_tag_name(chars: &mut CharStream) -> Result<String, ParseError> {
             message: "expected tag name".into(),
             line,
             column: col,
+            source_snippet: None,
         });
     }
     Ok(name)
@@ -248,6 +257,7 @@ fn read_attributes(chars: &mut CharStream) -> Result<Vec<RawAttribute>, ParseErr
             _ => {}
         }
         let name_start = chars.byte_position();
+        let (attr_line, attr_col) = chars.position();
         let name = read_attr_name(chars)?;
         skip_whitespace(chars);
         if chars.peek() != Some('=') {
@@ -257,6 +267,8 @@ fn read_attributes(chars: &mut CharStream) -> Result<Vec<RawAttribute>, ParseErr
                 name,
                 value: AttrValue::Static("true".to_string()),
                 span: Span::new(name_start, name_end),
+                line: attr_line,
+                column: attr_col,
             });
             continue;
         }
@@ -268,6 +280,8 @@ fn read_attributes(chars: &mut CharStream) -> Result<Vec<RawAttribute>, ParseErr
             name,
             value,
             span: Span::new(name_start, name_end),
+            line: attr_line,
+            column: attr_col,
         });
     }
     Ok(attrs)
@@ -291,6 +305,7 @@ fn read_attr_name(chars: &mut CharStream) -> Result<String, ParseError> {
             message: "expected attribute name".into(),
             line,
             column: col,
+            source_snippet: None,
         });
     }
     Ok(name)
@@ -314,6 +329,7 @@ fn read_attr_value(chars: &mut CharStream) -> Result<AttrValue, ParseError> {
                 message: "unterminated string attribute".into(),
                 line,
                 column: col,
+                source_snippet: None,
             })
         }
         Some('{') => {
@@ -338,6 +354,7 @@ fn read_attr_value(chars: &mut CharStream) -> Result<AttrValue, ParseError> {
                 message: "unterminated binding expression".into(),
                 line,
                 column: col,
+                source_snippet: None,
             })
         }
         _ => {
@@ -347,6 +364,7 @@ fn read_attr_value(chars: &mut CharStream) -> Result<AttrValue, ParseError> {
                 message: "attribute value must be \"...\" or {...}".into(),
                 line,
                 column: col,
+                source_snippet: None,
             })
         }
     }

@@ -8,13 +8,7 @@
         </Card>
 
         <Card title="API">
-            <div class="api-table">
-                <div class="api-row api-header"><span class="api-prop-name">特性</span><span class="api-prop-type">类型</span><span>说明</span></div>
-                <div class="api-row"><span class="api-prop-name">pub 字段</span><span class="api-prop-type">i32/String/bool</span><span>observable 状态</span></div>
-                <div class="api-row"><span class="api-prop-name">#[computed]</span><span class="api-prop-type">方法</span><span>缓存计算属性</span></div>
-                <div class="api-row"><span class="api-prop-name">#[command]</span><span class="api-prop-type">方法</span><span>事件处理 + 状态更新</span></div>
-                <div class="api-row"><span class="api-prop-name">onclick</span><span class="api-prop-type">事件</span><span>按钮点击回调</span></div>
-            </div>
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
         </Card>
 
         <Card title="示例代码">

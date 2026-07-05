@@ -158,6 +158,8 @@
 
   "tree.group.menu": "菜单",
 
+  "tree.group.framework": "框架能力",
+
   "tree.case.menu.context": "上下文菜单",
 
   "tree.case.menu.dropdown": "下拉菜单",
@@ -298,7 +300,39 @@
 
   "case.slider.title": "滑块 Slider",
 
-  "case.code_editor.title": "代码编辑器 CodeEditor"
+  "case.code_editor.title": "代码编辑器 CodeEditor",
+
+  "case.expression.title": "表达式 Expression",
+
+  "case.conditional.title": "条件渲染 Conditional",
+
+  "case.list.title": "列表渲染 List",
+
+  "case.template_slot.title": "模板复用 Template",
+
+  "case.validation.title": "表单验证 Validation",
+
+  "case.theme.title": "主题切换 Theme",
+
+  "case.else.title": "else 指令 Else",
+
+  "case.once.title": "once 指令 Once",
+
+  "case.html.title": "html 指令 Html",
+
+  "case.key.title": "key 指令 Key",
+
+  "case.show.title": "show 指令 Show",
+
+  "case.ref.title": "ref 指令 Ref",
+
+  "case.icon.title": "图标 Icon",
+
+  "case.kbd.title": "键盘按键 Kbd",
+
+  "case.tooltip.title": "悬浮提示 Tooltip",
+
+  "case.popover.title": "气泡卡片 Popover"
 
 }
 

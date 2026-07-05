@@ -1,7 +1,9 @@
 use gpui::SharedString;
 use rml::prelude::*;
 use rml_core::i18n::t_static;
-use rml_ui::{TreeItem, TreeState};
+use rml_ui::{TableColumn, TableRow, TreeItem, TreeState};
+
+use crate::cases::common::build_api_table;
 
 #[contribute(
     host_id = "demo.shell",
@@ -15,6 +17,8 @@ use rml_ui::{TreeItem, TreeState};
 pub struct TreeCase {
     pub tree_state: Option<gpui::Entity<TreeState>>,
     pub last_activated: SharedString,
+    pub api_columns: Vec<TableColumn>,
+    pub api_rows: Vec<TableRow>,
 }
 
 impl IContribution for TreeCase {
@@ -39,6 +43,13 @@ impl ILifecycle for TreeCase {
             TreeItem::new("item5", "独立项"),
         ];
         self.tree_state = Some(cx.new(|cx| TreeState::new(cx).items(items)));
+        let (cols, rows) = build_api_table(&[
+            ("on-activate", "事件", "叶子节点激活事件"),
+            ("on-select", "事件", "节点选中事件（含文件夹）"),
+            ("TreeState::items", "Vec<TreeItem>", "树节点列表（on_loaded 中设置）"),
+        ]);
+        self.api_columns = cols;
+        self.api_rows = rows;
     }
 }
 

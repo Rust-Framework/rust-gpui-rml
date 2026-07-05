@@ -65,8 +65,8 @@ pub fn static_setter(name: &str, value: &str, tag: &str) -> Option<String> {
 ///
 /// 仅在 `tag == "Card"` 时匹配。
 ///
-/// - `title`/`extra`/`cover`/`footer` → `.method(expr)`（接受 `impl IntoElement`，不 clone）
-/// - `bordered`/`hoverable` → `.method(expr)`（接受 bool 表达式）
+/// - `title`/`extra`/`cover`/`footer` → `.method(expr.clone())`（String/SharedString 字段需 clone 避免 move）
+/// - `bordered`/`hoverable` → `.method(expr)`（接受 bool 表达式，Copy 类型无需 clone）
 pub fn bind_setter(
     name: &str,
     expr_str: &str,
@@ -81,12 +81,12 @@ pub fn bind_setter(
         "title" => {
             let rust_expr =
                 super::super::component::component_bind_rust_expr(expr_str, loop_vars, computed);
-            Some(format!(".title({})", rust_expr))
+            Some(format!(".title({}.clone())", rust_expr))
         }
         "extra" | "cover" | "footer" => {
             let rust_expr =
                 super::super::component::component_bind_rust_expr(expr_str, loop_vars, computed);
-            Some(format!(".{}({})", name, rust_expr))
+            Some(format!(".{}({}.clone())", name, rust_expr))
         }
         "bordered" | "hoverable" => {
             let rust_expr =
@@ -229,13 +229,13 @@ mod tests {
     #[test]
     fn bind_setter_title() {
         let code = bind_setter("title", "card_title", &[], &[], "Card").unwrap();
-        assert_eq!(code, ".title(self.card_title)");
+        assert_eq!(code, ".title(self.card_title.clone())");
     }
 
     #[test]
     fn bind_setter_title_nested() {
         let code = bind_setter("title", "user.name", &[], &[], "Card").unwrap();
-        assert_eq!(code, ".title(self.user.name)");
+        assert_eq!(code, ".title(self.user.name.clone())");
     }
 
     // ─── bind_setter: extra / cover / footer ───
@@ -243,19 +243,19 @@ mod tests {
     #[test]
     fn bind_setter_extra() {
         let code = bind_setter("extra", "action_button", &[], &[], "Card").unwrap();
-        assert_eq!(code, ".extra(self.action_button)");
+        assert_eq!(code, ".extra(self.action_button.clone())");
     }
 
     #[test]
     fn bind_setter_cover() {
         let code = bind_setter("cover", "cover_img", &[], &[], "Card").unwrap();
-        assert_eq!(code, ".cover(self.cover_img)");
+        assert_eq!(code, ".cover(self.cover_img.clone())");
     }
 
     #[test]
     fn bind_setter_footer() {
         let code = bind_setter("footer", "footer_element", &[], &[], "Card").unwrap();
-        assert_eq!(code, ".footer(self.footer_element)");
+        assert_eq!(code, ".footer(self.footer_element.clone())");
     }
 
     // ─── bind_setter: bordered / hoverable ───
@@ -298,6 +298,6 @@ mod tests {
     #[test]
     fn bind_setter_title_with_loop_var() {
         let code = bind_setter("title", "item.name", &["item"], &[], "Card").unwrap();
-        assert_eq!(code, ".title(item.name)");
+        assert_eq!(code, ".title(item.name.clone())");
     }
 }

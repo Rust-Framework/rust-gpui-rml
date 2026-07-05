@@ -1,4 +1,4 @@
-//! 窗口外壳包裹代码生成
+﻿//! 窗口外壳包裹代码生成
 //!
 //! - `<modern-window>` → `ModernWindowShell` 包裹
 //! - `<tab-window>` → `TabWindowShell` 包裹 + 插槽分区
@@ -39,7 +39,7 @@ pub(super) fn gen_modern_window_wrapper(
     code.push_str(".title(self.title().to_string())");
 
     for attr in &elem.attributes {
-        if let Attribute::Bind { name, expr } = attr {
+        if let Attribute::Bind { name, expr, .. } = attr {
             match name.as_str() {
                 "menu" | "footer" => {
                     let rust_expr = match expr::parse(expr) {
@@ -272,7 +272,7 @@ pub(super) fn gen_tab_window_wrapper(
 
     for attr in &elem.attributes {
         match attr {
-            Attribute::Bind { name, expr } => {
+            Attribute::Bind { name, expr, .. } => {
                 if name == "icon" {
                     let rust_expr = match expr::parse(expr) {
                         Ok(expr::Expr::Field(field_name))
@@ -333,7 +333,7 @@ pub(super) fn gen_tab_window_wrapper(
                     }
                 }
             }
-            Attribute::Event { name, handler } if name == "on_tab_click" => {
+            Attribute::Event { name, handler, .. } if name == "on_tab_click" => {
                 let method = match handler {
                     EventHandler::Ident(m) | EventHandler::MethodName(m) => m.as_str(),
                     EventHandler::WithArgs(m, _) => m.as_str(),
@@ -348,7 +348,7 @@ pub(super) fn gen_tab_window_wrapper(
                     method
                 ));
             }
-            Attribute::Event { name, handler } if name == "on_tab_close" => {
+            Attribute::Event { name, handler, .. } if name == "on_tab_close" => {
                 let method = match handler {
                     EventHandler::Ident(m) | EventHandler::MethodName(m) => m.as_str(),
                     EventHandler::WithArgs(m, _) => m.as_str(),
@@ -363,7 +363,7 @@ pub(super) fn gen_tab_window_wrapper(
                     method
                 ));
             }
-            Attribute::Event { name, handler } if name == "on_chrome_toggle" => {
+            Attribute::Event { name, handler, .. } if name == "on_chrome_toggle" => {
                 let method = match handler {
                     EventHandler::Ident(m) | EventHandler::MethodName(m) => m.as_str(),
                     EventHandler::WithArgs(m, _) => m.as_str(),
@@ -443,6 +443,7 @@ mod tests {
     use super::*;
     use crate::compiler::CodegenCtx;
     use crate::parser::ast::{Attribute, Element, Node};
+    use crate::parser::Span;
 
     fn ctx() -> CodegenCtx {
         CodegenCtx {
@@ -469,6 +470,7 @@ mod tests {
             attributes: vec![Attribute::Static {
                 name: "label".into(),
                 value: label.into(),
+                span: Span::empty(),
             }],
             directives: vec![],
             children: vec![],
@@ -574,6 +576,7 @@ mod tests {
             attributes: vec![Attribute::Bind {
                 name: "tabs".into(),
                 expr: "tab_items".into(),
+                span: Span::empty(),
             }],
             directives: vec![],
             children: vec![],
@@ -658,6 +661,7 @@ mod tests {
             attributes: vec![Attribute::Bind {
                 name: "tabs".into(),
                 expr: "tab_items".into(),
+                span: Span::empty(),
             }],
             directives: vec![],
             children: vec![],
@@ -690,6 +694,7 @@ mod tests {
             attributes: vec![Attribute::Bind {
                 name: "tab_item_template".into(),
                 expr: "render_tab_item".into(),
+                span: Span::empty(),
             }],
             directives: vec![],
             children: vec![],
@@ -726,6 +731,7 @@ mod tests {
             attributes: vec![Attribute::Bind {
                 name: "tabs".into(),
                 expr: "tab_bar_items".into(),
+                span: Span::empty(),
             }],
             directives: vec![],
             children: vec![],

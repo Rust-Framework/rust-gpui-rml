@@ -4,7 +4,11 @@
 
         <Card title="组件说明">
             <p>Badge 是 gpui-component 徽标组件的 RML 封装，标签为 Badge。无 ElementId 构造（StatelessNoId），支持容器模式包裹子内容。</p>
-            <p>核心用法：包裹子元素并通过 dot/count 属性显示状态徽标。dot 显示小圆点，count 显示数字。</p>
+            <p>核心用法：包裹子元素显示数字徽标，或通过 primary/secondary/danger/success 变体属性显示彩色徽标。</p>
+        </Card>
+
+        <Card title="API">
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
         </Card>
 
         <Card title="基础用法">
@@ -15,20 +19,27 @@
             </div>
         </Card>
 
-        <Card title="圆点徽标">
-            <p>dot 属性显示小圆点徽标，常用于「新消息」提示。</p>
+        <Card title="尺寸(Sizable trait)">
+            <p>size 属性控制徽标大小:small/medium/large。</p>
             <div h-flex="" gap-4="">
-                <Badge dot="">消息</Badge>
-                <Badge dot="">通知</Badge>
+                <Badge size="small">5</Badge>
+                <Badge size="medium">5</Badge>
+                <Badge size="large">5</Badge>
             </div>
         </Card>
 
-        <Card title="API">
-            <div class="api-table">
-                <div class="api-row api-header"><span class="api-prop-name">属性</span><span class="api-prop-type">类型</span><span>说明</span></div>
-                <div class="api-row"><span class="api-prop-name">dot</span><span class="api-prop-type">布尔标志</span><span>显示圆点徽标</span></div>
-                <div class="api-row"><span class="api-prop-name">count</span><span class="api-prop-type">数字</span><span>显示数字徽标</span></div>
-                <div class="api-row"><span class="api-prop-name">size</span><span class="api-prop-type">small/medium/large</span><span>尺寸</span></div>
+        <Card title="动态徽标(#[computed] + if 条件渲染)">
+            <p>点击按钮递增 count,当 count > 99 时显示 "99+"(演示 #[computed] 条件逻辑);切换 size 演示 if 条件渲染:</p>
+            <div h-flex="" gap-4="">
+                <Badge>{badge_label}</Badge>
+                <Badge size="small" if={size_index == 0}>{count}</Badge>
+                <Badge size="medium" if={size_index == 1}>{count}</Badge>
+                <Badge size="large" if={size_index == 2}>{count}</Badge>
+            </div>
+            <p>当前 count: {count} | badge_label: {badge_label} | size: {size_label}</p>
+            <div class="button-row">
+                <Button label="count +1" primary="" on-click={on_increment} />
+                <Button label="切换 size" on-click={on_cycle_size} />
             </div>
         </Card>
     </div>

@@ -24,12 +24,24 @@
             </ButtonGroup>
         </Card>
 
-        <Card title="API">
-            <div class="api-table">
-                <div class="api-row api-header"><span class="api-prop-name">属性</span><span class="api-prop-type">类型</span><span>说明</span></div>
-                <div class="api-row"><span class="api-prop-name">size</span><span class="api-prop-type">small/medium/large</span><span>尺寸</span></div>
-                <div class="api-row"><span class="api-prop-name">子节点</span><span class="api-prop-type">Button[]</span><span>按钮列表</span></div>
+        <Card title="动态按钮(if 条件渲染)">
+            <p>点击按钮增减 Button 数量,观察 ButtonGroup 实时变化(演示 if 条件渲染):</p>
+            <p>当前按钮数: {button_count}</p>
+            <div class="button-row">
+                <Button label="添加按钮" primary="" on-click={on_add_button} />
+                <Button label="移除按钮" on-click={on_remove_button} />
             </div>
+            <ButtonGroup>
+                <Button label="按钮 1" if={button_count >= 1} />
+                <Button label="按钮 2" primary="" if={button_count >= 2} />
+                <Button label="按钮 3" ghost="" if={button_count >= 3} />
+                <Button label="按钮 4" danger="" if={button_count >= 4} />
+                <Button label="按钮 5" warning="" if={button_count >= 5} />
+            </ButtonGroup>
+        </Card>
+
+        <Card title="API">
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
         </Card>
     </div>
 </component>

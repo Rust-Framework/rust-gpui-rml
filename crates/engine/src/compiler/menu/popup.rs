@@ -1,4 +1,4 @@
-//! PopupMenu 容器配置属性 codegen
+﻿//! PopupMenu 容器配置属性 codegen
 
 use crate::compiler::CodegenError;
 use crate::parser::ast::{Attribute, Element};
@@ -8,7 +8,7 @@ pub fn apply_popup_config(elem: &Element) -> Result<String, CodegenError> {
     let mut lines = Vec::new();
     for attr in &elem.attributes {
         match attr {
-            Attribute::Static { name, value } => match name.as_str() {
+            Attribute::Static { name, value, .. } => match name.as_str() {
                 "scrollable" if value.is_empty() || value.eq_ignore_ascii_case("true") => {
                     lines.push("menu = menu.scrollable(true);".to_string());
                 }
@@ -36,7 +36,7 @@ pub fn apply_popup_config(elem: &Element) -> Result<String, CodegenError> {
                 }
                 _ => {}
             },
-            Attribute::Bind { name, expr } if name == "max_h" || name == "min_w" || name == "max_w" => {
+            Attribute::Bind { name, expr, .. } if name == "max_h" || name == "min_w" || name == "max_w" => {
                 lines.push(format!("menu = menu.{name}(gpui::px(self.{expr} as f32));"));
             }
             _ => {}
@@ -56,7 +56,7 @@ pub fn anchor_from_elem(elem: &Element) -> String {
 
 fn static_attr(elem: &Element, name: &str) -> Option<String> {
     elem.attributes.iter().find_map(|a| match a {
-        Attribute::Static { name: n, value } if n == name => Some(value.clone()),
+        Attribute::Static { name: n, value, .. } if n == name => Some(value.clone()),
         _ => None,
     })
 }

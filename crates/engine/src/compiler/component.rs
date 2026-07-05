@@ -70,6 +70,14 @@ pub fn gen_component(
     if tags::canonical_tag(tag) == "Separator" {
         return crate::compiler::separator::gen_separator(elem, ctx, id_counter, loop_vars);
     }
+    // Icon 构造器接受 IconName/path 而非 ElementId，委托到专用模块
+    if tags::canonical_tag(tag) == "Icon" {
+        return crate::compiler::icon::gen_icon(elem, ctx, id_counter, loop_vars);
+    }
+    // Kbd 构造器接受 Keystroke 而非 ElementId，委托到专用模块
+    if tags::canonical_tag(tag) == "Kbd" {
+        return crate::compiler::kbd::gen_kbd(elem, ctx, id_counter, loop_vars);
+    }
     // Tag 的 variant 属性（primary/secondary/danger 等）是关联函数而非方法，
     // 需在构造器选择阶段决定使用 Tag::new() 还是 Tag::primary() 等
     if tags::canonical_tag(tag) == "Tag" {
@@ -121,6 +129,16 @@ pub fn gen_component(
                     loop_vars,
                 );
             }
+            if resolved_tag == "Popover" {
+                return crate::compiler::popover::gen_popover(
+                    elem,
+                    ref_name,
+                    id_val,
+                    ctx,
+                    id_counter,
+                    loop_vars,
+                );
+            }
             return crate::compiler::accordion::gen_accordion(
                 elem,
                 ref_name,
@@ -134,7 +152,7 @@ pub fn gen_component(
             // 无参构造：TitleBar::new() / StatusBar::new()
             format!("{}::new()", component.ctor_path)
         }
-        tags::ComponentKind::Stateful { state_field: _ } if tags::canonical_tag(tag) == "Tree" => {
+        tags::ComponentKind::Stateful { .. } if tags::canonical_tag(tag) == "Tree" => {
             // Tree 构造器使用 as_ref()，与其他 Stateful 组件不同，委托到独立模块
             return crate::compiler::tree::gen_tree(
                 elem,
@@ -145,7 +163,7 @@ pub fn gen_component(
                 loop_vars,
             );
         }
-        tags::ComponentKind::Stateful { state_field: _ } if tags::canonical_tag(tag) == "CodeEditor" => {
+        tags::ComponentKind::Stateful { .. } if tags::canonical_tag(tag) == "CodeEditor" => {
             // CodeEditor：基于 Input 的代码编辑器，自动应用 mono 字体 + size_full
             // 字段必须为 Option<Entity<InputState>>，委托到独立 codegen 模块
             return crate::compiler::code_editor::gen_code_editor(
@@ -157,16 +175,64 @@ pub fn gen_component(
                 loop_vars,
             );
         }
-        tags::ComponentKind::Stateful { state_field } => {
-            // ref 指令：支持 Option<Entity<T>> 字段（on_loaded 中延迟初始化）
-            // 生成 Input::new(self.<ref_name>.as_ref().expect("init <ref_name> in on_loaded"))
-            if let Some(name) = ref_name {
+        tags::ComponentKind::Stateful { state_field, state_ctor } => {
+            // 收集 Input 事件处理器（on_change/on_enter/on_focus/on_blur）
+            // 这些事件不走 setter 链路（component_event_setter 返回 None），
+            // 由 block 表达式中的 cx.subscribe 统一处理
+            let input_event_handlers: Vec<(&str, &EventHandler)> = elem
+                .attributes
+                .iter()
+                .filter_map(|attr| {
+                    if let Attribute::Event { name, handler, .. } = attr {
+                        if super::input::is_input_event(name, &resolved) {
+                            Some((name.as_str(), handler))
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            if !input_event_handlers.is_empty() {
+                // block 表达式：({ let __rml_entity = <entity>; <subscribe...>; Input::new(&__rml_entity) })
+                // subscription 句柄用 detach() 让其随 entity 生命周期自动销毁
+                // （Subscription 非 Sync，不能存入 RmlState）
+                // ref_key 作为 subscribe 标识键：ref name 优先，回退到 state_field
+                let entity_expr = if let Some(name) = ref_name {
+                    format!(
+                        "self.__rml_state.get_or_init_ref(\"{}\", _window, &mut *cx, {})",
+                        name, state_ctor
+                    )
+                } else {
+                    format!("self.{}.clone()", state_field)
+                };
+                let ref_key = ref_name.unwrap_or(state_field);
+                let subscribe_code: String = input_event_handlers
+                    .iter()
+                    .map(|(event_name, handler)| {
+                        super::input::gen_input_event_subscribe(ref_key, event_name, handler)
+                    })
+                    .collect::<Vec<_>>()
+                    .join(" ");
                 format!(
-                    "{}::new(self.{}.as_ref().expect(\"init {} in on_loaded\"))",
-                    component.ctor_path, name, name
+                    "({{ let __rml_entity = {entity_expr}; {subscribe_code} {}::new(&__rml_entity) }})",
+                    component.ctor_path
+                )
+            } else if let Some(name) = ref_name {
+                // ref 路径（无 Input 事件）：get_or_init_ref 惰性创建并缓存 Entity<T>
+                format!(
+                    "{}::new(&self.__rml_state.get_or_init_ref(\"{}\", _window, &mut *cx, {}))",
+                    component.ctor_path, name, state_ctor
                 )
             } else {
-                format!("{}::new(&self.{})", component.ctor_path, state_field)
+                // no-ref 路径（无 Input 事件）：字段类型为 Option<Entity<T>>，
+                // 需 as_ref().expect 取出（ref 模式优先，仅 legacy/手动管理场景使用此路径）
+                format!(
+                    "{}::new(self.{}.as_ref().expect(\"init {} in on_loaded\"))",
+                    component.ctor_path, state_field, state_field
+                )
             }
         }
         tags::ComponentKind::EntityRef => {
@@ -192,7 +258,7 @@ pub fn gen_component(
     let mut label_set_by_attr = false;
     for attr in &elem.attributes {
         match attr {
-            Attribute::Static { name, value } => {
+            Attribute::Static { name, value, .. } => {
                 if let Some(setter) = component_static_setter(name, value, &resolved) {
                     code.push_str(&setter);
                     if name == "label" || (resolved == "Avatar" && name == "name") {
@@ -204,7 +270,7 @@ pub fn gen_component(
                     check_missing_mapping(ctx, &resolved, name, "static")?;
                 }
             }
-            Attribute::Bind { name, expr } => {
+            Attribute::Bind { name, expr, .. } => {
                 let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
                 if let Some(setter) = component_bind_setter(name, expr, &lv, &computed, &resolved) {
                     code.push_str(&setter);
@@ -215,7 +281,7 @@ pub fn gen_component(
                     check_missing_mapping(ctx, &resolved, name, "bind")?;
                 }
             }
-            Attribute::Event { name, handler } => {
+            Attribute::Event { name, handler, .. } => {
                 if let Some(setter) = component_event_setter(name, handler, &resolved) {
                     code.push_str(&setter);
                 }
@@ -295,10 +361,13 @@ pub fn component_static_setter(name: &str, value: &str, tag: &str) -> Option<Str
     if let Some(s) = super::description_list::setters::static_setter(name, value, tag) {
         return Some(s);
     }
+    // Tooltip 通用属性（Button/Checkbox/Clipboard/DropdownButton/Toggle/Radio/Switch 的 .tooltip()）
+    if let Some(s) = super::tooltip::static_setter(name, value, tag) {
+        return Some(s);
+    }
     match name {
         "label" => Some(format!(".label({:?})", value)),
         "placeholder" => Some(format!(".placeholder({:?})", value)),
-        "tooltip" => Some(format!(".tooltip({:?})", value)),
         // Button variant 属性（值为空或 "true" 时启用变体）
         "primary" | "secondary" | "danger" | "success" | "warning" | "info" | "ghost" | "link"
         | "text" => {
@@ -436,6 +505,13 @@ pub fn component_bind_setter(
     {
         return Some(s);
     }
+    // Tooltip 通用属性绑定（Button/Checkbox/Clipboard/DropdownButton/Toggle/Radio/Switch）
+    if super::tooltip::supports_tooltip(tag) && name == "tooltip" {
+        let rust_expr = component_bind_rust_expr(expr_str, loop_vars, computed);
+        if let Some(s) = super::tooltip::bind_setter(name, &rust_expr, tag) {
+            return Some(s);
+        }
+    }
 
     match name {
         // content={expr}：直接嵌入表达式作为 child（与原生 div 的 content 分支一致）
@@ -512,10 +588,11 @@ fn check_missing_mapping(
 /// 声明式统一为 `on-click`（kebab-case），normalize 后内部 match `on_click`（snake_case）。
 /// 旧的单词条形式 `onclick` 已移除（无兼容性设计）。
 pub fn component_event_setter(name: &str, handler: &EventHandler, tag: &str) -> Option<String> {
-    // 组件专用事件 setter 委托（Input/TextInput 的 onchange 等）
-    // 统一委托子模块 event_setter，禁止硬编码 tag 判断
-    if let Some(s) = super::input::event_setter(name, handler, tag) {
-        return Some(s);
+    // Input 事件（on_change/on_enter/on_focus/on_blur）通过 EventEmitter + cx.subscribe 模式处理，
+    // 不走 setter 链路——在 gen_component Stateful 分支中统一生成 block 表达式包装构造器。
+    // 此处返回 None 让属性循环跳过 setter 生成，事件由 Stateful 分支收集后统一 subscribe。
+    if super::input::is_input_event(name, tag) {
+        return None;
     }
 
     match name {
@@ -574,6 +651,7 @@ mod tests {
     use super::*;
     use crate::compiler::CodegenCtx;
     use crate::parser::ast::{Attribute, Directive, Element, EventHandler, Node};
+    use crate::parser::Span;
 
     fn ctx() -> CodegenCtx {
         CodegenCtx {
@@ -915,27 +993,24 @@ mod tests {
 
     #[test]
     fn event_setter_on_change_input_ident() {
+        // M1'.7：Input 事件（on_change/on_enter/on_focus/on_blur）通过 EventEmitter + cx.subscribe 模式
+        // 处理，不走 setter 链路；component_event_setter 对 Input 事件返回 None。
         let handler = EventHandler::Ident("on_input_change".into());
-        let code = component_event_setter("on_change", &handler, "Input").unwrap();
-        assert!(code.starts_with(".on_change("));
-        assert!(code.contains("rml_ui::InputState"));
-        assert!(code.contains("this.on_input_change"));
-        assert!(code.contains("state"));
+        assert!(component_event_setter("on_change", &handler, "Input").is_none());
     }
 
     #[test]
     fn event_setter_on_change_textinput() {
+        // TextInput 同 Input，on_change 由 block 表达式 + subscribe 处理
         let handler = EventHandler::Ident("on_text_change".into());
-        let code = component_event_setter("on_change", &handler, "TextInput").unwrap();
-        assert!(code.starts_with(".on_change("));
-        assert!(code.contains("this.on_text_change"));
+        assert!(component_event_setter("on_change", &handler, "TextInput").is_none());
     }
 
     #[test]
     fn event_setter_on_change_method_name() {
+        // MethodName 变体同样走 block 表达式路径
         let handler = EventHandler::MethodName("handle_change".into());
-        let code = component_event_setter("on_change", &handler, "Input").unwrap();
-        assert!(code.contains("this.handle_change"));
+        assert!(component_event_setter("on_change", &handler, "Input").is_none());
     }
 
     #[test]
@@ -964,6 +1039,7 @@ mod tests {
             vec![Attribute::Static {
                 name: "label".into(),
                 value: "Submit".into(),
+                span: Span::empty(),
             }],
             vec![],
         );
@@ -989,6 +1065,7 @@ mod tests {
             vec![Attribute::Static {
                 name: "label".into(),
                 value: "Explicit".into(),
+                span: Span::empty(),
             }],
             vec![Node::Text("Ignored".into())],
         );
@@ -1006,10 +1083,12 @@ mod tests {
                 Attribute::Static {
                     name: "label".into(),
                     value: "Delete".into(),
+                    span: Span::empty(),
                 },
                 Attribute::Static {
                     name: "danger".into(),
                     value: "".into(),
+                    span: Span::empty(),
                 },
             ],
             vec![],
@@ -1028,10 +1107,12 @@ mod tests {
                 Attribute::Static {
                     name: "label".into(),
                     value: "+".into(),
+                    span: Span::empty(),
                 },
                 Attribute::Event {
                     name: "on_click".into(),
                     handler: EventHandler::Ident("increment".into()),
+                    span: Span::empty(),
                 },
             ],
             vec![],
@@ -1050,6 +1131,7 @@ mod tests {
             vec![Attribute::Bind {
                 name: "value".into(),
                 expr: "count".into(),
+                span: Span::empty(),
             }],
             vec![],
         );
@@ -1082,28 +1164,62 @@ mod tests {
     #[test]
     fn gen_component_input_with_on_change() {
         // <Input placeholder="Enter name" on-change={on_input_change} />
+        // M1'.7：on_change 由 block 表达式 + cx.subscribe 处理（Input element 无 .on_change()）
         let elem = make_element(
             "Input",
             vec![
                 Attribute::Static {
                     name: "placeholder".into(),
                     value: "Enter name".into(),
+                    span: Span::empty(),
                 },
                 Attribute::Event {
                     name: "on_change".into(),
                     handler: EventHandler::Ident("on_input_change".into()),
+                    span: Span::empty(),
                 },
             ],
             vec![],
         );
         let mut id = 0;
         let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
-        // Stateful 组件构造为 Input::new(&self.input_state)
-        assert!(code.contains("rml_ui::Input::new(&self.input_state)"));
+        // block 表达式包装
+        assert!(code.contains("({ let __rml_entity"));
+        assert!(code.contains("is_event_subscribed"));
+        assert!(code.contains("cx.subscribe(&__rml_entity"));
+        assert!(code.contains("InputEvent::Change"));
+        assert!(code.contains("this.on_input_change(entity.read(cx), cx)"));
+        assert!(code.contains("detach()"));
+        assert!(code.contains("mark_event_subscribed"));
+        assert!(code.contains("Input::new(&__rml_entity)"));
+        // placeholder 仍通过 setter 链应用
         assert!(code.contains(".placeholder(\"Enter name\")"));
-        assert!(code.contains(".on_change("));
-        assert!(code.contains("rml_ui::InputState"));
-        assert!(code.contains("this.on_input_change"));
+        // 不应再生成 .on_change()
+        assert!(!code.contains(".on_change("));
+    }
+
+    #[test]
+    fn gen_component_input_ref_with_on_change_uses_block_expr() {
+        // <Input ref="input_state" on-change={on_input_change} />
+        // ref 路径 + Input 事件：block 表达式内通过 get_or_init_ref 惰性创建 Entity
+        let elem = make_element_with_directives(
+            "Input",
+            vec![Attribute::Event {
+                name: "on_change".into(),
+                handler: EventHandler::Ident("on_input_change".into()),
+                span: Span::empty(),
+            }],
+            vec![Directive::Ref("input_state".into())],
+            vec![],
+        );
+        let mut id = 0;
+        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
+        // block 表达式 + get_or_init_ref
+        assert!(code.contains("({ let __rml_entity = self.__rml_state.get_or_init_ref(\"input_state\""));
+        assert!(code.contains("is_event_subscribed(\"input_state:on_change\""));
+        assert!(code.contains("cx.subscribe(&__rml_entity"));
+        assert!(code.contains("Input::new(&__rml_entity)"));
+        assert!(!code.contains(".on_change("));
     }
 
     #[test]
@@ -1114,6 +1230,7 @@ mod tests {
             vec![Attribute::Bind {
                 name: "value".into(),
                 expr: "count + 1".into(),
+                span: Span::empty(),
             }],
             vec![],
         );
@@ -1132,14 +1249,17 @@ mod tests {
                 Attribute::Static {
                     name: "label".into(),
                     value: "OK".into(),
+                    span: Span::empty(),
                 },
                 Attribute::Static {
                     name: "size".into(),
                     value: "large".into(),
+                    span: Span::empty(),
                 },
                 Attribute::Static {
                     name: "font_bold".into(),
                     value: "".into(),
+                    span: Span::empty(),
                 },
             ],
             vec![],
@@ -1188,10 +1308,12 @@ mod tests {
                 Attribute::Static {
                     name: "label".into(),
                     value: "OK".into(),
+                    span: Span::empty(),
                 },
                 Attribute::Static {
                     name: "primary".into(),
                     value: "".into(),
+                    span: Span::empty(),
                 },
             ],
             vec![Directive::Ref("btn".into())],
@@ -1293,10 +1415,12 @@ mod tests {
                 Attribute::Static {
                     name: "src".into(),
                     value: "https://example.com/a.jpg".into(),
+                    span: Span::empty(),
                 },
                 Attribute::Static {
                     name: "name".into(),
                     value: "John Doe".into(),
+                    span: Span::empty(),
                 },
             ],
             vec![],
@@ -1316,6 +1440,7 @@ mod tests {
             vec![Attribute::Static {
                 name: "placeholder".into(),
                 value: "UserCircle".into(),
+                span: Span::empty(),
             }],
             vec![],
         );
@@ -1335,10 +1460,12 @@ mod tests {
                 Attribute::Static {
                     name: "name".into(),
                     value: "John".into(),
+                    span: Span::empty(),
                 },
                 Attribute::Static {
                     name: "size".into(),
                     value: "large".into(),
+                    span: Span::empty(),
                 },
             ],
             vec![],
@@ -1367,6 +1494,7 @@ mod tests {
             vec![Attribute::Static {
                 name: "name".into(),
                 value: "Explicit".into(),
+                span: Span::empty(),
             }],
             vec![Node::Text("Ignored".into())],
         );
@@ -1394,10 +1522,12 @@ mod tests {
                 Attribute::Static {
                     name: "limit".into(),
                     value: "3".into(),
+                    span: Span::empty(),
                 },
                 Attribute::Static {
                     name: "ellipsis".into(),
                     value: "".into(),
+                    span: Span::empty(),
                 },
             ],
             vec![],
@@ -1416,6 +1546,7 @@ mod tests {
             vec![Attribute::Static {
                 name: "name".into(),
                 value: "Alice".into(),
+                span: Span::empty(),
             }],
             vec![],
         );
@@ -1424,6 +1555,7 @@ mod tests {
             vec![Attribute::Static {
                 name: "name".into(),
                 value: "Bob".into(),
+                span: Span::empty(),
             }],
             vec![],
         );
@@ -1449,6 +1581,7 @@ mod tests {
             vec![Attribute::Bind {
                 name: "src".into(),
                 expr: "avatar_url".into(),
+                span: Span::empty(),
             }],
             vec![],
         );

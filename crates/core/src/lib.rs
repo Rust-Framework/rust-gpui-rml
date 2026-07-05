@@ -26,6 +26,7 @@ pub mod computed_cache;
 pub mod contribution;
 pub mod converter;
 pub mod workbench;
+pub mod element_id;
 pub mod element_ref;
 pub mod event;
 pub mod events;

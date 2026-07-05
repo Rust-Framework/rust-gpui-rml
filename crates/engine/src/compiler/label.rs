@@ -1,4 +1,4 @@
-//! Label 组件代码生成
+﻿//! Label 组件代码生成
 //!
 //! Label 构造器接受 label 文本作为参数：`Label::new(label: impl Into<SharedString>)`
 //! 不使用 ElementId。本模块从 `label="..."` 属性或文本子节点提取文本，生成构造调用。
@@ -26,11 +26,11 @@ pub fn gen_label(
 
     for attr in &elem.attributes {
         match attr {
-            Attribute::Static { name, value } if name == "label" => {
+            Attribute::Static { name, value, .. } if name == "label" => {
                 code.push_str(&format!("rml_ui::Label::new({:?})", value));
                 label_set = true;
             }
-            Attribute::Bind { name, expr } if name == "label" => {
+            Attribute::Bind { name, expr, .. } if name == "label" => {
                 let rust_expr =
                     super::component::component_bind_rust_expr(expr, &lv, &computed);
                 code.push_str(&format!("rml_ui::Label::new({})", rust_expr));
@@ -55,7 +55,7 @@ pub fn gen_label(
     // 2. 其他属性 → builder 方法（跳过 label，已用于构造器）
     for attr in &elem.attributes {
         match attr {
-            Attribute::Static { name, value } => {
+            Attribute::Static { name, value, .. } => {
                 if name == "label" {
                     continue;
                 }
@@ -65,7 +65,7 @@ pub fn gen_label(
                     code.push_str(&setter);
                 }
             }
-            Attribute::Bind { name, expr } => {
+            Attribute::Bind { name, expr, .. } => {
                 if name == "label" {
                     continue;
                 }
@@ -75,7 +75,7 @@ pub fn gen_label(
                     code.push_str(&setter);
                 }
             }
-            Attribute::Event { name, handler } => {
+            Attribute::Event { name, handler, .. } => {
                 if let Some(setter) =
                     super::component::component_event_setter(name, handler, resolved)
                 {
@@ -92,6 +92,7 @@ pub fn gen_label(
 mod tests {
     use super::*;
     use crate::parser::ast::Element;
+    use crate::parser::Span;
 
     fn ctx() -> CodegenCtx {
         CodegenCtx {
@@ -117,6 +118,7 @@ mod tests {
             vec![Attribute::Static {
                 name: "label".into(),
                 value: "Hello".into(),
+                span: Span::empty(),
             }],
             vec![],
         );
@@ -139,6 +141,7 @@ mod tests {
             vec![Attribute::Bind {
                 name: "label".into(),
                 expr: "title".into(),
+                span: Span::empty(),
             }],
             vec![],
         );

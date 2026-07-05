@@ -1,4 +1,4 @@
-//! Table 容器 codegen —— 构造 + 属性 + Column 子节点 + template slot 子节点。
+﻿//! Table 容器 codegen —— 构造 + 属性 + Column 子节点 + template slot 子节点。
 //!
 //! 将 `<Table ...><Column ... /><template slot="...">...</template></Table>`
 //! 转译为 `rml_ui::Table::new(id).<setters>.column(...).header_template(...)...`。
@@ -35,7 +35,7 @@ pub fn gen_table(
 
     for attr in &elem.attributes {
         match attr {
-            Attribute::Static { name, value } => {
+            Attribute::Static { name, value, .. } => {
                 if let Some(s) = super::setters::static_setter(name, value, "Table") {
                     code.push_str(&s);
                 } else if let Some(s) =
@@ -44,7 +44,7 @@ pub fn gen_table(
                     code.push_str(&s);
                 }
             }
-            Attribute::Bind { name, expr } => {
+            Attribute::Bind { name, expr, .. } => {
                 if let Some(s) =
                     super::setters::bind_setter(name, expr, &lv, &computed, "Table")
                 {
@@ -55,7 +55,7 @@ pub fn gen_table(
                     code.push_str(&s);
                 }
             }
-            Attribute::Event { name, handler } => {
+            Attribute::Event { name, handler, .. } => {
                 if let Some(s) =
                     super::super::component::component_event_setter(name, handler, "Table")
                 {
@@ -110,6 +110,7 @@ mod tests {
     use super::*;
     use crate::compiler::CodegenCtx;
     use crate::parser::ast::{Attribute, Directive, Element, Node};
+    use crate::parser::Span;
 
     fn ctx() -> CodegenCtx {
         CodegenCtx {
@@ -171,8 +172,8 @@ mod tests {
         let elem = make_element(
             "Table",
             vec![
-                Attribute::Static { name: "bordered".into(), value: "".into() },
-                Attribute::Static { name: "stripe".into(), value: "".into() },
+                Attribute::Static { name: "bordered".into(), value: "".into(), span: Span::empty() },
+                Attribute::Static { name: "stripe".into(), value: "".into(), span: Span::empty() },
             ],
             vec![],
         );
@@ -188,8 +189,8 @@ mod tests {
         let elem = make_element(
             "Table",
             vec![
-                Attribute::Bind { name: "columns".into(), expr: "api_columns".into() },
-                Attribute::Bind { name: "rows".into(), expr: "api_rows".into() },
+                Attribute::Bind { name: "columns".into(), expr: "api_columns".into(), span: Span::empty() },
+                Attribute::Bind { name: "rows".into(), expr: "api_rows".into(), span: Span::empty() },
             ],
             vec![],
         );
@@ -205,8 +206,8 @@ mod tests {
         let column = make_element(
             "Column",
             vec![
-                Attribute::Static { name: "key".into(), value: "name".into() },
-                Attribute::Static { name: "title".into(), value: "Name".into() },
+                Attribute::Static { name: "key".into(), value: "name".into(), span: Span::empty() },
+                Attribute::Static { name: "title".into(), value: "Name".into(), span: Span::empty() },
             ],
             vec![],
         );
@@ -223,8 +224,8 @@ mod tests {
         let column = make_element(
             "column",
             vec![
-                Attribute::Static { name: "key".into(), value: "x".into() },
-                Attribute::Static { name: "title".into(), value: "X".into() },
+                Attribute::Static { name: "key".into(), value: "x".into(), span: Span::empty() },
+                Attribute::Static { name: "title".into(), value: "X".into(), span: Span::empty() },
             ],
             vec![],
         );
@@ -277,6 +278,7 @@ mod tests {
             attributes: vec![Attribute::Static {
                 name: "field".into(),
                 value: "name".into(),
+                span: Span::empty(),
             }],
             directives: vec![],
             children: vec![Node::Element(span)],
@@ -322,8 +324,8 @@ mod tests {
         let column = make_element(
             "Column",
             vec![
-                Attribute::Static { name: "key".into(), value: "x".into() },
-                Attribute::Static { name: "title".into(), value: "X".into() },
+                Attribute::Static { name: "key".into(), value: "x".into(), span: Span::empty() },
+                Attribute::Static { name: "title".into(), value: "X".into(), span: Span::empty() },
             ],
             vec![],
         );
@@ -345,7 +347,7 @@ mod tests {
         };
         let table = make_element(
             "Table",
-            vec![Attribute::Bind { name: "columns".into(), expr: "cols".into() }],
+            vec![Attribute::Bind { name: "columns".into(), expr: "cols".into(), span: Span::empty() }],
             vec![Node::Element(column), Node::Element(template)],
         );
         let mut id = 0;

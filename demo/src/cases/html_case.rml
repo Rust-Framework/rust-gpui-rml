@@ -1,0 +1,19 @@
+<component>
+    <div v-flex="" class="case-pane doc-pane">
+        <h2>{t("case.html.title")}</h2>
+
+        <Card title="组件说明">
+            <p>html 指令渲染 HTML 字符串。GPUI 无原生 HTML 渲染能力，html=&#123;raw&#125; 降级为 rml_ui::Label::new(raw) 文本节点，HTML 标签作为字面量文本显示。支持与 if/show/each 组合。</p>
+        </Card>
+
+        <Card title="基础用法">
+            <p>html_content 字段值：</p>
+            <div html={html_content.clone()} />
+            <p>注：实际渲染为 Label 文本节点，HTML 标签作为字面量字符显示（未被解析为样式）。</p>
+        </Card>
+
+        <Card title="API">
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+        </Card>
+    </div>
+</component>

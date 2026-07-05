@@ -4,6 +4,9 @@ use std::sync::Once;
 use gpui::SharedString;
 use rml::prelude::*;
 use rml_core::i18n::t_static;
+use rml_ui::{TableColumn, TableRow};
+
+use crate::cases::common::build_api_table;
 
 /// DescriptionList items 绑定的演示数据项。
 /// name() → label，id() → value（通过 as_contribution() 能力查询提取）。
@@ -45,6 +48,8 @@ pub struct DescriptionListCase {
     pub width: gpui::Pixels,
     pub is_vertical: bool,
     pub desitems: Vec<Arc<dyn IValue>>,
+    pub api_columns: Vec<TableColumn>,
+    pub api_rows: Vec<TableRow>,
 }
 
 impl IContribution for DescriptionListCase {
@@ -64,6 +69,19 @@ impl ILifecycle for DescriptionListCase {
         self.role = "管理员".into();
         self.width = gpui::px(120.0);
         self.is_vertical = true;
+        let (cols, rows) = build_api_table(&[
+            ("vertical", "布尔/绑定", "纵向布局（默认横向）"),
+            ("bordered", "布尔标志", "显示边框"),
+            ("columns", "数字", "列数"),
+            ("label-width", "像素值", "标签列宽"),
+            ("items", "绑定", "批量数据绑定（Vec<Arc<dyn IValue>>）"),
+            ("description label", "字符串", "子项标签（必填）"),
+            ("description value", "字符串/元素", "子项值"),
+            ("description span", "数字", "跨列数"),
+            ("separator", "无属性", "分隔符"),
+        ]);
+        self.api_columns = cols;
+        self.api_rows = rows;
         self.desitems = vec![
             Arc::new(DescEntry { name: "产品名称".into(), id: "RML 框架".into() }),
             Arc::new(DescEntry { name: "版本".into(), id: "1.0.0".into() }),

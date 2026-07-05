@@ -1,4 +1,4 @@
-//! DescriptionList 容器 codegen —— 构造 + 属性 + 子节点 `.child()`/`.separator()` 注入。
+﻿//! DescriptionList 容器 codegen —— 构造 + 属性 + 子节点 `.child()`/`.separator()` 注入。
 //!
 //! 将 `<descriptions><description label="A" value="B" /><separator /></descriptions>` 转译为
 //! `rml_ui::DescriptionList::new().child(rml_ui::DescriptionItem::new("A").value("B")).separator()`。
@@ -33,7 +33,7 @@ pub fn gen_description_list(
 
     for attr in &elem.attributes {
         match attr {
-            Attribute::Static { name, value } => {
+            Attribute::Static { name, value, .. } => {
                 if let Some(s) = super::setters::static_setter(name, value, "DescriptionList") {
                     code.push_str(&s);
                 } else if let Some(s) = super::super::component::component_static_setter(
@@ -44,7 +44,7 @@ pub fn gen_description_list(
                     code.push_str(&s);
                 }
             }
-            Attribute::Bind { name, expr } => {
+            Attribute::Bind { name, expr, .. } => {
                 if let Some(s) =
                     super::setters::bind_setter(name, expr, &lv, &computed, "DescriptionList")
                 {
@@ -59,7 +59,7 @@ pub fn gen_description_list(
                     code.push_str(&s);
                 }
             }
-            Attribute::Event { name, handler } => {
+            Attribute::Event { name, handler, .. } => {
                 if let Some(s) = super::super::component::component_event_setter(
                     name,
                     handler,
@@ -117,6 +117,7 @@ mod tests {
     use super::*;
     use crate::compiler::CodegenCtx;
     use crate::parser::ast::{Attribute, Directive, Element, Node};
+    use crate::parser::Span;
 
     fn ctx() -> CodegenCtx {
         CodegenCtx {
@@ -179,9 +180,9 @@ mod tests {
         let elem = make_element(
             "descriptions",
             vec![
-                Attribute::Static { name: "vertical".into(), value: "".into() },
-                Attribute::Static { name: "columns".into(), value: "2".into() },
-                Attribute::Static { name: "bordered".into(), value: "false".into() },
+                Attribute::Static { name: "vertical".into(), value: "".into(), span: Span::empty() },
+                Attribute::Static { name: "columns".into(), value: "2".into(), span: Span::empty() },
+                Attribute::Static { name: "bordered".into(), value: "false".into(), span: Span::empty() },
             ],
             vec![],
         );
@@ -201,6 +202,7 @@ mod tests {
             vec![Attribute::Static {
                 name: "label_width".into(),
                 value: "200".into(),
+                span: Span::empty(),
             }],
             vec![],
         );
@@ -216,8 +218,8 @@ mod tests {
         let desc = make_element(
             "description",
             vec![
-                Attribute::Static { name: "label".into(), value: "Name".into() },
-                Attribute::Static { name: "value".into(), value: "John".into() },
+                Attribute::Static { name: "label".into(), value: "Name".into(), span: Span::empty() },
+                Attribute::Static { name: "value".into(), value: "John".into(), span: Span::empty() },
             ],
             vec![],
         );
@@ -259,8 +261,8 @@ mod tests {
         let desc1 = make_element(
             "description",
             vec![
-                Attribute::Static { name: "label".into(), value: "A".into() },
-                Attribute::Static { name: "value".into(), value: "1".into() },
+                Attribute::Static { name: "label".into(), value: "A".into(), span: Span::empty() },
+                Attribute::Static { name: "value".into(), value: "1".into(), span: Span::empty() },
             ],
             vec![],
         );
@@ -268,8 +270,8 @@ mod tests {
         let desc2 = make_element(
             "description",
             vec![
-                Attribute::Static { name: "label".into(), value: "B".into() },
-                Attribute::Static { name: "value".into(), value: "2".into() },
+                Attribute::Static { name: "label".into(), value: "B".into(), span: Span::empty() },
+                Attribute::Static { name: "value".into(), value: "2".into(), span: Span::empty() },
             ],
             vec![],
         );
@@ -328,8 +330,8 @@ mod tests {
         let elem = make_element(
             "descriptions",
             vec![
-                Attribute::Static { name: "size".into(), value: "small".into() },
-                Attribute::Static { name: "vertical".into(), value: "".into() },
+                Attribute::Static { name: "size".into(), value: "small".into(), span: Span::empty() },
+                Attribute::Static { name: "vertical".into(), value: "".into(), span: Span::empty() },
             ],
             vec![],
         );
@@ -346,8 +348,8 @@ mod tests {
         let elem = make_element(
             "descriptions",
             vec![
-                Attribute::Bind { name: "columns".into(), expr: "col_count".into() },
-                Attribute::Bind { name: "bordered".into(), expr: "show_border".into() },
+                Attribute::Bind { name: "columns".into(), expr: "col_count".into(), span: Span::empty() },
+                Attribute::Bind { name: "bordered".into(), expr: "show_border".into(), span: Span::empty() },
             ],
             vec![],
         );

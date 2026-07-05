@@ -1,4 +1,4 @@
-//! 双向绑定与字段校验代码生成
+﻿//! 双向绑定与字段校验代码生成
 //!
 //! - `gen_model_input`：`<input model={field}>` → `rml_ui::Input::new(&state)` + 双向同步
 //! - `gen_field_*`：VM↔UI 反向赋值代码（含 parse、校验链、bump_version）
@@ -23,7 +23,7 @@ pub(super) fn gen_model_input(
     field: String,
 ) -> Result<String, CodegenError> {
     let placeholder = elem.attributes.iter().find_map(|attr| {
-        if let Attribute::Static { name, value } = attr {
+        if let Attribute::Static { name, value, .. } = attr {
             if name == "placeholder" { Some(value.clone()) } else { None }
         } else { None }
     });
@@ -38,7 +38,7 @@ pub(super) fn gen_model_input(
     );
 
     for attr in &elem.attributes {
-        if let Attribute::Static { name, value } = attr {
+        if let Attribute::Static { name, value, .. } = attr {
             if name == "disabled" {
                 let disabled_val = if value.eq_ignore_ascii_case("true") || value == "1" || value.is_empty() {
                     "true"

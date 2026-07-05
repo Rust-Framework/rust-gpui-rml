@@ -1,0 +1,30 @@
+<component>
+    <div v-flex="" class="case-pane doc-pane">
+        <h2>{t("case.tooltip.title")}</h2>
+
+        <Card title="组件说明">
+            <p>Tooltip 在 RML 中作为通用属性使用，而非独立组件。tooltip="text" 生成 .tooltip("text")，由专属 compiler/tooltip 模块处理组件白名单检查（Button/Checkbox/Clipboard/DropdownButton/Toggle/Radio/Switch）。</p>
+        </Card>
+
+        <Card title="基础用法">
+            <p>悬浮按钮查看提示：</p>
+            <div h-flex="" gap-4="">
+                <Button label="保存" tooltip="保存文件 (Cmd+S)" />
+                <Button label="删除" tooltip="删除选中项" />
+                <Button label="撤销" tooltip={dynamic_tooltip} />
+            </div>
+        </Card>
+
+        <Card title="其他组件">
+            <p>Checkbox 和其他支持组件的 tooltip：</p>
+            <div v-flex="" gap-2="">
+                <Checkbox tooltip="接受服务条款">同意条款</Checkbox>
+                <Switch tooltip="切换深色模式" />
+            </div>
+        </Card>
+
+        <Card title="API">
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+        </Card>
+    </div>
+</component>

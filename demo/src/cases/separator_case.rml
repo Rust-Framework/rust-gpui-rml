@@ -34,12 +34,27 @@
             </div>
         </Card>
 
-        <Card title="API">
-            <div class="api-table">
-                <div class="api-row api-header"><span class="api-prop-name">属性</span><span class="api-prop-type">类型</span><span>说明</span></div>
-                <div class="api-row"><span class="api-prop-name">vertical</span><span class="api-prop-type">布尔标志</span><span>垂直方向</span></div>
-                <div class="api-row"><span class="api-prop-name">dashed</span><span class="api-prop-type">布尔标志</span><span>虚线样式</span></div>
+        <Card title="动态切换(if 指令条件渲染)">
+            <p>点击按钮切换方向和样式,观察下方分隔符变化(演示 if 指令条件渲染):</p>
+            <p>当前方向: {is_vertical} | 虚线: {is_dashed}</p>
+            <div class="button-row">
+                <Button label="切换方向" on-click={on_toggle_orientation} />
+                <Button label="切换虚线" on-click={on_toggle_dashed} />
             </div>
+            <div if={is_vertical} h-flex="" gap-4="">
+                <p>左侧</p>
+                <Separator vertical={is_vertical} dashed={is_dashed} />
+                <p>右侧</p>
+            </div>
+            <div if={!is_vertical} v-flex="" gap-2="">
+                <p>上方内容</p>
+                <Separator vertical={is_vertical} dashed={is_dashed} />
+                <p>下方内容</p>
+            </div>
+        </Card>
+
+        <Card title="API">
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
         </Card>
     </div>
 </component>

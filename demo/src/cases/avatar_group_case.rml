@@ -37,13 +37,24 @@
             </AvatarGroup>
         </Card>
 
-        <Card title="API">
-            <div class="api-table">
-                <div class="api-row api-header"><span class="api-prop-name">属性</span><span class="api-prop-type">类型</span><span>说明</span></div>
-                <div class="api-row"><span class="api-prop-name">limit</span><span class="api-prop-type">数字</span><span>最大显示数量</span></div>
-                <div class="api-row"><span class="api-prop-name">ellipsis</span><span class="api-prop-type">布尔标志</span><span>溢出显示 +N</span></div>
-                <div class="api-row"><span class="api-prop-name">子节点</span><span class="api-prop-type">Avatar[]</span><span>头像列表</span></div>
+        <Card title="动态头像(if 条件渲染)">
+            <p>点击按钮增减头像数量,观察 AvatarGroup 实时变化(演示 if 条件渲染):</p>
+            <p>当前头像数: {avatar_count}</p>
+            <div class="button-row">
+                <Button label="添加头像" primary="" on-click={on_add_avatar} />
+                <Button label="移除头像" on-click={on_remove_avatar} />
             </div>
+            <AvatarGroup limit="5" ellipsis="">
+                <Avatar name="Alice" if={avatar_count >= 1} />
+                <Avatar name="Bob" if={avatar_count >= 2} />
+                <Avatar name="Charlie" if={avatar_count >= 3} />
+                <Avatar name="Dave" if={avatar_count >= 4} />
+                <Avatar name="Eve" if={avatar_count >= 5} />
+            </AvatarGroup>
+        </Card>
+
+        <Card title="API">
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
         </Card>
     </div>
 </component>

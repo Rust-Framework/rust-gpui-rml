@@ -1,6 +1,9 @@
 use gpui::SharedString;
 use rml::prelude::*;
 use rml_core::i18n::t_static;
+use rml_ui::{TableColumn, TableRow};
+
+use crate::cases::common::build_api_table;
 
 #[contribute(
     host_id = "demo.shell",
@@ -14,6 +17,8 @@ use rml_core::i18n::t_static;
 pub struct CheckboxCase {
     pub is_checked: bool,
     pub is_disabled: bool,
+    pub api_columns: Vec<TableColumn>,
+    pub api_rows: Vec<TableRow>,
 }
 
 impl IContribution for CheckboxCase {
@@ -25,6 +30,19 @@ impl IContribution for CheckboxCase {
     }
 }
 
+impl ILifecycle for CheckboxCase {
+    fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
+        let (cols, rows) = build_api_table(&[
+            ("label", "字符串", "标签文本"),
+            ("checked", "布尔", "勾选状态"),
+            ("disabled", "布尔", "禁用"),
+            ("size", "small/medium/large", "尺寸"),
+        ]);
+        self.api_columns = cols;
+        self.api_rows = rows;
+    }
+}
+
 impl CheckboxCase {
     #[computed]
     pub fn status_text(&self) -> String {
@@ -33,13 +51,6 @@ impl CheckboxCase {
         } else {
             "当前：未勾选".to_string()
         }
-    }
-
-    #[computed]
-    pub fn code_sample(&self) -> String {
-        r#"<Checkbox label="同意条款" checked={is_checked} />
-<Checkbox label="禁用项" checked={is_disabled} disabled={is_disabled} />"#
-            .to_string()
     }
 
     #[command]

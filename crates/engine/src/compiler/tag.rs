@@ -5,6 +5,7 @@
 //!
 //! 其他属性（size/disabled/compact 等）走通用 setter。
 
+use crate::compiler::codegen::gen_node;
 use crate::compiler::{CodegenCtx, CodegenError};
 use crate::parser::ast::{Attribute, Element};
 use crate::tags;
@@ -13,13 +14,13 @@ use crate::tags;
 pub fn gen_tag(
     elem: &Element,
     ctx: &CodegenCtx,
-    _id_counter: &mut usize,
+    id_counter: &mut usize,
     loop_vars: &[String],
 ) -> Result<String, CodegenError> {
     // 1. 扫描 variant 属性，决定构造器
     let mut ctor = "rml_ui::Tag::new()".to_string();
     for attr in &elem.attributes {
-        if let Attribute::Static { name, value } = attr {
+        if let Attribute::Static { name, value, .. } = attr {
             if is_variant_attr(name) && (value.is_empty() || value.eq_ignore_ascii_case("true")) {
                 ctor = format!("rml_ui::Tag::{}()", name);
                 break;
@@ -36,7 +37,7 @@ pub fn gen_tag(
 
     for attr in &elem.attributes {
         match attr {
-            Attribute::Static { name, value } => {
+            Attribute::Static { name, value, .. } => {
                 // variant 属性已用于构造器，跳过
                 if is_variant_attr(name) {
                     continue;
@@ -47,20 +48,33 @@ pub fn gen_tag(
                     code.push_str(&s);
                 }
             }
-            Attribute::Bind { name, expr } => {
+            Attribute::Bind { name, expr, .. } => {
                 if let Some(s) = super::component::component_bind_setter(
                     name, expr, &lv, &computed, &resolved,
                 ) {
                     code.push_str(&s);
                 }
             }
-            Attribute::Event { name, handler } => {
+            Attribute::Event { name, handler, .. } => {
                 if let Some(s) =
                     super::component::component_event_setter(name, handler, &resolved)
                 {
                     code.push_str(&s);
                 }
             }
+        }
+    }
+
+    // 3. 子节点处理
+    //
+    // Tag 实现 ParentElement，用 .child(...) 接收子节点（文本/元素）。
+    // each 指令生成的迭代器用 .children(...) 包裹。
+    for child in &elem.children {
+        let (child_code, is_iter) = gen_node(child, ctx, 0, id_counter, loop_vars)?;
+        if is_iter {
+            code.push_str(&format!(".children({})", child_code));
+        } else {
+            code.push_str(&format!(".child({})", child_code));
         }
     }
 
@@ -79,6 +93,7 @@ mod tests {
     use super::*;
     use crate::compiler::CodegenCtx;
     use crate::parser::ast::{Element, Node};
+    use crate::parser::Span;
 
     fn ctx() -> CodegenCtx {
         CodegenCtx {
@@ -114,6 +129,7 @@ mod tests {
             vec![Attribute::Static {
                 name: "primary".into(),
                 value: "".into(),
+                span: Span::empty(),
             }],
             vec![],
         );
@@ -131,6 +147,7 @@ mod tests {
             vec![Attribute::Static {
                 name: "danger".into(),
                 value: "".into(),
+                span: Span::empty(),
             }],
             vec![],
         );
@@ -147,10 +164,12 @@ mod tests {
                 Attribute::Static {
                     name: "primary".into(),
                     value: "".into(),
+                    span: Span::empty(),
                 },
                 Attribute::Static {
                     name: "size".into(),
                     value: "small".into(),
+                    span: Span::empty(),
                 },
             ],
             vec![],

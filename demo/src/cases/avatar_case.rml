@@ -8,15 +8,7 @@
         </Card>
 
         <Card title="API">
-            <div class="api-table">
-                <div class="api-row api-header"><span class="api-prop-name">属性</span><span class="api-prop-type">类型</span><span>说明</span></div>
-                <div class="api-row"><span class="api-prop-name">src</span><span class="api-prop-type">URL 字符串</span><span>图片地址</span></div>
-                <div class="api-row"><span class="api-prop-name">name</span><span class="api-prop-type">字符串</span><span>取首字母显示</span></div>
-                <div class="api-row"><span class="api-prop-name">placeholder</span><span class="api-prop-type">图标名</span><span>占位图标</span></div>
-                <div class="api-row"><span class="api-prop-name">size</span><span class="api-prop-type">small/medium/large</span><span>尺寸变体</span></div>
-                <div class="api-row"><span class="api-prop-name">AvatarGroup limit</span><span class="api-prop-type">数字</span><span>最大显示数量</span></div>
-                <div class="api-row"><span class="api-prop-name">AvatarGroup ellipsis</span><span class="api-prop-type">布尔标志</span><span>溢出项显示 +N</span></div>
-            </div>
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
         </Card>
 
         <Card title="示例代码">
@@ -59,6 +51,25 @@
                     <Avatar src="https://avatars.githubusercontent.com/u/22312482?v=4" />
                     <Avatar name="John Doe" />
                 </AvatarGroup>
+            </div>
+
+            <div class="demo-section">
+                <h3>动态尺寸(model + computed + if 指令)</h3>
+                <p>输入姓名,点击按钮循环切换尺寸,观察下方头像变化:</p>
+                <input model={name} placeholder="输入姓名" />
+                <p>当前姓名:{name} | 当前尺寸:{size_label}</p>
+                <div h-flex="" gap-4="">
+                    <div if={size_index % 3 == 0}>
+                        <Avatar name={name} size="small" />
+                    </div>
+                    <div if={size_index % 3 == 1}>
+                        <Avatar name={name} size="medium" />
+                    </div>
+                    <div if={size_index % 3 == 2}>
+                        <Avatar name={name} size="large" />
+                    </div>
+                </div>
+                <Button label="切换尺寸" primary="" on-click={on_cycle_size} />
             </div>
         </Card>
     </div>

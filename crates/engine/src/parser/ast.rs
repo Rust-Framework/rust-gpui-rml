@@ -54,11 +54,26 @@ pub struct Element {
 #[derive(Debug, Clone)]
 pub enum Attribute {
     /// 静态属性 `class="card"`
-    Static { name: String, value: String },
+    Static {
+        name: String,
+        value: String,
+        /// 属性名+值的字节区间（LSP 跳转定位用）
+        span: Span,
+    },
     /// 绑定属性 `value={field}`
-    Bind { name: String, expr: String },
+    Bind {
+        name: String,
+        expr: String,
+        /// 属性名+值的字节区间
+        span: Span,
+    },
     /// 事件绑定 `onclick={fn}` 或 `onclick="method"`
-    Event { name: String, handler: EventHandler },
+    Event {
+        name: String,
+        handler: EventHandler,
+        /// 属性名+值的字节区间
+        span: Span,
+    },
 }
 
 /// 指令

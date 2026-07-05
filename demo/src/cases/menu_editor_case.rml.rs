@@ -1,6 +1,9 @@
 use gpui::SharedString;
 use rml::prelude::*;
 use rml_core::i18n::t_static;
+use rml_ui::{TableColumn, TableRow};
+
+use crate::cases::common::build_api_table;
 
 #[contribute(
     host_id = "demo.shell",
@@ -14,6 +17,8 @@ use rml_core::i18n::t_static;
 pub struct MenuEditorCase {
     pub word_wrap: bool,
     pub last_action: String,
+    pub api_columns: Vec<TableColumn>,
+    pub api_rows: Vec<TableRow>,
 }
 
 impl IContribution for MenuEditorCase {
@@ -25,7 +30,19 @@ impl IContribution for MenuEditorCase {
     }
 }
 
-impl ILifecycle for MenuEditorCase {}
+impl ILifecycle for MenuEditorCase {
+    fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
+        let (cols, rows) = build_api_table(&[
+            ("check-side", "枚举", "勾选标记位置（Right/Left）"),
+            ("menu-item checked", "布尔", "勾选状态绑定"),
+            ("menu-item label", "字符串", "菜单项文案"),
+            ("menu-item onclick", "事件", "点击回调"),
+            ("menu-separator", "标签", "分组分隔线"),
+        ]);
+        self.api_columns = cols;
+        self.api_rows = rows;
+    }
+}
 
 impl MenuEditorCase {
     #[computed]

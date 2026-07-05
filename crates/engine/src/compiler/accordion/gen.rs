@@ -1,4 +1,4 @@
-//! Accordion 容器 codegen —— 构造 + 属性 + 子节点 .item() 注入。
+﻿//! Accordion 容器 codegen —— 构造 + 属性 + 子节点 .item() 注入。
 //!
 //! 将 `<Accordion><AccordionItem ...>...</AccordionItem></Accordion>` 转译为
 //! `rml_ui::Accordion::new(id).multiple(true).item(|__rml_item| __rml_item.title(...).child(...))`。
@@ -32,7 +32,7 @@ pub fn gen_accordion(
 
     for attr in &elem.attributes {
         match attr {
-            Attribute::Static { name, value } => {
+            Attribute::Static { name, value, .. } => {
                 if let Some(s) = super::setters::static_setter(name, value, "Accordion") {
                     code.push_str(&s);
                 } else if let Some(s) =
@@ -41,7 +41,7 @@ pub fn gen_accordion(
                     code.push_str(&s);
                 }
             }
-            Attribute::Bind { name, expr } => {
+            Attribute::Bind { name, expr, .. } => {
                 if let Some(s) =
                     super::setters::bind_setter(name, expr, &lv, &computed, "Accordion")
                 {
@@ -52,7 +52,7 @@ pub fn gen_accordion(
                     code.push_str(&s);
                 }
             }
-            Attribute::Event { name, handler } => {
+            Attribute::Event { name, handler, .. } => {
                 if let Some(s) = super::setters::event_setter(name, handler, "Accordion") {
                     code.push_str(&s);
                 } else if let Some(s) =
@@ -97,6 +97,7 @@ mod tests {
     use super::*;
     use crate::compiler::CodegenCtx;
     use crate::parser::ast::{Attribute, Directive, Element, EventHandler, Node};
+    use crate::parser::Span;
 
     fn ctx() -> CodegenCtx {
         CodegenCtx {
@@ -152,10 +153,12 @@ mod tests {
                 Attribute::Static {
                     name: "multiple".into(),
                     value: "".into(),
+                    span: Span::empty(),
                 },
                 Attribute::Static {
                     name: "bordered".into(),
                     value: "true".into(),
+                    span: Span::empty(),
                 },
             ],
             vec![],
@@ -174,6 +177,7 @@ mod tests {
             vec![Attribute::Static {
                 name: "title".into(),
                 value: "Section 1".into(),
+                span: Span::empty(),
             }],
             vec![Node::Text("Content".into())],
         );
@@ -196,10 +200,12 @@ mod tests {
                 Attribute::Static {
                     name: "open".into(),
                     value: "".into(),
+                    span: Span::empty(),
                 },
                 Attribute::Static {
                     name: "icon".into(),
                     value: "Settings".into(),
+                    span: Span::empty(),
                 },
             ],
             vec![],
@@ -220,6 +226,7 @@ mod tests {
             vec![Attribute::Event {
                 name: "on_toggle_click".into(),
                 handler: EventHandler::Ident("on_toggle".into()),
+                span: Span::empty(),
             }],
             vec![],
         );
@@ -278,10 +285,12 @@ mod tests {
                 Attribute::Static {
                     name: "size".into(),
                     value: "small".into(),
+                    span: Span::empty(),
                 },
                 Attribute::Static {
                     name: "bordered".into(),
                     value: "".into(),
+                    span: Span::empty(),
                 },
             ],
             vec![],
@@ -320,6 +329,7 @@ mod tests {
             vec![Attribute::Static {
                 name: "title".into(),
                 value: "Section 1".into(),
+                span: Span::empty(),
             }],
             vec![Node::Text("Content".into())],
         );

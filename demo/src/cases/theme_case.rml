@@ -1,0 +1,40 @@
+<component>
+    <div v-flex="" class="case-pane doc-pane">
+        <h2>{t("case.theme.title")}</h2>
+
+        <Card title="组件说明">
+            <p>主题切换案例演示用 if 条件渲染 + #[command] 命令实现动态主题切换。通过 theme_index 字段控制渲染不同变体的 Badge/Tag/Button，展示 RML 的响应式 UI 能力。</p>
+        </Card>
+
+        <Card title="主题切换">
+            <p>当前主题：{theme_label}</p>
+            <div h-flex="" gap-4="">
+                <Button label="默认" on-click={on_theme_default} />
+                <Button label="主要" on-click={on_theme_primary} />
+                <Button label="危险" on-click={on_theme_danger} />
+            </div>
+        </Card>
+
+        <Card title="Badge 主题">
+            <p>根据 theme_index 条件渲染不同变体的 Badge：</p>
+            <div h-flex="" gap-4="">
+                <Badge if={theme_index == 0}>Default</Badge>
+                <Badge if={theme_index == 1}>Primary</Badge>
+                <Badge if={theme_index == 2}>Danger</Badge>
+            </div>
+        </Card>
+
+        <Card title="Tag 主题">
+            <p>根据 theme_index 条件渲染不同变体的 Tag：</p>
+            <div h-flex="" gap-4="">
+                <Tag if={theme_index == 0}>Default Tag</Tag>
+                <Tag primary="" if={theme_index == 1}>Primary Tag</Tag>
+                <Tag danger="" if={theme_index == 2}>Danger Tag</Tag>
+            </div>
+        </Card>
+
+        <Card title="API">
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+        </Card>
+    </div>
+</component>

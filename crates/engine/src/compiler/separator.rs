@@ -1,4 +1,4 @@
-//! Separator 组件代码生成
+﻿//! Separator 组件代码生成
 //!
 //! Separator 无 `new()` 构造器，使用关联函数：
 //! - `Separator::horizontal()` (默认)
@@ -32,7 +32,7 @@ pub fn gen_separator(
     let mut is_dashed = false;
 
     for attr in &elem.attributes {
-        if let Attribute::Static { name, value } = attr {
+        if let Attribute::Static { name, value, .. } = attr {
             if name == "vertical" && (value.is_empty() || value.eq_ignore_ascii_case("true")) {
                 is_vertical = true;
             }
@@ -54,7 +54,7 @@ pub fn gen_separator(
     // 其他属性 → builder 方法（跳过 vertical/dashed，已用于构造器选择）
     for attr in &elem.attributes {
         match attr {
-            Attribute::Static { name, value } => {
+            Attribute::Static { name, value, .. } => {
                 if name == "vertical" || name == "dashed" {
                     continue;
                 }
@@ -64,14 +64,14 @@ pub fn gen_separator(
                     code.push_str(&setter);
                 }
             }
-            Attribute::Bind { name, expr } => {
+            Attribute::Bind { name, expr, .. } => {
                 if let Some(setter) = super::component::component_bind_setter(
                     name, expr, &lv, &computed, resolved,
                 ) {
                     code.push_str(&setter);
                 }
             }
-            Attribute::Event { name, handler } => {
+            Attribute::Event { name, handler, .. } => {
                 if let Some(setter) =
                     super::component::component_event_setter(name, handler, resolved)
                 {
@@ -87,6 +87,7 @@ pub fn gen_separator(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::parser::Span;
 
     fn ctx() -> CodegenCtx {
         CodegenCtx {
@@ -119,6 +120,7 @@ mod tests {
         let elem = make_element(vec![Attribute::Static {
             name: "vertical".into(),
             value: "".into(),
+            span: Span::empty(),
         }]);
         let mut id = 0;
         let code = gen_separator(&elem, &ctx(), &mut id, &Vec::new()).unwrap();
@@ -130,6 +132,7 @@ mod tests {
         let elem = make_element(vec![Attribute::Static {
             name: "dashed".into(),
             value: "".into(),
+            span: Span::empty(),
         }]);
         let mut id = 0;
         let code = gen_separator(&elem, &ctx(), &mut id, &Vec::new()).unwrap();
@@ -142,10 +145,12 @@ mod tests {
             Attribute::Static {
                 name: "vertical".into(),
                 value: "".into(),
+                span: Span::empty(),
             },
             Attribute::Static {
                 name: "dashed".into(),
                 value: "".into(),
+                span: Span::empty(),
             },
         ]);
         let mut id = 0;

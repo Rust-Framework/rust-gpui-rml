@@ -1,6 +1,9 @@
 use gpui::SharedString;
 use rml::prelude::*;
 use rml_core::i18n::t_static;
+use rml_ui::{TableColumn, TableRow};
+
+use crate::cases::common::build_api_table;
 
 #[contribute(
     host_id = "demo.shell",
@@ -11,7 +14,11 @@ use rml_core::i18n::t_static;
 )]
 #[component]
 #[derive(Default)]
-pub struct TitleBarCase {}
+pub struct TitleBarCase {
+    pub title: String,
+    pub api_columns: Vec<TableColumn>,
+    pub api_rows: Vec<TableRow>,
+}
 
 impl IContribution for TitleBarCase {
     fn id(&self) -> &str {
@@ -22,12 +29,28 @@ impl IContribution for TitleBarCase {
     }
 }
 
+impl ILifecycle for TitleBarCase {
+    fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
+        self.title = "RML Showcase".into();
+        let (cols, rows) = build_api_table(&[
+            ("子节点", "元素[]", "中央区域内容"),
+        ]);
+        self.api_columns = cols;
+        self.api_rows = rows;
+    }
+}
+
 impl TitleBarCase {
     #[computed]
     pub fn code_sample(&self) -> String {
         r#"<TitleBar>
-    <Button label="菜单" ghost="" />
+    <span>标题</span>
 </TitleBar>"#
             .to_string()
+    }
+
+    #[command]
+    pub fn on_reset_title(&mut self, _: &ClickEvent, _: &mut Context<Self>) {
+        self.title = "RML Showcase".into();
     }
 }

@@ -210,7 +210,19 @@ pub(super) fn gen_render_impl_from_children(
         final_body
     };
 
-    out.push_str(&format!("        {}\n", with_layers));
+    // 调用 `__rml_populate_refs()` 将本次渲染惰性创建的 `Entity<T>` 注入到
+    // 用户声明的 `ElementRef<T>` 字段（由 `#[component]`/`#[window]` 宏生成）。
+    // 必须在元素树构建完成后调用，确保 ref 指令的 codegen 已填充 ref_entities。
+    let with_populate = format!(
+        "{{\n            \
+         let __rml_root = {body};\n            \
+         self.__rml_populate_refs();\n            \
+         __rml_root\n            \
+         }}",
+        body = with_layers
+    );
+
+    out.push_str(&format!("        {}\n", with_populate));
     out.push_str("    }\n");
     out.push_str("}\n");
 

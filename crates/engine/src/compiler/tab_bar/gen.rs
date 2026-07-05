@@ -1,4 +1,4 @@
-//! TabBar 容器 codegen —— 构造 + 属性 + 子节点 `.child(Tab::new()...)` 注入。
+﻿//! TabBar 容器 codegen —— 构造 + 属性 + 子节点 `.child(Tab::new()...)` 注入。
 //!
 //! 将 `<TabBar><Tab label="A" /><Tab><Icon /><span>A</span></Tab></TabBar>` 转译为
 //! `rml_ui::TabBar::new(id).underline().selected_index(0).child(rml_ui::Tab::new().label("A")).child(rml_ui::Tab::new().child(...))`。
@@ -34,7 +34,7 @@ pub fn gen_tab_bar(
 
     for attr in &elem.attributes {
         match attr {
-            Attribute::Static { name, value } => {
+            Attribute::Static { name, value, .. } => {
                 if let Some(s) = super::setters::static_setter(name, value, "TabBar") {
                     code.push_str(&s);
                 } else if let Some(s) =
@@ -43,7 +43,7 @@ pub fn gen_tab_bar(
                     code.push_str(&s);
                 }
             }
-            Attribute::Bind { name, expr } => {
+            Attribute::Bind { name, expr, .. } => {
                 if let Some(s) =
                     super::setters::bind_setter(name, expr, &lv, &computed, "TabBar")
                 {
@@ -54,7 +54,7 @@ pub fn gen_tab_bar(
                     code.push_str(&s);
                 }
             }
-            Attribute::Event { name, handler } => {
+            Attribute::Event { name, handler, .. } => {
                 if let Some(s) = super::setters::event_setter(name, handler, "TabBar") {
                     code.push_str(&s);
                 } else if let Some(s) =
@@ -110,6 +110,7 @@ mod tests {
     use super::*;
     use crate::compiler::CodegenCtx;
     use crate::parser::ast::{Attribute, Directive, EachClause, Element, EventHandler, Node};
+    use crate::parser::Span;
 
     fn ctx() -> CodegenCtx {
         CodegenCtx {
@@ -165,10 +166,12 @@ mod tests {
                 Attribute::Static {
                     name: "underline".into(),
                     value: "".into(),
+                    span: Span::empty(),
                 },
                 Attribute::Static {
                     name: "menu".into(),
                     value: "true".into(),
+                    span: Span::empty(),
                 },
             ],
             vec![],
@@ -187,6 +190,7 @@ mod tests {
             vec![Attribute::Static {
                 name: "label".into(),
                 value: "Account".into(),
+                span: Span::empty(),
             }],
             vec![],
         );
@@ -232,10 +236,12 @@ mod tests {
                 Attribute::Static {
                     name: "icon".into(),
                     value: "User".into(),
+                    span: Span::empty(),
                 },
                 Attribute::Static {
                     name: "label".into(),
                     value: "Account".into(),
+                    span: Span::empty(),
                 },
             ],
             vec![],
@@ -255,6 +261,7 @@ mod tests {
             vec![Attribute::Event {
                 name: "on_click".into(),
                 handler: EventHandler::Ident("on_tab_select".into()),
+                span: Span::empty(),
             }],
             vec![],
         );
@@ -274,6 +281,7 @@ mod tests {
             vec![Attribute::Bind {
                 name: "selected_index".into(),
                 expr: "active_tab".into(),
+                span: Span::empty(),
             }],
             vec![],
         );
@@ -328,10 +336,12 @@ mod tests {
                 Attribute::Static {
                     name: "size".into(),
                     value: "small".into(),
+                    span: Span::empty(),
                 },
                 Attribute::Static {
                     name: "underline".into(),
                     value: "".into(),
+                    span: Span::empty(),
                 },
             ],
             vec![],
@@ -350,6 +360,7 @@ mod tests {
             vec![Attribute::Static {
                 name: "label".into(),
                 value: "A".into(),
+                span: Span::empty(),
             }],
             vec![],
         );
@@ -358,6 +369,7 @@ mod tests {
             vec![Attribute::Static {
                 name: "label".into(),
                 value: "B".into(),
+                span: Span::empty(),
             }],
             vec![],
         );
@@ -399,6 +411,7 @@ mod tests {
             vec![Attribute::Static {
                 name: "label".into(),
                 value: "Account".into(),
+                span: Span::empty(),
             }],
             vec![],
         );
@@ -419,6 +432,7 @@ mod tests {
             vec![Attribute::Static {
                 name: "label".into(),
                 value: "A".into(),
+                span: Span::empty(),
             }],
             vec![],
         );
@@ -428,6 +442,7 @@ mod tests {
             vec![Attribute::Static {
                 name: "title".into(),
                 value: "B".into(),
+                span: Span::empty(),
             }],
             vec![Node::Element(body_div)],
         );
@@ -452,6 +467,7 @@ mod tests {
             vec![Attribute::Bind {
                 name: "title".into(),
                 expr: "tab.title".into(),
+                span: Span::empty(),
             }],
             vec![Directive::Each(EachClause {
                 item: "tab".into(),

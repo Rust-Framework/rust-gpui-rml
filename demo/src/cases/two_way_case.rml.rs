@@ -1,6 +1,9 @@
 use gpui::SharedString;
 use rml::prelude::*;
 use rml_core::i18n::t_static;
+use rml_ui::{TableColumn, TableRow};
+
+use crate::cases::common::build_api_table;
 
 #[contribute(
     host_id = "demo.shell",
@@ -23,6 +26,8 @@ pub struct TwoWayCase {
     pub input_event_count: u32,
     /// B-3 demo：onchange 触发次数（值提交时 +1）。
     pub change_event_count: u32,
+    pub api_columns: Vec<TableColumn>,
+    pub api_rows: Vec<TableRow>,
 }
 
 impl IContribution for TwoWayCase {
@@ -34,7 +39,19 @@ impl IContribution for TwoWayCase {
     }
 }
 
-impl ILifecycle for TwoWayCase {}
+impl ILifecycle for TwoWayCase {
+    fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
+        let (cols, rows) = build_api_table(&[
+            ("model", "字段引用", "双向绑定到 pub 字段"),
+            ("#[validate(range(min,max))]", "属性", "数值范围验证"),
+            ("placeholder", "字符串", "占位提示"),
+            ("#[computed]", "方法", "依赖字段自动重算"),
+            ("converter (|)", "IConverter", "model={price | Currency} 双向转换"),
+        ]);
+        self.api_columns = cols;
+        self.api_rows = rows;
+    }
+}
 
 impl TwoWayCase {
     #[computed]

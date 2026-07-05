@@ -100,7 +100,7 @@ pub fn gen_template(
 /// cell 模板必填 field，缺失报错；header/footer 模板不调用此函数。
 fn extract_field_attr(elem: &Element) -> Result<String, CodegenError> {
     for attr in &elem.attributes {
-        if let Attribute::Static { name, value } = attr {
+        if let Attribute::Static { name, value, .. } = attr {
             if name == "field" {
                 return Ok(format!("{:?}", value));
             }
@@ -147,6 +147,7 @@ mod tests {
     use super::*;
     use crate::compiler::CodegenCtx;
     use crate::parser::ast::{Element, Node, TextSegment};
+    use crate::parser::Span;
 
     fn ctx() -> CodegenCtx {
         CodegenCtx {
@@ -202,7 +203,7 @@ mod tests {
         };
         let tpl = make_template(
             "cell",
-            vec![Attribute::Static { name: "field".into(), value: "name".into() }],
+            vec![Attribute::Static { name: "field".into(), value: "name".into(), span: Span::empty() }],
             vec![Node::Element(span)],
         );
         let mut id = 0;
@@ -248,7 +249,7 @@ mod tests {
         };
         let tpl = make_template(
             "cell",
-            vec![Attribute::Static { name: "field".into(), value: "name".into() }],
+            vec![Attribute::Static { name: "field".into(), value: "name".into(), span: Span::empty() }],
             vec![Node::Element(span)],
         );
         let mut id = 0;
@@ -295,7 +296,7 @@ mod tests {
         };
         let tpl = make_template(
             "cell",
-            vec![Attribute::Static { name: "field".into(), value: "name".into() }],
+            vec![Attribute::Static { name: "field".into(), value: "name".into(), span: Span::empty() }],
             vec![Node::Element(span)],
         );
         let mut id = 0;
