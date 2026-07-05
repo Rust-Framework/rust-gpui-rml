@@ -38,6 +38,9 @@ impl IContribution for AccordionCase {
 
 impl ILifecycle for AccordionCase {
     fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
+        // 受控模式下初始展开态由状态字段决定，避免在 item 上硬编码 open 导致点击无法收起
+        self.basic_open = vec![0];
+        self.multiple_open = vec![0, 1];
         let (cols, rows) = build_api_table(&[
             ("bordered", "布尔标志", "显示边框"),
             ("multiple", "布尔标志", "允许多项同时展开"),

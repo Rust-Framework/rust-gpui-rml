@@ -294,33 +294,15 @@ fn resolve_binary(workspace_root: &Path) -> Result<PathBuf> {
             return Ok(p);
         }
     }
-    let debug_path = workspace_root
-        .join("target")
-        .join("debug")
-        .join("rml-lsp.exe");
-    if debug_path.exists() {
-        return Ok(debug_path);
-    }
-    let debug_path2 = workspace_root
-        .join("target")
-        .join("debug")
-        .join("rml-lsp");
-    if debug_path2.exists() {
-        return Ok(debug_path2);
-    }
-    let release_path = workspace_root
-        .join("target")
-        .join("release")
-        .join("rml-lsp.exe");
-    if release_path.exists() {
-        return Ok(release_path);
-    }
-    let release_path2 = workspace_root
-        .join("target")
-        .join("release")
-        .join("rml-lsp");
-    if release_path2.exists() {
-        return Ok(release_path2);
+    for target_dir in ["target", "crates/lsp/target"] {
+        for profile in ["debug", "release"] {
+            for bin in ["rml-lsp.exe", "rml-lsp"] {
+                let p = workspace_root.join(target_dir).join(profile).join(bin);
+                if p.exists() {
+                    return Ok(p);
+                }
+            }
+        }
     }
     Ok(PathBuf::from("rml-lsp"))
 }

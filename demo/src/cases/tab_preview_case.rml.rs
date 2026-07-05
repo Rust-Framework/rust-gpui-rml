@@ -128,7 +128,9 @@ impl TabPreviewCase {
 
     #[command]
     pub fn on_tab_close(&mut self, index: usize, cx: &mut Context<Self>) {
-        if index >= self.tabs.len() {
+        // 防御性检查：closable=false 的 tab 不可关闭
+        // （框架已通过隐藏关闭按钮和 "Close" 菜单项拦截，此处为双保险）
+        if index >= self.tabs.len() || !self.tabs[index].closable {
             return;
         }
         self.tabs.remove(index);
@@ -139,13 +141,33 @@ impl TabPreviewCase {
         } else if self.tabs.is_empty() {
             self.selected_index = 0;
         }
+        self.__rml_bump_version("tabs");
         cx.notify();
     }
 
     #[command]
     pub fn on_tab_close_all(&mut self, cx: &mut Context<Self>) {
-        self.tabs.clear();
-        self.selected_index = 0;
+        // 仅关闭 closable=true 的 tab，保留 closable=false 的
+        let selected_closable = self
+            .tabs
+            .get(self.selected_index)
+            .map(|t| t.closable)
+            .unwrap_or(false);
+        let non_closable_before_selected: usize = self.tabs[..self.selected_index]
+            .iter()
+            .filter(|t| !t.closable)
+            .count();
+        self.tabs.retain(|t| !t.closable);
+        if self.tabs.is_empty() {
+            self.selected_index = 0;
+        } else if selected_closable {
+            // 选中 tab 被关闭，回退到其之前最近的非可关闭 tab
+            self.selected_index = non_closable_before_selected.min(self.tabs.len() - 1);
+        } else {
+            // 选中 tab 被保留，新索引为之前非可关闭 tab 的数量
+            self.selected_index = non_closable_before_selected;
+        }
+        self.__rml_bump_version("tabs");
         cx.notify();
     }
 
@@ -154,9 +176,20 @@ impl TabPreviewCase {
         if index >= self.tabs.len() {
             return;
         }
-        let kept = self.tabs.remove(index);
-        self.tabs = vec![kept];
-        self.selected_index = 0;
+        // 保留当前 tab 和其他 closable=false 的 tab，关闭其他 closable=true 的 tab
+        let mut new_tabs = Vec::new();
+        let mut new_selected = 0;
+        for (i, tab) in self.tabs.iter().enumerate() {
+            if i == index {
+                new_selected = new_tabs.len();
+                new_tabs.push(tab.clone());
+            } else if !tab.closable {
+                new_tabs.push(tab.clone());
+            }
+        }
+        self.tabs = new_tabs;
+        self.selected_index = new_selected;
+        self.__rml_bump_version("tabs");
         cx.notify();
     }
 

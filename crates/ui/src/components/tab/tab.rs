@@ -1,4 +1,4 @@
-use std::{rc::Rc, time::{Duration, Instant}};
+use std::{cell::RefCell, collections::HashMap, rc::Rc, time::{Duration, Instant}};
 
 use gpui_component::animation::{Lerp, ease_in_out_cubic};
 use gpui_component::{
@@ -9,14 +9,22 @@ use crate::{ContextMenuExt, PopupMenu, Tooltip};
 use gpui::prelude::FluentBuilder as _;
 use gpui::{
     Animation, AnimationExt as _, AnyElement, App, Background, ClickEvent, Context, Corners, Div,
-    Edges, ElementId, Hsla, InteractiveElement, IntoElement, MouseButton, ParentElement, Pixels,
-    RenderOnce, SharedString, StatefulInteractiveElement, Styled, Window, div, px, relative,
+    Edges, ElementId, Global, Hsla, InteractiveElement, IntoElement, MouseButton, ParentElement,
+    Pixels, RenderOnce, SharedString, StatefulInteractiveElement, Styled, Window, div, px, relative,
 };
 
 type TabClickHandler = Rc<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>;
 type TabContextMenuProvider =
     Rc<dyn Fn(PopupMenu, &mut Window, &mut Context<PopupMenu>) -> PopupMenu + 'static>;
 type TabPromoteHandler = Rc<dyn Fn(&mut Window, &mut App) + 'static>;
+
+/// 双击检测状态。`use_keyed_state` 无法在事件回调中使用，改用 App Global。
+#[derive(Default)]
+struct TabDblClickState {
+    last_clicks: RefCell<HashMap<String, Option<Instant>>>,
+}
+
+impl Global for TabDblClickState {}
 
 /// 双击检测时间窗口（ms）。两次点击间隔 ≤ 此值视为双击。
 const DOUBLE_CLICK_WINDOW: Duration = Duration::from_millis(250);
@@ -1019,17 +1027,23 @@ impl RenderOnce for Tab {
                     // 双击后清空状态，避免三击误触发。
                     let now = Instant::now();
                     let dbl_key = format!("tab-dbl-{}", ix);
-                    let state =
-                        window.use_keyed_state::<Option<Instant>>(dbl_key, cx, |_, _| None);
-                    let prev = *state.read(cx);
-                    if is_double_click(prev, now) {
+                    if !cx.has_global::<TabDblClickState>() {
+                        cx.set_global(TabDblClickState::default());
+                    }
+                    let is_dbl = {
+                        let state = cx.global::<TabDblClickState>();
+                        let prev = state.last_clicks.borrow().get(&dbl_key).copied().unwrap_or(None);
+                        is_double_click(prev, now)
+                    };
+                    if is_dbl {
                         if let Some(on_promote) = &on_promote {
                             on_promote(window, cx);
                         }
-                        state.update(cx, |v, _| *v = None);
-                    } else {
-                        state.update(cx, |v, _| *v = Some(now));
                     }
+                    cx.global::<TabDblClickState>()
+                        .last_clicks
+                        .borrow_mut()
+                        .insert(dbl_key, if is_dbl { None } else { Some(now) });
                 })
             })
             .when(!m && !self.disabled, |this| {

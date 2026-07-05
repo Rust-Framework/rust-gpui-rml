@@ -63,17 +63,17 @@
 /* ── 文档格式 case 样式 ── */
 
 .doc-pane {
-    align-items: center;
+    align-items: stretch;
     text-align: left;
     gap: 16px;
     overflow-y: auto;
 }
 
-.doc-pane .card,
-.doc-pane .code-block,
-.doc-pane .demo-section {
+/* 所有直接子元素统一宽度并居中，避免 h2 标题与 card/code-block 宽度不一致 */
+.doc-pane > * {
     width: 100%;
     max-width: 960px;
+    align-self: center;
 }
 
 .code-block {
@@ -178,3 +178,37 @@
     color: var(--text-muted);
 }
 */
+
+/* ── LSP 代码编辑器样式 ── */
+
+.lsp-editor-pane {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    overflow: hidden;
+}
+
+.lsp-toolbar {
+    gap: 8px;
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--border-color);
+    align-items: center;
+}
+
+.lsp-result {
+    padding: 4px 12px;
+    font-family: Consolas;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--text-muted);
+    background: var(--code-bg);
+    border-bottom: 1px solid var(--border-color);
+    max-height: 120px;
+    overflow-y: auto;
+}
+
+.lsp-editor-area {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}

@@ -459,6 +459,9 @@ impl RenderOnce for TabBar {
             TabVariant::Segmented | TabVariant::Pill | TabVariant::Underline
         );
         let num_tabs = self.children.len();
+        // 可关闭 tab 总数，用于控制 "Close All" / "Close Others" 菜单项的 disabled 状态。
+        // closable=false 的 tab 不参与关闭操作（与关闭按钮可见性一致）。
+        let closable_count = self.children.iter().filter(|c| c.closable).count();
 
         // Bounds tracking for tab indicator animation.
         // Uses Rc<RefCell> to avoid triggering re-renders from prepaint writes.
@@ -650,6 +653,11 @@ impl RenderOnce for TabBar {
                                             item.title_icon.clone(),
                                             item.disabled,
                                         ));
+                                        // 当前 tab 的 closable 状态：控制 "Close" 菜单项是否显示。
+                                        let tab_closable = item.closable;
+                                        // 其他可关闭 tab 数量：控制 "Close Others" disabled 状态。
+                                        let other_closable_count =
+                                            closable_count - if tab_closable { 1 } else { 0 };
                                         let tab_bar_prefix = item.tab_bar_prefix.unwrap_or(true);
                                         let mut tab = item
                                             .ix(ix)
@@ -677,6 +685,8 @@ impl RenderOnce for TabBar {
 
                                         // 框架内置右键菜单：Close / Close Others / Close All。
                                         // 仅在业务层提供至少一个回调时挂载，菜单项文本走 i18n。
+                                        // closable=false 的 tab 不显示 "Close" 项（与关闭按钮可见性一致），
+                                        // 但仍显示 "Close Others" / "Close All"（可关闭其他 tab）。
                                         let on_close_for_menu = self.on_close.clone();
                                         let on_close_all = self.on_close_all.clone();
                                         let on_close_others = self.on_close_others.clone();
@@ -688,24 +698,30 @@ impl RenderOnce for TabBar {
                                                                  _window: &mut Window,
                                                                  cx: &mut Context<PopupMenu>|
                                                   -> PopupMenu {
-                                                if let Some(on_close) = on_close_for_menu.clone() {
-                                                    let idx = ix;
-                                                    menu = menu.item(
-                                                        PopupMenuItem::new(t_or_default(
-                                                            cx,
-                                                            "rml.tab.close",
-                                                            "Close",
-                                                        ))
-                                                        .on_click(move |_, w, c| {
-                                                            on_close(&idx, w, c)
-                                                        }),
-                                                    );
+                                                // "Close" 项：仅当当前 tab 可关闭时显示
+                                                if tab_closable {
+                                                    if let Some(on_close) =
+                                                        on_close_for_menu.clone()
+                                                    {
+                                                        let idx = ix;
+                                                        menu = menu.item(
+                                                            PopupMenuItem::new(t_or_default(
+                                                                cx,
+                                                                "rml.tab.close",
+                                                                "Close",
+                                                            ))
+                                                            .on_click(move |_, w, c| {
+                                                                on_close(&idx, w, c)
+                                                            }),
+                                                        );
+                                                    }
                                                 }
+                                                // "Close Others" 项：其他可关闭 tab 数为 0 时禁用
                                                 if let Some(on_close_others) =
                                                     on_close_others.clone()
                                                 {
                                                     let idx = ix;
-                                                    let disabled = num_tabs <= 1;
+                                                    let disabled = other_closable_count == 0;
                                                     menu = menu.item(
                                                         PopupMenuItem::new(t_or_default(
                                                             cx,
@@ -718,13 +734,16 @@ impl RenderOnce for TabBar {
                                                         }),
                                                     );
                                                 }
+                                                // "Close All" 项：无可关闭 tab 时禁用
                                                 if let Some(on_close_all) = on_close_all.clone() {
+                                                    let disabled = closable_count == 0;
                                                     menu = menu.item(
                                                         PopupMenuItem::new(t_or_default(
                                                             cx,
                                                             "rml.tab.close_all",
                                                             "Close All",
                                                         ))
+                                                        .disabled(disabled)
                                                         .on_click(move |_, w, c| {
                                                             on_close_all(w, c)
                                                         }),

@@ -21,7 +21,7 @@
             <div class="demo-section">
                 <h3>{t("case.accordion.basic")}</h3>
                 <accordion bordered="" open-ixs={basic_open}>
-                    <item title={t("case.accordion.section1")} open="">
+                    <item title={t("case.accordion.section1")}>
                         <p>{t("case.accordion.content1")}</p>
                     </item>
                     <item title={t("case.accordion.section2")}>
@@ -36,10 +36,10 @@
             <div class="demo-section">
                 <h3>{t("case.accordion.multiple")}</h3>
                 <accordion multiple="" bordered="" open-ixs={multiple_open}>
-                    <item title={t("case.accordion.section1")} open="">
+                    <item title={t("case.accordion.section1")}>
                         <p>{t("case.accordion.content1")}</p>
                     </item>
-                    <item title={t("case.accordion.section2")} open="">
+                    <item title={t("case.accordion.section2")}>
                         <p>{t("case.accordion.content2")}</p>
                     </item>
                 </accordion>
