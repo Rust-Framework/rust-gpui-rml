@@ -51,3 +51,4 @@ default = []
 
 [dev-dependencies]
 crossbeam-channel = "0.5"
+rust-rml-engine = { path = "../engine" }

@@ -6,7 +6,7 @@
 
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use lsp_server::{Message, Notification, Request, Response};
-use lsp_types::{Position, Url};
+use lsp_types::Url;
 use rml_lsp::server::connection::ServerState;
 use rml_lsp::server::dispatch::{handle_notification, handle_request};
 

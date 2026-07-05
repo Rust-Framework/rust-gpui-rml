@@ -90,8 +90,9 @@ fn map_declaration(decl: &Declaration, vars: &HashMap<String, Value>) -> Option<
         },
         "align-items" => match &value {
             Value::Keyword(k) if k == "center" => Some("items_center()".into()),
-            Value::Keyword(k) if k == "flex-start" => Some("items_start()".into()),
-            Value::Keyword(k) if k == "flex-end" => Some("items_end()".into()),
+            Value::Keyword(k) if k == "flex-start" || k == "start" => Some("items_start()".into()),
+            Value::Keyword(k) if k == "flex-end" || k == "end" => Some("items_end()".into()),
+            Value::Keyword(k) if k == "stretch" => Some("items_stretch()".into()),
             _ => None,
         },
         "flex" => match &value {

@@ -1,0 +1,11 @@
+<component>
+    <div class="container" if={visible}>
+        <h1>{title}</h1>
+        <div count={count} name={user.name}>
+            <span>{title}</span>
+            <span>{count}</span>
+        </div>
+        <button onclick={on_save}>Save</button>
+        <button onclick={on_cancel}>Cancel</button>
+    </div>
+</component>

@@ -77,7 +77,7 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
     // MenuBar / StatusBar 不支持 items 绑定（框架不定义 IMenuItem/IStatusBarItem 数据结构）
     // 业务侧经命令式 render_menu_bar() / render_status_bar() 构建
     // Accordion 专用
-    ("Accordion", &["multiple", "bordered", "on_toggle_click"]),
+    ("Accordion", &["multiple", "bordered", "on_toggle_click", "open_ixs"]),
     // AccordionItem 专用（item builder 子标签，不在 component_lookup 中）
     ("AccordionItem", &["title", "open", "icon"]),
     // Avatar 专用（placeholder 已在 COMMON_STATIC_PROPS）

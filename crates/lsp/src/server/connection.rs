@@ -126,7 +126,7 @@ fn main_loop(connection: &Connection, state: &mut ServerState) -> Result<()> {
 }
 
 /// 构建 ServerCapabilities
-fn build_capabilities() -> ServerCapabilities {
+pub fn build_capabilities() -> ServerCapabilities {
     use lsp_types::{
         CompletionOptions, HoverProviderCapability, SignatureHelpOptions,
         TextDocumentSyncCapability, TextDocumentSyncKind,

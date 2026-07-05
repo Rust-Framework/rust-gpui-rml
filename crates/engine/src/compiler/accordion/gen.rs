@@ -1,10 +1,10 @@
-﻿//! Accordion 容器 codegen —— 构造 + 属性 + 子节点 .item() 注入。
+//! Accordion 容器 codegen —— 构造 + 属性 + 子节点 .item() 注入。
 //!
 //! 将 `<Accordion><AccordionItem ...>...</AccordionItem></Accordion>` 转译为
 //! `rml_ui::Accordion::new(id).multiple(true).item(|__rml_item| __rml_item.title(...).child(...))`。
 
 use crate::compiler::{CodegenCtx, CodegenError};
-use crate::parser::ast::{Attribute, Element, Node};
+use crate::parser::ast::{Attribute, Element, EventHandler, Node};
 use crate::tags;
 
 /// 生成 Accordion 构造代码（构造 + 属性 + 子节点 .item() 注入）
@@ -30,8 +30,34 @@ pub fn gen_accordion(
     let lv: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
     let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
 
+    // 预扫描：受控模式 open-ixs 绑定 + 用户自定义 on-toggle-click
+    // 注意：RML 属性名在 parser 中已从 kebab-case 规范化为 snake_case
+    let open_ixs_expr = elem.attributes.iter().find_map(|attr| match attr {
+        Attribute::Bind { name, expr, .. } if name == "open_ixs" => Some(
+            super::super::component::component_bind_rust_expr(expr, &lv, &computed),
+        ),
+        _ => None,
+    });
+    let user_on_toggle = elem.attributes.iter().find_map(|attr| match attr {
+        Attribute::Event { name, handler, .. } if name == "on_toggle_click" => {
+            Some(handler.clone())
+        }
+        _ => None,
+    });
+
     for attr in &elem.attributes {
         match attr {
+            // open-ixs 由受控模式统一处理，不生成普通 setter
+            Attribute::Bind { name, .. } if name == "open_ixs" => continue,
+            // on-toggle-click 在存在 open-ixs 时由受控模式生成组合回调
+            Attribute::Event { name, handler, .. } if name == "on_toggle_click" => {
+                if open_ixs_expr.is_none() {
+                    if let Some(s) = super::setters::event_setter(name, handler, "Accordion") {
+                        code.push_str(&s);
+                    }
+                }
+                continue;
+            }
             Attribute::Static { name, value, .. } => {
                 if let Some(s) = super::setters::static_setter(name, value, "Accordion") {
                     code.push_str(&s);
@@ -65,11 +91,29 @@ pub fn gen_accordion(
     }
 
     // 3. 子节点 → .item(|__rml_item| ...) 闭包
+    //    若启用受控模式 open-ixs，自动为未显式指定 open 的 item 追加 .open(self.<field>.contains(&ix))
+    let mut item_index: usize = 0;
     for child in &elem.children {
         match child {
             Node::Element(child_elem) if tags::is_item_builder_tag(&child_elem.tag) => {
-                let item_code = super::item::gen_item_builder(child_elem, ctx, id_counter, loop_vars)?;
+                let mut item_code =
+                    super::item::gen_item_builder(child_elem, ctx, id_counter, loop_vars)?;
+                if let Some(ref expr) = open_ixs_expr {
+                    let has_explicit_open = child_elem.attributes.iter().any(|attr| match attr {
+                        Attribute::Static { name, .. } | Attribute::Bind { name, .. } => {
+                            name == "open"
+                        }
+                        _ => false,
+                    });
+                    if !has_explicit_open {
+                        item_code.push_str(&format!(
+                            ".open({}.contains(&{}usize))",
+                            expr, item_index
+                        ));
+                    }
+                }
                 code.push_str(&format!("\n            .item({})", item_code));
+                item_index += 1;
             }
             Node::Text(text) => {
                 eprintln!(
@@ -87,6 +131,35 @@ pub fn gen_accordion(
             }
             _ => {}
         }
+    }
+
+    // 4. 受控模式：生成 on-toggle-click 回调，同步 open-ixs 字段并可选调用用户回调
+    if let Some(ref expr) = open_ixs_expr {
+        let field_name = expr
+            .strip_prefix("self.")
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| expr.clone());
+        let callback = match user_on_toggle {
+            Some(ref handler) => {
+                let method = match handler {
+                    EventHandler::Ident(m) | EventHandler::MethodName(m) => m.clone(),
+                    EventHandler::WithArgs(m, _) => m.clone(),
+                };
+                format!(
+                    ".on_toggle_click(cx.listener(move |this, open_ixs: &[usize], _window, cx| {{\n                    \
+                     this.{} = open_ixs.to_vec();\n                    \
+                     this.{}(open_ixs, cx);\n                }}))",
+                    field_name, method
+                )
+            }
+            None => format!(
+                ".on_toggle_click(cx.listener(move |this, open_ixs: &[usize], _window, cx| {{\n                    \
+                     this.{} = open_ixs.to_vec();\n                    \
+                     cx.notify();\n                }}))",
+                field_name
+            ),
+        };
+        code.push_str(&callback);
     }
 
     Ok(code)

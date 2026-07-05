@@ -16,6 +16,13 @@ use crate::cases::common::build_api_table;
 #[derive(Default)]
 pub struct AccordionCase {
     pub last_open: String,
+    pub basic_open: Vec<usize>,
+    pub multiple_open: Vec<usize>,
+    pub sizes_small_open: Vec<usize>,
+    pub sizes_large_open: Vec<usize>,
+    pub with_icon_open: Vec<usize>,
+    pub nested_open: Vec<usize>,
+    pub nested_child_open: Vec<usize>,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
 }

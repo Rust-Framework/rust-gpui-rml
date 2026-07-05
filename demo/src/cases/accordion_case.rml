@@ -20,7 +20,7 @@
 
             <div class="demo-section">
                 <h3>{t("case.accordion.basic")}</h3>
-                <accordion bordered="">
+                <accordion bordered="" open-ixs={basic_open}>
                     <item title={t("case.accordion.section1")} open="">
                         <p>{t("case.accordion.content1")}</p>
                     </item>
@@ -35,7 +35,7 @@
 
             <div class="demo-section">
                 <h3>{t("case.accordion.multiple")}</h3>
-                <accordion multiple="" bordered="">
+                <accordion multiple="" bordered="" open-ixs={multiple_open}>
                     <item title={t("case.accordion.section1")} open="">
                         <p>{t("case.accordion.content1")}</p>
                     </item>
@@ -47,12 +47,12 @@
 
             <div class="demo-section">
                 <h3>{t("case.accordion.sizes")}</h3>
-                <accordion size="small" bordered="" on-toggle-click={on_toggle}>
+                <accordion size="small" bordered="" open-ixs={sizes_small_open} on-toggle-click={on_toggle}>
                     <item title={t("case.accordion.small")}>
                         <p>{t("case.accordion.content1")}</p>
                     </item>
                 </accordion>
-                <accordion size="large" bordered="" on-toggle-click={on_toggle}>
+                <accordion size="large" bordered="" open-ixs={sizes_large_open} on-toggle-click={on_toggle}>
                     <item title={t("case.accordion.large")}>
                         <p>{t("case.accordion.content1")}</p>
                     </item>
@@ -61,7 +61,7 @@
 
             <div class="demo-section">
                 <h3>{t("case.accordion.with_icon")}</h3>
-                <accordion bordered="" on-toggle-click={on_toggle}>
+                <accordion bordered="" open-ixs={with_icon_open} on-toggle-click={on_toggle}>
                     <item title={t("case.accordion.settings")} icon="Settings">
                         <p>{t("case.accordion.content1")}</p>
                     </item>
@@ -73,9 +73,9 @@
 
             <div class="demo-section">
                 <h3>{t("case.accordion.nested")}</h3>
-                <accordion bordered="">
+                <accordion bordered="" open-ixs={nested_open}>
                     <item title={t("case.accordion.parent")}>
-                        <accordion bordered="" multiple="">
+                        <accordion bordered="" multiple="" open-ixs={nested_child_open}>
                             <item title={t("case.accordion.child1")}>
                                 <p>{t("case.accordion.content1")}</p>
                             </item>
