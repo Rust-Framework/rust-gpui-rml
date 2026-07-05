@@ -112,9 +112,10 @@ impl Parser {
             match &tok.kind {
                 TokenKind::Text(text) => {
                     let text_owned = text.clone();
+                    let base_offset = tok.span.start;
                     self.advance();
                     if !text_owned.trim().is_empty() {
-                        nodes.push(self.parse_text_node(&text_owned));
+                        nodes.push(self.parse_text_node(&text_owned, base_offset));
                     }
                 }
                 TokenKind::TagStart { tag, attributes } => {
@@ -168,13 +169,16 @@ impl Parser {
         Ok(nodes)
     }
 
-    fn parse_text_node(&self, raw: &str) -> Node {
-        let segments = parse_text_segments(raw);
+    fn parse_text_node(&self, raw: &str, base_offset: usize) -> Node {
+        let segments = parse_text_segments(raw, base_offset);
         match segments.len() {
             0 => Node::Text(raw.to_string()),
             1 => match &segments[0] {
                 TextSegment::Literal(s) => Node::Text(s.clone()),
-                TextSegment::Interpolation(e) => Node::Interpolation(e.clone()),
+                TextSegment::Interpolation { expr, span } => Node::Interpolation {
+                    expr: expr.clone(),
+                    span: *span,
+                },
             },
             _ => Node::MixedText(segments),
         }
@@ -349,15 +353,17 @@ fn parse_event_handler(expr: &str) -> EventHandler {
 ///
 /// tokenizer 把来自 HTML 实体的 `{`/`}` 转义为 `\{`/`\}`，本函数需将其识别为
 /// 普通字符，避免被误当作插值表达式。
-fn parse_text_segments(raw: &str) -> Vec<TextSegment> {
+///
+/// `base_offset` 为 raw 在源码中的起始字节偏移，用于计算 Interpolation 的绝对 span。
+fn parse_text_segments(raw: &str, base_offset: usize) -> Vec<TextSegment> {
     let mut segments = Vec::new();
     let mut current = String::new();
-    let mut chars = raw.chars().peekable();
+    let mut chars = raw.char_indices().peekable();
 
-    while let Some(c) = chars.next() {
+    while let Some((i, c)) = chars.next() {
         if c == '\\' {
             // 转义序列：仅 `\{` 与 `\}` 表示字面 brace，其余原样保留反斜杠
-            if let Some(&next) = chars.peek() {
+            if let Some(&(_, next)) = chars.peek() {
                 if next == '{' || next == '}' {
                     current.push(next);
                     chars.next();
@@ -369,15 +375,18 @@ fn parse_text_segments(raw: &str) -> Vec<TextSegment> {
             if !current.is_empty() {
                 segments.push(TextSegment::Literal(std::mem::take(&mut current)));
             }
+            let interp_start = i;
             let mut expr = String::new();
             let mut depth = 1;
-            while let Some(&next) = chars.peek() {
+            let mut interp_end = i + 1;
+            while let Some(&(_, next)) = chars.peek() {
                 if next == '{' {
                     depth += 1;
                 } else if next == '}' {
                     depth -= 1;
                     if depth == 0 {
-                        chars.next();
+                        let (j, _) = chars.next().unwrap();
+                        interp_end = j + 1;
                         break;
                     }
                 }
@@ -385,7 +394,8 @@ fn parse_text_segments(raw: &str) -> Vec<TextSegment> {
                 chars.next();
             }
             if !expr.trim().is_empty() {
-                segments.push(TextSegment::Interpolation(expr.trim().to_string()));
+                let span = Span::new(base_offset + interp_start, base_offset + interp_end);
+                segments.push(TextSegment::Interpolation { expr: expr.trim().to_string(), span });
             }
         } else {
             current.push(c);
@@ -868,7 +878,7 @@ mod tests {
             Node::Element(e) => {
                 assert_eq!(e.children.len(), 1);
                 match &e.children[0] {
-                    Node::Interpolation(expr) => assert_eq!(expr, "count"),
+                    Node::Interpolation { expr, .. } => assert_eq!(expr, "count"),
                     other => panic!("expected Interpolation, got {:?}", other),
                 }
             }
@@ -887,7 +897,7 @@ mod tests {
                     Node::MixedText(segs) => {
                         assert_eq!(segs.len(), 3);
                         assert!(matches!(&segs[0], TextSegment::Literal(s) if s == "Total: "));
-                        assert!(matches!(&segs[1], TextSegment::Interpolation(e) if e == "count"));
+                        assert!(matches!(&segs[1], TextSegment::Interpolation { expr, .. } if expr == "count"));
                         assert!(matches!(&segs[2], TextSegment::Literal(s) if s == " items"));
                     }
                     other => panic!("expected MixedText, got {:?}", other),
@@ -1004,50 +1014,50 @@ mod tests {
 
     #[test]
     fn parse_text_segments_pure_literal() {
-        let segs = parse_text_segments("hello world");
+        let segs = parse_text_segments("hello world", 0);
         assert_eq!(segs.len(), 1);
         assert!(matches!(&segs[0], TextSegment::Literal(s) if s == "hello world"));
     }
 
     #[test]
     fn parse_text_segments_pure_interpolation() {
-        let segs = parse_text_segments("{count}");
+        let segs = parse_text_segments("{count}", 0);
         assert_eq!(segs.len(), 1);
-        assert!(matches!(&segs[0], TextSegment::Interpolation(e) if e == "count"));
+        assert!(matches!(&segs[0], TextSegment::Interpolation { expr, .. } if expr == "count"));
     }
 
     #[test]
     fn parse_text_segments_mixed() {
-        let segs = parse_text_segments("Total: {count} items");
+        let segs = parse_text_segments("Total: {count} items", 0);
         assert_eq!(segs.len(), 3);
         assert!(matches!(&segs[0], TextSegment::Literal(s) if s == "Total: "));
-        assert!(matches!(&segs[1], TextSegment::Interpolation(e) if e == "count"));
+        assert!(matches!(&segs[1], TextSegment::Interpolation { expr, .. } if expr == "count"));
         assert!(matches!(&segs[2], TextSegment::Literal(s) if s == " items"));
     }
 
     #[test]
     fn parse_text_segments_multiple_interpolations() {
-        let segs = parse_text_segments("{a} + {b} = {c}");
+        let segs = parse_text_segments("{a} + {b} = {c}", 0);
         assert_eq!(segs.len(), 5);
-        assert!(matches!(&segs[0], TextSegment::Interpolation(e) if e == "a"));
+        assert!(matches!(&segs[0], TextSegment::Interpolation { expr, .. } if expr == "a"));
         assert!(matches!(&segs[1], TextSegment::Literal(s) if s == " + "));
-        assert!(matches!(&segs[2], TextSegment::Interpolation(e) if e == "b"));
+        assert!(matches!(&segs[2], TextSegment::Interpolation { expr, .. } if expr == "b"));
         assert!(matches!(&segs[3], TextSegment::Literal(s) if s == " = "));
-        assert!(matches!(&segs[4], TextSegment::Interpolation(e) if e == "c"));
+        assert!(matches!(&segs[4], TextSegment::Interpolation { expr, .. } if expr == "c"));
     }
 
     #[test]
     fn parse_text_segments_trims_interpolation_whitespace() {
         // {  expr  } → "expr"（trim）
-        let segs = parse_text_segments("{  trimmed  }");
+        let segs = parse_text_segments("{  trimmed  }", 0);
         assert_eq!(segs.len(), 1);
-        assert!(matches!(&segs[0], TextSegment::Interpolation(e) if e == "trimmed"));
+        assert!(matches!(&segs[0], TextSegment::Interpolation { expr, .. } if expr == "trimmed"));
     }
 
     #[test]
     fn parse_text_segments_empty_interpolation_dropped() {
         // {} → 空插值被丢弃
-        let segs = parse_text_segments("before {} after");
+        let segs = parse_text_segments("before {} after", 0);
         // 应为 [Literal("before "), Literal(" after")]（{} 被丢弃，但被分割）
         assert!(segs.iter().all(|s| matches!(s, TextSegment::Literal(_))));
     }
@@ -1055,12 +1065,12 @@ mod tests {
     #[test]
     fn parse_text_segments_nested_braces() {
         // {a + {b}} → depth 平衡后整体作为 Interpolation
-        let segs = parse_text_segments("{a + {b}}");
+        let segs = parse_text_segments("{a + {b}}", 0);
         assert_eq!(segs.len(), 1);
         match &segs[0] {
-            TextSegment::Interpolation(e) => {
+            TextSegment::Interpolation { expr, .. } => {
                 // 嵌套 {} 内部内容应被收集（depth 平衡）
-                assert!(e.contains("a + ") || e.contains("a + {b}"));
+                assert!(expr.contains("a + ") || expr.contains("a + {b}"));
             }
             other => panic!("expected Interpolation, got {:?}", other),
         }
@@ -1068,14 +1078,14 @@ mod tests {
 
     #[test]
     fn parse_text_segments_empty_string() {
-        let segs = parse_text_segments("");
+        let segs = parse_text_segments("", 0);
         assert!(segs.is_empty());
     }
 
     #[test]
     fn parse_text_segments_escaped_braces_as_literal() {
         // tokenizer 把实体解码出的 { } 转义为 \{ \}，parser 应将其视为普通字符
-        let segs = parse_text_segments("use \\{item in items\\} syntax");
+        let segs = parse_text_segments("use \\{item in items\\} syntax", 0);
         assert_eq!(segs.len(), 1);
         assert!(matches!(&segs[0], TextSegment::Literal(s) if s == "use {item in items} syntax"));
     }
@@ -1083,10 +1093,10 @@ mod tests {
     #[test]
     fn parse_text_segments_escaped_braces_mixed_with_interpolation() {
         // 字面 brace 与真实插值共存
-        let segs = parse_text_segments("\\{literal\\} and {expr}");
+        let segs = parse_text_segments("\\{literal\\} and {expr}", 0);
         assert_eq!(segs.len(), 2);
         assert!(matches!(&segs[0], TextSegment::Literal(s) if s == "{literal} and "));
-        assert!(matches!(&segs[1], TextSegment::Interpolation(e) if e == "expr"));
+        assert!(matches!(&segs[1], TextSegment::Interpolation { expr, .. } if expr == "expr"));
     }
 
     #[test]

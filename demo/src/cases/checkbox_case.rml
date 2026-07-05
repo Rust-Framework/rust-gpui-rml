@@ -10,8 +10,8 @@
             <p>checked 属性绑定布尔字段，点击按钮切换状态。</p>
             <p>{status_text}</p>
             <div h-flex="" gap-4="">
-                <Checkbox label="同意条款" checked={is_checked} />
-                <Button label="切换勾选" on-click={on_toggle_checked} />
+                <Checkbox label="同意条款" checked={is_checked} on-click={on_toggle_checked} />
+                <Button label="切换勾选" on-click={on_toggle_checked_button} />
             </div>
         </Card>
 

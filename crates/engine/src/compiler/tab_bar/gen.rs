@@ -1,4 +1,4 @@
-﻿//! TabBar 容器 codegen —— 构造 + 属性 + 子节点 `.child(Tab::new()...)` 注入。
+//! TabBar 容器 codegen —— 构造 + 属性 + 子节点 `.child(Tab::new()...)` 注入。
 //!
 //! 将 `<TabBar><Tab label="A" /><Tab><Icon /><span>A</span></Tab></TabBar>` 转译为
 //! `rml_ui::TabBar::new(id).underline().selected_index(0).child(rml_ui::Tab::new().label("A")).child(rml_ui::Tab::new().child(...))`。
@@ -80,8 +80,13 @@ pub fn gen_tab_bar(
                         code.push_str(&format!("\n            .child({})", item_code));
                     }
                 } else {
-                    let tab_code = super::tab::gen_tab_child(child_elem, ctx, id_counter, loop_vars)?;
-                    code.push_str(&format!("\n            .child({})", tab_code));
+                    let (tab_code, is_iter) =
+                        super::tab::gen_tab_child(child_elem, ctx, id_counter, loop_vars)?;
+                    if is_iter {
+                        code.push_str(&format!("\n            .children({})", tab_code));
+                    } else {
+                        code.push_str(&format!("\n            .child({})", tab_code));
+                    }
                 }
             }
             Node::Text(text) => {
@@ -485,6 +490,48 @@ mod tests {
         assert!(code.contains("let tab = tab.clone();"));
         assert!(code.contains("rml_ui::TabItem::new()"));
         assert!(code.contains(".title(tab.title.clone())"));
+        // 不应出现 .child( （each 用 .children）
+        assert!(!code.contains("\n            .child("));
+    }
+
+    /// <Tab each={tab in tabs} label={tab.title} closable={tab.closable}> —— Tab each 循环模式生成 .children(...)
+    #[test]
+    fn gen_tab_bar_with_tab_each() {
+        // <TabBar><Tab each={tab in tabs} label={tab.title} closable={tab.closable} /></TabBar>
+        let tab = make_element_with_directives(
+            "Tab",
+            vec![
+                Attribute::Bind {
+                    name: "label".into(),
+                    expr: "tab.title".into(),
+                    span: Span::empty(),
+                },
+                Attribute::Bind {
+                    name: "closable".into(),
+                    expr: "tab.closable".into(),
+                    span: Span::empty(),
+                },
+            ],
+            vec![Directive::Each(EachClause {
+                item: "tab".into(),
+                index: None,
+                iterable: "tabs".into(),
+            })],
+            vec![],
+        );
+        let bar = make_element("TabBar", vec![], vec![Node::Element(tab)]);
+        let mut id = 0;
+        let code = gen_tab_bar(&bar, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+        // each 模式生成 .children(self.tabs.iter().map(...))
+        assert!(code.contains(".children("));
+        assert!(code.contains("self.tabs.iter().map(|tab|"));
+        assert!(code.contains("let tab = tab.clone();"));
+        assert!(code.contains("rml_ui::Tab::new()"));
+        // 循环变量正确解析为 tab.title（非 self.tab.title）
+        assert!(code.contains(".label(tab.title.clone())"));
+        assert!(code.contains(".closable(tab.closable)"));
+        // 不应出现 self.tab（循环变量不应被误解析为 self 字段）
+        assert!(!code.contains("self.tab."));
         // 不应出现 .child( （each 用 .children）
         assert!(!code.contains("\n            .child("));
     }

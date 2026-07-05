@@ -53,7 +53,7 @@ pub use gpui_component::{
     kbd::Kbd,
     label::Label,
     list::List,
-    menu::{AppMenuBar, ContextMenuExt, DropdownMenu, PopupMenuItem},
+    menu::{AppMenuBar, ContextMenuExt, DropdownMenu, PopupMenu, PopupMenuItem},
     notification::{Notification, NotificationList, NotificationType},
     popover::Popover,
     progress::{Progress, ProgressCircle},

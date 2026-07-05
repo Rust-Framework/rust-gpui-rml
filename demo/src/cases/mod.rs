@@ -119,3 +119,7 @@ pub mod tooltip_case;
 // M2'.4：Popover 容器 demo
 #[path = "popover_case.rml.rs"]
 pub mod popover_case;
+
+// M3'.6：Tab Preview demo（右键菜单 + 预览模式 + 双击 promote）
+#[path = "tab_preview_case.rml.rs"]
+pub mod tab_preview_case;

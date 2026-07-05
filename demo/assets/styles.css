@@ -63,7 +63,7 @@
 /* ── 文档格式 case 样式 ── */
 
 .doc-pane {
-    align-items: stretch;
+    align-items: center;
     text-align: left;
     gap: 16px;
     overflow-y: auto;
@@ -74,7 +74,6 @@
 .doc-pane .demo-section {
     width: 100%;
     max-width: 960px;
-    margin: 0 auto;
 }
 
 .code-block {

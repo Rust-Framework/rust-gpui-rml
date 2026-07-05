@@ -102,11 +102,11 @@ fn find_command_definition(
 /// 由于指令无独立 span，这里只处理文本插值（Interpolation/MixedText）。
 fn find_expr_at_offset(root: &Node, offset: usize) -> Option<&str> {
     match root {
-        Node::Interpolation(expr) => Some(expr),
+        Node::Interpolation { expr, .. } => Some(expr.as_str()),
         Node::MixedText(segs) => {
             // MixedText 无独立 span，无法精确定位；返回第一个插值（MVP 简化）
             segs.iter().find_map(|seg| match seg {
-                rust_rml_engine::parser::ast::TextSegment::Interpolation(expr) => Some(expr.as_str()),
+                rust_rml_engine::parser::ast::TextSegment::Interpolation { expr, .. } => Some(expr.as_str()),
                 _ => None,
             })
         }

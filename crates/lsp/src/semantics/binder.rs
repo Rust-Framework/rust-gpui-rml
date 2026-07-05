@@ -30,12 +30,12 @@ pub fn bind(
 fn bind_node(node: &Node, meta: Option<&StructMetadata>, diags: &mut Vec<SemanticDiagnostic>) {
     match node {
         Node::Element(elem) => bind_element(elem, meta, diags),
-        Node::Interpolation(expr) => {
+        Node::Interpolation { expr, .. } => {
             check_binding_expr(expr, elem_span_or_default(node), meta, diags);
         }
         Node::MixedText(segs) => {
             for seg in segs {
-                if let TextSegment::Interpolation(expr) = seg {
+                if let TextSegment::Interpolation { expr, .. } = seg {
                     check_binding_expr(expr, Span::empty(), meta, diags);
                 }
             }

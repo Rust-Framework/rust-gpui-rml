@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc, time::Duration};
 
 use gpui::{
-    Anchor, Animation, AnimationExt as _, AnyElement, App, Background, Bounds, Div, Edges,
+    Anchor, Animation, AnimationExt as _, AnyElement, App, Background, Bounds, Context, Div, Edges,
     ElementId, Entity, InteractiveElement, IntoElement, ParentElement, Pixels, RenderOnce,
     ScrollHandle, SharedString, Stateful, StatefulInteractiveElement as _, StyleRefinement, Styled,
     Window, div, prelude::FluentBuilder as _, px,
@@ -11,12 +11,14 @@ use smallvec::SmallVec;
 use super::{Tab, TabItem, TabVariant};
 use gpui_component::animation::{Lerp, ease_in_out_cubic};
 use gpui_component::button::{Button, ButtonVariants as _};
-use gpui_component::menu::{DropdownMenu as _, PopupMenuItem};
+use gpui_component::menu::{DropdownMenu as _, PopupMenu, PopupMenuItem};
 use gpui_component::{
     ActiveTheme, ElementExt, Icon, IconName, Selectable, Sizable, Size, StyledExt, h_flex, v_flex,
 };
+use rust_rml_core::i18n::t_or_default;
 
 type TabBarClickHandler = Rc<dyn Fn(&usize, &mut Window, &mut App) + 'static>;
+type TabBarCloseAllHandler = Rc<dyn Fn(&mut Window, &mut App) + 'static>;
 
 struct TabIndicatorBounds {
     container: Bounds<Pixels>,
@@ -54,6 +56,12 @@ pub struct TabBar {
     on_click: Option<TabBarClickHandler>,
     /// 选项卡关闭按钮触发时调用，参数为被关闭选项卡的索引。
     on_close: Option<TabBarClickHandler>,
+    /// 关闭全部 tabs 触发时调用（无索引参数）。
+    on_close_all: Option<TabBarCloseAllHandler>,
+    /// 关闭其他 tabs 触发时调用，参数为保留 tab 的索引。
+    on_close_others: Option<TabBarClickHandler>,
+    /// 双击 tab 触发 promote 时调用，参数为被双击 tab 的索引。
+    on_promote: Option<TabBarClickHandler>,
 }
 
 impl TabBar {
@@ -74,6 +82,9 @@ impl TabBar {
             selected_index: None,
             on_click: None,
             on_close: None,
+            on_close_all: None,
+            on_close_others: None,
+            on_promote: None,
             menu: false,
         }
     }
@@ -182,6 +193,36 @@ impl TabBar {
         F: Fn(&usize, &mut Window, &mut App) + 'static,
     {
         self.on_close = Some(Rc::new(on_close));
+        self
+    }
+
+    /// Set the on_close_all callback, fired when "Close All" context menu item
+    /// is clicked. No index parameter — closes all tabs.
+    pub fn on_close_all<F>(mut self, on_close_all: F) -> Self
+    where
+        F: Fn(&mut Window, &mut App) + 'static,
+    {
+        self.on_close_all = Some(Rc::new(on_close_all));
+        self
+    }
+
+    /// Set the on_close_others callback, fired when "Close Others" context menu
+    /// item is clicked. Parameter is the index of the tab to keep.
+    pub fn on_close_others<F>(mut self, on_close_others: F) -> Self
+    where
+        F: Fn(&usize, &mut Window, &mut App) + 'static,
+    {
+        self.on_close_others = Some(Rc::new(on_close_others));
+        self
+    }
+
+    /// Set the on_promote callback, fired when a tab is double-clicked
+    /// (VSCode preview tab promote). Parameter is the index of the promoted tab.
+    pub fn on_promote<F>(mut self, on_promote: F) -> Self
+    where
+        F: Fn(&usize, &mut Window, &mut App) + 'static,
+    {
+        self.on_promote = Some(Rc::new(on_promote));
         self
     }
 
@@ -629,7 +670,72 @@ impl RenderOnce for TabBar {
                                             })
                                             .when_some(self.on_close.clone(), move |this, on_close| {
                                                 this.on_close(move |_, window, cx| on_close(&ix, window, cx))
+                                            })
+                                            .when_some(self.on_promote.clone(), move |this, on_promote| {
+                                                this.on_promote(move |window, cx| on_promote(&ix, window, cx))
                                             });
+
+                                        // 框架内置右键菜单：Close / Close Others / Close All。
+                                        // 仅在业务层提供至少一个回调时挂载，菜单项文本走 i18n。
+                                        let on_close_for_menu = self.on_close.clone();
+                                        let on_close_all = self.on_close_all.clone();
+                                        let on_close_others = self.on_close_others.clone();
+                                        let has_context_menu = on_close_for_menu.is_some()
+                                            || on_close_all.is_some()
+                                            || on_close_others.is_some();
+                                        let tab = if has_context_menu {
+                                            let provider = move |mut menu: PopupMenu,
+                                                                 _window: &mut Window,
+                                                                 cx: &mut Context<PopupMenu>|
+                                                  -> PopupMenu {
+                                                if let Some(on_close) = on_close_for_menu.clone() {
+                                                    let idx = ix;
+                                                    menu = menu.item(
+                                                        PopupMenuItem::new(t_or_default(
+                                                            cx,
+                                                            "rml.tab.close",
+                                                            "Close",
+                                                        ))
+                                                        .on_click(move |_, w, c| {
+                                                            on_close(&idx, w, c)
+                                                        }),
+                                                    );
+                                                }
+                                                if let Some(on_close_others) =
+                                                    on_close_others.clone()
+                                                {
+                                                    let idx = ix;
+                                                    let disabled = num_tabs <= 1;
+                                                    menu = menu.item(
+                                                        PopupMenuItem::new(t_or_default(
+                                                            cx,
+                                                            "rml.tab.close_others",
+                                                            "Close Others",
+                                                        ))
+                                                        .disabled(disabled)
+                                                        .on_click(move |_, w, c| {
+                                                            on_close_others(&idx, w, c)
+                                                        }),
+                                                    );
+                                                }
+                                                if let Some(on_close_all) = on_close_all.clone() {
+                                                    menu = menu.item(
+                                                        PopupMenuItem::new(t_or_default(
+                                                            cx,
+                                                            "rml.tab.close_all",
+                                                            "Close All",
+                                                        ))
+                                                        .on_click(move |_, w, c| {
+                                                            on_close_all(w, c)
+                                                        }),
+                                                    );
+                                                }
+                                                menu
+                                            };
+                                            tab.context_menu_provider(provider)
+                                        } else {
+                                            tab
+                                        };
 
                                         if let Some(ref rc) = bounds_rc {
                                             let rc = rc.clone();

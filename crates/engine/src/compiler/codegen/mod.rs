@@ -124,6 +124,7 @@ mod tests {
     use super::*;
     use crate::compiler::CodegenCtx;
     use crate::parser::ast::Node;
+    use crate::parser::Span;
 
     /// 构造最小可用的 CodegenCtx：仅设置 view_struct_name，其余字段保持 Default。
     fn minimal_ctx() -> CodegenCtx {
@@ -150,7 +151,7 @@ mod tests {
 
     #[test]
     fn codegen_interpolation_root_returns_error() {
-        let root = Node::Interpolation("count".to_string());
+        let root = Node::Interpolation { expr: "count".to_string(), span: crate::parser::Span::empty() };
         let result = codegen(&root, &minimal_ctx());
         assert!(result.is_err());
     }

@@ -241,9 +241,10 @@ mod tests {
             tag: "span".into(),
             attributes: vec![],
             directives: vec![],
-            children: vec![Node::MixedText(vec![TextSegment::Interpolation(
-                "row_data.id".into(),
-            )])],
+            children: vec![Node::MixedText(vec![TextSegment::Interpolation {
+                expr: "row_data.id".into(),
+                span: Span::empty(),
+            }])],
             slot_name: None,
             ..Default::default()
         };
@@ -267,9 +268,10 @@ mod tests {
             tag: "span".into(),
             attributes: vec![],
             directives: vec![],
-            children: vec![Node::MixedText(vec![TextSegment::Interpolation(
-                "column.title".into(),
-            )])],
+            children: vec![Node::MixedText(vec![TextSegment::Interpolation {
+                expr: "column.title".into(),
+                span: Span::empty(),
+            }])],
             slot_name: None,
             ..Default::default()
         };
@@ -288,9 +290,10 @@ mod tests {
             tag: "span".into(),
             attributes: vec![],
             directives: vec![],
-            children: vec![Node::MixedText(vec![TextSegment::Interpolation(
-                "col_idx".into(),
-            )])],
+            children: vec![Node::MixedText(vec![TextSegment::Interpolation {
+                expr: "col_idx".into(),
+                span: Span::empty(),
+            }])],
             slot_name: None,
             ..Default::default()
         };

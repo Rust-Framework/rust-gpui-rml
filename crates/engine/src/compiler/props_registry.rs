@@ -88,16 +88,17 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
     ("Card", &["title", "extra", "cover", "footer", "bordered", "borderless", "hoverable"]),
     // Separator 专用（无 new() 构造器，通过 vertical/dashed 选择 horizontal/vertical/dashed 构造）
     ("Separator", &["vertical", "dashed"]),
-    // TabBar 专用（标签栏容器，variant 快捷方法 + menu + selected_index + prefix/suffix + on_click）
+    // TabBar 专用（标签栏容器，variant 快捷方法 + menu + selected_index + prefix/suffix + on_click/on_close 等）
     ("TabBar", &[
-        "selected_index", "on_click", "prefix", "suffix", "last_empty_space",
+        "selected_index", "on_click", "on_close", "on_close_all", "on_close_others", "on_promote",
+        "prefix", "suffix", "last_empty_space",
         "menu", "track_scroll",
         "underline", "pill", "flat", "outline", "segmented",
     ]),
-    // Tab 专用（标签项，label/icon + variant 快捷方法 + prefix/suffix + on_click + closable）
+    // Tab 专用（标签项，label/icon + variant 快捷方法 + prefix/suffix + on_click + closable + preview）
     ("Tab", &[
         "label", "icon", "disabled", "selected", "prefix", "suffix", "on_click",
-        "closable",
+        "closable", "preview",
         "underline", "pill", "flat", "outline", "segmented",
     ]),
     // TabItem 专用（item builder 子标签，WPF TabItem 模式：title + body + closable）

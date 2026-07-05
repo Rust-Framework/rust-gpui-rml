@@ -43,9 +43,9 @@ fn gen_node_impl(
     match node {
         Node::Element(elem) => gen_element(elem, ctx, depth, id_counter, loop_vars, parents),
         Node::Text(text) => Ok((format!("{:?}", text), false)),
-        Node::Interpolation(expr_str) => {
+        Node::Interpolation { expr, .. } => {
             Ok((
-                format!("format!(\"{{}}\", {})", gen_expr_code(expr_str, &lv, &computed)),
+                format!("format!(\"{{}}\", {})", gen_expr_code(expr, &lv, &computed)),
                 false,
             ))
         }
@@ -65,7 +65,13 @@ fn build_parent_info(elem: &Element) -> ParentInfo {
             _ => None,
         })
         .unwrap_or_default();
-    let classes: Vec<String> = class_value.split_whitespace().map(|s| s.to_string()).collect();
+    let mut classes: Vec<String> = class_value.split_whitespace().map(|s| s.to_string()).collect();
+    // 组件标签隐式携带与其小写标签名相同的 class，供后代选择器匹配
+    if let Some(implicit) = tags::implicit_class_for(&elem.tag) {
+        if !classes.contains(&implicit) {
+            classes.push(implicit);
+        }
+    }
     let id: Option<String> = elem
         .attributes
         .iter()
@@ -265,13 +271,19 @@ pub(crate) fn gen_element(
 
     // 用户自定义 #[component]（PascalCase，如 WelcomeCase）
     if ctx.user_components.contains_key(tag) {
-        let code = comp::gen_component(elem, ctx, depth, id_counter, loop_vars)?;
+        let mut code = comp::gen_component(elem, ctx, depth, id_counter, loop_vars)?;
+        if let Some(sheet) = &ctx.stylesheet {
+            code.push_str(&apply_css_styles(elem, tag, sheet, parents));
+        }
         return Ok((code, false));
     }
 
     // 扩展组件（PascalCase、kebab-case 或特殊小写标签 menu/status-bar）
     if tags::is_extension_component(tag) {
-        let code = comp::gen_component(elem, ctx, depth, id_counter, loop_vars)?;
+        let mut code = comp::gen_component(elem, ctx, depth, id_counter, loop_vars)?;
+        if let Some(sheet) = &ctx.stylesheet {
+            code.push_str(&apply_css_styles(elem, tag, sheet, parents));
+        }
         return Ok((code, false));
     }
 

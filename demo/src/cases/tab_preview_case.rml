@@ -1,0 +1,41 @@
+<component>
+    <div v-flex="" class="case-pane doc-pane">
+        <h2>{t("case.tab_preview.title")}</h2>
+
+        <Card title="组件说明">
+            <p>VSCode 风格的 tab 体验：关闭按钮 tooltip（i18n）、右键菜单（Close/Close All/Close Others）、预览模式（italic 标题）、双击 promote。</p>
+            <p>框架内置三个标准菜单项，文本走 i18n（rml.tab.close / rml.tab.close_all / rml.tab.close_others）。业务通过 on-close / on-close-all / on-close-others 回调驱动数据层变更。双击 tab 触发 on-promote 回调（250ms 时间窗口）。</p>
+        </Card>
+
+        <Card title="API">
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+        </Card>
+
+        <Card title="示例代码">
+            <div class="code-block">{code_sample}</div>
+        </Card>
+
+        <Card title="演示效果">
+            <p>{status_text}</p>
+
+            <div class="demo-section">
+                <div h-flex="" gap-2="">
+                    <Button label="重置" on-click={on_reset} />
+                </div>
+                <p>提示：右键 tab 弹出菜单；双击 preview tab（斜体标题）触发 promote；hover 关闭按钮显示 tooltip。</p>
+                <TabBar
+                    selected-index={selected_index}
+                    on-click={on_tab_select}
+                    on-close={on_tab_close}
+                    on-close-all={on_tab_close_all}
+                    on-close-others={on_tab_close_others}
+                    on-promote={on_tab_promote}>
+                    <Tab each={tab in tabs}
+                        label={tab.title}
+                        closable={tab.closable}
+                        preview={tab.preview} />
+                </TabBar>
+            </div>
+        </Card>
+    </div>
+</component>

@@ -50,7 +50,7 @@ fn format_node(node: &Node, depth: usize, indent: &str, out: &mut String) {
                 out.push('\n');
             }
         }
-        Node::Interpolation(expr) => {
+        Node::Interpolation { expr, .. } => {
             out.push_str(&indent.repeat(depth));
             out.push('{');
             out.push_str(expr);
@@ -60,14 +60,14 @@ fn format_node(node: &Node, depth: usize, indent: &str, out: &mut String) {
         Node::MixedText(segs) => {
             let has_content = segs.iter().any(|s| match s {
                 TextSegment::Literal(t) => !t.trim().is_empty(),
-                TextSegment::Interpolation(_) => true,
+                TextSegment::Interpolation { .. } => true,
             });
             if has_content {
                 out.push_str(&indent.repeat(depth));
                 for seg in segs {
                     match seg {
                         TextSegment::Literal(t) => out.push_str(t.trim()),
-                        TextSegment::Interpolation(expr) => {
+                        TextSegment::Interpolation { expr, .. } => {
                             out.push('{');
                             out.push_str(expr);
                             out.push('}');
@@ -110,7 +110,7 @@ fn format_element(elem: &Element, depth: usize, indent: &str, out: &mut String) 
             for child in &elem.children {
                 match child {
                     Node::Text(t) => out.push_str(t.trim()),
-                    Node::Interpolation(expr) => {
+                    Node::Interpolation { expr, .. } => {
                         out.push('{');
                         out.push_str(expr);
                         out.push('}');
@@ -119,7 +119,7 @@ fn format_element(elem: &Element, depth: usize, indent: &str, out: &mut String) 
                         for seg in segs {
                             match seg {
                                 TextSegment::Literal(t) => out.push_str(t.trim()),
-                                TextSegment::Interpolation(expr) => {
+                                TextSegment::Interpolation { expr, .. } => {
                                     out.push('{');
                                     out.push_str(expr);
                                     out.push('}');

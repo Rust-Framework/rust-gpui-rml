@@ -109,11 +109,13 @@ fn map_declaration(decl: &Declaration, vars: &HashMap<String, Value>) -> Option<
             Value::Keyword(k) if k == "0" => Some("min_w_0()".into()),
             _ => length_or_percentage_method("min_w", &value),
         },
+        "max-width" => length_or_percentage_method("max_w", &value),
         "min-height" => match &value {
             Value::Number(n) if *n == 0.0 => Some("min_h_0()".into()),
             Value::Keyword(k) if k == "0" => Some("min_h_0()".into()),
             _ => length_or_percentage_method("min_h", &value),
         },
+        "max-height" => length_or_percentage_method("max_h", &value),
         "gap" => length_method("gap", &value),
 
         // ─── 视觉效果 ───

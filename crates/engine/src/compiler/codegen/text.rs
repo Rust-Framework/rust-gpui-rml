@@ -16,7 +16,7 @@ pub(super) fn gen_mixed_text(
             TextSegment::Literal(s) => {
                 fmt_str.push_str(&s.replace('{', "{{").replace('}', "}}"));
             }
-            TextSegment::Interpolation(expr) => {
+            TextSegment::Interpolation { expr, .. } => {
                 fmt_str.push_str("{}");
                 args.push(gen_expr_code(expr, loop_vars, computed));
             }

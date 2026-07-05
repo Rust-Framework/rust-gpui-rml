@@ -34,6 +34,8 @@ pub struct TabItem {
     pub(super) on_click: Option<TabClickHandler>,
     /// 透传到 [`super::Tab::closable`]，控制是否在 header 末尾渲染关闭按钮。
     pub(super) closable: bool,
+    /// 透传到 [`super::Tab::preview`]，控制是否以 italic 标题渲染（VSCode 预览 tab）。
+    pub(super) preview: bool,
 }
 
 
@@ -101,6 +103,12 @@ impl TabItem {
         self
     }
 
+    /// 透传到 [`super::Tab::preview`]，控制是否以 italic 标题渲染（VSCode 预览 tab）。
+    pub fn preview(mut self, preview: bool) -> Self {
+        self.preview = preview;
+        self
+    }
+
     /// 由 TabBar 在 render 时透传索引。
     pub(crate) fn ix(mut self, ix: usize) -> Self {
         self.ix = ix;
@@ -121,7 +129,8 @@ impl TabItem {
             .ix(self.ix)
             .tab_bar_prefix(self.tab_bar_prefix.unwrap_or(true))
             .disabled(self.disabled)
-            .closable(self.closable);
+            .closable(self.closable)
+            .preview(self.preview);
         if let Some(label) = self.title_label {
             tab = tab.label(label);
         }
@@ -183,6 +192,7 @@ impl From<super::Tab> for TabItem {
             tab_bar_prefix: tab.tab_bar_prefix,
             on_click: tab.on_click,
             closable: tab.closable,
+            preview: tab.preview,
         }
     }
 }

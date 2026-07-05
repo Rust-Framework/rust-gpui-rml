@@ -1,4 +1,4 @@
-﻿//! 菜单闭包 `move` 捕获前，将 `self.*` 表达式提升为局部变量（满足 `'static`）
+//! 菜单闭包 `move` 捕获前，将 `self.*` 表达式提升为局部变量（满足 `'static`）
 
 use std::collections::HashMap;
 
@@ -90,14 +90,14 @@ impl MenuHoist {
         loop_vars: &[String],
     ) -> Result<(), CodegenError> {
         match node {
-            Node::Interpolation(expr_str) => {
-                let code = to_rust_expr(expr_str, loop_vars, ctx);
+            Node::Interpolation { expr, .. } => {
+                let code = to_rust_expr(expr, loop_vars, ctx);
                 self.register(&code);
             }
             Node::MixedText(segments) => {
                 for seg in segments {
-                    if let TextSegment::Interpolation(expr_str) = seg {
-                        let code = to_rust_expr(expr_str, loop_vars, ctx);
+                    if let TextSegment::Interpolation { expr, .. } = seg {
+                        let code = to_rust_expr(expr, loop_vars, ctx);
                         self.register(&code);
                     }
                 }

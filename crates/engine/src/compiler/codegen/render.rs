@@ -110,7 +110,7 @@ pub(super) fn gen_render_impl_from_children(
                 })
             }
         };
-        let body = crate::compiler::tab_bar::tab::gen_tab_child(
+        let (body, _) = crate::compiler::tab_bar::tab::gen_tab_child(
             tab_elem,
             ctx,
             &mut id_counter,
@@ -135,7 +135,7 @@ pub(super) fn gen_render_impl_from_children(
             .iter()
             .map(|node| {
                 if let Node::Element(tab_elem) = node {
-                    let code = crate::compiler::tab_bar::tab::gen_tab_child(
+                    let (code, _) = crate::compiler::tab_bar::tab::gen_tab_child(
                         tab_elem,
                         ctx,
                         &mut id_counter,

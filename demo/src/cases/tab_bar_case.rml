@@ -30,23 +30,23 @@
 
             <div class="demo-section">
                 <h3>{t("case.tab_bar.variants")}</h3>
-                <TabBar selected-index={0}>
+                <TabBar>
                     <Tab label="Underline" />
                     <Tab label="B" />
                 </TabBar>
-                <TabBar pill="" selected-index={0}>
+                <TabBar pill="">
                     <Tab label="Pill" />
                     <Tab label="B" />
                 </TabBar>
-                <TabBar flat="" selected-index={0}>
+                <TabBar flat="">
                     <Tab label="Flat" />
                     <Tab label="B" />
                 </TabBar>
-                <TabBar outline="" selected-index={0}>
+                <TabBar outline="">
                     <Tab label="Outline" />
                     <Tab label="B" />
                 </TabBar>
-                <TabBar segmented="" selected-index={0}>
+                <TabBar segmented="">
                     <Tab label="Segmented" />
                     <Tab label="B" />
                 </TabBar>
@@ -54,15 +54,15 @@
 
             <div class="demo-section">
                 <h3>{t("case.tab_bar.sizes")}</h3>
-                <TabBar size="xsmall" selected-index={0}>
+                <TabBar size="xsmall">
                     <Tab label="xsmall" />
                     <Tab label="B" />
                 </TabBar>
-                <TabBar size="small" selected-index={0}>
+                <TabBar size="small">
                     <Tab label="small" />
                     <Tab label="B" />
                 </TabBar>
-                <TabBar size="large" selected-index={0}>
+                <TabBar size="large">
                     <Tab label="large" />
                     <Tab label="B" />
                 </TabBar>
@@ -70,7 +70,7 @@
 
             <div class="demo-section">
                 <h3>{t("case.tab_bar.with_icon")}</h3>
-                <TabBar selected-index={0}>
+                <TabBar>
                     <Tab icon="User" label="Account" />
                     <Tab icon="Bell" label="Notifications" />
                     <Tab icon="Settings" label="Settings" />
@@ -79,7 +79,7 @@
 
             <div class="demo-section">
                 <h3>{t("case.tab_bar.disabled")}</h3>
-                <TabBar selected-index={0}>
+                <TabBar>
                     <Tab label="Normal" />
                     <Tab label="Disabled" disabled="true" />
                     <Tab label="Selected" selected="true" />
@@ -88,7 +88,7 @@
 
             <div class="demo-section">
                 <h3>{t("case.tab_bar.menu")}</h3>
-                <TabBar menu="true" selected-index={0}>
+                <TabBar menu="true">
                     <Tab label="Tab 1" />
                     <Tab label="Tab 2" />
                     <Tab label="Tab 3" />

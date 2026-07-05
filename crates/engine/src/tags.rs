@@ -209,6 +209,19 @@ pub fn is_extension_component(tag: &str) -> bool {
     is_component(tag) || is_special_lowercase_component(tag)
 }
 
+/// 返回组件在 CSS 选择器中可隐式匹配的类名
+///
+/// RML 组件标签（如 `<Card>`、`<button-group>`）在 CSS 匹配时被视为带有与其
+/// 小写标签名相同的 class，使 `.card`、`.button-group` 等类选择器可直接命中
+/// 对应组件，无需在每个组件上显式写 `class="card"`。
+pub fn implicit_class_for(tag: &str) -> Option<String> {
+    if is_extension_component(tag) {
+        Some(tag.to_ascii_lowercase())
+    } else {
+        None
+    }
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 //  根节点标记：`<window>` / `<modern-window>` / `<tab-window>` / `<dialog>` / `<component>`
 //

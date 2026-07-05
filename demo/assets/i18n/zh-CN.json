@@ -1,5 +1,13 @@
 {
 
+  "rml.tab.close": "关闭",
+
+  "rml.tab.close_all": "关闭全部",
+
+  "rml.tab.close_others": "关闭其他",
+
+  "rml.tab.promote": "固定标签页",
+
   "login.title": "登录 RML Demo",
 
   "login.hint": "输入任意用户名进入案例库",
@@ -332,7 +340,9 @@
 
   "case.tooltip.title": "悬浮提示 Tooltip",
 
-  "case.popover.title": "气泡卡片 Popover"
+  "case.popover.title": "气泡卡片 Popover",
+
+  "case.tab_preview.title": "标签页预览 Tab Preview"
 
 }
 

@@ -1,4 +1,4 @@
-﻿//! 单个 `<Tab>` 子节点 codegen —— 直接构造 `rml_ui::Tab::new()...` 表达式。
+//! 单个 `<Tab>` 子节点 codegen —— 直接构造 `rml_ui::Tab::new()...` 表达式。
 //!
 //! 与 `accordion::item` 的闭包式 builder 不同，TabBar 的子节点通过
 //! `.child(Tab::new()...)` 直接注入，因此本模块生成的是普通构造表达式（非闭包）。
@@ -12,9 +12,13 @@
 
 use crate::compiler::codegen::gen_node;
 use crate::compiler::{CodegenCtx, CodegenError};
-use crate::parser::ast::{Attribute, Element, Node};
+use crate::parser::ast::{Attribute, Directive, Element, Node};
 
 /// 为 `<Tab>` 子节点生成 `rml_ui::Tab::new().<setters>.child(...)` 表达式
+///
+/// 返回 `(代码, 是否迭代器)`：
+/// - 无 `each` 指令：`(构造表达式, false)` → 父用 `.child(...)`
+/// - 有 `each` 指令：`(iter().map(...), true)` → 父用 `.children(...)`
 ///
 /// 生成形如：
 /// ```text
@@ -25,8 +29,21 @@ pub fn gen_tab_child(
     ctx: &CodegenCtx,
     id_counter: &mut usize,
     loop_vars: &[String],
-) -> Result<String, CodegenError> {
-    let lv: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
+) -> Result<(String, bool), CodegenError> {
+    let each_clause = elem.directives.iter().find_map(|d| match d {
+        Directive::Each(c) => Some(c.clone()),
+        _ => None,
+    });
+
+    let mut child_loop_vars: Vec<String> = loop_vars.to_vec();
+    if let Some(clause) = &each_clause {
+        child_loop_vars.push(clause.item.clone());
+        if let Some(idx) = &clause.index {
+            child_loop_vars.push(idx.clone());
+        }
+    }
+
+    let lv: Vec<&str> = child_loop_vars.iter().map(|s| s.as_str()).collect();
     let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
 
     let mut code = String::from("rml_ui::Tab::new()");
@@ -88,7 +105,7 @@ pub fn gen_tab_child(
         if matches!(child, Node::Text(_)) {
             continue;
         }
-        let (child_code, is_iter) = gen_node(child, ctx, 0, id_counter, loop_vars)?;
+        let (child_code, is_iter) = gen_node(child, ctx, 0, id_counter, &child_loop_vars)?;
         if is_iter {
             code.push_str(&format!(".children({})", child_code));
         } else {
@@ -96,5 +113,15 @@ pub fn gen_tab_child(
         }
     }
 
-    Ok(code)
+    if let Some(clause) = each_clause {
+        let iter_code = format!(
+            "self.{}.iter().map(|{}| {{\n                \
+             let {} = {}.clone();\n                \
+             {}\n            }})",
+            clause.iterable, clause.item, clause.item, clause.item, code
+        );
+        return Ok((iter_code, true));
+    }
+
+    Ok((code, false))
 }

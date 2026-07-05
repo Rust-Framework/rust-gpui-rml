@@ -1,5 +1,13 @@
 {
 
+  "rml.tab.close": "Close",
+
+  "rml.tab.close_all": "Close All",
+
+  "rml.tab.close_others": "Close Others",
+
+  "rml.tab.promote": "Promote",
+
   "login.title": "Sign in to RML Demo",
 
   "login.hint": "Enter any username to open the showcase",
@@ -331,7 +339,9 @@
 
   "case.tooltip.title": "Tooltip",
 
-  "case.popover.title": "Popover"
+  "case.popover.title": "Popover",
+
+  "case.tab_preview.title": "Tab Preview"
 
 }
 

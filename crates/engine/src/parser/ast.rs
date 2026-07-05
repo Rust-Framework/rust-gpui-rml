@@ -13,7 +13,7 @@ pub enum Node {
     /// 纯文本节点
     Text(String),
     /// 单个插值 `{expr}`
-    Interpolation(String),
+    Interpolation { expr: String, span: Span },
     /// 混合文本：字面量 + 插值
     MixedText(Vec<TextSegment>),
 }
@@ -24,7 +24,7 @@ pub enum TextSegment {
     /// 字面量文本
     Literal(String),
     /// `{expr}` 插值
-    Interpolation(String),
+    Interpolation { expr: String, span: Span },
 }
 
 /// 元素节点
@@ -130,7 +130,7 @@ impl fmt::Display for Node {
         match self {
             Node::Element(e) => write!(f, "<{}>", e.tag),
             Node::Text(t) => write!(f, "text({:?})", t.chars().take(20).collect::<String>()),
-            Node::Interpolation(e) => write!(f, "{{{}}}", e),
+            Node::Interpolation { expr, .. } => write!(f, "{{{}}}", expr),
             Node::MixedText(segs) => write!(f, "mixed({} segs)", segs.len()),
         }
     }

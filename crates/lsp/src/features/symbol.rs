@@ -83,7 +83,7 @@ fn classify_in_interpolation(node: &Node, offset: usize) -> Option<Symbol> {
             }
             None
         }
-        Node::Interpolation(expr) => {
+        Node::Interpolation { expr, .. } => {
             let path = parse_binding_path(expr)?;
             if is_builtin(&path.root) {
                 return None;
@@ -93,7 +93,7 @@ fn classify_in_interpolation(node: &Node, offset: usize) -> Option<Symbol> {
         Node::MixedText(segs) => {
             // MixedText 无独立 span，遍历所有插值段，取第一个非 builtin 根标识符
             for seg in segs {
-                if let rust_rml_engine::parser::ast::TextSegment::Interpolation(expr) = seg {
+                if let rust_rml_engine::parser::ast::TextSegment::Interpolation { expr, .. } = seg {
                     if let Some(path) = parse_binding_path(expr) {
                         if !is_builtin(&path.root) {
                             return Some(Symbol::Field(path.root));

@@ -146,23 +146,22 @@ fn collect_in_node(node: &Node, c: &mut RefCollector<'_>) {
                 collect_in_node(child, c);
             }
         }
-        Node::Interpolation(expr) => {
+        Node::Interpolation { expr, span } => {
             if let Symbol::Field(name) = c.symbol {
                 if let Some(path) = parse_binding_path(expr) {
                     if &path.root == name {
-                        // Interpolation 无独立 span，跳过精确位置（无法定位）
-                        // 这里不收集，避免误报整段文本
+                        c.push(span.start, span.end);
                     }
                 }
             }
         }
         Node::MixedText(segs) => {
             for seg in segs {
-                if let rust_rml_engine::parser::ast::TextSegment::Interpolation(expr) = seg {
+                if let rust_rml_engine::parser::ast::TextSegment::Interpolation { expr, span } = seg {
                     if let Symbol::Field(name) = c.symbol {
                         if let Some(path) = parse_binding_path(expr) {
                             if &path.root == name {
-                                // MixedText 段无独立 span，跳过
+                                c.push(span.start, span.end);
                             }
                         }
                     }
@@ -281,5 +280,47 @@ mod tests {
         let pos = offset_to_position(mid, source, &doc.tree.line_starts);
         let locs = find_references(&rml, pos, false, &ws, &q);
         assert!(locs.is_empty());
+    }
+
+    #[test]
+    fn find_field_references_in_interpolation() {
+        // {count} 形式的插值应被 references 收集
+        let rml = Url::parse("file:///x.rml").unwrap();
+        let source = "<component><h1>{count}</h1><span>{count}</span></component>";
+        let ws = ws_with_doc(&rml, source);
+        let q = NoopQuery;
+
+        let doc = ws.document(&rml).unwrap();
+        let root = doc.tree.root.as_ref().unwrap();
+        let interp_offset = source.find("{count}").unwrap();
+        let cursor_offset = interp_offset + 2;
+        let pos = offset_to_position(cursor_offset, source, &doc.tree.line_starts);
+        assert_eq!(
+            classify_symbol_at(root, source, cursor_offset),
+            Some(Symbol::Field("count".to_string()))
+        );
+        let locs = find_references(&rml, pos, false, &ws, &q);
+        assert_eq!(locs.len(), 2, "should find both {{count}} interpolations");
+    }
+
+    #[test]
+    fn find_field_references_in_mixed_text() {
+        // 混合文本 "Total: {count}" 中的 {count} 应被 references 收集
+        let rml = Url::parse("file:///x.rml").unwrap();
+        let source = "<component><p>Total: {count}</p><p>Sum: {count}</p></component>";
+        let ws = ws_with_doc(&rml, source);
+        let q = NoopQuery;
+
+        let doc = ws.document(&rml).unwrap();
+        let root = doc.tree.root.as_ref().unwrap();
+        let interp_offset = source.find("{count}").unwrap();
+        let cursor_offset = interp_offset + 2;
+        let pos = offset_to_position(cursor_offset, source, &doc.tree.line_starts);
+        assert_eq!(
+            classify_symbol_at(root, source, cursor_offset),
+            Some(Symbol::Field("count".to_string()))
+        );
+        let locs = find_references(&rml, pos, false, &ws, &q);
+        assert_eq!(locs.len(), 2, "should find both mixed-text {{count}} interpolations");
     }
 }

@@ -10,8 +10,8 @@
             <p>checked 属性绑定布尔字段，点击按钮切换状态。</p>
             <p>{status_text}</p>
             <div h-flex="" gap-4="">
-                <Switch label="自动保存" checked={is_on} />
-                <Button label="切换开关" on-click={on_toggle} />
+                <Switch label="自动保存" checked={is_on} on-click={on_toggle} />
+                <Button label="切换开关" on-click={on_toggle_button} />
             </div>
         </Card>
 

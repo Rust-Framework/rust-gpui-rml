@@ -1,15 +1,33 @@
-use std::{rc::Rc, time::Duration};
+use std::{rc::Rc, time::{Duration, Instant}};
 
 use gpui_component::animation::{Lerp, ease_in_out_cubic};
-use gpui_component::{ActiveTheme, Icon, IconName, Selectable, Sizable, Size, StyledExt, h_flex};
+use gpui_component::{
+    ActiveTheme, Icon, IconName, Selectable, Sizable, Size, StyledExt, h_flex,
+};
+use rust_rml_core::i18n::t_or_default;
+use crate::{ContextMenuExt, PopupMenu, Tooltip};
 use gpui::prelude::FluentBuilder as _;
 use gpui::{
-    Animation, AnimationExt as _, AnyElement, App, Background, ClickEvent, Corners, Div, Edges,
-    ElementId, Hsla, InteractiveElement, IntoElement, MouseButton, ParentElement, Pixels,
+    Animation, AnimationExt as _, AnyElement, App, Background, ClickEvent, Context, Corners, Div,
+    Edges, ElementId, Hsla, InteractiveElement, IntoElement, MouseButton, ParentElement, Pixels,
     RenderOnce, SharedString, StatefulInteractiveElement, Styled, Window, div, px, relative,
 };
 
 type TabClickHandler = Rc<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>;
+type TabContextMenuProvider =
+    Rc<dyn Fn(PopupMenu, &mut Window, &mut Context<PopupMenu>) -> PopupMenu + 'static>;
+type TabPromoteHandler = Rc<dyn Fn(&mut Window, &mut App) + 'static>;
+
+/// 双击检测时间窗口（ms）。两次点击间隔 ≤ 此值视为双击。
+const DOUBLE_CLICK_WINDOW: Duration = Duration::from_millis(250);
+
+/// 判断是否构成双击。纯函数，便于单测。
+pub(super) fn is_double_click(prev: Option<Instant>, now: Instant) -> bool {
+    match prev {
+        Some(p) => now.duration_since(p) <= DOUBLE_CLICK_WINDOW,
+        None => false,
+    }
+}
 
 /// Tab variants.
 #[derive(Debug, Clone, Default, Copy, PartialEq, Eq, Hash)]
@@ -460,6 +478,15 @@ pub struct Tab {
     /// `on_close` when set.
     pub(super) closable: bool,
     pub(super) on_close: Option<TabClickHandler>,
+    /// 右键菜单构造器，由 TabBar 透传。闭包接收框架传入的 `PopupMenu`，
+    /// 追加标准项（Close/Close All/Close Others）+ 业务扩展项后返回。
+    pub(super) context_menu_provider: Option<TabContextMenuProvider>,
+    /// When true, render the label in italic (VSCode preview tab style).
+    /// Only affects the label branch; icon and custom children are unchanged.
+    pub(super) preview: bool,
+    /// 双击 tab 时触发（VSCode preview tab promote）。由 TabBar 透传，
+    /// 内部在 on_mouse_down 中检测 250ms 时间窗口内的双击。
+    pub(super) on_promote: Option<TabPromoteHandler>,
     /// When true, the tab shrinks to share width with siblings (browser-like
     /// compression). Switches from `flex_shrink_0` to `flex_1 + min_w_0` and
     /// enables label ellipsis truncation. Set by TabBar when overflow detected.
@@ -522,6 +549,9 @@ impl Default for Tab {
             on_click: None,
             closable: false,
             on_close: None,
+            context_menu_provider: None,
+            preview: false,
+            on_promote: None,
             compress: false,
             measurement: false,
         }
@@ -617,6 +647,23 @@ impl Tab {
         self
     }
 
+    /// When true, render the label in italic (VSCode preview tab style).
+    /// Only affects the label branch; icon and custom children are unchanged.
+    pub fn preview(mut self, preview: bool) -> Self {
+        self.preview = preview;
+        self
+    }
+
+    /// 双击 tab 时触发 promote 回调。由 TabBar 透传，Tab 内部在
+    /// `on_mouse_down` 中检测 250ms 时间窗口内的双击。
+    pub(crate) fn on_promote(
+        mut self,
+        handler: impl Fn(&mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.on_promote = Some(Rc::new(handler));
+        self
+    }
+
     /// Set the close handler invoked when the tab's close button is clicked.
     /// The handler receives the same `(ClickEvent, Window, App)` signature as
     /// `on_click`; the close button additionally calls `stop_propagation` so
@@ -626,6 +673,18 @@ impl Tab {
         on_close: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
     ) -> Self {
         self.on_close = Some(Rc::new(on_close));
+        self
+    }
+
+    /// Set the context menu provider for right-click menu.
+    /// The provider receives a `PopupMenu` from the framework, appends items,
+    /// and returns the modified menu. TabBar transparently passes standard
+    /// Close/Close All/Close Others handlers via this closure.
+    pub(crate) fn context_menu_provider(
+        mut self,
+        provider: impl Fn(PopupMenu, &mut Window, &mut Context<PopupMenu>) -> PopupMenu + 'static,
+    ) -> Self {
+        self.context_menu_provider = Some(Rc::new(provider));
         self
     }
 
@@ -801,7 +860,15 @@ impl RenderOnce for Tab {
                     .map(|this| match self.label {
                         Some(label) => {
                             if self.compress {
-                                this.child(div().min_w_0().truncate().child(label))
+                                this.child(
+                                    div()
+                                        .min_w_0()
+                                        .truncate()
+                                        .when(self.preview, |t| t.italic())
+                                        .child(label),
+                                )
+                            } else if self.preview {
+                                this.child(div().italic().child(label))
                             } else {
                                 this.child(label)
                             }
@@ -831,7 +898,8 @@ impl RenderOnce for Tab {
         // `group_hover` (parent hover → child opacity 1).
         let group_name = format!("tab-{}", self.ix);
 
-        self.base
+        let base = self
+            .base
             .id(self.ix)
             .when(self.closable && !m, |this| this.group(group_name.clone()))
             .relative()
@@ -925,6 +993,10 @@ impl RenderOnce for Tab {
                                 .group_hover(group_name.clone(), |this| this.opacity(1.))
                         })
                         .hover(move |this| this.bg(hover_bg))
+                        .tooltip(move |window, cx| {
+                            Tooltip::new(t_or_default(cx, "rml.tab.close", "Close"))
+                                .build(window, cx)
+                        })
                         .child(Icon::new(IconName::Close).small())
                         .when_some(on_close, |this, on_close| {
                             this.on_click(move |event, window, cx| {
@@ -937,16 +1009,79 @@ impl RenderOnce for Tab {
                 this.child(close_btn)
             })
             .when(!m, |this| {
-                this.on_mouse_down(MouseButton::Left, |_, _, cx| {
+                let ix = self.ix;
+                let on_promote = self.on_promote.clone();
+                this.on_mouse_down(MouseButton::Left, move |_, window, cx| {
                     // Stop propagation behavior, for works on TitleBar.
                     // https://github.com/longbridge/gpui-component/issues/1836
                     cx.stop_propagation();
+                    // 双击检测：250ms 时间窗口内两次点击触发 promote。
+                    // 双击后清空状态，避免三击误触发。
+                    let now = Instant::now();
+                    let dbl_key = format!("tab-dbl-{}", ix);
+                    let state =
+                        window.use_keyed_state::<Option<Instant>>(dbl_key, cx, |_, _| None);
+                    let prev = *state.read(cx);
+                    if is_double_click(prev, now) {
+                        if let Some(on_promote) = &on_promote {
+                            on_promote(window, cx);
+                        }
+                        state.update(cx, |v, _| *v = None);
+                    } else {
+                        state.update(cx, |v, _| *v = Some(now));
+                    }
                 })
             })
             .when(!m && !self.disabled, |this| {
                 this.when_some(self.on_click.clone(), |this, on_click| {
                     this.on_click(move |event, window, cx| on_click(event, window, cx))
                 })
-            })
+            });
+
+        // context_menu 返回 ContextMenu<Stateful<Div>>，与链上 Stateful<Div> 类型不同，
+        // 故从 .when() 链中移出，在链尾条件性挂载并统一转为 AnyElement。
+        if !m {
+            if let Some(provider) = self.context_menu_provider.clone() {
+                base.context_menu(move |menu, window, cx| provider(menu, window, cx))
+                    .into_any_element()
+            } else {
+                base.into_any_element()
+            }
+        } else {
+            base.into_any_element()
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn is_double_click_none_prev_returns_false() {
+        let now = Instant::now();
+        assert!(!is_double_click(None, now));
+    }
+
+    #[test]
+    fn is_double_click_within_window_returns_true() {
+        let now = Instant::now();
+        let prev = Some(now - Duration::from_millis(200));
+        assert!(is_double_click(prev, now));
+    }
+
+    #[test]
+    fn is_double_click_at_boundary_returns_true() {
+        // 250ms 边界值：恰好等于窗口，应视为双击
+        let now = Instant::now();
+        let prev = Some(now - Duration::from_millis(250));
+        assert!(is_double_click(prev, now));
+    }
+
+    #[test]
+    fn is_double_click_beyond_window_returns_false() {
+        let now = Instant::now();
+        let prev = Some(now - Duration::from_millis(251));
+        assert!(!is_double_click(prev, now));
     }
 }

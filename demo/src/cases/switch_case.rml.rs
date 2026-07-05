@@ -54,7 +54,13 @@ impl SwitchCase {
     }
 
     #[command]
-    pub fn on_toggle(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+    pub fn on_toggle(&mut self, checked: &bool, cx: &mut Context<Self>) {
+        self.is_on = *checked;
+        cx.notify();
+    }
+
+    #[command]
+    pub fn on_toggle_button(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.is_on = !self.is_on;
         cx.notify();
     }

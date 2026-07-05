@@ -250,6 +250,19 @@ pub fn t(cx: &App, key: &str) -> SharedString {
     cx.t(key)
 }
 
+/// 自由函数：取翻译，key 缺失时回退到 `default`
+///
+/// `cx.t(key)` 在 catalog 缺失时返回 key 本身，本函数将其替换为 `default`，
+/// 供框架内置功能在不依赖业务 i18n 资源时使用。
+pub fn t_or_default(cx: &App, key: &str, default: &str) -> SharedString {
+    let val = cx.t(key);
+    if val.as_ref() == key {
+        default.into()
+    } else {
+        val
+    }
+}
+
 /// 从目录加载 `{dir}/{locale}.json`
 pub fn load_catalog_from_dir(
     locale: &str,

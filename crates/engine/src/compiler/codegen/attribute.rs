@@ -10,6 +10,7 @@
 
 use crate::css;
 use crate::parser::ast::{Attribute, Element};
+use crate::tags;
 
 use super::text::gen_expr_code;
 
@@ -43,7 +44,7 @@ pub(super) fn apply_css_styles(
     sheet: &css::StyleSheet,
     parents: &[css::ParentInfo],
 ) -> String {
-    let class_value: String = elem
+    let mut class_value: String = elem
         .attributes
         .iter()
         .find_map(|attr| match attr {
@@ -51,6 +52,14 @@ pub(super) fn apply_css_styles(
             _ => None,
         })
         .unwrap_or_default();
+
+    // 组件标签隐式携带与其小写标签名相同的 class，使 CSS 类选择器可直接命中组件
+    if let Some(implicit) = tags::implicit_class_for(tag) {
+        if !class_value.is_empty() {
+            class_value.push(' ');
+        }
+        class_value.push_str(&implicit);
+    }
 
     let id_value: Option<&str> = elem
         .attributes

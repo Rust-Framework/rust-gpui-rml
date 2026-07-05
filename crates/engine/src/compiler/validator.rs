@@ -45,7 +45,7 @@ fn validate_node(
 ) -> Result<(), ValidationError> {
     match node {
         Node::Element(elem) => validate_element(elem, ctx, user_components),
-        Node::Text(_) | Node::Interpolation(_) | Node::MixedText(_) => Ok(()),
+        Node::Text(_) | Node::Interpolation { .. } | Node::MixedText(_) => Ok(()),
     }
 }
 

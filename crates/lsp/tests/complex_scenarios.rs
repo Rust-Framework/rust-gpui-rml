@@ -9,7 +9,7 @@
 use lsp_types::{Position, Url};
 use rml_lsp::features::{
     document_symbol::document_symbol, formatting::format_document,
-    references::find_references, symbol::classify_symbol_at,
+    references::find_references, symbol::{classify_symbol_at, Symbol},
 };
 use rml_lsp::rust::NoopQuery;
 use rml_lsp::server::conv::offset_to_position;
@@ -224,4 +224,28 @@ fn format_single_element_document() {
     let edits = format_document(source, &options).expect("should format single element");
     assert_eq!(edits.len(), 1);
     assert!(!edits[0].new_text.is_empty());
+}
+
+#[test]
+fn references_find_interpolation_in_complex_fixture() {
+    // complex.rml 中 {title} 出现在 <h1>{title}</h1> 和 <span>{title}</span>
+    // references 应收集到这 2 个插值引用
+    let uri = rml_uri();
+    let ws = ws_with_doc(&uri, COMPLEX_RML);
+    let q = NoopQuery;
+
+    let source = COMPLEX_RML;
+    let doc = ws.document(&uri).unwrap();
+    let root = doc.tree.root.as_ref().unwrap();
+
+    let interp_offset = source.find("{title}").expect("should find {title} in fixture");
+    let cursor_offset = interp_offset + 2;
+    let pos = offset_to_position(cursor_offset, source, &doc.tree.line_starts);
+    assert_eq!(
+        classify_symbol_at(root, source, cursor_offset),
+        Some(Symbol::Field("title".to_string()))
+    );
+
+    let refs = find_references(&uri, pos, false, &ws, &q);
+    assert_eq!(refs.len(), 2, "should find 2 {{title}} interpolations in fixture");
 }

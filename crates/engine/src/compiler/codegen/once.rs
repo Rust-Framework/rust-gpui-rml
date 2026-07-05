@@ -144,13 +144,13 @@ fn collect_element_fields(elem: &Element, loop_vars: &[&str], fields: &mut Vec<S
                 }
                 collect_element_fields(child_elem, &effective_refs, fields);
             }
-            Node::Interpolation(expr_str) => {
-                fields.extend(expr::collect_fields(expr_str, &effective_refs));
+            Node::Interpolation { expr, .. } => {
+                fields.extend(expr::collect_fields(expr, &effective_refs));
             }
             Node::MixedText(segs) => {
                 for seg in segs {
-                    if let TextSegment::Interpolation(expr_str) = seg {
-                        fields.extend(expr::collect_fields(expr_str, &effective_refs));
+                    if let TextSegment::Interpolation { expr, .. } = seg {
+                        fields.extend(expr::collect_fields(expr, &effective_refs));
                     }
                 }
             }

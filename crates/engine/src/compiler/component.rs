@@ -601,22 +601,48 @@ pub fn component_event_setter(name: &str, handler: &EventHandler, tag: &str) -> 
                 EventHandler::Ident(m) | EventHandler::MethodName(m) => m,
                 EventHandler::WithArgs(m, _) => m,
             };
-            match handler {
-                EventHandler::Ident(_) | EventHandler::MethodName(_) => Some(format!(
-                    ".on_click(cx.listener(move |this, _ev: &gpui::ClickEvent, _window, cx| {{\n                    \
-                     let rml_ev = rml_convert::from_gpui_click(_ev);\n                    \
-                     this.{}(&rml_ev, cx);\n                }}))",
-                    method
-                )),
-                EventHandler::WithArgs(_, args) => {
-                    if args.is_empty() {
+
+            // Checkbox / Switch / Radio 的 on_click 闭包参数是新的 checked 状态（&bool），
+            // 而非 ClickEvent。
+            let is_bool_event = matches!(tag, "Checkbox" | "Switch" | "Radio");
+
+            if is_bool_event {
+                match handler {
+                    EventHandler::Ident(_) | EventHandler::MethodName(_) => Some(format!(
+                        ".on_click(cx.listener(move |this, checked: &bool, _window, cx| {{\n                    \
+                         this.{}(checked, cx);\n                }}))",
+                        method
+                    )),
+                    EventHandler::WithArgs(_, args) if args.is_empty() => Some(format!(
+                        ".on_click(cx.listener(move |this, checked: &bool, _window, cx| {{\n                    \
+                         this.{}(checked, cx);\n                }}))",
+                        method
+                    )),
+                    EventHandler::WithArgs(_, args) => {
+                        let arg = &args[0];
                         Some(format!(
-                            ".on_click(cx.listener(move |this, _ev: &gpui::ClickEvent, _window, cx| {{\n                    \
-                             let rml_ev = rml_convert::from_gpui_click(_ev);\n                    \
-                             this.{}(&rml_ev, cx);\n                }}))",
-                            method
+                            ".on_click(cx.listener(move |this, checked: &bool, _window, cx| {{\n                    \
+                             let p0 = {}.clone();\n                    \
+                             this.{}(p0, checked, cx);\n                }}))",
+                            arg, method
                         ))
-                    } else {
+                    }
+                }
+            } else {
+                match handler {
+                    EventHandler::Ident(_) | EventHandler::MethodName(_) => Some(format!(
+                        ".on_click(cx.listener(move |this, _ev: &gpui::ClickEvent, _window, cx| {{\n                    \
+                         let rml_ev = rml_convert::from_gpui_click(_ev);\n                    \
+                         this.{}(&rml_ev, cx);\n                }}))",
+                        method
+                    )),
+                    EventHandler::WithArgs(_, args) if args.is_empty() => Some(format!(
+                        ".on_click(cx.listener(move |this, _ev: &gpui::ClickEvent, _window, cx| {{\n                    \
+                         let rml_ev = rml_convert::from_gpui_click(_ev);\n                    \
+                         this.{}(&rml_ev, cx);\n                }}))",
+                        method
+                    )),
+                    EventHandler::WithArgs(_, args) => {
                         let arg = &args[0];
                         Some(format!(
                             ".on_click(cx.listener(move |this, _ev: &gpui::ClickEvent, _window, cx| {{\n                    \
