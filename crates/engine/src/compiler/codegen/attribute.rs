@@ -1,4 +1,4 @@
-﻿//! 属性代码生成 —— 静态属性 / CSS 样式 / 内联样式 / 绑定属性
+//! 属性代码生成 —— 静态属性 / CSS 样式 / 内联样式 / 绑定属性
 //!
 //! 将元素属性转换为 GPUI 构建器方法调用代码。
 //!
@@ -59,10 +59,6 @@ pub(super) fn apply_css_styles(
             Attribute::Static { name, value, .. } if name == "id" => Some(value.as_str()),
             _ => None,
         });
-
-    if class_value.is_empty() && id_value.is_none() {
-        return String::new();
-    }
 
     css::styles_for_class_with_parents(sheet, tag, &class_value, id_value, parents)
 }

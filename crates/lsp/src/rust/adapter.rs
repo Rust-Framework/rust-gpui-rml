@@ -451,6 +451,36 @@ impl RustSemanticQuery for RaAdapter {
     fn is_ready(&self) -> bool {
         self.host.is_ready()
     }
+
+    fn find_references(
+        &self,
+        _uri: &Url,
+        _pos: Position,
+        _include_declaration: bool,
+    ) -> Vec<SymbolLocation> {
+        // RA 后端实现待 ra_ap_* 依赖恢复后补齐
+        Vec::new()
+    }
+
+    fn rename_member(
+        &self,
+        _rml_rs_uri: &Url,
+        _struct_name: &str,
+        _member: &str,
+        _new_name: &str,
+    ) -> Vec<lsp_types::TextEdit> {
+        // RA 后端实现待 ra_ap_* 依赖恢复后补齐
+        Vec::new()
+    }
+
+    fn rename_struct(
+        &self,
+        _old_name: &str,
+        _new_name: &str,
+    ) -> std::collections::HashMap<Url, Vec<lsp_types::TextEdit>> {
+        // RA 后端实现待 ra_ap_* 依赖恢复后补齐
+        std::collections::HashMap::new()
+    }
 }
 
 // ──────────────────────────────────────────────────────────────────────────

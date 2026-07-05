@@ -225,6 +225,57 @@ impl LspClient {
         });
         self.send_request("textDocument/definition", params)
     }
+
+    pub fn references(
+        &self,
+        uri: &Uri,
+        position: Position,
+        include_declaration: bool,
+    ) -> Receiver<Result<Value>> {
+        let params = serde_json::json!({
+            "textDocument": { "uri": uri.as_str() },
+            "position": position,
+            "context": { "includeDeclaration": include_declaration },
+        });
+        self.send_request("textDocument/references", params)
+    }
+
+    pub fn document_symbol(&self, uri: &Uri) -> Receiver<Result<Value>> {
+        let params = serde_json::json!({
+            "textDocument": { "uri": uri.as_str() },
+        });
+        self.send_request("textDocument/documentSymbol", params)
+    }
+
+    pub fn formatting(&self, uri: &Uri) -> Receiver<Result<Value>> {
+        let params = serde_json::json!({
+            "textDocument": { "uri": uri.as_str() },
+            "options": { "tabSize": 2, "insertSpaces": true },
+        });
+        self.send_request("textDocument/formatting", params)
+    }
+
+    pub fn signature_help(&self, uri: &Uri, position: Position) -> Receiver<Result<Value>> {
+        let params = serde_json::json!({
+            "textDocument": { "uri": uri.as_str() },
+            "position": position,
+        });
+        self.send_request("textDocument/signatureHelp", params)
+    }
+
+    pub fn rename(
+        &self,
+        uri: &Uri,
+        position: Position,
+        new_name: &str,
+    ) -> Receiver<Result<Value>> {
+        let params = serde_json::json!({
+            "textDocument": { "uri": uri.as_str() },
+            "position": position,
+            "newName": new_name,
+        });
+        self.send_request("textDocument/rename", params)
+    }
 }
 
 fn request_id_to_u64(id: &RequestId) -> Option<u64> {

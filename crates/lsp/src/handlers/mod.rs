@@ -8,5 +8,6 @@ pub mod formatting;
 pub mod hover;
 pub mod initialize;
 pub mod references;
+pub mod rename;
 pub mod signature_help;
 pub mod sync;

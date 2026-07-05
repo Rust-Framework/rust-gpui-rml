@@ -43,6 +43,10 @@ pub fn handle_request(
             handlers::signature_help::handle_signature_help(req.params, state)
                 .map(|v| v.and_then(|s| serde_json::to_value(s).ok()))
         }
+        "textDocument/rename" => {
+            handlers::rename::handle_rename(req.params, state)
+                .map(|v| v.and_then(|e| serde_json::to_value(e).ok()))
+        }
         _ => {
             log::debug!("unhandled request: {}", req.method);
             Ok(None)

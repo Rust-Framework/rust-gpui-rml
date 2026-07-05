@@ -888,21 +888,39 @@ impl RenderOnce for Tab {
             .child(inner_element)
             .when_some(self.suffix, |this, suffix| this.child(suffix))
             .when(self.closable && !self.disabled, |this| {
+                // 激活 tab 常显；非激活 tab 仅在父 tab hover 时显示
+                let btn_size = match self.size {
+                    Size::XSmall => px(16.),
+                    Size::Small => px(18.),
+                    Size::Large => px(22.),
+                    _ => px(20.),
+                };
                 let close_btn = if m {
-                    // 测量模式：只渲染 close 按钮的占位（确保宽度准确），无交互
+                    // 测量模式：尺寸须与正式按钮一致，确保宽度测量准确
                     div()
                         .opacity(0.)
-                        .px_0p5()
+                        .size(btn_size)
+                        .flex()
+                        .items_center()
+                        .justify_center()
                         .child(Icon::new(IconName::Close).xsmall())
                         .into_any_element()
                 } else {
                     let on_close = self.on_close.clone();
+                    let hover_bg = cx.theme().tokens.secondary_hover;
                     div()
                         .id(("tab-close", self.ix))
-                        .group_hover(group_name.clone(), |this| this.opacity(1.))
-                        .opacity(0.)
+                        .size(btn_size)
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .rounded(px(4.))
                         .cursor_pointer()
-                        .px_0p5()
+                        .when(!self.selected, |this| {
+                            this.opacity(0.)
+                                .group_hover(group_name.clone(), |this| this.opacity(1.))
+                        })
+                        .hover(move |this| this.bg(hover_bg))
                         .child(Icon::new(IconName::Close).xsmall())
                         .when_some(on_close, |this, on_close| {
                             this.on_click(move |event, window, cx| {

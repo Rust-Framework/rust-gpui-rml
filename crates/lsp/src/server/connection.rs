@@ -151,6 +151,7 @@ fn build_capabilities() -> ServerCapabilities {
             retrigger_characters: None,
             work_done_progress_options: Default::default(),
         }),
+        rename_provider: Some(lsp_types::OneOf::Left(true)),
         ..Default::default()
     }
 }
