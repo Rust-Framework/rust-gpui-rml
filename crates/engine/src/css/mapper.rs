@@ -68,6 +68,11 @@ fn map_declaration(decl: &Declaration, vars: &HashMap<String, Value>) -> Option<
             Value::Keyword(k) if k == "column" => Some("flex_col()".into()),
             _ => None,
         },
+        "flex-wrap" => match &value {
+            Value::Keyword(k) if k == "wrap" => Some("flex_wrap()".into()),
+            Value::Keyword(k) if k == "nowrap" => Some("flex_nowrap()".into()),
+            _ => None,
+        },
         "justify-content" => match &value {
             Value::Keyword(k) if k == "center" => Some("justify_center()".into()),
             Value::Keyword(k) if k == "flex-start" || k == "start" => Some("justify_start()".into()),
@@ -82,7 +87,12 @@ fn map_declaration(decl: &Declaration, vars: &HashMap<String, Value>) -> Option<
             _ => None,
         },
         "flex" => match &value {
-            Value::Number(n) if *n == 1.0 => Some("flex_1()".into()),
+            // `flex: <number>` → grow=N, shrink=0, basis=0（CSS 标准 `flex: <number>` 语义）
+            // GPUI 无 flex_basis_0() 简写，使用 flex_basis(gpui::px(0.)) 显式设置 basis=0
+            Value::Number(n) => Some(format!(
+                "flex_grow({:?}).flex_shrink_0().flex_basis(gpui::px(0.))",
+                n
+            )),
             _ => None,
         },
         "min-width" => match &value {
@@ -327,9 +337,26 @@ mod tests {
 
     #[test]
     fn map_flex_one() {
+        // `flex: 1` → grow=1, shrink=0, basis=0（CSS `flex: <number>` 标准）
         let d = decl("flex", Value::Number(1.0));
         let code = map_declarations(&[d], &HashMap::new());
-        assert!(code.contains(".flex_1()"));
+        assert!(code.contains(".flex_grow(1"));
+        assert!(code.contains(".flex_shrink_0()"));
+        assert!(code.contains(".flex_basis(gpui::px(0.))"));
+    }
+
+    #[test]
+    fn map_flex_number() {
+        // `flex: 2` / `flex: 3.5` 等任意数字均按 grow=N / shrink=0 / basis=0 映射
+        let d = decl("flex", Value::Number(2.0));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".flex_grow(2"));
+        assert!(code.contains(".flex_shrink_0()"));
+        assert!(code.contains(".flex_basis(gpui::px(0.))"));
+
+        let d = decl("flex", Value::Number(3.5));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".flex_grow(3.5"));
     }
 
     #[test]

@@ -1,0 +1,49 @@
+<component>
+    <div v-flex="" class="case-pane doc-pane">
+        <h2>{t("case.avatar_group.title")}</h2>
+
+        <Card title="组件说明">
+            <p>AvatarGroup 是 gpui-component 头像分组容器的 RML 封装。无 ElementId 构造（StatelessNoId），容器模式，子节点为 Avatar 组件。</p>
+            <p>通过 limit 属性限制最大显示数量，ellipsis 属性启用溢出折叠显示 +N。</p>
+        </Card>
+
+        <Card title="基础用法">
+            <p>包裹多个 Avatar 子节点，水平排列展示。</p>
+            <AvatarGroup>
+                <Avatar name="Alice" />
+                <Avatar name="Bob" />
+                <Avatar name="Charlie" />
+            </AvatarGroup>
+        </Card>
+
+        <Card title="数量限制">
+            <p>limit 属性限制最大显示数量，超出部分隐藏。</p>
+            <AvatarGroup limit="3">
+                <Avatar name="Alice" />
+                <Avatar name="Bob" />
+                <Avatar name="Charlie" />
+                <Avatar name="Dave" />
+                <Avatar name="Eve" />
+            </AvatarGroup>
+        </Card>
+
+        <Card title="溢出折叠">
+            <p>ellipsis 属性在超出 limit 时显示 +N 提示。</p>
+            <AvatarGroup limit="2" ellipsis="">
+                <Avatar name="Alice" />
+                <Avatar name="Bob" />
+                <Avatar name="Charlie" />
+                <Avatar name="Dave" />
+            </AvatarGroup>
+        </Card>
+
+        <Card title="API">
+            <div class="api-table">
+                <div class="api-row api-header"><span class="api-prop-name">属性</span><span class="api-prop-type">类型</span><span>说明</span></div>
+                <div class="api-row"><span class="api-prop-name">limit</span><span class="api-prop-type">数字</span><span>最大显示数量</span></div>
+                <div class="api-row"><span class="api-prop-name">ellipsis</span><span class="api-prop-type">布尔标志</span><span>溢出显示 +N</span></div>
+                <div class="api-row"><span class="api-prop-name">子节点</span><span class="api-prop-type">Avatar[]</span><span>头像列表</span></div>
+            </div>
+        </Card>
+    </div>
+</component>

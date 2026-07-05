@@ -86,6 +86,8 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
     ("AvatarGroup", &["limit", "ellipsis"]),
     // Card 专用（Ant Design 风格卡片，title/extra/cover/footer/bordered/borderless/hoverable）
     ("Card", &["title", "extra", "cover", "footer", "bordered", "borderless", "hoverable"]),
+    // Separator 专用（无 new() 构造器，通过 vertical/dashed 选择 horizontal/vertical/dashed 构造）
+    ("Separator", &["vertical", "dashed"]),
     // TabBar 专用（标签栏容器，variant 快捷方法 + menu + selected_index + prefix/suffix + on_click）
     ("TabBar", &[
         "selected_index", "on_click", "prefix", "suffix", "last_empty_space",

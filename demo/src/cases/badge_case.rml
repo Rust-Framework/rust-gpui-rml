@@ -1,0 +1,35 @@
+<component>
+    <div v-flex="" class="case-pane doc-pane">
+        <h2>{t("case.badge.title")}</h2>
+
+        <Card title="组件说明">
+            <p>Badge 是 gpui-component 徽标组件的 RML 封装，标签为 Badge。无 ElementId 构造（StatelessNoId），支持容器模式包裹子内容。</p>
+            <p>核心用法：包裹子元素并通过 dot/count 属性显示状态徽标。dot 显示小圆点，count 显示数字。</p>
+        </Card>
+
+        <Card title="基础用法">
+            <p>包裹文本内容，通过 count 显示数字徽标。</p>
+            <div h-flex="" gap-4="">
+                <Badge>5</Badge>
+                <Badge>99+</Badge>
+            </div>
+        </Card>
+
+        <Card title="圆点徽标">
+            <p>dot 属性显示小圆点徽标，常用于「新消息」提示。</p>
+            <div h-flex="" gap-4="">
+                <Badge dot="">消息</Badge>
+                <Badge dot="">通知</Badge>
+            </div>
+        </Card>
+
+        <Card title="API">
+            <div class="api-table">
+                <div class="api-row api-header"><span class="api-prop-name">属性</span><span class="api-prop-type">类型</span><span>说明</span></div>
+                <div class="api-row"><span class="api-prop-name">dot</span><span class="api-prop-type">布尔标志</span><span>显示圆点徽标</span></div>
+                <div class="api-row"><span class="api-prop-name">count</span><span class="api-prop-type">数字</span><span>显示数字徽标</span></div>
+                <div class="api-row"><span class="api-prop-name">size</span><span class="api-prop-type">small/medium/large</span><span>尺寸</span></div>
+            </div>
+        </Card>
+    </div>
+</component>

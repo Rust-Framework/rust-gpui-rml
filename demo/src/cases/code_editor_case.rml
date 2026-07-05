@@ -1,0 +1,23 @@
+<component>
+    <div v-flex="" class="case-pane doc-pane">
+        <h2>{t("case.code_editor.title")}</h2>
+
+        <Card title="组件说明">
+            <p>CodeEditor 是基于 InputState 的代码编辑器组件，自动应用 mono 字体 + size_full。Stateful 模式，需在 on_loaded 中初始化 InputState Entity 并通过 .code_editor(language).multi_line(true) 配置。</p>
+        </Card>
+
+        <Card title="基础用法">
+            <p>默认 Rust 代码高亮，支持多行编辑。code_editor 方法设置语言，multi_line 启用多行模式。</p>
+            <CodeEditor ref="editor_state" />
+        </Card>
+
+        <Card title="API">
+            <div class="api-table">
+                <div class="api-row api-header"><span class="api-prop-name">属性</span><span class="api-prop-type">类型</span><span>说明</span></div>
+                <div class="api-row"><span class="api-prop-name">InputState::code_editor</span><span class="api-prop-type">语言字符串</span><span>启用代码编辑器模式</span></div>
+                <div class="api-row"><span class="api-prop-name">InputState::multi_line</span><span class="api-prop-type">布尔</span><span>多行编辑</span></div>
+                <div class="api-row"><span class="api-prop-name">InputState::default_value</span><span class="api-prop-type">字符串</span><span>默认代码内容</span></div>
+            </div>
+        </Card>
+    </div>
+</component>

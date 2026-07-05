@@ -350,3 +350,654 @@ fn parse_text_segments(raw: &str) -> Vec<TextSegment> {
 fn normalize_attr_name(name: &str) -> String {
     name.replace('-', "_")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parser::ast::{Attribute, Directive, EachClause, EventHandler, Node, TextSegment};
+
+    // ─── parse() 主流程：基础结构 ───
+
+    #[test]
+    fn parse_simple_root_element() {
+        let root = parse("<window></window>").unwrap();
+        match root {
+            Node::Element(e) => {
+                assert_eq!(e.tag, "window");
+                assert!(e.children.is_empty());
+                assert!(e.attributes.is_empty());
+                assert!(e.directives.is_empty());
+            }
+            other => panic!("expected Element, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_self_closing_root() {
+        let root = parse("<input />").unwrap();
+        match root {
+            Node::Element(e) => {
+                assert_eq!(e.tag, "input");
+                assert!(e.children.is_empty());
+            }
+            other => panic!("expected Element, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_nested_elements() {
+        let root = parse("<window><div><span></span></div></window>").unwrap();
+        match root {
+            Node::Element(e) => {
+                assert_eq!(e.tag, "window");
+                assert_eq!(e.children.len(), 1);
+                match &e.children[0] {
+                    Node::Element(div) => {
+                        assert_eq!(div.tag, "div");
+                        assert_eq!(div.children.len(), 1);
+                        match &div.children[0] {
+                            Node::Element(span) => assert_eq!(span.tag, "span"),
+                            other => panic!("expected span, got {:?}", other),
+                        }
+                    }
+                    other => panic!("expected div, got {:?}", other),
+                }
+            }
+            other => panic!("expected Element, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_skips_whitespace_between_tags() {
+        // 标签间的空白应被忽略，不产生 Text 节点
+        let root = parse("<window>\n  <div></div>\n</window>").unwrap();
+        match root {
+            Node::Element(e) => {
+                assert_eq!(e.children.len(), 1);
+                match &e.children[0] {
+                    Node::Element(div) => assert_eq!(div.tag, "div"),
+                    other => panic!("expected div, got {:?}", other),
+                }
+            }
+            other => panic!("expected Element, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_no_root_element_returns_error() {
+        let result = parse("");
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().message, "no root element found");
+    }
+
+    #[test]
+    fn parse_only_whitespace_returns_error() {
+        let result = parse("   \n\t  ");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn parse_unclosed_tag_returns_error() {
+        let result = parse("<window><div></window>");
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(
+            err.message.contains("expected </div>"),
+            "expected error about missing </div>, got: {}",
+            err.message
+        );
+    }
+
+    #[test]
+    fn parse_mismatched_close_tag_returns_error() {
+        let result = parse("<window><div></span></window>");
+        assert!(result.is_err());
+    }
+
+    // ─── parse() 主流程：属性解析 ───
+
+    #[test]
+    fn parse_static_attribute() {
+        let root = parse(r#"<button label="Click"></button>"#).unwrap();
+        match root {
+            Node::Element(e) => {
+                assert_eq!(e.attributes.len(), 1);
+                match &e.attributes[0] {
+                    Attribute::Static { name, value } => {
+                        assert_eq!(name, "label");
+                        assert_eq!(value, "Click");
+                    }
+                    other => panic!("expected Static, got {:?}", other),
+                }
+            }
+            other => panic!("expected Element, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_bind_attribute() {
+        let root = parse(r#"<button label={title}></button>"#).unwrap();
+        match root {
+            Node::Element(e) => {
+                assert_eq!(e.attributes.len(), 1);
+                match &e.attributes[0] {
+                    Attribute::Bind { name, expr } => {
+                        assert_eq!(name, "label");
+                        assert_eq!(expr, "title");
+                    }
+                    other => panic!("expected Bind, got {:?}", other),
+                }
+            }
+            other => panic!("expected Element, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_event_attribute_with_ident_handler() {
+        let root = parse(r#"<button onclick={handle_click}></button>"#).unwrap();
+        match root {
+            Node::Element(e) => {
+                assert_eq!(e.attributes.len(), 1);
+                match &e.attributes[0] {
+                    Attribute::Event { name, handler } => {
+                        assert_eq!(name, "onclick");
+                        assert!(matches!(handler, EventHandler::Ident(s) if s == "handle_click"));
+                    }
+                    other => panic!("expected Event, got {:?}", other),
+                }
+            }
+            other => panic!("expected Element, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_event_attribute_with_method_name() {
+        // onclick="method_name" → MethodName
+        let root = parse(r#"<button onclick="method_name"></button>"#).unwrap();
+        match root {
+            Node::Element(e) => match &e.attributes[0] {
+                Attribute::Event { handler, .. } => {
+                    assert!(matches!(handler, EventHandler::MethodName(s) if s == "method_name"));
+                }
+                other => panic!("expected Event, got {:?}", other),
+            },
+            other => panic!("expected Element, got {:?}", other),
+        }
+    }
+
+    // ─── parse() 主流程：指令解析 ───
+
+    #[test]
+    fn parse_if_directive() {
+        let root = parse(r#"<div if={visible}></div>"#).unwrap();
+        match root {
+            Node::Element(e) => {
+                assert_eq!(e.directives.len(), 1);
+                assert!(matches!(&e.directives[0], Directive::If(expr) if expr == "visible"));
+            }
+            other => panic!("expected Element, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_else_directive() {
+        let root = parse("<div else></div>").unwrap();
+        match root {
+            Node::Element(e) => {
+                assert_eq!(e.directives.len(), 1);
+                assert!(matches!(&e.directives[0], Directive::Else));
+            }
+            other => panic!("expected Element, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_each_directive_simple() {
+        let root = parse(r#"<li each={item in items}></li>"#).unwrap();
+        match root {
+            Node::Element(e) => {
+                assert_eq!(e.directives.len(), 1);
+                match &e.directives[0] {
+                    Directive::Each(EachClause { item, index, iterable }) => {
+                        assert_eq!(item, "item");
+                        assert_eq!(index, &None);
+                        assert_eq!(iterable, "items");
+                    }
+                    other => panic!("expected Each, got {:?}", other),
+                }
+            }
+            other => panic!("expected Element, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_each_directive_with_index() {
+        let root = parse(r#"<li each={index, item in items}></li>"#).unwrap();
+        match root {
+            Node::Element(e) => match &e.directives[0] {
+                Directive::Each(EachClause { item, index, iterable }) => {
+                    assert_eq!(item, "item");
+                    assert_eq!(index.as_deref(), Some("index"));
+                    assert_eq!(iterable, "items");
+                }
+                other => panic!("expected Each, got {:?}", other),
+            },
+            other => panic!("expected Element, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_model_directive_simple_field() {
+        let root = parse(r#"<input model={name}></input>"#).unwrap();
+        match root {
+            Node::Element(e) => {
+                assert_eq!(e.directives.len(), 1);
+                match &e.directives[0] {
+                    Directive::Model { field, converter } => {
+                        assert_eq!(field, "name");
+                        assert_eq!(converter, &None);
+                    }
+                    other => panic!("expected Model, got {:?}", other),
+                }
+            }
+            other => panic!("expected Element, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_model_directive_with_converter() {
+        // model={field | Converter} → Model { field, Some("Converter") }
+        let root = parse(r#"<input model={price | Currency}></input>"#).unwrap();
+        match root {
+            Node::Element(e) => match &e.directives[0] {
+                Directive::Model { field, converter } => {
+                    assert_eq!(field, "price");
+                    assert_eq!(converter.as_deref(), Some("Currency"));
+                }
+                other => panic!("expected Model, got {:?}", other),
+            },
+            other => panic!("expected Element, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_show_directive() {
+        let root = parse(r#"<div show={is_visible}></div>"#).unwrap();
+        match root {
+            Node::Element(e) => {
+                assert_eq!(e.directives.len(), 1);
+                assert!(matches!(&e.directives[0], Directive::Show(s) if s == "is_visible"));
+            }
+            other => panic!("expected Element, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_once_directive() {
+        let root = parse("<div once></div>").unwrap();
+        match root {
+            Node::Element(e) => {
+                assert_eq!(e.directives.len(), 1);
+                assert!(matches!(&e.directives[0], Directive::Once));
+            }
+            other => panic!("expected Element, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_html_directive() {
+        let root = parse(r#"<div html={raw_html}></div>"#).unwrap();
+        match root {
+            Node::Element(e) => {
+                assert_eq!(e.directives.len(), 1);
+                assert!(matches!(&e.directives[0], Directive::Html(s) if s == "raw_html"));
+            }
+            other => panic!("expected Element, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_ref_directive() {
+        let root = parse(r#"<input ref="username"></input>"#).unwrap();
+        match root {
+            Node::Element(e) => {
+                assert_eq!(e.directives.len(), 1);
+                assert!(matches!(&e.directives[0], Directive::Ref(s) if s == "username"));
+            }
+            other => panic!("expected Element, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_slot_attribute_sets_slot_name() {
+        // slot="header" 不进入 directives 或 attributes，而是设置 element.slot_name
+        let root = parse(r#"<template slot="header"></template>"#).unwrap();
+        match root {
+            Node::Element(e) => {
+                assert!(e.directives.is_empty());
+                assert!(e.attributes.is_empty());
+                assert_eq!(e.slot_name.as_deref(), Some("header"));
+            }
+            other => panic!("expected Element, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_key_directive_with_binding() {
+        let root = parse(r#"<li key={item.id}></li>"#).unwrap();
+        match root {
+            Node::Element(e) => {
+                assert_eq!(e.directives.len(), 1);
+                assert!(matches!(&e.directives[0], Directive::Key(s) if s == "item.id"));
+            }
+            other => panic!("expected Element, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_key_attribute_with_static_value() {
+        // key="static" 不进入 directives，而是作为 Static 属性
+        let root = parse(r#"<li key="static-key"></li>"#).unwrap();
+        match root {
+            Node::Element(e) => {
+                assert!(e.directives.is_empty());
+                assert_eq!(e.attributes.len(), 1);
+                match &e.attributes[0] {
+                    Attribute::Static { name, value } => {
+                        assert_eq!(name, "key");
+                        assert_eq!(value, "static-key");
+                    }
+                    other => panic!("expected Static key, got {:?}", other),
+                }
+            }
+            other => panic!("expected Element, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_kebab_case_attribute_normalized() {
+        // label-width → label_width（kebab → snake）
+        let root = parse(r#"<input label-width="100"></input>"#).unwrap();
+        match root {
+            Node::Element(e) => match &e.attributes[0] {
+                Attribute::Static { name, .. } => assert_eq!(name, "label_width"),
+                other => panic!("expected Static, got {:?}", other),
+            },
+            other => panic!("expected Element, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_multiple_directives_combined() {
+        // 一个元素可以同时有多个指令；key={expr}（Binding）也进入 directives
+        let root = parse(r#"<li each={item in items} if={item.active} key={item.id}></li>"#).unwrap();
+        match root {
+            Node::Element(e) => {
+                assert_eq!(e.directives.len(), 3); // each + if + key
+                // 指令顺序保持源码顺序
+                assert!(matches!(&e.directives[0], Directive::Each(_)));
+                assert!(matches!(&e.directives[1], Directive::If(_)));
+                assert!(matches!(&e.directives[2], Directive::Key(_)));
+            }
+            other => panic!("expected Element, got {:?}", other),
+        }
+    }
+
+    // ─── parse() 主流程：文本插值 ───
+
+    #[test]
+    fn parse_pure_text_child() {
+        let root = parse("<window>Hello</window>").unwrap();
+        match root {
+            Node::Element(e) => {
+                assert_eq!(e.children.len(), 1);
+                match &e.children[0] {
+                    Node::Text(t) => assert_eq!(t, "Hello"),
+                    other => panic!("expected Text, got {:?}", other),
+                }
+            }
+            other => panic!("expected Element, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_pure_interpolation_child() {
+        // 单个 {expr} 不混字面量 → Interpolation 节点
+        let root = parse("<window>{count}</window>").unwrap();
+        match root {
+            Node::Element(e) => {
+                assert_eq!(e.children.len(), 1);
+                match &e.children[0] {
+                    Node::Interpolation(expr) => assert_eq!(expr, "count"),
+                    other => panic!("expected Interpolation, got {:?}", other),
+                }
+            }
+            other => panic!("expected Element, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_mixed_text_child() {
+        // "Total: {count} items" → MixedText([Literal, Interpolation, Literal])
+        let root = parse("<window>Total: {count} items</window>").unwrap();
+        match root {
+            Node::Element(e) => {
+                assert_eq!(e.children.len(), 1);
+                match &e.children[0] {
+                    Node::MixedText(segs) => {
+                        assert_eq!(segs.len(), 3);
+                        assert!(matches!(&segs[0], TextSegment::Literal(s) if s == "Total: "));
+                        assert!(matches!(&segs[1], TextSegment::Interpolation(e) if e == "count"));
+                        assert!(matches!(&segs[2], TextSegment::Literal(s) if s == " items"));
+                    }
+                    other => panic!("expected MixedText, got {:?}", other),
+                }
+            }
+            other => panic!("expected Element, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_nested_braces_in_interpolation() {
+        // {obj.{field}} 中的嵌套 { } 应被正确处理（depth 跟踪）
+        // 简单验证：{a + {b}} 应能解析（虽然语义上无意义，但语法上 depth 平衡）
+        let root = parse("<window>{a + {b}}</window>").unwrap();
+        match root {
+            Node::Element(e) => {
+                assert_eq!(e.children.len(), 1);
+                // 不论是 Interpolation 还是 MixedText，至少要解析成功
+                assert!(!e.children.is_empty());
+            }
+            other => panic!("expected Element, got {:?}", other),
+        }
+    }
+
+    // ─── 辅助函数：parse_each_expr ───
+
+    #[test]
+    fn parse_each_expr_simple_item() {
+        let clause = parse_each_expr("item in items").unwrap();
+        assert_eq!(clause.item, "item");
+        assert_eq!(clause.index, None);
+        assert_eq!(clause.iterable, "items");
+    }
+
+    #[test]
+    fn parse_each_expr_with_index() {
+        let clause = parse_each_expr("idx, item in items").unwrap();
+        assert_eq!(clause.item, "item");
+        assert_eq!(clause.index.as_deref(), Some("idx"));
+        assert_eq!(clause.iterable, "items");
+    }
+
+    #[test]
+    fn parse_each_expr_trims_whitespace() {
+        let clause = parse_each_expr("  item  in  items  ").unwrap();
+        assert_eq!(clause.item, "item");
+        assert_eq!(clause.iterable, "items");
+    }
+
+    #[test]
+    fn parse_each_expr_missing_in_returns_error() {
+        let result = parse_each_expr("item items");
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.message.contains("invalid each expression"));
+    }
+
+    #[test]
+    fn parse_each_expr_complex_iterable() {
+        // 复杂表达式作为 iterable：`item in self.list.items`
+        let clause = parse_each_expr("item in self.list.items").unwrap();
+        assert_eq!(clause.item, "item");
+        assert_eq!(clause.iterable, "self.list.items");
+    }
+
+    // ─── 辅助函数：parse_event_handler ───
+
+    #[test]
+    fn parse_event_handler_single_ident() {
+        let h = parse_event_handler("handle_click");
+        assert!(matches!(h, EventHandler::Ident(s) if s == "handle_click"));
+    }
+
+    #[test]
+    fn parse_event_handler_with_args() {
+        let h = parse_event_handler("on_click, {item.id}, 'literal'");
+        match h {
+            EventHandler::WithArgs(method, args) => {
+                assert_eq!(method, "on_click");
+                assert_eq!(args.len(), 2);
+                assert_eq!(args[0], "item.id"); // {expr} → expr
+                assert_eq!(args[1], "'literal'"); // 'literal' 保留原样
+            }
+            other => panic!("expected WithArgs, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_event_handler_trims_args() {
+        let h = parse_event_handler("fn,  {expr}  ,  'str'");
+        match h {
+            EventHandler::WithArgs(_, args) => {
+                assert_eq!(args[0], "expr");
+                assert_eq!(args[1], "'str'");
+            }
+            other => panic!("expected WithArgs, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_event_handler_brace_strip() {
+        // {expr} 中 expr 被提取（去除 { } 与首尾空格）
+        let h = parse_event_handler("fn, {  complex.expr  }");
+        match h {
+            EventHandler::WithArgs(_, args) => assert_eq!(args[0], "complex.expr"),
+            other => panic!("expected WithArgs, got {:?}", other),
+        }
+    }
+
+    // ─── 辅助函数：parse_text_segments ───
+
+    #[test]
+    fn parse_text_segments_pure_literal() {
+        let segs = parse_text_segments("hello world");
+        assert_eq!(segs.len(), 1);
+        assert!(matches!(&segs[0], TextSegment::Literal(s) if s == "hello world"));
+    }
+
+    #[test]
+    fn parse_text_segments_pure_interpolation() {
+        let segs = parse_text_segments("{count}");
+        assert_eq!(segs.len(), 1);
+        assert!(matches!(&segs[0], TextSegment::Interpolation(e) if e == "count"));
+    }
+
+    #[test]
+    fn parse_text_segments_mixed() {
+        let segs = parse_text_segments("Total: {count} items");
+        assert_eq!(segs.len(), 3);
+        assert!(matches!(&segs[0], TextSegment::Literal(s) if s == "Total: "));
+        assert!(matches!(&segs[1], TextSegment::Interpolation(e) if e == "count"));
+        assert!(matches!(&segs[2], TextSegment::Literal(s) if s == " items"));
+    }
+
+    #[test]
+    fn parse_text_segments_multiple_interpolations() {
+        let segs = parse_text_segments("{a} + {b} = {c}");
+        assert_eq!(segs.len(), 5);
+        assert!(matches!(&segs[0], TextSegment::Interpolation(e) if e == "a"));
+        assert!(matches!(&segs[1], TextSegment::Literal(s) if s == " + "));
+        assert!(matches!(&segs[2], TextSegment::Interpolation(e) if e == "b"));
+        assert!(matches!(&segs[3], TextSegment::Literal(s) if s == " = "));
+        assert!(matches!(&segs[4], TextSegment::Interpolation(e) if e == "c"));
+    }
+
+    #[test]
+    fn parse_text_segments_trims_interpolation_whitespace() {
+        // {  expr  } → "expr"（trim）
+        let segs = parse_text_segments("{  trimmed  }");
+        assert_eq!(segs.len(), 1);
+        assert!(matches!(&segs[0], TextSegment::Interpolation(e) if e == "trimmed"));
+    }
+
+    #[test]
+    fn parse_text_segments_empty_interpolation_dropped() {
+        // {} → 空插值被丢弃
+        let segs = parse_text_segments("before {} after");
+        // 应为 [Literal("before "), Literal(" after")]（{} 被丢弃，但被分割）
+        assert!(segs.iter().all(|s| matches!(s, TextSegment::Literal(_))));
+    }
+
+    #[test]
+    fn parse_text_segments_nested_braces() {
+        // {a + {b}} → depth 平衡后整体作为 Interpolation
+        let segs = parse_text_segments("{a + {b}}");
+        assert_eq!(segs.len(), 1);
+        match &segs[0] {
+            TextSegment::Interpolation(e) => {
+                // 嵌套 {} 内部内容应被收集（depth 平衡）
+                assert!(e.contains("a + ") || e.contains("a + {b}"));
+            }
+            other => panic!("expected Interpolation, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_text_segments_empty_string() {
+        let segs = parse_text_segments("");
+        assert!(segs.is_empty());
+    }
+
+    // ─── 辅助函数：normalize_attr_name ───
+
+    #[test]
+    fn normalize_attr_name_single_word() {
+        assert_eq!(normalize_attr_name("onclick"), "onclick");
+        assert_eq!(normalize_attr_name("bordered"), "bordered");
+    }
+
+    #[test]
+    fn normalize_attr_name_kebab_case() {
+        assert_eq!(normalize_attr_name("label-width"), "label_width");
+        assert_eq!(normalize_attr_name("on-activate"), "on_activate");
+    }
+
+    #[test]
+    fn normalize_attr_name_multi_dashes() {
+        assert_eq!(normalize_attr_name("data-test-id"), "data_test_id");
+        assert_eq!(normalize_attr_name("v-flex-grow"), "v_flex_grow");
+    }
+
+    #[test]
+    fn normalize_attr_name_no_dashes_unchanged() {
+        assert_eq!(normalize_attr_name("bordered"), "bordered");
+        assert_eq!(normalize_attr_name("columns"), "columns");
+    }
+
+    #[test]
+    fn normalize_attr_name_already_snake() {
+        // snake_case 输入应原样返回（无 `-`）
+        assert_eq!(normalize_attr_name("label_width"), "label_width");
+    }
+}

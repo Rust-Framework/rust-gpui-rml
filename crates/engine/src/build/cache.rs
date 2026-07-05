@@ -86,3 +86,291 @@ impl Cache {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    /// 全局递增计数器，确保每个测试使用独立的临时文件路径。
+    static TEST_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+    /// 构造唯一的临时文件路径（不创建文件），用于 load/save 测试。
+    fn unique_temp_path() -> PathBuf {
+        let id = TEST_COUNTER.fetch_add(1, Ordering::SeqCst);
+        std::env::temp_dir().join(format!(
+            "rml_cache_test_{}_{}.json",
+            std::process::id(),
+            id
+        ))
+    }
+
+    /// 测试结束后清理临时文件。
+    struct TempFileGuard(PathBuf);
+    impl Drop for TempFileGuard {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_file(&self.0);
+        }
+    }
+
+    // ─── load：文件不存在时返回空缓存 ───
+
+    #[test]
+    fn load_missing_file_returns_empty() {
+        let path = unique_temp_path();
+        let _guard = TempFileGuard(path.clone());
+        let cache = Cache::load(&path);
+        assert!(cache.entries.is_empty());
+        assert!(cache.engine_hash.is_none());
+        assert!(cache.codebehind_hash.is_empty());
+    }
+
+    // ─── load：解析失败时返回空缓存 ───
+
+    #[test]
+    fn load_corrupt_json_returns_empty() {
+        let path = unique_temp_path();
+        let _guard = TempFileGuard(path.clone());
+        std::fs::write(&path, "{ not valid json").unwrap();
+        let cache = Cache::load(&path);
+        assert!(cache.entries.is_empty(), "corrupt JSON should yield empty cache");
+    }
+
+    // ─── save/load：往返一致性 ───
+
+    #[test]
+    fn save_and_load_roundtrip_preserves_entries() {
+        let path = unique_temp_path();
+        let _guard = TempFileGuard(path.clone());
+
+        let mut original = Cache::default();
+        original.entries.insert(
+            "src/foo.rml".to_string(),
+            "abc123".to_string(),
+        );
+        original.entries.insert(
+            "src/bar.rml".to_string(),
+            "def456".to_string(),
+        );
+
+        original.save(&path).unwrap();
+        let loaded = Cache::load(&path);
+
+        assert_eq!(loaded.entries.len(), 2);
+        assert_eq!(loaded.entries.get("src/foo.rml").unwrap(), "abc123");
+        assert_eq!(loaded.entries.get("src/bar.rml").unwrap(), "def456");
+    }
+
+    #[test]
+    fn save_and_load_roundtrip_preserves_engine_hash() {
+        let path = unique_temp_path();
+        let _guard = TempFileGuard(path.clone());
+
+        let mut original = Cache::default();
+        original.stamp_engine("engine_v1_hash".to_string());
+
+        original.save(&path).unwrap();
+        let loaded = Cache::load(&path);
+
+        assert_eq!(loaded.engine_hash.as_deref(), Some("engine_v1_hash"));
+    }
+
+    #[test]
+    fn save_and_load_roundtrip_preserves_codebehind_hash() {
+        let path = unique_temp_path();
+        let _guard = TempFileGuard(path.clone());
+
+        let mut original = Cache::default();
+        original.stamp_codebehind("src/foo.rml".to_string(), "cb_hash_1".to_string());
+        original.stamp_codebehind("src/bar.rml".to_string(), "cb_hash_2".to_string());
+
+        original.save(&path).unwrap();
+        let loaded = Cache::load(&path);
+
+        assert_eq!(loaded.codebehind_hash.len(), 2);
+        assert_eq!(loaded.codebehind_hash.get("src/foo.rml").unwrap(), "cb_hash_1");
+        assert_eq!(loaded.codebehind_hash.get("src/bar.rml").unwrap(), "cb_hash_2");
+    }
+
+    // ─── is_valid_for_engine ───
+
+    #[test]
+    fn is_valid_for_engine_none_hash_returns_false() {
+        // engine_hash 为 None（旧版缓存）→ 视为失效
+        let cache = Cache::default();
+        assert!(!cache.is_valid_for_engine("any_hash"));
+    }
+
+    #[test]
+    fn is_valid_for_engine_matching_hash_returns_true() {
+        let mut cache = Cache::default();
+        cache.stamp_engine("engine_v1".to_string());
+        assert!(cache.is_valid_for_engine("engine_v1"));
+    }
+
+    #[test]
+    fn is_valid_for_engine_mismatched_hash_returns_false() {
+        let mut cache = Cache::default();
+        cache.stamp_engine("engine_v1".to_string());
+        assert!(!cache.is_valid_for_engine("engine_v2"));
+    }
+
+    // ─── stamp_engine ───
+
+    #[test]
+    fn stamp_engine_sets_hash() {
+        let mut cache = Cache::default();
+        assert!(cache.engine_hash.is_none());
+        cache.stamp_engine("new_hash".to_string());
+        assert_eq!(cache.engine_hash.as_deref(), Some("new_hash"));
+    }
+
+    #[test]
+    fn stamp_engine_overwrites_previous_hash() {
+        let mut cache = Cache::default();
+        cache.stamp_engine("v1".to_string());
+        cache.stamp_engine("v2".to_string());
+        assert_eq!(cache.engine_hash.as_deref(), Some("v2"));
+    }
+
+    // ─── invalidate_all ───
+
+    #[test]
+    fn invalidate_all_clears_entries_and_codebehind_hash() {
+        let mut cache = Cache::default();
+        cache.entries.insert("a.rml".to_string(), "hash_a".to_string());
+        cache.entries.insert("b.rml".to_string(), "hash_b".to_string());
+        cache.stamp_codebehind("a.rml".to_string(), "cb_a".to_string());
+        cache.stamp_engine("engine_v1".to_string());
+
+        cache.invalidate_all();
+
+        assert!(cache.entries.is_empty(), "entries should be cleared");
+        assert!(
+            cache.codebehind_hash.is_empty(),
+            "codebehind_hash should be cleared"
+        );
+        // engine_hash 不应被清空（用于后续 is_valid_for_engine 检查）
+        assert_eq!(cache.engine_hash.as_deref(), Some("engine_v1"));
+    }
+
+    #[test]
+    fn invalidate_all_on_empty_cache_is_noop() {
+        let mut cache = Cache::default();
+        cache.invalidate_all();
+        assert!(cache.entries.is_empty());
+        assert!(cache.codebehind_hash.is_empty());
+    }
+
+    // ─── is_codebehind_unchanged ───
+
+    #[test]
+    fn is_codebehind_unchanged_missing_key_returns_false() {
+        // 缓存中无该 .rml 文件的 codebehind 记录 → 视为已变化（必须重新生成）
+        let cache = Cache::default();
+        assert!(!cache.is_codebehind_unchanged("src/missing.rml", "any_hash"));
+    }
+
+    #[test]
+    fn is_codebehind_unchanged_matching_hash_returns_true() {
+        let mut cache = Cache::default();
+        cache.stamp_codebehind("src/foo.rml".to_string(), "cb_v1".to_string());
+        assert!(cache.is_codebehind_unchanged("src/foo.rml", "cb_v1"));
+    }
+
+    #[test]
+    fn is_codebehind_unchanged_mismatched_hash_returns_false() {
+        let mut cache = Cache::default();
+        cache.stamp_codebehind("src/foo.rml".to_string(), "cb_v1".to_string());
+        assert!(!cache.is_codebehind_unchanged("src/foo.rml", "cb_v2"));
+    }
+
+    // ─── stamp_codebehind ───
+
+    #[test]
+    fn stamp_codebehind_inserts_new_entry() {
+        let mut cache = Cache::default();
+        assert!(cache.codebehind_hash.is_empty());
+        cache.stamp_codebehind("src/foo.rml".to_string(), "hash_1".to_string());
+        assert_eq!(cache.codebehind_hash.len(), 1);
+        assert_eq!(cache.codebehind_hash.get("src/foo.rml").unwrap(), "hash_1");
+    }
+
+    #[test]
+    fn stamp_codebehind_overwrites_existing_entry() {
+        let mut cache = Cache::default();
+        cache.stamp_codebehind("src/foo.rml".to_string(), "v1".to_string());
+        cache.stamp_codebehind("src/foo.rml".to_string(), "v2".to_string());
+        assert_eq!(cache.codebehind_hash.len(), 1);
+        assert_eq!(cache.codebehind_hash.get("src/foo.rml").unwrap(), "v2");
+    }
+
+    #[test]
+    fn stamp_codebehind_multiple_entries_coexist() {
+        let mut cache = Cache::default();
+        cache.stamp_codebehind("a.rml".to_string(), "hash_a".to_string());
+        cache.stamp_codebehind("b.rml".to_string(), "hash_b".to_string());
+        cache.stamp_codebehind("c.rml".to_string(), "hash_c".to_string());
+        assert_eq!(cache.codebehind_hash.len(), 3);
+    }
+
+    // ─── 综合场景：增量缓存工作流 ───
+
+    #[test]
+    fn incremental_workflow_engine_changed_invalidates_all() {
+        // 场景：第一次构建后，engine 源码变化 → is_valid_for_engine 返回 false，
+        // 调用 invalidate_all 清空 entries，但保留 engine_hash（已由 stamp_engine 更新）
+        let mut cache = Cache::default();
+        cache.entries.insert("a.rml".to_string(), "h1".to_string());
+        cache.entries.insert("b.rml".to_string(), "h2".to_string());
+        cache.stamp_codebehind("a.rml".to_string(), "cb1".to_string());
+        cache.stamp_engine("engine_v1".to_string());
+
+        // engine 变化
+        assert!(!cache.is_valid_for_engine("engine_v2"));
+        cache.invalidate_all();
+        cache.stamp_engine("engine_v2".to_string());
+
+        assert!(cache.entries.is_empty());
+        assert!(cache.codebehind_hash.is_empty());
+        assert_eq!(cache.engine_hash.as_deref(), Some("engine_v2"));
+    }
+
+    #[test]
+    fn incremental_workflow_codebehind_changed_only_affects_one_file() {
+        // 场景：单个 .rml.rs 文件变化，仅该文件需重新生成
+        let mut cache = Cache::default();
+        cache.entries.insert("a.rml".to_string(), "h1".to_string());
+        cache.entries.insert("b.rml".to_string(), "h2".to_string());
+        cache.stamp_codebehind("a.rml".to_string(), "cb_v1".to_string());
+        cache.stamp_codebehind("b.rml".to_string(), "cb_v1".to_string());
+        cache.stamp_engine("engine_v1".to_string());
+
+        // engine 未变化
+        assert!(cache.is_valid_for_engine("engine_v1"));
+
+        // a.rml.rs 变化（b.rml.rs 未变）
+        assert!(!cache.is_codebehind_unchanged("a.rml", "cb_v2"));
+        assert!(cache.is_codebehind_unchanged("b.rml", "cb_v1"));
+
+        // 更新 a.rml.rs 的哈希
+        cache.stamp_codebehind("a.rml".to_string(), "cb_v2".to_string());
+        assert!(cache.is_codebehind_unchanged("a.rml", "cb_v2"));
+    }
+
+    #[test]
+    fn empty_cache_save_load_roundtrip() {
+        // 空 Cache 也应能正确序列化/反序列化
+        let path = unique_temp_path();
+        let _guard = TempFileGuard(path.clone());
+
+        let original = Cache::default();
+        original.save(&path).unwrap();
+        let loaded = Cache::load(&path);
+
+        assert!(loaded.entries.is_empty());
+        assert!(loaded.engine_hash.is_none());
+        assert!(loaded.codebehind_hash.is_empty());
+    }
+}
+

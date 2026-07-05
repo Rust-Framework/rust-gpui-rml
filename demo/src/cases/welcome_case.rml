@@ -1,6 +1,7 @@
 <component>
-    <div v-flex="" class="case-pane case-empty">
-        <h2>{t("shell.pick_case")}</h2>
-        <p>{t("shell.pick_case_hint")}</p>
+    <div v-flex="" class="case-pane welcome-pane">
+        <h2>{t("shell.welcome_title")}</h2>
+        <p>{t("shell.welcome_subtitle")}</p>
+        <component each={group in grouped_items} content={self.render_group(group, _window, cx)} />
     </div>
 </component>

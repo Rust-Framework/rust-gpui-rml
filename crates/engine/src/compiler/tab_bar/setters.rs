@@ -56,6 +56,7 @@ pub fn static_setter(name: &str, value: &str, tag: &str) -> Option<String> {
 /// - `selected_index={expr}` → `.selected_index(<expr>)`（TabBar）
 /// - `prefix={expr}` / `suffix={expr}` → `.<name>(<expr>)`（element，不加 .clone()）
 /// - `last_empty_space={expr}` → `.last_empty_space(<expr>)`（TabBar）
+/// - `track_scroll={expr}` → `.track_scroll(&<expr>)`（TabBar，ScrollHandle 引用）
 /// - `menu={bool expr}` → `.menu(<expr>)`（TabBar）
 /// - `closable={bool expr}` → `.closable(<expr>)`（Tab / TabItem 共用）
 pub fn bind_setter(
@@ -71,6 +72,14 @@ pub fn bind_setter(
                 expr_str, loop_vars, computed,
             );
             Some(format!(".{}({})", name, rust_expr))
+        }
+        // track_scroll 接受 &ScrollHandle 引用，不能 clone。
+        // 用户在 .rml.rs 中声明 `my_scroll: ScrollHandle` 字段，RML 生成 `.track_scroll(&self.my_scroll)`。
+        "track_scroll" if tag == "TabBar" => {
+            let rust_expr = super::super::component::component_bind_rust_expr(
+                expr_str, loop_vars, computed,
+            );
+            Some(format!(".track_scroll(&{})", rust_expr))
         }
         "closable" => {
             let rust_expr = super::super::component::component_bind_rust_expr(
@@ -197,6 +206,26 @@ mod tests {
     fn bind_setter_tab_bar_last_empty_space() {
         let code = bind_setter("last_empty_space", "spacer", &[], &[], "TabBar").unwrap();
         assert_eq!(code, ".last_empty_space(self.spacer)");
+    }
+
+    #[test]
+    fn bind_setter_tab_bar_track_scroll() {
+        // track_scroll={my_scroll} → .track_scroll(&self.my_scroll)（ScrollHandle 引用）
+        let code = bind_setter("track_scroll", "my_scroll", &[], &[], "TabBar").unwrap();
+        assert_eq!(code, ".track_scroll(&self.my_scroll)");
+    }
+
+    #[test]
+    fn bind_setter_tab_bar_track_scroll_with_loop_var() {
+        // 在 each 循环内：track_scroll={item.scroll} → .track_scroll(&item.scroll)
+        let code = bind_setter("track_scroll", "item.scroll", &["item"], &[], "TabBar").unwrap();
+        assert_eq!(code, ".track_scroll(&item.scroll)");
+    }
+
+    #[test]
+    fn bind_setter_track_scroll_only_for_tab_bar() {
+        // Tab 不支持 track_scroll
+        assert!(bind_setter("track_scroll", "x", &[], &[], "Tab").is_none());
     }
 
     #[test]

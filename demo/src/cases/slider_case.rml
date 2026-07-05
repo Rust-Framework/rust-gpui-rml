@@ -1,0 +1,27 @@
+<component>
+    <div v-flex="" class="case-pane doc-pane">
+        <h2>{t("case.slider.title")}</h2>
+
+        <Card title="组件说明">
+            <p>Slider 是 gpui-component 滑块组件的 RML 封装。Stateful 模式，需在 on_loaded 中初始化 SliderState Entity 并设置 min/max/default_value。</p>
+        </Card>
+
+        <Card title="基础用法">
+            <p>min/max 定义范围，default_value 设置初始值，step 设置步长。</p>
+            <Slider ref="slider_state" />
+        </Card>
+
+        <Card title="禁用状态">
+            <p>disabled 属性禁用滑块交互（disabled 是 Slider 组件方法，需在 RML 标签上设置）。</p>
+            <Slider ref="disabled_state" disabled={true} />
+        </Card>
+
+        <Card title="API">
+            <div class="api-table">
+                <div class="api-row api-header"><span class="api-prop-name">属性</span><span class="api-prop-type">类型</span><span>说明</span></div>
+                <div class="api-row"><span class="api-prop-name">disabled</span><span class="api-prop-type">布尔</span><span>禁用</span></div>
+                <div class="api-row"><span class="api-prop-name">SliderState::min/max/step/default_value</span><span class="api-prop-type">在 on_loaded 中设置</span><span>范围与初始值</span></div>
+            </div>
+        </Card>
+    </div>
+</component>

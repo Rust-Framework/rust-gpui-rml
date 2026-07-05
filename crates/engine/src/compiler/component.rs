@@ -62,6 +62,20 @@ pub fn gen_component(
         _ => None,
     });
 
+    // Label 构造器接受 label 文本而非 ElementId，委托到专用模块
+    if tags::canonical_tag(tag) == "Label" {
+        return crate::compiler::label::gen_label(elem, ctx, id_counter, loop_vars);
+    }
+    // Separator 无 new() 构造器，使用 horizontal()/vertical() 关联函数
+    if tags::canonical_tag(tag) == "Separator" {
+        return crate::compiler::separator::gen_separator(elem, ctx, id_counter, loop_vars);
+    }
+    // Tag 的 variant 属性（primary/secondary/danger 等）是关联函数而非方法，
+    // 需在构造器选择阶段决定使用 Tag::new() 还是 Tag::primary() 等
+    if tags::canonical_tag(tag) == "Tag" {
+        return crate::compiler::tag::gen_tag(elem, ctx, id_counter, loop_vars);
+    }
+
     let id_val = *id_counter;
     *id_counter += 1;
     let mut code = match component.kind {
@@ -184,6 +198,10 @@ pub fn gen_component(
                     if name == "label" || (resolved == "Avatar" && name == "name") {
                         label_set_by_attr = true;
                     }
+                } else {
+                    // setter 未命中：若属性在 props_registry 中已登记，
+                    // 说明 codegen 缺失映射（框架 bug），按 strict 决定 error 或 warning。
+                    check_missing_mapping(ctx, &resolved, name, "static")?;
                 }
             }
             Attribute::Bind { name, expr } => {
@@ -193,6 +211,8 @@ pub fn gen_component(
                     if name == "label" || (resolved == "Avatar" && name == "name") {
                         label_set_by_attr = true;
                     }
+                } else {
+                    check_missing_mapping(ctx, &resolved, name, "bind")?;
                 }
             }
             Attribute::Event { name, handler } => {
@@ -300,12 +320,23 @@ pub fn component_static_setter(name: &str, value: &str, tag: &str) -> Option<Str
             };
             Some(format!(".with_size({})", size))
         }
-        "compact" | "loading" => {
+        // compact 是无参方法（Button/ButtonGroup.compact()）
+        "compact" => {
             if value.is_empty() || value.eq_ignore_ascii_case("true") {
-                Some(format!(".{}()", name))
+                Some(format!(".compact()"))
             } else {
                 None
             }
+        }
+        // loading 需要 bool 参数（Button/Progress/ProgressCircle.loading(bool)）
+        // HTML 布尔属性语义：空值或 "true" 为 true，其他为 false
+        "loading" => {
+            let b = if value.is_empty() || value.eq_ignore_ascii_case("true") {
+                "true"
+            } else {
+                "false"
+            };
+            Some(format!(".loading({})", b))
         }
         // StyledExt 字体权重（值为空或 "true" 时启用）
         "font_thin" | "font_extralight" | "font_light" | "font_normal" | "font_medium"
@@ -330,19 +361,7 @@ pub fn component_static_setter(name: &str, value: &str, tag: &str) -> Option<Str
         "class" | "id" | "style" | "src" | "href" | "type" | "value" => None,
         // ref 属性已在构造器中处理（生成稳定 ID），此处跳过
         "ref" => None,
-        _ => {
-            // 未命中：若属性在 props_registry 中已登记但此处无 match 分支，
-            // 说明 codegen 映射缺失，输出 warning 提示框架开发者补全。
-            if crate::compiler::props_registry::is_prop_registered(tag, name) {
-                eprintln!(
-                    "[rml warning] <{}> static property `{}` is registered in props_registry \
-                     but has no mapping in component_static_setter; property will be silently dropped. \
-                     Add a match arm in crates/engine/src/compiler/component.rs.",
-                    tag, name
-                );
-            }
-            None
-        }
+        _ => None,
     }
 }
 
@@ -436,7 +455,12 @@ pub fn component_bind_setter(
         }
         "checked" => {
             let rust_expr = component_bind_rust_expr(expr_str, loop_vars, computed);
-            Some(format!(".selected({})", rust_expr))
+            // Switch 有 .checked() 但无 Selectable trait；其他组件（Checkbox）通过 .selected() 设置
+            if tag == "Switch" {
+                Some(format!(".checked({})", rust_expr))
+            } else {
+                Some(format!(".selected({})", rust_expr))
+            }
         }
         "label" => {
             let rust_expr = component_bind_rust_expr(expr_str, loop_vars, computed);
@@ -447,19 +471,33 @@ pub fn component_bind_setter(
             let rust_expr = component_bind_rust_expr(expr_str, loop_vars, computed);
             Some(format!(".with_size({})", rust_expr))
         }
-        _ => {
-            // 未命中：若属性在 props_registry 中已登记但此处无 match 分支，
-            // 说明 codegen 映射缺失，输出 warning 提示框架开发者补全。
-            if crate::compiler::props_registry::is_prop_registered(tag, name) {
-                eprintln!(
-                    "[rml warning] <{}> bind property `{}` is registered in props_registry \
-                     but has no mapping in component_bind_setter; property will be silently dropped. \
-                     Add a match arm in crates/engine/src/compiler/component.rs.",
-                    tag, name
-                );
-            }
-            None
-        }
+        _ => None,
+    }
+}
+
+/// 处理「已注册但无映射」的属性：strict 模式下报 error，否则输出 warning。
+///
+/// 由 `gen_component` 在 setter 返回 None 后调用。若属性未在 props_registry 登记，
+/// 视为合法跳过（validator 已校验未知属性，此处不重复报错）。
+fn check_missing_mapping(
+    ctx: &CodegenCtx,
+    tag: &str,
+    name: &str,
+    kind: &str,
+) -> Result<(), CodegenError> {
+    if !crate::compiler::props_registry::is_prop_registered(tag, name) {
+        return Ok(());
+    }
+    let msg = format!(
+        "<{}> {} property `{}` is registered in props_registry but has no mapping in component_{}_setter; \
+         property will be silently dropped. Add a match arm in crates/engine/src/compiler/component.rs.",
+        tag, kind, name, kind
+    );
+    if ctx.strict {
+        Err(CodegenError { message: msg })
+    } else {
+        eprintln!("[rml warning] {}", msg);
+        Ok(())
     }
 }
 
@@ -648,14 +686,19 @@ mod tests {
 
     #[test]
     fn static_setter_size_modifiers() {
-        // compact/loading 仍是布尔标志
+        // compact 是无参方法
         assert_eq!(
             component_static_setter("compact", "", "Button").unwrap(),
             ".compact()"
         );
+        // loading 需要 bool 参数（Button/Progress/ProgressCircle.loading(bool)）
         assert_eq!(
             component_static_setter("loading", "", "Button").unwrap(),
-            ".loading()"
+            ".loading(true)"
+        );
+        assert_eq!(
+            component_static_setter("loading", "false", "Progress").unwrap(),
+            ".loading(false)"
         );
     }
 

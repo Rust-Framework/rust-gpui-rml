@@ -1,0 +1,26 @@
+<component>
+    <div v-flex="" class="case-pane doc-pane">
+        <h2>{t("case.title_bar.title")}</h2>
+
+        <Card title="组件说明">
+            <p>TitleBar 是 gpui-component 窗口标题栏组件的 RML 封装。无 ElementId 构造（StatelessNoId），容器模式。</p>
+            <p>自动渲染窗口控制按钮（最小化/最大化/关闭），子节点渲染在中央区域。通常用于 modern-window 的标题栏组合。</p>
+        </Card>
+
+        <Card title="基础用法">
+            <p>包裹子元素作为标题栏中央内容。窗口控制按钮自动渲染。</p>
+            <div style="border: 1px solid #e0e0e0; overflow: hidden; border-radius: 4px;">
+                <TitleBar>
+                    <span>RML Showcase</span>
+                </TitleBar>
+            </div>
+        </Card>
+
+        <Card title="API">
+            <div class="api-table">
+                <div class="api-row api-header"><span class="api-prop-name">属性</span><span class="api-prop-type">类型</span><span>说明</span></div>
+                <div class="api-row"><span class="api-prop-name">子节点</span><span class="api-prop-type">元素[]</span><span>中央区域内容</span></div>
+            </div>
+        </Card>
+    </div>
+</component>

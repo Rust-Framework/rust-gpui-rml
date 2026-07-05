@@ -1,0 +1,35 @@
+<component>
+    <div v-flex="" class="case-pane doc-pane">
+        <h2>{t("case.button_group.title")}</h2>
+
+        <Card title="组件说明">
+            <p>ButtonGroup 是 gpui-component 按钮组容器组件的 RML 封装。容器模式，子节点为 Button 组件。</p>
+            <p>用于将多个相关操作按钮分组展示，提供视觉一致性。</p>
+        </Card>
+
+        <Card title="基础用法">
+            <p>包裹多个 Button 子节点，组合为操作分组。</p>
+            <ButtonGroup>
+                <Button label="上一步" />
+                <Button label="下一步" primary="" />
+            </ButtonGroup>
+        </Card>
+
+        <Card title="操作分组">
+            <p>用于对齐排列的操作按钮。</p>
+            <ButtonGroup>
+                <Button label="保存" primary="" />
+                <Button label="取消" ghost="" />
+                <Button label="删除" danger="" />
+            </ButtonGroup>
+        </Card>
+
+        <Card title="API">
+            <div class="api-table">
+                <div class="api-row api-header"><span class="api-prop-name">属性</span><span class="api-prop-type">类型</span><span>说明</span></div>
+                <div class="api-row"><span class="api-prop-name">size</span><span class="api-prop-type">small/medium/large</span><span>尺寸</span></div>
+                <div class="api-row"><span class="api-prop-name">子节点</span><span class="api-prop-type">Button[]</span><span>按钮列表</span></div>
+            </div>
+        </Card>
+    </div>
+</component>

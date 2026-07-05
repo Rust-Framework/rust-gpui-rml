@@ -1,0 +1,36 @@
+<component>
+    <div v-flex="" class="case-pane doc-pane">
+        <h2>{t("case.switch.title")}</h2>
+
+        <Card title="组件说明">
+            <p>Switch 是 gpui-component 开关组件的 RML 封装。Stateless 组件，通过 checked 属性绑定开关状态（映射到 .checked() 方法）。</p>
+        </Card>
+
+        <Card title="基础用法">
+            <p>checked 属性绑定布尔字段，点击按钮切换状态。</p>
+            <p>{status_text}</p>
+            <div h-flex="" gap-4="">
+                <Switch label="自动保存" checked={is_on} />
+                <Button label="切换开关" on-click={on_toggle} />
+            </div>
+        </Card>
+
+        <Card title="禁用状态">
+            <p>disabled 属性禁用开关交互。</p>
+            <div h-flex="" gap-4="">
+                <Switch checked={is_disabled} disabled={is_disabled} />
+                <Button label="切换禁用" on-click={on_toggle_disabled} />
+            </div>
+        </Card>
+
+        <Card title="API">
+            <div class="api-table">
+                <div class="api-row api-header"><span class="api-prop-name">属性</span><span class="api-prop-type">类型</span><span>说明</span></div>
+                <div class="api-row"><span class="api-prop-name">label</span><span class="api-prop-type">字符串</span><span>标签文本</span></div>
+                <div class="api-row"><span class="api-prop-name">checked</span><span class="api-prop-type">布尔</span><span>开关状态</span></div>
+                <div class="api-row"><span class="api-prop-name">disabled</span><span class="api-prop-type">布尔</span><span>禁用</span></div>
+                <div class="api-row"><span class="api-prop-name">size</span><span class="api-prop-type">small/medium/large</span><span>尺寸</span></div>
+            </div>
+        </Card>
+    </div>
+</component>

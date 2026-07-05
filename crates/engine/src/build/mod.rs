@@ -39,7 +39,6 @@ pub struct Builder {
     output_dir: Option<PathBuf>,
     namespace: Option<String>,
     strict: bool,
-    hot_reload: bool,
     public: bool,
     style_paths: Vec<PathBuf>,
     i18n_extract: Option<PathBuf>,
@@ -67,15 +66,14 @@ impl Builder {
     pub fn new() -> Self {
         Self {
             scan_dirs: vec![PathBuf::from("src")],
-            output_dir: None,
-            namespace: None,
-            strict: true,
-            hot_reload: false,
-            public: false,
-            style_paths: Vec::new(),
-            i18n_extract: None,
-            assets_dir: None,
-            assets_mode: AssetMode::Filesystem,
+                output_dir: None,
+                namespace: None,
+                strict: true,
+                public: false,
+                style_paths: Vec::new(),
+                i18n_extract: None,
+                assets_dir: None,
+                assets_mode: AssetMode::Filesystem,
         }
     }
 
@@ -100,12 +98,6 @@ impl Builder {
     /// 严格模式：把警告升级为错误（默认 true）。
     pub fn strict(mut self, on: bool) -> Self {
         self.strict = on;
-        self
-    }
-
-    /// 启用热重载（Phase A 仅记录，不生效）。
-    pub fn hot_reload(mut self, on: bool) -> Self {
-        self.hot_reload = on;
         self
     }
 
@@ -306,6 +298,7 @@ impl Builder {
                 is_contributehost: struct_meta.is_contributehost,
                 lifecycle_hooks: struct_meta.lifecycle_hooks.clone(),
                 has_manual_lifecycle_impl: struct_meta.has_manual_lifecycle_impl,
+                strict: self.strict,
             };
 
             match compile(&source, &ctx) {

@@ -12,9 +12,12 @@ pub mod description_list;
 pub mod event;
 pub mod expr;
 pub mod input;
+pub mod label;
 pub mod menu;
 pub mod props_registry;
+pub mod separator;
 pub mod tab_bar;
+pub mod tag;
 pub mod table;
 pub mod tree;
 pub mod user_component;
@@ -173,6 +176,11 @@ pub struct CodegenCtx {
     /// 若为 `true` 且 `lifecycle_hooks` 非空：codegen 跳过自动生成并发出 warning
     /// （避免重复 impl 导致编译错误）。
     pub has_manual_lifecycle_impl: bool,
+    /// 严格模式：将 codegen 期间检测到的「已注册但无映射」类 warning 升级为 error。
+    ///
+    /// 由 build.rs 的 `Builder.strict(true)` 设置（默认 true）。
+    /// 单元测试中默认 false，便于隔离测试单条 setter 路径而不触发其他路径的 error。
+    pub strict: bool,
 }
 
 /// 代码生成错误

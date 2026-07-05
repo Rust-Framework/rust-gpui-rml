@@ -1,0 +1,23 @@
+<component>
+    <div v-flex="" class="case-pane doc-pane">
+        <h2>{t("case.tree.title")}</h2>
+
+        <Card title="组件说明">
+            <p>Tree 是 gpui-component 树视图组件的 RML 封装。Stateful 模式，需在 on_loaded 中初始化 TreeState Entity 并设置 items。</p>
+        </Card>
+
+        <Card title="基础用法">
+            <p>点击叶子节点触发 on-activate 事件，文件夹节点点击仅展开/折叠。</p>
+            <p>{status_text}</p>
+            <Tree ref="tree_state" on-activate={on_activate} />
+        </Card>
+
+        <Card title="API">
+            <div class="api-table">
+                <div class="api-row api-header"><span class="api-prop-name">属性</span><span class="api-prop-type">类型</span><span>说明</span></div>
+                <div class="api-row"><span class="api-prop-name">on-activate</span><span class="api-prop-type">事件</span><span>叶子节点激活事件</span></div>
+                <div class="api-row"><span class="api-prop-name">on-select</span><span class="api-prop-type">事件</span><span>节点选中事件（含文件夹）</span></div>
+            </div>
+        </Card>
+    </div>
+</component>

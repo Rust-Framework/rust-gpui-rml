@@ -9,9 +9,17 @@
   "login.submit": "Continue",
 
   "shell.pick_case": "Welcome to RML Showcase",
+
   "shell.pick_case_hint": "Pick a sample in the tree on the left — it opens in a tab",
+
   "shell.samples": "Samples",
+
   "shell.welcome": "Welcome",
+
+  "shell.welcome_title": "RML Components Overview",
+
+  "shell.welcome_subtitle": "Click a card below to open the corresponding component example",
+
   "shell.lsp_explorer": "LSP Explorer",
 
   "shell.status_ready": "Ready — pick a sample from the tree",
@@ -255,7 +263,41 @@
 
   "case.table.title": "Table Component",
 
-  "case.description_list.title": "Description List"
+  "case.description_list.title": "Description List",
+
+  "case.badge.title": "Badge",
+
+  "case.label.title": "Label",
+
+  "case.separator.title": "Separator",
+
+  "case.tag.title": "Tag",
+
+  "case.progress.title": "Progress",
+
+  "case.progress_circle.title": "ProgressCircle",
+
+  "case.button_group.title": "ButtonGroup",
+
+  "case.avatar_group.title": "AvatarGroup",
+
+  "case.card.title": "Card",
+
+  "case.title_bar.title": "TitleBar",
+
+  "case.native_status_bar.title": "NativeStatusBar",
+
+  "case.checkbox.title": "Checkbox",
+
+  "case.switch.title": "Switch",
+
+  "case.input.title": "Input",
+
+  "case.tree.title": "Tree",
+
+  "case.slider.title": "Slider",
+
+  "case.code_editor.title": "CodeEditor"
 
 }
 

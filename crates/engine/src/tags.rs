@@ -42,13 +42,14 @@ impl BuiltinTag {
             BuiltinTag::Span => "gpui::div()",
             BuiltinTag::P => "gpui::div().text_sm().text_color(rml_core::theme::color(\"--text-muted\"))",
             // 标题：直接 text_size 设置 px 大小（紧凑现代默认值）
-            // h1=32px / h2=18px / h3=24px / h4=20px / h5=18px / h6=16px
+            // 严格遵循 HTML 标准 H1 > H2 > H3 > H4 > H5 > H6
+            // h1=32px / h2=24px / h3=20px / h4=18px / h5=16px / h6=14px
             BuiltinTag::H1 => "gpui::div().text_size(gpui::px(32.))",
-            BuiltinTag::H2 => "gpui::div().text_size(gpui::px(18.))",
-            BuiltinTag::H3 => "gpui::div().text_size(gpui::px(24.))",
-            BuiltinTag::H4 => "gpui::div().text_size(gpui::px(20.))",
-            BuiltinTag::H5 => "gpui::div().text_size(gpui::px(18.))",
-            BuiltinTag::H6 => "gpui::div().text_size(gpui::px(16.))",
+            BuiltinTag::H2 => "gpui::div().text_size(gpui::px(24.))",
+            BuiltinTag::H3 => "gpui::div().text_size(gpui::px(20.))",
+            BuiltinTag::H4 => "gpui::div().text_size(gpui::px(18.))",
+            BuiltinTag::H5 => "gpui::div().text_size(gpui::px(16.))",
+            BuiltinTag::H6 => "gpui::div().text_size(gpui::px(14.))",
             // 表单类：原生轨简化为 div + class（扩展轨用 <Button>/<Input>）
             BuiltinTag::Button => "gpui::div()",
             BuiltinTag::Input => "gpui::div()",
@@ -77,11 +78,11 @@ impl BuiltinTag {
     pub fn text_size(self) -> f32 {
         match self {
             BuiltinTag::H1 => 32.0,
-            BuiltinTag::H2 => 18.0,
-            BuiltinTag::H3 => 24.0,
-            BuiltinTag::H4 => 20.0,
-            BuiltinTag::H5 => 18.0,
-            BuiltinTag::H6 => 16.0,
+            BuiltinTag::H2 => 24.0,
+            BuiltinTag::H3 => 20.0,
+            BuiltinTag::H4 => 18.0,
+            BuiltinTag::H5 => 16.0,
+            BuiltinTag::H6 => 14.0,
             _ => 0.0,
         }
     }
@@ -361,7 +362,9 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
         }),
         "Slider" => Some(ComponentTag {
             ctor_path: "rml_ui::Slider",
-            kind: ComponentKind::Stateless,
+            kind: ComponentKind::Stateful {
+                state_field: "slider_state",
+            },
             container: false,
         }),
         "Switch" => Some(ComponentTag {

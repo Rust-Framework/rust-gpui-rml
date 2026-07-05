@@ -112,15 +112,28 @@ fn gen_element(
                     scope_vars.push(v);
                 }
             }
-            let lv: Vec<&str> = scope_vars;
-            let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
-            let code = crate::compiler::codegen::gen_expr_code(&expr, &lv, &computed);
 
-            // 检测 each 指令
+            // 检测 each 指令 — 必须在生成 code 前将 loop 变量加入 scope_vars，
+            // 否则 gen_expr_code 会把 `group` 误加 `self.` 前缀变成 `self.group`
             let each_clause = elem.directives.iter().find_map(|d| match d {
                 Directive::Each(c) => Some(c.clone()),
                 _ => None,
             });
+            if let Some(clause) = &each_clause {
+                if !scope_vars.contains(&clause.item.as_str()) {
+                    scope_vars.push(clause.item.as_str());
+                }
+                if let Some(idx) = &clause.index {
+                    if !scope_vars.contains(&idx.as_str()) {
+                        scope_vars.push(idx.as_str());
+                    }
+                }
+            }
+
+            let lv: Vec<&str> = scope_vars;
+            let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
+            let code = crate::compiler::codegen::gen_expr_code(&expr, &lv, &computed);
+
             if let Some(clause) = each_clause {
                 // iterable 可能是 self.field 或 loop_var.field
                 let iter_expr = if loop_vars.iter().any(|lv| {
@@ -217,6 +230,7 @@ fn gen_element(
         }
     }
     let lv: Vec<&str> = child_loop_vars.iter().map(|s| s.as_str()).collect();
+    let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
 
     // 1. 生成元素构造调用
     let mut code = String::from(builtin.codegen_ctor());
@@ -265,17 +279,109 @@ fn gen_element(
     }
 
     // 4. 处理子节点（构建父链：当前元素 → child_parents）
+    //
+    // 使用索引遍历以支持 if/else 兄弟配对：当 if 元素紧邻 else 兄弟时，
+    // 合并为单个 `if cond { if_elem } else { else_elem }` 表达式并作为单个 .child() 注入。
     let current_parent = build_parent_info(elem);
     let mut child_parents = parents.to_vec();
     child_parents.push(current_parent);
 
-    for child in &elem.children {
-        let (child_code, is_iter) = gen_node_impl(child, ctx, depth + 1, id_counter, &child_loop_vars, &child_parents)?;
+    let mut i = 0;
+    while i < elem.children.len() {
+        let child = &elem.children[i];
+
+        // 4a. 检测独立 else（无前置 if 兄弟）：报错
+        if let Node::Element(e) = child {
+            let has_else = e.directives.iter().any(|d| matches!(d, Directive::Else));
+            let has_if = e.directives.iter().any(|d| matches!(d, Directive::If(_)));
+            if has_else && !has_if {
+                return Err(CodegenError {
+                    message: "`else` 指令必须紧跟在 `if` 指令之后".to_string(),
+                });
+            }
+        }
+
+        // 4b. 检测 if + 紧邻 else 配对
+        let if_cond: Option<String> = if let Node::Element(e) = child {
+            e.directives.iter().find_map(|d| match d {
+                Directive::If(c) => Some(c.clone()),
+                _ => None,
+            })
+        } else {
+            None
+        };
+
+        if let Some(cond) = if_cond {
+            let next_idx = i + 1;
+            let next_has_else = next_idx < elem.children.len()
+                && matches!(
+                    &elem.children[next_idx],
+                    Node::Element(e) if e.directives.iter().any(|d| matches!(d, Directive::Else))
+                );
+
+            if next_has_else {
+                // if/else 配对成功：clone 两侧元素，分别移除 If / Else 指令后递归生成
+                let (if_e, else_e) = match (&elem.children[i], &elem.children[next_idx]) {
+                    (Node::Element(if_e), Node::Element(else_e)) => (if_e, else_e),
+                    _ => unreachable!("next_has_else 已保证 next_idx 是 Element"),
+                };
+
+                let mut if_clone = if_e.clone();
+                if_clone.directives.retain(|d| !matches!(d, Directive::If(_)));
+                let mut else_clone = else_e.clone();
+                else_clone.directives.retain(|d| !matches!(d, Directive::Else));
+
+                let (if_code, if_is_iter) = gen_node_impl(
+                    &Node::Element(if_clone),
+                    ctx,
+                    depth + 1,
+                    id_counter,
+                    &child_loop_vars,
+                    &child_parents,
+                )?;
+                let (else_code, else_is_iter) = gen_node_impl(
+                    &Node::Element(else_clone),
+                    ctx,
+                    depth + 1,
+                    id_counter,
+                    &child_loop_vars,
+                    &child_parents,
+                )?;
+
+                // if/else 配对不应产生迭代器（each 指令会包装为迭代器，语义不明确）
+                if if_is_iter || else_is_iter {
+                    return Err(CodegenError {
+                        message: "`if`/`else` 配对不支持 `each` 指令，请将列表渲染与条件渲染分离"
+                            .to_string(),
+                    });
+                }
+
+                let cond_code = gen_expr_code(&cond, &lv, &computed);
+                let cond_code = cond_code
+                    .strip_prefix('(')
+                    .and_then(|s| s.strip_suffix(')'))
+                    .map(|s| s.to_string())
+                    .unwrap_or(cond_code);
+
+                let merged = format!(
+                    "if {} {{ {}.into_any_element() }} else {{ {}.into_any_element() }}",
+                    cond_code, if_code, else_code
+                );
+                code.push_str(&format!("\n            .child({})", merged));
+                i = next_idx + 1;
+                continue;
+            }
+        }
+
+        // 4c. 默认行为：单独处理子节点
+        let (child_code, is_iter) =
+            gen_node_impl(child, ctx, depth + 1, id_counter, &child_loop_vars, &child_parents)?;
         if is_iter {
             code.push_str(&format!("\n            .children({})", child_code));
         } else {
             code.push_str(&format!("\n            .child({})", child_code));
         }
+        i += 1;
     }
 
     // 5. 处理 each 指令：将元素包装在迭代器中

@@ -513,26 +513,185 @@ impl Parser {
 }
 
 /// 将关键字解析为颜色或 Keyword 值
+///
+/// 支持 CSS Color Module Level 3 全部 147 种命名颜色 + transparent + RebeccaPurple。
+/// 详见 https://www.w3.org/TR/css-color-3/。
 fn parse_keyword_or_color(name: &str) -> Value {
-    // 常见 CSS 颜色名
-    let color = match name.to_lowercase().as_str() {
-        "red" => Some(Color::rgb(255, 0, 0)),
-        "green" => Some(Color::rgb(0, 128, 0)),
-        "blue" => Some(Color::rgb(0, 0, 255)),
-        "white" => Some(Color::rgb(255, 255, 255)),
-        "black" => Some(Color::rgb(0, 0, 0)),
-        "yellow" => Some(Color::rgb(255, 255, 0)),
-        "orange" => Some(Color::rgb(255, 165, 0)),
-        "purple" => Some(Color::rgb(128, 0, 128)),
-        "pink" => Some(Color::rgb(255, 192, 203)),
-        "gray" | "grey" => Some(Color::rgb(128, 128, 128)),
-        "transparent" => Some(Color::rgba(0, 0, 0, 0)),
-        _ => None,
-    };
-    match color {
-        Some(c) => Value::Color(c),
+    // transparent 在 rgba 表中难以表达，单独处理
+    if name.eq_ignore_ascii_case("transparent") {
+        return Value::Color(Color::rgba(0, 0, 0, 0));
+    }
+    match lookup_named_color(name) {
+        Some((r, g, b)) => Value::Color(Color::rgb(r, g, b)),
         None => Value::Keyword(name.to_string()),
     }
+}
+
+/// CSS 标准命名颜色查找表（CSS Color Module Level 3）
+///
+/// 共 147 种命名颜色，键均为 lowercase。返回 (r, g, b)。
+/// 加上 transparent（在 parse_keyword_or_color 中单独处理），共 148 种。
+///
+/// 性能：解析器在遇到每个颜色名时线性查找；147 项可接受。
+/// 若未来性能瓶颈，可改为 phf 编译期哈希表。
+fn lookup_named_color(name: &str) -> Option<(u8, u8, u8)> {
+    // 按 lowercase 比较以保持大小写不敏感
+    const NAMED_COLORS: &[(&str, u8, u8, u8)] = &[
+        // 基础 16 色
+        ("black", 0, 0, 0),
+        ("silver", 192, 192, 192),
+        ("gray", 128, 128, 128),
+        ("grey", 128, 128, 128),
+        ("white", 255, 255, 255),
+        ("maroon", 128, 0, 0),
+        ("red", 255, 0, 0),
+        ("purple", 128, 0, 128),
+        ("fuchsia", 255, 0, 255),
+        ("magenta", 255, 0, 255),
+        ("green", 0, 128, 0),
+        ("lime", 0, 255, 0),
+        ("olive", 128, 128, 0),
+        ("yellow", 255, 255, 0),
+        ("navy", 0, 0, 128),
+        ("blue", 0, 0, 255),
+        ("teal", 0, 128, 128),
+        ("aqua", 0, 255, 255),
+        ("cyan", 0, 255, 255),
+        // 扩展命名颜色（按字母顺序）
+        ("aliceblue", 240, 248, 255),
+        ("antiquewhite", 250, 235, 215),
+        ("aquamarine", 127, 255, 212),
+        ("azure", 240, 255, 255),
+        ("beige", 245, 245, 220),
+        ("bisque", 255, 228, 196),
+        ("blanchedalmond", 255, 235, 205),
+        ("blueviolet", 138, 43, 226),
+        ("brown", 165, 42, 42),
+        ("burlywood", 222, 184, 135),
+        ("cadetblue", 95, 158, 160),
+        ("chartreuse", 127, 255, 0),
+        ("chocolate", 210, 105, 30),
+        ("coral", 255, 127, 80),
+        ("cornflowerblue", 100, 149, 237),
+        ("cornsilk", 255, 248, 220),
+        ("crimson", 220, 20, 60),
+        ("darkblue", 0, 0, 139),
+        ("darkcyan", 0, 139, 139),
+        ("darkgoldenrod", 184, 134, 11),
+        ("darkgray", 169, 169, 169),
+        ("darkgrey", 169, 169, 169),
+        ("darkgreen", 0, 100, 0),
+        ("darkkhaki", 189, 183, 107),
+        ("darkmagenta", 139, 0, 139),
+        ("darkolivegreen", 85, 107, 47),
+        ("darkorange", 255, 140, 0),
+        ("darkorchid", 153, 50, 204),
+        ("darkred", 139, 0, 0),
+        ("darksalmon", 233, 150, 122),
+        ("darkseagreen", 143, 188, 143),
+        ("darkslateblue", 72, 61, 139),
+        ("darkslategray", 47, 79, 79),
+        ("darkslategrey", 47, 79, 79),
+        ("darkturquoise", 0, 206, 209),
+        ("darkviolet", 148, 0, 211),
+        ("deeppink", 255, 20, 147),
+        ("deepskyblue", 0, 191, 255),
+        ("dimgray", 105, 105, 105),
+        ("dimgrey", 105, 105, 105),
+        ("dodgerblue", 30, 144, 255),
+        ("firebrick", 178, 34, 34),
+        ("floralwhite", 255, 250, 240),
+        ("forestgreen", 34, 139, 34),
+        ("gainsboro", 220, 220, 220),
+        ("ghostwhite", 248, 248, 255),
+        ("gold", 255, 215, 0),
+        ("goldenrod", 218, 165, 32),
+        ("greenyellow", 173, 255, 47),
+        ("honeydew", 240, 255, 240),
+        ("hotpink", 255, 105, 180),
+        ("indianred", 205, 92, 92),
+        ("indigo", 75, 0, 130),
+        ("ivory", 255, 255, 240),
+        ("khaki", 240, 230, 140),
+        ("lavender", 230, 230, 250),
+        ("lavenderblush", 255, 240, 245),
+        ("lawngreen", 124, 252, 0),
+        ("lemonchiffon", 255, 250, 205),
+        ("lightblue", 173, 216, 230),
+        ("lightcoral", 240, 128, 128),
+        ("lightcyan", 224, 255, 255),
+        ("lightgoldenrodyellow", 250, 250, 210),
+        ("lightgray", 211, 211, 211),
+        ("lightgrey", 211, 211, 211),
+        ("lightgreen", 144, 238, 144),
+        ("lightpink", 255, 182, 193),
+        ("lightsalmon", 255, 160, 122),
+        ("lightseagreen", 32, 178, 170),
+        ("lightskyblue", 135, 206, 250),
+        ("lightslategray", 119, 136, 153),
+        ("lightslategrey", 119, 136, 153),
+        ("lightsteelblue", 176, 196, 222),
+        ("lightyellow", 255, 255, 224),
+        ("limegreen", 50, 205, 50),
+        ("linen", 250, 240, 230),
+        ("mediumaquamarine", 102, 205, 170),
+        ("mediumblue", 0, 0, 205),
+        ("mediumorchid", 186, 85, 211),
+        ("mediumpurple", 147, 112, 219),
+        ("mediumseagreen", 60, 179, 113),
+        ("mediumslateblue", 123, 104, 238),
+        ("mediumspringgreen", 0, 250, 154),
+        ("mediumturquoise", 72, 209, 204),
+        ("mediumvioletred", 199, 21, 133),
+        ("midnightblue", 25, 25, 112),
+        ("mintcream", 245, 255, 250),
+        ("mistyrose", 255, 228, 225),
+        ("moccasin", 255, 228, 181),
+        ("navajowhite", 255, 222, 173),
+        ("oldlace", 253, 245, 230),
+        ("olivedrab", 107, 142, 35),
+        ("orange", 255, 165, 0),
+        ("orangered", 255, 69, 0),
+        ("orchid", 218, 112, 214),
+        ("palegoldenrod", 238, 232, 170),
+        ("palegreen", 152, 251, 152),
+        ("paleturquoise", 175, 238, 238),
+        ("palevioletred", 219, 112, 147),
+        ("papayawhip", 255, 239, 213),
+        ("peachpuff", 255, 218, 185),
+        ("peru", 205, 133, 63),
+        ("pink", 255, 192, 203),
+        ("plum", 221, 160, 221),
+        ("powderblue", 176, 224, 230),
+        ("rebeccapurple", 102, 51, 153),
+        ("rosybrown", 188, 143, 143),
+        ("royalblue", 65, 105, 225),
+        ("saddlebrown", 139, 69, 19),
+        ("salmon", 250, 128, 114),
+        ("sandybrown", 244, 164, 96),
+        ("seagreen", 46, 139, 87),
+        ("seashell", 255, 245, 238),
+        ("sienna", 160, 82, 45),
+        ("skyblue", 135, 206, 235),
+        ("slateblue", 106, 90, 205),
+        ("slategray", 112, 128, 144),
+        ("slategrey", 112, 128, 144),
+        ("snow", 255, 250, 250),
+        ("springgreen", 0, 255, 127),
+        ("steelblue", 70, 130, 180),
+        ("tan", 210, 180, 140),
+        ("thistle", 216, 191, 216),
+        ("tomato", 255, 99, 71),
+        ("turquoise", 64, 224, 208),
+        ("violet", 238, 130, 238),
+        ("wheat", 245, 222, 179),
+        ("whitesmoke", 245, 245, 245),
+        ("yellowgreen", 154, 205, 50),
+    ];
+    NAMED_COLORS
+        .iter()
+        .find(|(n, _, _, _)| n.eq_ignore_ascii_case(name))
+        .map(|(_, r, g, b)| (*r, *g, *b))
 }
 
 #[cfg(test)]
@@ -576,6 +735,62 @@ mod tests {
         match &sheet.rules[0].declarations[0].value {
             Value::Color(c) => assert_eq!(*c, Color::rgb(255, 0, 0)),
             _ => panic!("expected Color"),
+        }
+    }
+
+    #[test]
+    fn parse_extended_named_colors() {
+        // 扩展命名颜色（CSS Level 3）：rebeccapurple、cornflowerblue、tomato 等
+        let cases = [
+            ("rebeccapurple", 102, 51, 153),
+            ("cornflowerblue", 100, 149, 237),
+            ("tomato", 255, 99, 71),
+            ("darkslategray", 47, 79, 79),
+            ("lightyellow", 255, 255, 224),
+            ("whitesmoke", 245, 245, 245),
+            ("yellowgreen", 154, 205, 50),
+        ];
+        for (name, r, g, b) in cases {
+            let css = format!(".x {{ color: {}; }}", name);
+            let sheet = parse(&css).unwrap();
+            match &sheet.rules[0].declarations[0].value {
+                Value::Color(c) => assert_eq!(*c, Color::rgb(r, g, b), "failed for color {}", name),
+                other => panic!("expected Color for {}, got {:?}", name, other),
+            }
+        }
+    }
+
+    #[test]
+    fn parse_named_color_case_insensitive() {
+        // CSS 颜色名大小写不敏感：RED / Red / red 都应解析为同一颜色
+        for name in ["RED", "Red", "red"] {
+            let css = format!(".x {{ color: {}; }}", name);
+            let sheet = parse(&css).unwrap();
+            match &sheet.rules[0].declarations[0].value {
+                Value::Color(c) => assert_eq!(*c, Color::rgb(255, 0, 0)),
+                other => panic!("expected Color for {}, got {:?}", name, other),
+            }
+        }
+    }
+
+    #[test]
+    fn parse_transparent_color() {
+        let css = ".x { color: transparent; }";
+        let sheet = parse(css).unwrap();
+        match &sheet.rules[0].declarations[0].value {
+            Value::Color(c) => assert_eq!(*c, Color::rgba(0, 0, 0, 0)),
+            other => panic!("expected transparent Color, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_unknown_keyword_still_keyword() {
+        // 未知关键字（非颜色名）保留为 Keyword 值
+        let css = ".x { color: notacolor; }";
+        let sheet = parse(css).unwrap();
+        match &sheet.rules[0].declarations[0].value {
+            Value::Keyword(k) => assert_eq!(k, "notacolor"),
+            other => panic!("expected Keyword, got {:?}", other),
         }
     }
 

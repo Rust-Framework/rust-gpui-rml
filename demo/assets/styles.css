@@ -143,6 +143,63 @@
     justify-content: flex-start;
 }
 
+/* ── 欢迎页样式 ── */
+
+.welcome-pane {
+    align-items: stretch;
+    text-align: left;
+    gap: 16px;
+    overflow-y: auto;
+}
+
+.welcome-pane h2 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 600;
+}
+
+.welcome-pane > p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.welcome-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    max-width: 960px;
+    margin: 0 auto;
+}
+
+.welcome-grid h3 {
+    margin: 0;
+    padding: 0 4px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.welcome-grid-row {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.welcome-grid-row > .card {
+    width: 160px;
+    cursor: pointer;
+}
+
+.welcome-card-title {
+    font-size: 14px;
+    font-weight: 500;
+}
+
 /* 覆盖示例：自定义底部输出面板外观
 .shell-output {
     background: var(--bg-color);

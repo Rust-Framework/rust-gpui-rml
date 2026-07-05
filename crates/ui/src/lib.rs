@@ -60,7 +60,7 @@ pub use gpui_component::{
     radio::Radio,
     select::Select,
     separator::Separator,
-    slider::Slider,
+    slider::{Slider, SliderState},
     switch::Switch,
     tag::Tag,
     tooltip::Tooltip,

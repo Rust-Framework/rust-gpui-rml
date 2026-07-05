@@ -1,0 +1,45 @@
+<component>
+    <div v-flex="" class="case-pane doc-pane">
+        <h2>{t("case.tag.title")}</h2>
+
+        <Card title="组件说明">
+            <p>Tag 是 gpui-component 标签组件的 RML 封装。无 ElementId 构造（StatelessNoId），容器模式，文本通过子节点设置。</p>
+            <p>支持 primary/secondary/danger/success/warning/info 等变体属性和 size 尺寸。</p>
+        </Card>
+
+        <Card title="基础用法">
+            <p>默认样式的标签。</p>
+            <div h-flex="" gap-2="" flex-wrap="">
+                <Tag>Default</Tag>
+                <Tag primary="">Primary</Tag>
+                <Tag secondary="">Secondary</Tag>
+            </div>
+        </Card>
+
+        <Card title="状态变体">
+            <p>使用 danger/success/warning/info 属性显示不同状态颜色。</p>
+            <div h-flex="" gap-2="" flex-wrap="">
+                <Tag danger="">Danger</Tag>
+                <Tag success="">Success</Tag>
+                <Tag warning="">Warning</Tag>
+                <Tag info="">Info</Tag>
+            </div>
+        </Card>
+
+        <Card title="尺寸">
+            <p>size 属性控制标签大小。</p>
+            <div h-flex="" gap-2="" flex-wrap="">
+                <Tag size="small" primary="">Small</Tag>
+                <Tag size="medium" primary="">Medium</Tag>
+            </div>
+        </Card>
+
+        <Card title="API">
+            <div class="api-table">
+                <div class="api-row api-header"><span class="api-prop-name">属性</span><span class="api-prop-type">类型</span><span>说明</span></div>
+                <div class="api-row"><span class="api-prop-name">primary/secondary/danger/success/warning/info</span><span class="api-prop-type">布尔标志</span><span>变体</span></div>
+                <div class="api-row"><span class="api-prop-name">size</span><span class="api-prop-type">small/medium</span><span>尺寸</span></div>
+            </div>
+        </Card>
+    </div>
+</component>

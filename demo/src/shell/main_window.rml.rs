@@ -267,16 +267,8 @@ impl MainWindow {
                             .child(visual.render(window, cx)),
                     )
                     .child(
-                        gpui::div()
-                            .absolute()
-                            .top_0()
-                            .left_0()
-                            .right_0()
-                            .bottom_0()
-                            .child(
-                                gpui_component::scroll::Scrollbar::vertical(&scroll_handle)
-                                    .id("active-view-scrollbar"),
-                            ),
+                        gpui_component::scroll::Scrollbar::vertical(&scroll_handle)
+                            .id("active-view-scrollbar"),
                     )
                     .into_any_element();
             }

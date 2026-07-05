@@ -1,0 +1,30 @@
+<component>
+    <div v-flex="" class="case-pane doc-pane">
+        <h2>{t("case.label.title")}</h2>
+
+        <Card title="组件说明">
+            <p>Label 是 gpui-component 标签组件的 RML 封装。构造器接受 label 文本作为参数（非 ElementId），通过 label 属性或文本子节点设置。</p>
+        </Card>
+
+        <Card title="基础用法">
+            <p>通过 label 属性设置标签文本。</p>
+            <div v-flex="" gap-2="">
+                <Label label="用户名" />
+                <Label label="邮箱地址" />
+                <Label label="密码" />
+            </div>
+        </Card>
+
+        <Card title="文本子节点">
+            <p>也可以通过文本子节点设置标签内容。</p>
+            <Label>通过子节点设置的标签</Label>
+        </Card>
+
+        <Card title="API">
+            <div class="api-table">
+                <div class="api-row api-header"><span class="api-prop-name">属性</span><span class="api-prop-type">类型</span><span>说明</span></div>
+                <div class="api-row"><span class="api-prop-name">label</span><span class="api-prop-type">字符串</span><span>标签文本（构造器参数）</span></div>
+            </div>
+        </Card>
+    </div>
+</component>

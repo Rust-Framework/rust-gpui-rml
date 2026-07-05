@@ -7,6 +7,7 @@
 //! ## 静态属性
 //!
 //! - `title="..."` → `.title("...")`（SharedString）
+//! - `extra="..."` / `cover="..."` / `footer="..."` → `.method("...")`（SharedString）
 //! - `bordered="true"` / `bordered=""` → `.bordered(true)`
 //! - `bordered="false"` → `.bordered(false)`
 //! - `borderless=""` / `borderless="true"` → `.borderless()`（标志，等价于 `bordered="false"`）
@@ -29,7 +30,10 @@ pub fn static_setter(name: &str, value: &str, tag: &str) -> Option<String> {
         return None;
     }
     match name {
-        "title" => Some(format!(".title({:?})", value)),
+        "title" | "extra" | "cover" | "footer" => {
+            // 这四个属性都接受 impl IntoElement，静态字符串作为 SharedString 自动转换。
+            Some(format!(".{}({:?})", name, value))
+        }
         "bordered" => {
             let bool_val = if value.is_empty() || value.eq_ignore_ascii_case("true") {
                 "true"
@@ -109,6 +113,41 @@ mod tests {
     fn static_setter_title_with_special_chars() {
         let code = static_setter("title", "Hello \"World\"", "Card").unwrap();
         assert_eq!(code, r#".title("Hello \"World\"")"#);
+    }
+
+    // ─── static_setter: extra / cover / footer ───
+
+    #[test]
+    fn static_setter_extra() {
+        // extra="More" → .extra("More")（SharedString 自动转 IntoElement）
+        let code = static_setter("extra", "More", "Card").unwrap();
+        assert_eq!(code, r#".extra("More")"#);
+    }
+
+    #[test]
+    fn static_setter_cover() {
+        let code = static_setter("cover", "Cover Text", "Card").unwrap();
+        assert_eq!(code, r#".cover("Cover Text")"#);
+    }
+
+    #[test]
+    fn static_setter_footer() {
+        let code = static_setter("footer", "Footer Text", "Card").unwrap();
+        assert_eq!(code, r#".footer("Footer Text")"#);
+    }
+
+    #[test]
+    fn static_setter_extra_with_special_chars() {
+        let code = static_setter("extra", "Hello \"World\"", "Card").unwrap();
+        assert_eq!(code, r#".extra("Hello \"World\"")"#);
+    }
+
+    #[test]
+    fn static_setter_extra_other_tag_returns_none() {
+        // 非 Card 组件不应匹配 extra 属性
+        assert!(static_setter("extra", "x", "Button").is_none());
+        assert!(static_setter("cover", "x", "Avatar").is_none());
+        assert!(static_setter("footer", "x", "Div").is_none());
     }
 
     // ─── static_setter: bordered ───

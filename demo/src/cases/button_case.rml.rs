@@ -12,7 +12,7 @@ use rml_core::i18n::t_static;
 #[component]
 #[derive(Default)]
 pub struct ButtonCase {
-    pub button_clicks: i32,
+    pub basic_clicks: i32,
     pub is_disabled: bool,
     pub is_selected: bool,
 }
@@ -28,29 +28,40 @@ impl IContribution for ButtonCase {
 
 impl ButtonCase {
     #[computed]
-    pub fn button_demo_text(&self) -> String {
-        format!("按钮点击：{}", self.button_clicks)
+    pub fn basic_click_text(&self) -> String {
+        format!("点击次数：{}", self.basic_clicks)
     }
 
     #[computed]
-    pub fn code_sample(&self) -> String {
-        r#"<Button label="提交" primary="" onclick={on_submit} />
-<Button label={t("demo.click_btn")} ghost="" onclick={on_click} />
-<Button label="禁用" disabled={is_disabled} />"#.to_string()
+    pub fn disabled_status_text(&self) -> String {
+        if self.is_disabled {
+            "当前：禁用".to_string()
+        } else {
+            "当前：可用".to_string()
+        }
+    }
+
+    #[computed]
+    pub fn selected_status_text(&self) -> String {
+        if self.is_selected {
+            "当前：选中".to_string()
+        } else {
+            "当前：未选中".to_string()
+        }
     }
 
     #[command]
-    pub fn on_button_demo_click(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
-        self.button_clicks += 1;
+    pub fn on_basic_click(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+        self.basic_clicks += 1;
     }
 
     #[command]
-    pub fn on_toggle_disabled_click(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+    pub fn on_toggle_disabled(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.is_disabled = !self.is_disabled;
     }
 
     #[command]
-    pub fn on_toggle_selected_click(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+    pub fn on_toggle_selected(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.is_selected = !self.is_selected;
     }
 }

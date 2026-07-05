@@ -9,9 +9,17 @@
   "login.submit": "进入",
 
   "shell.pick_case": "欢迎使用 RML Showcase",
+
   "shell.pick_case_hint": "在左侧案例树中选择一个示例，将在 Tab 中打开",
+
   "shell.samples": "案例库",
+
   "shell.welcome": "欢迎",
+
+  "shell.welcome_title": "RML 组件总览",
+
+  "shell.welcome_subtitle": "点击下方卡片快速跳转到对应组件示例",
+
   "shell.lsp_explorer": "LSP 资源管理器",
 
   "shell.status_ready": "就绪 — 请从左侧案例树选择示例",
@@ -256,7 +264,41 @@
 
   "case.table.title": "表格组件",
 
-  "case.description_list.title": "描述列表"
+  "case.description_list.title": "描述列表",
+
+  "case.badge.title": "徽标 Badge",
+
+  "case.label.title": "标签 Label",
+
+  "case.separator.title": "分隔符 Separator",
+
+  "case.tag.title": "标签 Tag",
+
+  "case.progress.title": "进度条 Progress",
+
+  "case.progress_circle.title": "环形进度 ProgressCircle",
+
+  "case.button_group.title": "按钮组 ButtonGroup",
+
+  "case.avatar_group.title": "头像组 AvatarGroup",
+
+  "case.card.title": "卡片 Card",
+
+  "case.title_bar.title": "标题栏 TitleBar",
+
+  "case.native_status_bar.title": "原生状态栏 NativeStatusBar",
+
+  "case.checkbox.title": "复选框 Checkbox",
+
+  "case.switch.title": "开关 Switch",
+
+  "case.input.title": "输入框 Input",
+
+  "case.tree.title": "树视图 Tree",
+
+  "case.slider.title": "滑块 Slider",
+
+  "case.code_editor.title": "代码编辑器 CodeEditor"
 
 }
 
