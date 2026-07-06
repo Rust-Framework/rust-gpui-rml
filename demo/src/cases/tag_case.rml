@@ -1,24 +1,14 @@
 <component>
     <div v-flex="" class="case-pane doc-pane">
         <h2>{t("case.tag.title")}</h2>
+        <p>Tag 是 RML 的标签组件，标签为 PascalCase <code>Tag</code>。无 ElementId 构造（StatelessNoId），容器模式，文本通过子节点设置。支持 6 种 variant + outline 描边样式 + 2 种视觉尺寸。</p>
 
-        <Card title="组件说明">
-            <p>Tag 是 RML 的标签组件。无 ElementId 构造（StatelessNoId），容器模式，文本通过子节点设置。</p>
-            <p>支持 primary/secondary/danger/success/warning/info 等变体属性和 size 尺寸。</p>
-        </Card>
-
-        <Card title="基础用法">
-            <p>默认样式的标签。</p>
+        <Card title="变体 variants">
+            <p>6 种 variant 通过同名空属性切换（构造器选择 <code>Tag::primary()</code> 等）。不写 variant 即默认 Default（Secondary 配色）。</p>
             <div h-flex="" gap-2="" flex-wrap="">
                 <Tag>Default</Tag>
                 <Tag primary="">Primary</Tag>
                 <Tag secondary="">Secondary</Tag>
-            </div>
-        </Card>
-
-        <Card title="状态变体">
-            <p>使用 danger/success/warning/info 属性显示不同状态颜色。</p>
-            <div h-flex="" gap-2="" flex-wrap="">
                 <Tag danger="">Danger</Tag>
                 <Tag success="">Success</Tag>
                 <Tag warning="">Warning</Tag>
@@ -26,34 +16,73 @@
             </div>
         </Card>
 
-        <Card title="尺寸">
-            <p>size 属性控制标签大小。</p>
+        <Card title="描边样式 outline">
+            <p><code>outline=""</code> 切换为描边样式：透明背景 + 彩色边框/文字，常用于次要状态区分。</p>
             <div h-flex="" gap-2="" flex-wrap="">
-                <Tag size="small" primary="">Small</Tag>
-                <Tag size="medium" primary="">Medium</Tag>
+                <Tag primary="" outline="">Primary Outline</Tag>
+                <Tag secondary="" outline="">Secondary Outline</Tag>
+                <Tag danger="" outline="">Danger Outline</Tag>
+                <Tag success="" outline="">Success Outline</Tag>
+                <Tag warning="" outline="">Warning Outline</Tag>
+                <Tag info="" outline="">Info Outline</Tag>
             </div>
         </Card>
 
+        <Card title="尺寸 size">
+            <p>size 属性控制标签大小：xsmall / small / medium / large。</p>
+            <div h-flex="" gap-2="" flex-wrap="">
+                <Tag primary="" size="xsmall">XSmall</Tag>
+                <Tag primary="" size="small">Small</Tag>
+                <Tag primary="" size="medium">Medium</Tag>
+                <Tag primary="" size="large">Large</Tag>
+            </div>
+            <p class="hint">注：在 gpui-component 底层实现中，Tag 仅支持 Small 与 Medium 两档视觉区分。<code>Size::XSmall</code> 与 <code>Size::Small</code> 共用同一尺寸分支（px_1p5 + py_0p5），<code>Size::Medium</code> 与 <code>Size::Large</code> 共用另一分支（px_2p5 + py_1）。建议优先使用 Small/Medium 两档。</p>
+        </Card>
+
         <Card title="动态绑定(model + if 条件渲染)">
-            <p>输入标签文本,点击按钮循环切换变体,观察标签实时变化(演示 model 双向绑定 + if 条件渲染):</p>
+            <p>输入标签文本，点击按钮循环切换 variant，观察标签实时变化（演示 model 双向绑定 + if 条件渲染）：</p>
             <input model={tag_text} placeholder="输入标签文本" />
-            <p>当前文本: {tag_text} | 当前变体: {variant_label}</p>
+            <p>当前文本: {tag_text} | 当前变体: {variant_label} | 样式: {outline_label}</p>
             <div class="button-row">
                 <Button label="切换变体" primary="" on-click={on_cycle_variant} />
+                <Button label="切换 outline" on-click={on_toggle_outline} />
             </div>
             <div h-flex="" gap-2="" flex-wrap="">
-                <Tag if={variant_index == 0}>{tag_text}</Tag>
-                <Tag primary="" if={variant_index == 1}>{tag_text}</Tag>
-                <Tag secondary="" if={variant_index == 2}>{tag_text}</Tag>
-                <Tag danger="" if={variant_index == 3}>{tag_text}</Tag>
-                <Tag success="" if={variant_index == 4}>{tag_text}</Tag>
-                <Tag warning="" if={variant_index == 5}>{tag_text}</Tag>
-                <Tag info="" if={variant_index == 6}>{tag_text}</Tag>
+                <Tag if={variant_index == 0 && !is_outline}>{tag_text}</Tag>
+                <Tag primary="" if={variant_index == 1 && !is_outline}>{tag_text}</Tag>
+                <Tag secondary="" if={variant_index == 2 && !is_outline}>{tag_text}</Tag>
+                <Tag danger="" if={variant_index == 3 && !is_outline}>{tag_text}</Tag>
+                <Tag success="" if={variant_index == 4 && !is_outline}>{tag_text}</Tag>
+                <Tag warning="" if={variant_index == 5 && !is_outline}>{tag_text}</Tag>
+                <Tag info="" if={variant_index == 6 && !is_outline}>{tag_text}</Tag>
+                <Tag if={variant_index == 0 && is_outline} outline="">{tag_text}</Tag>
+                <Tag primary="" if={variant_index == 1 && is_outline} outline="">{tag_text}</Tag>
+                <Tag secondary="" if={variant_index == 2 && is_outline} outline="">{tag_text}</Tag>
+                <Tag danger="" if={variant_index == 3 && is_outline} outline="">{tag_text}</Tag>
+                <Tag success="" if={variant_index == 4 && is_outline} outline="">{tag_text}</Tag>
+                <Tag warning="" if={variant_index == 5 && is_outline} outline="">{tag_text}</Tag>
+                <Tag info="" if={variant_index == 6 && is_outline} outline="">{tag_text}</Tag>
+            </div>
+        </Card>
+
+        <Card title="示例代码">
+            <p>点击下方 Tab 切换 <code>.rml</code> 声明文件与 <code>.rml.rs</code> 后端文件：</p>
+            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
+                <Tab label=".rml" />
+                <Tab label=".rml.rs" />
+            </TabBar>
+            <div if={code_tab == 0}>
+                <CodeEditor ref="rml_editor" value={rml_sample} language="rust" />
+            </div>
+            <div if={code_tab == 1}>
+                <CodeEditor ref="rust_editor" value={rust_sample} language="rust" />
             </div>
         </Card>
 
         <Card title="API">
+            <h3>Tag</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+            <p>另：<code>size</code> 属性来自 Sizable trait，<code>font-bold</code> / <code>font-semibold</code> 等字体权重属性来自 StyledExt trait。</p>
         </Card>
     </div>
 </component>

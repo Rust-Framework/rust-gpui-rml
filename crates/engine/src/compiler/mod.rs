@@ -4,6 +4,7 @@
 
 pub mod accordion;
 pub mod avatar;
+pub mod badge;
 pub mod card;
 pub mod code_editor;
 pub mod codegen;

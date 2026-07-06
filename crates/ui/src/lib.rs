@@ -81,12 +81,12 @@ pub use window::{
 };
 
 pub use components::{
-    ActivityAct, ActivityBar, ActivityPanel, AlertDialog, Avatar, AvatarGroup, Card, CardVariant,
-    CellTemplate, DefaultTableDelegate, DialogAction, DialogButtonProps, DialogClose,
-    DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, FooterTemplate,
-    HeaderTemplate, IActivityAct, IActivityPanel, MenuBar, NativeStatusBar, StatusBarAlign,
-    Tab, TabBar, TabItem, Table, TableColumn, TableDelegate, TableRow, TabVariant, Tree,
-    VisualActivityPanel, configure_menu_bar_popup, menu_bar_button,
+    ActivityAct, ActivityBar, ActivityPanel, AlertDialog, Avatar, AvatarGroup, Breadcrumb,
+    BreadcrumbItem, Card, CardVariant, CellTemplate, DefaultTableDelegate, DialogAction,
+    DialogButtonProps, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader,
+    DialogTitle, FooterTemplate, HeaderTemplate, IActivityAct, IActivityPanel, MenuBar,
+    NativeStatusBar, StatusBarAlign, Tab, TabBar, TabItem, Table, TableColumn, TableDelegate,
+    TableRow, TabVariant, Tree, VisualActivityPanel, configure_menu_bar_popup, menu_bar_button,
 };
 
 pub use state::RmlState;

@@ -42,6 +42,11 @@ pub fn gen_tag(
                 if is_variant_attr(name) {
                     continue;
                 }
+                // Tag 专用：outline="" → .outline()（描边样式，透明背景）
+                if name == "outline" && (value.is_empty() || value.eq_ignore_ascii_case("true")) {
+                    code.push_str(".outline()");
+                    continue;
+                }
                 if let Some(s) =
                     super::component::component_static_setter(name, value, &resolved)
                 {
@@ -178,5 +183,29 @@ mod tests {
         let code = gen_tag(&elem, &ctx(), &mut id, &Vec::new()).unwrap();
         assert!(code.contains("rml_ui::Tag::primary()"));
         assert!(code.contains(".with_size(rml_ui::Size::Small)"));
+    }
+
+    #[test]
+    fn gen_tag_outline() {
+        let elem = make_element(
+            "Tag",
+            vec![
+                Attribute::Static {
+                    name: "primary".into(),
+                    value: "".into(),
+                    span: Span::empty(),
+                },
+                Attribute::Static {
+                    name: "outline".into(),
+                    value: "".into(),
+                    span: Span::empty(),
+                },
+            ],
+            vec![],
+        );
+        let mut id = 0;
+        let code = gen_tag(&elem, &ctx(), &mut id, &Vec::new()).unwrap();
+        assert!(code.contains("rml_ui::Tag::primary()"));
+        assert!(code.contains(".outline()"));
     }
 }

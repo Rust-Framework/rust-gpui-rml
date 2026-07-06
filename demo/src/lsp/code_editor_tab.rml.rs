@@ -7,16 +7,50 @@
 //! format/rename 通过 `cx.active_window()` + `AnyWindowHandle::update` 获取
 //! `&mut Window`，调用 `InputState::apply_lsp_edits` 将 LSP 编辑应用到编辑器。
 //! references/documentSymbol 解析响应并将摘要写入 `LspStatusState`（状态栏显示）。
+//!
+//! 右键菜单通过 NativeMenu + Action 派发，覆盖 format/rename/goto/refs/symbols。
+//! 面包屑导航对接 documentSymbol，随光标移动更新。
 
 use std::path::Path;
 use std::sync::Arc;
 
+use gpui::{Action, Window};
 use gpui_component::input::{InputState, TabSize};
-use lsp_types::{DocumentSymbolResponse, Location, Position, TextEdit, Uri, WorkspaceEdit};
+use gpui_component::native_menu::NativeMenu;
+use lsp_types::{
+    DocumentSymbol, DocumentSymbolResponse, Location, Position, Range, TextEdit, Uri, WorkspaceEdit,
+};
 use rml::prelude::*;
+use rml_ui::BreadcrumbItem;
 use rust_rml_client::{file_path_to_uri, LanguageClient};
+use serde::Deserialize;
 
 use crate::lsp::LspStatusStateRef;
+
+/// 格式化文档 Action（右键菜单派发）
+#[derive(Action, Clone, PartialEq, Deserialize)]
+#[action(namespace = code_editor, no_json)]
+struct FormatDocument;
+
+/// 重命名符号 Action
+#[derive(Action, Clone, PartialEq, Deserialize)]
+#[action(namespace = code_editor, no_json)]
+struct RenameSymbol;
+
+/// 查找引用 Action
+#[derive(Action, Clone, PartialEq, Deserialize)]
+#[action(namespace = code_editor, no_json)]
+struct FindReferences;
+
+/// 跳转定义 Action
+#[derive(Action, Clone, PartialEq, Deserialize)]
+#[action(namespace = code_editor, no_json)]
+struct GoToDefinition;
+
+/// 显示文档符号 Action
+#[derive(Action, Clone, PartialEq, Deserialize)]
+#[action(namespace = code_editor, no_json)]
+struct ShowDocumentSymbols;
 
 #[component]
 #[derive(Default)]
@@ -24,6 +58,10 @@ pub struct CodeEditorTab {
     editor_state: Option<Entity<InputState>>,
     language_client: Option<Arc<LanguageClient>>,
     uri: Option<Uri>,
+    /// 文档符号列表（documentSymbol 响应），用于面包屑路径计算
+    document_symbols: Vec<DocumentSymbol>,
+    /// 面包屑导航项（绑定到 `<Breadcrumb items={breadcrumb_items} />`）
+    breadcrumb_items: Vec<BreadcrumbItem>,
 }
 
 impl CodeEditorTab {
@@ -63,18 +101,26 @@ impl CodeEditorTab {
         cx.new(|cx| {
             let uri_clone = uri.clone();
             let client_clone = language_client.clone();
-            cx.observe(&editor_state, move |_, state, obs_cx| {
+            cx.observe(&editor_state, move |_: &mut Self, state, obs_cx| {
                 let text = state.read(obs_cx).text().to_string();
                 client_clone.change_document(&uri_clone, &text);
             })
             .detach();
 
-            Self {
+            // 订阅 editor_state 变化以更新面包屑（光标移动会触发 cx.notify）
+            cx.observe(&editor_state, |this: &mut Self, _state, cx| {
+                this.update_breadcrumb(cx);
+            })
+            .detach();
+
+            let mut this = Self {
                 editor_state: Some(editor_state),
-                language_client: Some(language_client),
+                language_client: Some(language_client.clone()),
                 uri: Some(uri),
                 ..Default::default()
-            }
+            };
+            this.fetch_document_symbols(cx);
+            this
         })
     }
 
@@ -99,9 +145,12 @@ impl CodeEditorTab {
         Some(Position { line, character })
     }
 
+    // ──────────────────────────────────────────────────────────────────────
+    //  do_* 方法：业务逻辑实现（供 #[command] 和 action handler 共用）
+    // ──────────────────────────────────────────────────────────────────────
+
     /// 格式化文档：调 LSP formatting，通过 apply_lsp_edits 应用到编辑器
-    #[command]
-    pub fn on_format_document(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+    fn do_format_document(&mut self, cx: &mut Context<Self>) {
         let (client, uri) = match (&self.language_client, &self.uri) {
             (Some(c), Some(u)) => (c.clone(), u.clone()),
             _ => return,
@@ -131,8 +180,7 @@ impl CodeEditorTab {
     /// 重命名符号：在当前光标位置发起 rename，通过 apply_lsp_edits 应用到编辑器
     ///
     /// MVP：new_name 取 "renamed"（实际应弹输入框，待 UI 组件就绪后补齐）。
-    #[command]
-    pub fn on_rename_symbol(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+    fn do_rename_symbol(&mut self, cx: &mut Context<Self>) {
         let (client, uri) = match (&self.language_client, &self.uri) {
             (Some(c), Some(u)) => (c.clone(), u.clone()),
             _ => return,
@@ -164,8 +212,7 @@ impl CodeEditorTab {
     }
 
     /// 查找引用：将引用计数摘要写入状态栏
-    #[command]
-    pub fn on_find_references(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+    fn do_find_references(&mut self, cx: &mut Context<Self>) {
         let (client, uri) = match (&self.language_client, &self.uri) {
             (Some(c), Some(u)) => (c.clone(), u.clone()),
             _ => return,
@@ -193,9 +240,139 @@ impl CodeEditorTab {
         .detach();
     }
 
-    /// 显示文档符号：将符号计数摘要写入状态栏
+    /// 跳转定义：将目标位置摘要写入状态栏
+    fn do_goto_definition(&mut self, cx: &mut Context<Self>) {
+        let (client, uri) = match (&self.language_client, &self.uri) {
+            (Some(c), Some(u)) => (c.clone(), u.clone()),
+            _ => return,
+        };
+        let position = match self.current_position(cx) {
+            Some(p) => p,
+            None => return,
+        };
+        let rx = client.lsp().definition(&uri, position);
+        cx.spawn(async move |this, cx| {
+            match rx.recv() {
+                Ok(Ok(value)) => {
+                    if let Some(loc) = parse_definition(&value) {
+                        let uri_str = loc.uri.as_str().to_string();
+                        let line = loc.range.start.line + 1;
+                        let col = loc.range.start.character + 1;
+                        let _ = this.update(cx, |_, cx| {
+                            set_lsp_status(cx, format!("goto: {uri_str}:{line}:{col}"));
+                        });
+                        log::info!("LSP goto: {uri_str}:{line}:{col}");
+                    } else {
+                        let _ = this.update(cx, |_, cx| {
+                            set_lsp_status(cx, "goto: no definition".to_string());
+                        });
+                    }
+                }
+                Ok(Err(e)) => log::warn!("LSP goto error: {e}"),
+                Err(e) => log::warn!("LSP goto channel: {e}"),
+            }
+            Ok::<(), anyhow::Error>(())
+        })
+        .detach();
+    }
+
+    /// 显示文档符号：将符号计数摘要写入状态栏，并刷新面包屑数据源
+    fn do_show_document_symbols(&mut self, cx: &mut Context<Self>) {
+        self.fetch_document_symbols(cx);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    //  #[command] 方法：toolbar 按钮入口，委托给 do_*
+    // ──────────────────────────────────────────────────────────────────────
+
+    #[command]
+    pub fn on_format_document(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+        self.do_format_document(cx);
+    }
+
+    #[command]
+    pub fn on_rename_symbol(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+        self.do_rename_symbol(cx);
+    }
+
+    #[command]
+    pub fn on_find_references(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+        self.do_find_references(cx);
+    }
+
     #[command]
     pub fn on_show_document_symbols(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+        self.do_show_document_symbols(cx);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    //  Action handler 方法：右键菜单 Action 派发入口，委托给 do_*
+    // ──────────────────────────────────────────────────────────────────────
+
+    fn on_format_action(&mut self, _: &FormatDocument, _: &mut Window, cx: &mut Context<Self>) {
+        self.do_format_document(cx);
+    }
+
+    fn on_rename_action(&mut self, _: &RenameSymbol, _: &mut Window, cx: &mut Context<Self>) {
+        self.do_rename_symbol(cx);
+    }
+
+    fn on_find_references_action(
+        &mut self,
+        _: &FindReferences,
+        _: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.do_find_references(cx);
+    }
+
+    fn on_goto_definition_action(
+        &mut self,
+        _: &GoToDefinition,
+        _: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.do_goto_definition(cx);
+    }
+
+    fn on_show_document_symbols_action(
+        &mut self,
+        _: &ShowDocumentSymbols,
+        _: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.do_show_document_symbols(cx);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    //  右键菜单构建
+    // ──────────────────────────────────────────────────────────────────────
+
+    /// 构建 CodeEditor 右键菜单：format / rename / goto / references / symbols
+    ///
+    /// 由 RML `<CodeEditor context-menu="build_editor_menu" />` 调用，
+    /// 闭包桥接：`__view.update(c, |this, cx| this.build_editor_menu(menu, w, cx))`。
+    pub fn build_editor_menu(
+        &mut self,
+        menu: NativeMenu,
+        _window: &mut Window,
+        _cx: &mut Context<Self>,
+    ) -> NativeMenu {
+        menu.menu("Format Document", Box::new(FormatDocument))
+            .menu("Rename Symbol", Box::new(RenameSymbol))
+            .separator()
+            .menu("Go to Definition", Box::new(GoToDefinition))
+            .menu("Find References", Box::new(FindReferences))
+            .separator()
+            .menu("Show Document Symbols", Box::new(ShowDocumentSymbols))
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    //  面包屑数据流
+    // ──────────────────────────────────────────────────────────────────────
+
+    /// 异步拉取 documentSymbol，刷新 document_symbols + breadcrumb_items
+    fn fetch_document_symbols(&mut self, cx: &mut Context<Self>) {
         let (client, uri) = match (&self.language_client, &self.uri) {
             (Some(c), Some(u)) => (c.clone(), u.clone()),
             _ => return,
@@ -204,11 +381,14 @@ impl CodeEditorTab {
         cx.spawn(async move |this, cx| {
             match rx.recv() {
                 Ok(Ok(value)) => {
-                    let count = count_document_symbols(&value);
-                    let _ = this.update(cx, |_, cx| {
+                    let symbols = parse_document_symbols(&value);
+                    let count = symbols.len();
+                    let _ = this.update(cx, |this, cx| {
+                        this.document_symbols = symbols;
+                        this.update_breadcrumb(cx);
                         set_lsp_status(cx, format!("documentSymbol: {count} symbol(s)"));
                     });
-                    log::info!("LSP documentSymbol for {}", uri.as_str());
+                    log::info!("LSP documentSymbol for {} ({count} symbols)", uri.as_str());
                 }
                 Ok(Err(e)) => log::warn!("LSP documentSymbol error: {e}"),
                 Err(e) => log::warn!("LSP documentSymbol channel: {e}"),
@@ -216,6 +396,34 @@ impl CodeEditorTab {
             Ok::<(), anyhow::Error>(())
         })
         .detach();
+    }
+
+    /// 根据当前光标位置和 document_symbols 计算面包屑路径
+    fn update_breadcrumb(&mut self, cx: &mut Context<Self>) {
+        let position = match self.current_position(cx) {
+            Some(p) => p,
+            None => {
+                if !self.breadcrumb_items.is_empty() {
+                    self.breadcrumb_items = Vec::new();
+                    cx.notify();
+                }
+                return;
+            }
+        };
+        let path = find_symbol_path(&self.document_symbols, &position);
+        let new_items: Vec<BreadcrumbItem> = path
+            .iter()
+            .map(|s| BreadcrumbItem::new(s.name.clone()))
+            .collect();
+        if new_items.len() != self.breadcrumb_items.len()
+            || new_items
+                .iter()
+                .zip(self.breadcrumb_items.iter())
+                .any(|(n, o)| n.label != o.label)
+        {
+            self.breadcrumb_items = new_items;
+            cx.notify();
+        }
     }
 }
 
@@ -280,12 +488,51 @@ fn parse_locations(value: &serde_json::Value) -> Vec<Location> {
     }
 }
 
-/// 统计文档符号数量（documentSymbol 响应）
-fn count_document_symbols(value: &serde_json::Value) -> usize {
-    let response: DocumentSymbolResponse = serde_json::from_value(value.clone())
-        .unwrap_or(DocumentSymbolResponse::Flat(Vec::new()));
-    match response {
-        DocumentSymbolResponse::Flat(symbols) => symbols.len(),
-        DocumentSymbolResponse::Nested(symbols) => symbols.len(),
+/// 将 LSP definition 响应解析为首个 Location（支持 Array/Single 两种格式）
+fn parse_definition(value: &serde_json::Value) -> Option<Location> {
+    if value.is_null() {
+        return None;
     }
+    if let Ok(locations) = serde_json::from_value::<Vec<Location>>(value.clone()) {
+        return locations.into_iter().next();
+    }
+    serde_json::from_value::<Location>(value.clone()).ok()
+}
+
+/// 将 documentSymbol 响应解析为嵌套 DocumentSymbol 列表
+///
+/// 仅接受 Nested 格式（含 children）；Flat 格式不支持嵌套路径，跳过。
+fn parse_document_symbols(value: &serde_json::Value) -> Vec<DocumentSymbol> {
+    let response: DocumentSymbolResponse = serde_json::from_value(value.clone())
+        .unwrap_or(DocumentSymbolResponse::Nested(Vec::new()));
+    match response {
+        DocumentSymbolResponse::Flat(_) => Vec::new(),
+        DocumentSymbolResponse::Nested(symbols) => symbols,
+    }
+}
+
+/// 从嵌套 DocumentSymbol 树中查找包含 position 的根到叶路径
+fn find_symbol_path(symbols: &[DocumentSymbol], position: &Position) -> Vec<DocumentSymbol> {
+    for sym in symbols {
+        if range_contains(&sym.range, position) {
+            let mut path = vec![sym.clone()];
+            if let Some(children) = &sym.children {
+                let deeper = find_symbol_path(children, position);
+                if !deeper.is_empty() {
+                    path.extend(deeper);
+                }
+            }
+            return path;
+        }
+    }
+    Vec::new()
+}
+
+/// 判断 position 是否在 range 范围内（含边界）
+fn range_contains(range: &Range, pos: &Position) -> bool {
+    let start_ok = pos.line > range.start.line
+        || (pos.line == range.start.line && pos.character >= range.start.character);
+    let end_ok = pos.line < range.end.line
+        || (pos.line == range.end.line && pos.character <= range.end.character);
+    start_ok && end_ok
 }

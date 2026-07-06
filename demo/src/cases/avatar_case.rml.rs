@@ -17,6 +17,7 @@ use crate::cases::common::build_api_table;
 pub struct AvatarCase {
     pub name: String,
     pub size_index: u8,
+    pub code_tab: usize,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
 }
@@ -34,12 +35,11 @@ impl ILifecycle for AvatarCase {
     fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
         self.name = "Jason Lee".into();
         let (cols, rows) = build_api_table(&[
-            ("src", "URL 字符串", "图片地址"),
-            ("name", "字符串", "取首字母显示"),
-            ("placeholder", "图标名", "占位图标"),
-            ("size", "small/medium/large", "尺寸变体"),
-            ("AvatarGroup limit", "数字", "最大显示数量"),
-            ("AvatarGroup ellipsis", "布尔标志", "溢出项显示 +N"),
+            ("src", "URL 字符串/绑定", "图片地址"),
+            ("name", "字符串/绑定", "取首字母显示"),
+            ("placeholder", "IconName 枚举名", "占位图标"),
+            ("size", "xsmall/small/medium/large", "尺寸"),
+            ("on-click", "事件", "点击回调"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;
@@ -48,28 +48,88 @@ impl ILifecycle for AvatarCase {
 
 impl AvatarCase {
     #[computed]
-    pub fn size_label(&self) -> String {
+    pub fn size_label(&self) -> &'static str {
         match self.size_index % 3 {
-            0 => "small".to_string(),
-            1 => "medium".to_string(),
-            _ => "large".to_string(),
+            0 => "small",
+            1 => "medium",
+            _ => "large",
         }
     }
 
     #[computed]
-    pub fn code_sample(&self) -> String {
-        r#"<Avatar src="https://..." size="large" />
-<Avatar name="Jason Lee" />
-<Avatar placeholder="Building2" />
-<AvatarGroup limit="3" ellipsis="">
-    <Avatar src="..." />
-    <Avatar name="John" />
-</AvatarGroup>"#
+    pub fn rml_sample(&self) -> String {
+        r#"<!-- avatar_case.rml：声明式 UI，三种内容模式 + 尺寸 + 动态绑定 -->
+<component>
+    <!-- src 图片源 -->
+    <Avatar src="https://..." size="large" />
+
+    <!-- name 首字母（"Jason Lee" → "JL"） -->
+    <Avatar name="Jason Lee" />
+
+    <!-- placeholder 占位图标（IconName 枚举名） -->
+    <Avatar placeholder="UserCircle" />
+
+    <!-- 4 种尺寸 -->
+    <Avatar name="XS" size="xsmall" />
+    <Avatar name="M" size="medium" />
+
+    <!-- 绑定：name={field} -->
+    <Avatar name={user_name} size="large" />
+
+    <!-- AvatarGroup 分组 -->
+    <AvatarGroup limit="3" ellipsis="">
+        <Avatar name="Alice" />
+        <Avatar name="Bob" />
+    </AvatarGroup>
+</component>"#
+            .to_string()
+    }
+
+    #[computed]
+    pub fn rust_sample(&self) -> String {
+        r#"// avatar_case.rml.rs：后端状态 + computed + command handler
+use rml::prelude::*;
+
+#[component]
+#[derive(Default)]
+pub struct AvatarCase {
+    pub name: String,           // model 双向绑定的字段
+    pub size_index: u8,         // 状态字段
+}
+
+impl ILifecycle for AvatarCase {
+    fn on_loaded(&mut self, _w: &mut gpui::Window, _cx: &mut Context<Self>) {
+        self.name = "Jason Lee".into();   // 初始化默认值
+    }
+}
+
+impl AvatarCase {
+    // #[computed] 标注的方法可在 RML 中以 {method_name} 引用
+    #[computed]
+    pub fn size_label(&self) -> &'static str {
+        match self.size_index % 3 {
+            0 => "small",
+            1 => "medium",
+            _ => "large",
+        }
+    }
+
+    // #[command] 标注的方法可被 on-click={on_cycle_size} 调用
+    #[command]
+    pub fn on_cycle_size(&mut self, _: &ClickEvent, _cx: &mut Context<Self>) {
+        self.size_index = self.size_index.wrapping_add(1);
+    }
+}"#
             .to_string()
     }
 
     #[command]
-    pub fn on_cycle_size(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
-        self.size_index = (self.size_index + 1) % 3;
+    pub fn on_cycle_size(&mut self, _: &ClickEvent, _cx: &mut Context<Self>) {
+        self.size_index = self.size_index.wrapping_add(1);
+    }
+
+    #[command]
+    pub fn on_code_tab_change(&mut self, idx: usize, _cx: &mut Context<Self>) {
+        self.code_tab = idx;
     }
 }

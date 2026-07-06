@@ -84,8 +84,13 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
     ("Avatar", &["src", "name"]),
     // AvatarGroup 专用
     ("AvatarGroup", &["limit", "ellipsis"]),
+    // Badge 专用（Number/Dot/Icon 三种 variant：count/max 为 Number variant 参数，dot 切换 Dot variant，icon 切换 Icon variant）
+    ("Badge", &["count", "max", "dot", "icon"]),
     // Card 专用（Ant Design 风格卡片，title/extra/cover/footer/bordered/borderless/hoverable）
     ("Card", &["title", "extra", "cover", "footer", "bordered", "borderless", "hoverable"]),
+    // Tag 专用（variant 属性 primary/secondary/danger/success/warning/info 已在 COMMON_STATIC_PROPS，
+    // outline 为 Tag 专属描边样式）
+    ("Tag", &["outline"]),
     // Separator 专用（无 new() 构造器，通过 vertical/dashed 选择 horizontal/vertical/dashed 构造）
     ("Separator", &["vertical", "dashed"]),
     // TabBar 专用（标签栏容器，variant 快捷方法 + menu + selected_index + prefix/suffix + on_click/on_close 等）
@@ -118,6 +123,8 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
     ("Icon", &["name", "path"]),
     // Kbd 专用（RenderOnce 无 ElementId，key 为构造器参数，outline/appearance 为 setter）
     ("Kbd", &["key", "outline", "appearance"]),
+    // Breadcrumb 专用（RenderOnce 无 ElementId，items 为唯一数据绑定属性）
+    ("Breadcrumb", &["items"]),
 ];
 
 /// 查询组件的所有已注册属性（通用 + 专用）

@@ -61,8 +61,9 @@ pub fn gen_code_editor(
         .unwrap_or("rml");
 
     // 声明式 h-full 属性：让 CodeEditor 高度填满父容器（用于 LSP 编辑器等场景）
+    // 注意：parser 已将 kebab-case `h-full` 规范化为 snake_case `h_full`
     let h_full = elem.attributes.iter().any(|attr| match attr {
-        Attribute::Static { name, value, .. } if name == "h-full" => {
+        Attribute::Static { name, value, .. } if name == "h_full" => {
             value.is_empty() || value.eq_ignore_ascii_case("true")
         }
         _ => false,
@@ -70,8 +71,9 @@ pub fn gen_code_editor(
 
     // 声明式 context-menu 属性：指定右键菜单构建方法名
     // 方法签名：fn(&self, NativeMenu, &mut Window, &mut Context<Self>) -> NativeMenu
+    // 注意：parser 已将 kebab-case `context-menu` 规范化为 snake_case `context_menu`
     let context_menu_method: Option<&str> = elem.attributes.iter().find_map(|attr| match attr {
-        Attribute::Static { name, value, .. } if name == "context-menu" && !value.is_empty() => {
+        Attribute::Static { name, value, .. } if name == "context_menu" && !value.is_empty() => {
             Some(value.as_str())
         }
         _ => None,
@@ -185,7 +187,7 @@ pub fn gen_code_editor(
     for attr in &elem.attributes {
         let is_handled_inline = match attr {
             Attribute::Static { name, .. } => {
-                name == "value" || name == "language" || name == "h-full" || name == "context-menu"
+                name == "value" || name == "language" || name == "h_full" || name == "context_menu"
             }
             Attribute::Bind { name, .. } => name == "value",
             _ => false,
@@ -352,7 +354,7 @@ mod tests {
         let elem = make_element(
             "CodeEditor",
             vec![Attribute::Static {
-                name: "h-full".into(),
+                name: "h_full".into(),
                 value: "".into(),
                 span: Span::empty(),
             }],
@@ -411,5 +413,24 @@ mod tests {
                 .unwrap();
         assert!(code.contains("let __code = \"let x = 1;\".to_string();"));
         assert!(code.contains(".default_value(&__code)"));
+    }
+
+    #[test]
+    fn gen_code_editor_context_menu() {
+        let elem = make_element(
+            "CodeEditor",
+            vec![Attribute::Static {
+                name: "context_menu".into(),
+                value: "build_editor_menu".into(),
+                span: Span::empty(),
+            }],
+            vec![],
+        );
+        let mut id = 0;
+        let code =
+            gen_code_editor(&elem, code_editor_component(), &ctx(), 0, &mut id, &Vec::new())
+                .unwrap();
+        assert!(code.contains(".context_menu("));
+        assert!(code.contains("this.build_editor_menu(menu, w, cx)"));
     }
 }

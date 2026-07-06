@@ -93,12 +93,12 @@ pub fn handle_did_save(
 
     if doctype::is_rust_file(&uri) {
         if doctype::is_rust_codebehind(&uri) {
-            if let Some(text) = params.text {
-                state.workspace.refresh_codebehind(&uri, &text);
+            if let Some(ref text) = params.text {
+                state.workspace.refresh_codebehind(&uri, text);
             }
         }
-        if let Some(text) = params.text {
-            state.rust_query.apply_change(&uri, &text);
+        if let Some(ref text) = params.text {
+            state.rust_query.apply_change(&uri, text);
         }
         let diags = diagnostics::collect_rust(&uri, state);
         crate::server::dispatch::send_diagnostics(&uri, diags, conn)?;

@@ -244,6 +244,12 @@ mod tests {
         ) -> std::collections::HashMap<Url, Vec<lsp_types::TextEdit>> {
             std::collections::HashMap::new()
         }
+        fn document_symbol(&self, _uri: &Url) -> Option<Vec<lsp_types::DocumentSymbol>> {
+            None
+        }
+        fn folding_ranges(&self, _uri: &Url) -> Vec<lsp_types::FoldingRange> {
+            Vec::new()
+        }
     }
 
     #[test]

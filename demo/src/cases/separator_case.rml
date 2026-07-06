@@ -1,11 +1,7 @@
 <component>
     <div v-flex="" class="case-pane doc-pane">
         <h2>{t("case.separator.title")}</h2>
-
-        <Card title="组件说明">
-            <p>Separator 是 RML 的分隔符组件。无 new() 构造器，使用 horizontal()/vertical() 关联函数。</p>
-            <p>通过 vertical 属性切换水平/垂直方向，dashed 属性切换虚线样式。</p>
-        </Card>
+        <p>Separator 是 RML 的分隔符组件，标签为 PascalCase <code>Separator</code>。无 <code>new()</code> 构造器，通过 <code>horizontal()</code>/<code>vertical()</code>/<code>dashed()</code> 关联函数构造。RML 中用 <code>vertical</code>/<code>dashed</code> 属性切换。</p>
 
         <Card title="水平分隔符">
             <p>默认水平方向分隔符。</p>
@@ -16,8 +12,8 @@
             </div>
         </Card>
 
-        <Card title="垂直分隔符">
-            <p>vertical 属性切换为垂直方向。</p>
+        <Card title="垂直分隔符 vertical">
+            <p><code>vertical=""</code> 切换为垂直方向。需配合 h-flex 容器使用。</p>
             <div h-flex="" gap-4="">
                 <p>左侧</p>
                 <Separator vertical="" />
@@ -25,8 +21,8 @@
             </div>
         </Card>
 
-        <Card title="虚线样式">
-            <p>dashed 属性使用虚线样式。</p>
+        <Card title="虚线样式 dashed">
+            <p><code>dashed=""</code> 使用虚线样式。</p>
             <div v-flex="" gap-2="">
                 <p>上方内容</p>
                 <Separator dashed="" />
@@ -34,12 +30,21 @@
             </div>
         </Card>
 
-        <Card title="动态切换(if 指令条件渲染)">
-            <p>点击按钮切换方向和样式,观察下方分隔符变化(演示 if 指令条件渲染):</p>
+        <Card title="组合样式 vertical + dashed">
+            <p>垂直 + 虚线组合，常用于侧边栏分隔。</p>
+            <div h-flex="" gap-4="">
+                <p>左侧</p>
+                <Separator vertical="" dashed="" />
+                <p>右侧</p>
+            </div>
+        </Card>
+
+        <Card title="动态切换(if 条件渲染)">
+            <p>点击按钮切换方向和样式，观察下方分隔符变化（演示 if 条件渲染 + 绑定）：</p>
             <p>当前方向: {is_vertical} | 虚线: {is_dashed}</p>
             <div class="button-row">
                 <Button label="切换方向" on-click={on_toggle_orientation} />
-                <Button label="切换虚线" on-click={on_toggle_dashed} />
+                <Button label="切换虚线" primary="" on-click={on_toggle_dashed} />
             </div>
             <div if={is_vertical} h-flex="" gap-4="">
                 <p>左侧</p>
@@ -53,7 +58,22 @@
             </div>
         </Card>
 
+        <Card title="示例代码">
+            <p>点击下方 Tab 切换 <code>.rml</code> 声明文件与 <code>.rml.rs</code> 后端文件：</p>
+            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
+                <Tab label=".rml" />
+                <Tab label=".rml.rs" />
+            </TabBar>
+            <div if={code_tab == 0}>
+                <CodeEditor ref="rml_editor" value={rml_sample} language="rust" />
+            </div>
+            <div if={code_tab == 1}>
+                <CodeEditor ref="rust_editor" value={rust_sample} language="rust" />
+            </div>
+        </Card>
+
         <Card title="API">
+            <h3>Separator</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
         </Card>
     </div>

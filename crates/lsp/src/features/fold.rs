@@ -42,7 +42,7 @@ fn indent_folding_ranges(text: &str) -> Vec<FoldingRange> {
         while let Some(&(top_indent, start_line)) = stack.last() {
             if top_indent >= cur_indent {
                 stack.pop();
-                let end_line = idx.saturating_sub(1);
+                let end_line = idx;
                 if end_line > start_line + 1 {
                     ranges.push(FoldingRange {
                         start_line: start_line as u32,
@@ -61,7 +61,7 @@ fn indent_folding_ranges(text: &str) -> Vec<FoldingRange> {
         let next_indent = lines[idx + 1..]
             .iter()
             .find(|l| !l.trim().is_empty())
-            .map(indent_of)
+            .map(|l| indent_of(l))
             .unwrap_or(0);
         if next_indent > cur_indent {
             stack.push((cur_indent, idx));

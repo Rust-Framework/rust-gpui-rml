@@ -123,6 +123,12 @@ impl RustSemanticQuery for MockQuery {
             .cloned()
             .unwrap_or_default()
     }
+    fn document_symbol(&self, _uri: &Url) -> Option<Vec<lsp_types::DocumentSymbol>> {
+        None
+    }
+    fn folding_ranges(&self, _uri: &Url) -> Vec<lsp_types::FoldingRange> {
+        Vec::new()
+    }
 }
 
 /// 构造带 codebehind 配对的 workspace

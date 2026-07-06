@@ -17,6 +17,8 @@ use crate::cases::common::build_api_table;
 pub struct TagCase {
     pub tag_text: String,
     pub variant_index: u8,
+    pub is_outline: bool,
+    pub code_tab: usize,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
 }
@@ -34,9 +36,11 @@ impl ILifecycle for TagCase {
     fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
         self.tag_text = "RML".into();
         let (cols, rows) = build_api_table(&[
-            ("primary/secondary/danger/success/warning/info", "布尔标志", "变体颜色"),
-            ("size", "small/medium", "尺寸"),
-            ("子节点", "文本", "标签内容"),
+            ("primary / secondary / danger / success / warning / info", "布尔标志", "6 种 variant（构造器选择）"),
+            ("outline", "布尔标志", "描边样式（透明背景 + 彩色边框/文字）"),
+            ("size", "xsmall/small/medium/large", "尺寸（仅 Small/Medium 视觉区分）"),
+            ("子节点", "文本/元素", "标签内容"),
+            ("on-click", "事件", "点击回调"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;
@@ -58,16 +62,99 @@ impl TagCase {
     }
 
     #[computed]
-    pub fn code_sample(&self) -> String {
-        r#"<Tag>Default</Tag>
-<Tag primary="">Primary</Tag>
-<Tag danger="">Danger</Tag>
-<Tag size="small">Small</Tag>"#
+    pub fn outline_label(&self) -> &'static str {
+        if self.is_outline { "outline" } else { "filled" }
+    }
+
+    #[computed]
+    pub fn rml_sample(&self) -> String {
+        r#"<!-- tag_case.rml：声明式 UI，描述结构 + 绑定 + 事件 -->
+<component>
+    <!-- 6 种 variant：空属性切换（构造器选择 Tag::primary() 等） -->
+    <Tag>Default</Tag>
+    <Tag primary="">Primary</Tag>
+    <Tag secondary="">Secondary</Tag>
+    <Tag danger="">Danger</Tag>
+    <Tag success="">Success</Tag>
+    <Tag warning="">Warning</Tag>
+    <Tag info="">Info</Tag>
+
+    <!-- outline 描边样式：透明背景 + 彩色边框 -->
+    <Tag primary="" outline="">Primary Outline</Tag>
+    <Tag danger="" outline="">Danger Outline</Tag>
+
+    <!-- 尺寸 size -->
+    <Tag primary="" size="small">Small</Tag>
+    <Tag primary="" size="medium">Medium</Tag>
+
+    <!-- 动态绑定：model 双向绑定 + if 条件渲染 -->
+    <input model={tag_text} placeholder="输入标签文本" />
+    <Tag primary="" if={variant_index == 1}>{tag_text}</Tag>
+    <Tag danger="" if={variant_index == 3}>{tag_text}</Tag>
+</component>"#
+            .to_string()
+    }
+
+    #[computed]
+    pub fn rust_sample(&self) -> String {
+        r#"// tag_case.rml.rs：后端状态 + computed + command handler
+use rml::prelude::*;
+
+#[component]
+#[derive(Default)]
+pub struct TagCase {
+    pub tag_text: String,       // model 双向绑定字段
+    pub variant_index: u8,     // variant 循环索引
+    pub is_outline: bool,       // outline 样式切换
+}
+
+impl ILifecycle for TagCase {
+    fn on_loaded(&mut self, _w: &mut gpui::Window, _cx: &mut Context<Self>) {
+        self.tag_text = "RML".into();
+    }
+}
+
+impl TagCase {
+    // #[computed] 标注的方法可在 RML 中以 {method_name} 直接引用
+    #[computed]
+    pub fn variant_label(&self) -> &'static str {
+        match self.variant_index {
+            0 => "default",
+            1 => "primary",
+            2 => "secondary",
+            3 => "danger",
+            4 => "success",
+            5 => "warning",
+            _ => "info",
+        }
+    }
+
+    // #[command] 标注的方法可被 on-click={on_xxx} 调用
+    #[command]
+    pub fn on_cycle_variant(&mut self, _: &ClickEvent, _cx: &mut Context<Self>) {
+        self.variant_index = (self.variant_index + 1) % 7;
+    }
+
+    #[command]
+    pub fn on_toggle_outline(&mut self, _: &ClickEvent, _cx: &mut Context<Self>) {
+        self.is_outline = !self.is_outline;
+    }
+}"#
             .to_string()
     }
 
     #[command]
-    pub fn on_cycle_variant(&mut self, _: &ClickEvent, _: &mut Context<Self>) {
+    pub fn on_cycle_variant(&mut self, _: &ClickEvent, _cx: &mut Context<Self>) {
         self.variant_index = (self.variant_index + 1) % 7;
+    }
+
+    #[command]
+    pub fn on_toggle_outline(&mut self, _: &ClickEvent, _cx: &mut Context<Self>) {
+        self.is_outline = !self.is_outline;
+    }
+
+    #[command]
+    pub fn on_code_tab_change(&mut self, idx: usize, _cx: &mut Context<Self>) {
+        self.code_tab = idx;
     }
 }

@@ -169,6 +169,7 @@ pub fn canonical_tag(tag: &str) -> String {
         "descriptions" => "DescriptionList".to_string(),
         "description" => "DescriptionItem".to_string(),
         "separator" => "DescriptionSeparator".to_string(),
+        "breadcrumb" => "Breadcrumb".to_string(),
         // kebab-case 形式（tab-bar / tab-item）由 normalize_component_tag 自动转为 PascalCase
         _ => normalized,
     }
@@ -485,6 +486,13 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             ctor_path: "rml_ui::AvatarGroup",
             kind: ComponentKind::StatelessNoId,
             container: true,
+        }),
+        // Breadcrumb：无参构造 RenderOnce 叶子组件（.items(Vec<BreadcrumbItem>)）
+        // PascalCase: <Breadcrumb>，kebab-case: <breadcrumb>
+        "Breadcrumb" | "breadcrumb" => Some(ComponentTag {
+            ctor_path: "rml_ui::Breadcrumb",
+            kind: ComponentKind::StatelessNoId,
+            container: false,
         }),
         // Card：Ant Design 风格卡片容器，需 id 支持 hoverable 悬浮效果
         "Card" => Some(ComponentTag {

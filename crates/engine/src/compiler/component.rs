@@ -349,6 +349,10 @@ pub fn component_static_setter(name: &str, value: &str, tag: &str) -> Option<Str
     if let Some(s) = super::avatar::static_setter(name, value, tag) {
         return Some(s);
     }
+    // Badge 的 count/max/dot/icon（Number/Dot/Icon 三种 variant）
+    if let Some(s) = super::badge::static_setter(name, value, tag) {
+        return Some(s);
+    }
     // Card 的 title/bordered/borderless/hoverable
     if let Some(s) = super::card::static_setter(name, value, tag) {
         return Some(s);
@@ -491,6 +495,10 @@ pub fn component_bind_setter(
     if let Some(s) = super::avatar::bind_setter(name, expr_str, loop_vars, computed, tag) {
         return Some(s);
     }
+    // Badge 的 count/max 绑定（Number variant 动态计数）
+    if let Some(s) = super::badge::bind_setter(name, expr_str, loop_vars, computed, tag) {
+        return Some(s);
+    }
     // Card 的 title/extra/cover/footer/bordered/hoverable 属性
     if let Some(s) = super::card::bind_setter(name, expr_str, loop_vars, computed, tag) {
         return Some(s);
@@ -504,6 +512,11 @@ pub fn component_bind_setter(
         super::description_list::setters::bind_setter(name, expr_str, loop_vars, computed, tag)
     {
         return Some(s);
+    }
+    // Breadcrumb 的 items 属性 → .items(Vec<BreadcrumbItem>.clone())
+    if crate::tags::canonical_tag(tag) == "Breadcrumb" && name == "items" {
+        let rust_expr = component_bind_rust_expr(expr_str, loop_vars, computed);
+        return Some(format!(".items({}.clone())", rust_expr));
     }
     // Tooltip 通用属性绑定（Button/Checkbox/Clipboard/DropdownButton/Toggle/Radio/Switch）
     if super::tooltip::supports_tooltip(tag) && name == "tooltip" {

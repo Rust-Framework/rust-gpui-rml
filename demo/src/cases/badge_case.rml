@@ -1,46 +1,113 @@
 <component>
     <div v-flex="" class="case-pane doc-pane">
         <h2>{t("case.badge.title")}</h2>
+        <p>Badge 是 RML 的徽标组件，标签为 PascalCase <code>Badge</code>。无 ElementId 构造（StatelessNoId），容器模式，子节点为被徽标标记的元素。支持三种 variant：<code>Number</code>（默认，显示计数）、<code>Dot</code>（小红点）、<code>Icon</code>（图标徽标）。</p>
 
-        <Card title="组件说明">
-            <p>Badge 是 RML 的徽标组件，标签为 PascalCase <code>Badge</code>。无 ElementId 构造（StatelessNoId），支持容器模式包裹子内容。</p>
-            <p>核心用法：包裹子元素显示数字徽标，或通过 primary/secondary/danger/success 变体属性显示彩色徽标。</p>
+        <Card title="Number variant（默认）">
+            <p>默认 variant 为 Number，通过 <code>count</code> 属性设置计数。count=0 时徽标隐藏，count &gt; max 时显示 <code>N+</code>（max 默认 99）。</p>
+            <div class="button-row">
+                <Badge count="5">
+                    <Avatar name="Alice" />
+                </Badge>
+                <Badge count="0">
+                    <Avatar name="Bob" />
+                </Badge>
+                <Badge count="100" max="9">
+                    <Avatar name="Carol" />
+                </Badge>
+                <Badge count="200">
+                    <Avatar name="Dave" />
+                </Badge>
+            </div>
+            <p class="hint">注：count=0 时徽标隐藏（Bob）；count=100 max=9 显示 "9+"（Carol）；count=200 默认 max=99 显示 "99+"（Dave）。</p>
+        </Card>
+
+        <Card title="Dot variant">
+            <p><code>dot=""</code> 切换为 Dot variant，显示一个小红点，常用于"有新内容"提示。</p>
+            <div class="button-row">
+                <Badge dot="">
+                    <Avatar name="Eve" />
+                </Badge>
+                <Badge dot="">
+                    <Avatar name="Frank" />
+                </Badge>
+                <Badge dot="" size="large">
+                    <Avatar name="Grace" />
+                </Badge>
+            </div>
+        </Card>
+
+        <Card title="Icon variant">
+            <p><code>icon="Bell"</code> 切换为 Icon variant，在右下角显示图标徽标。值为 <code>rml_ui::IconName</code> 枚举变体名（如 <code>Bell</code>、<code>Check</code>、<code>Star</code>）。</p>
+            <div class="button-row">
+                <Badge icon="Bell">
+                    <Avatar name="Heidi" />
+                </Badge>
+                <Badge icon="Check" size="large">
+                    <Avatar name="Ivan" />
+                </Badge>
+                <Badge icon="Star">
+                    <Avatar name="Judy" />
+                </Badge>
+            </div>
+        </Card>
+
+        <Card title="尺寸 size">
+            <p>size 属性控制徽标大小：xsmall / small / medium / large。</p>
+            <div class="button-row">
+                <Badge count="5" size="xsmall">
+                    <Avatar name="A" />
+                </Badge>
+                <Badge count="5" size="small">
+                    <Avatar name="B" />
+                </Badge>
+                <Badge count="5" size="medium">
+                    <Avatar name="C" />
+                </Badge>
+                <Badge count="5" size="large">
+                    <Avatar name="D" />
+                </Badge>
+            </div>
+            <p class="hint">注：在 gpui-component 底层实现中，<code>Size::Small</code> 与 <code>Size::XSmall</code> 共用同一尺寸分支（10px），视觉等价。<code>Medium</code>（默认，16px）与 <code>Large</code>（24px）有显著差异。</p>
+        </Card>
+
+        <Card title="动态绑定（#[computed] + if 条件渲染）">
+            <p>点击按钮递增 count，当 count &gt; max_val 时显示 <code>{count_display}</code>（演示 #[computed] 条件逻辑）；切换 variant 演示 if 条件渲染：</p>
+            <div class="button-row">
+                <Badge dot="" if={is_dot}>
+                    <Avatar name="Dynamic" />
+                </Badge>
+                <Badge count={count} if={!is_dot} max={max_val}>
+                    <Avatar name="Dynamic" />
+                </Badge>
+            </div>
+            <p>当前 variant: {variant_label} | count: {count} | max_val: {max_val} | 显示: {count_display}</p>
+            <div class="button-row">
+                <Button label="count +1" primary="" on-click={on_increment} />
+                <Button label="count +10" on-click={on_increment_10} />
+                <Button label="reset" on-click={on_reset} />
+                <Button label="切换 Number/Dot" on-click={on_toggle_dot} />
+            </div>
+        </Card>
+
+        <Card title="示例代码">
+            <p>点击下方 Tab 切换 <code>.rml</code> 声明文件与 <code>.rml.rs</code> 后端文件：</p>
+            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
+                <Tab label=".rml" />
+                <Tab label=".rml.rs" />
+            </TabBar>
+            <div if={code_tab == 0}>
+                <CodeEditor ref="rml_editor" value={rml_sample} language="rust" />
+            </div>
+            <div if={code_tab == 1}>
+                <CodeEditor ref="rust_editor" value={rust_sample} language="rust" />
+            </div>
         </Card>
 
         <Card title="API">
+            <h3>Badge</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-        </Card>
-
-        <Card title="基础用法">
-            <p>包裹文本内容，通过 count 显示数字徽标。</p>
-            <div h-flex="" gap-4="">
-                <Badge>5</Badge>
-                <Badge>99+</Badge>
-            </div>
-        </Card>
-
-        <Card title="尺寸(Sizable trait)">
-            <p>size 属性控制徽标大小:small/medium/large。</p>
-            <div h-flex="" gap-4="">
-                <Badge size="small">5</Badge>
-                <Badge size="medium">5</Badge>
-                <Badge size="large">5</Badge>
-            </div>
-        </Card>
-
-        <Card title="动态徽标(#[computed] + if 条件渲染)">
-            <p>点击按钮递增 count,当 count > 99 时显示 "99+"(演示 #[computed] 条件逻辑);切换 size 演示 if 条件渲染:</p>
-            <div h-flex="" gap-4="">
-                <Badge>{badge_label}</Badge>
-                <Badge size="small" if={size_index == 0}>{count}</Badge>
-                <Badge size="medium" if={size_index == 1}>{count}</Badge>
-                <Badge size="large" if={size_index == 2}>{count}</Badge>
-            </div>
-            <p>当前 count: {count} | badge_label: {badge_label} | size: {size_label}</p>
-            <div class="button-row">
-                <Button label="count +1" primary="" on-click={on_increment} />
-                <Button label="切换 size" on-click={on_cycle_size} />
-            </div>
+            <p>另：<code>size</code> 属性来自 Sizable trait，<code>disabled</code> 等通用属性对所有 Stateless 组件生效。</p>
         </Card>
     </div>
 </component>
