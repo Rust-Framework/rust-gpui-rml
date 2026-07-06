@@ -182,10 +182,12 @@
 /* ── LSP 代码编辑器样式 ── */
 
 .lsp-editor-pane {
-    flex: 1;
+    height: 100%;
     min-height: 0;
     width: 100%;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 .lsp-toolbar {

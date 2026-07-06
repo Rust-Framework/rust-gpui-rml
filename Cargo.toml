@@ -1,8 +1,8 @@
 [workspace]
-members = ["crates/core", "crates/macros", "crates/engine", "crates/ui", "crates/app", "crates/rml", "demo"]
-# lsp/dap 暂移出 workspace：其 rust-analyzer/lldb 重型 git 依赖在受限网络下阻塞编译。
+members = ["crates/core", "crates/macros", "crates/engine", "crates/ui", "crates/app", "crates/rml", "crates/lsp", "demo"]
+# dap 暂移出 workspace：其 lldb 重型 git 依赖在受限网络下阻塞编译。
 # 需要时 cd 进对应目录单独构建，或重新加入 members。
-exclude = ["crates/lsp", "crates/dap"]
+exclude = ["crates/dap"]
 resolver = "2"
 
 [workspace.package]

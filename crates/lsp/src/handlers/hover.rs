@@ -1,7 +1,7 @@
 //! textDocument/hover 处理
 
 use anyhow::Result;
-use lsp_types::{Hover, HoverContents, HoverParams, MarkedString};
+use lsp_types::{Hover, HoverContents, HoverParams, MarkupContent, MarkupKind};
 
 use crate::features::hover;
 use crate::server::connection::ServerState;
@@ -21,7 +21,10 @@ pub fn handle_hover(
             .hover(&uri, position)
             .map(|info| Hover {
                 range: info.range,
-                contents: HoverContents::Scalar(MarkedString::String(info.content)),
+                contents: HoverContents::Markup(MarkupContent {
+                    kind: MarkupKind::Markdown,
+                    value: info.content,
+                }),
             }))
     } else {
         Ok(hover::hover(&uri, position, &state.workspace))
