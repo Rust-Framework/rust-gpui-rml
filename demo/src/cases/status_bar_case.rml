@@ -12,7 +12,7 @@
         </Card>
 
         <Card title="示例代码">
-            <div class="code-block">{code_sample}</div>
+            <CodeEditor value={code_sample} />
         </Card>
 
         <Card title="演示效果">

@@ -414,16 +414,8 @@ impl TabVariant {
     }
 
     fn corner_radii(&self, size: Size, selected: bool, disabled: bool, cx: &App) -> Corners<Pixels> {
-        match self {
-            // Selected Flat tab: rounded top, square bottom to meet the body.
-            TabVariant::Flat if selected && !disabled => Corners {
-                top_left: cx.theme().radius,
-                top_right: cx.theme().radius,
-                bottom_left: px(0.),
-                bottom_right: px(0.),
-            },
-            _ => Corners::all(self.radius(size, cx)),
-        }
+        let _ = (selected, disabled);
+        Corners::all(self.radius(size, cx))
     }
 
     pub(super) fn inner_radius(&self, size: Size, cx: &App) -> Pixels {

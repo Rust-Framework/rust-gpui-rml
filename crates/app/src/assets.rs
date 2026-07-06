@@ -27,7 +27,9 @@ impl AssetSource for CompositeAssets {
             return Ok(None);
         }
         // 1. 内置图标（icons/**/*.svg）
-        if let Some(data) = gpui_component_assets::Assets.load(path)? {
+        //    gpui_component_assets::Assets.load 对未找到的路径返回 Err（而非 Ok(None)），
+        //    用 .ok().flatten() 将 Err 转为 None，继续尝试 rml_core::assets::load。
+        if let Some(data) = gpui_component_assets::Assets.load(path).ok().flatten() {
             return Ok(Some(data));
         }
         // 2. RML 用户嵌入资源

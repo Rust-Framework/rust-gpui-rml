@@ -7,6 +7,8 @@
     selected-index={selected_tab}
     on-tab-click="on_tab_click"
     on-tab-close="on_tab_close"
+    on-tab-close-all="on_tab_close_all"
+    on-tab-close-others="on_tab_close_others"
     show-chrome={show_chrome}
     on-chrome-toggle="on_chrome_toggle"
     left-size={slot_left_size}>

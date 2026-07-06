@@ -41,15 +41,15 @@ impl BuiltinTag {
             BuiltinTag::Div => "gpui::div()",
             BuiltinTag::Span => "gpui::div()",
             BuiltinTag::P => "gpui::div().text_sm().text_color(rml_core::theme::color(\"--text-muted\"))",
-            // 标题：直接 text_size 设置 px 大小（紧凑现代默认值）
+            // 标题：text_size + font_weight（h1=BOLD, h2-h6=SEMIBOLD）
             // 严格遵循 HTML 标准 H1 > H2 > H3 > H4 > H5 > H6
             // h1=32px / h2=24px / h3=20px / h4=18px / h5=16px / h6=14px
-            BuiltinTag::H1 => "gpui::div().text_size(gpui::px(32.))",
-            BuiltinTag::H2 => "gpui::div().text_size(gpui::px(24.))",
-            BuiltinTag::H3 => "gpui::div().text_size(gpui::px(20.))",
-            BuiltinTag::H4 => "gpui::div().text_size(gpui::px(18.))",
-            BuiltinTag::H5 => "gpui::div().text_size(gpui::px(16.))",
-            BuiltinTag::H6 => "gpui::div().text_size(gpui::px(14.))",
+            BuiltinTag::H1 => "gpui::div().text_size(gpui::px(32.)).font_weight(gpui::FontWeight::BOLD)",
+            BuiltinTag::H2 => "gpui::div().text_size(gpui::px(24.)).font_weight(gpui::FontWeight::SEMIBOLD)",
+            BuiltinTag::H3 => "gpui::div().text_size(gpui::px(20.)).font_weight(gpui::FontWeight::SEMIBOLD)",
+            BuiltinTag::H4 => "gpui::div().text_size(gpui::px(18.)).font_weight(gpui::FontWeight::SEMIBOLD)",
+            BuiltinTag::H5 => "gpui::div().text_size(gpui::px(16.)).font_weight(gpui::FontWeight::SEMIBOLD)",
+            BuiltinTag::H6 => "gpui::div().text_size(gpui::px(14.)).font_weight(gpui::FontWeight::SEMIBOLD)",
             // 表单类：原生轨简化为 div + class（扩展轨用 <Button>/<Input>）
             BuiltinTag::Button => "gpui::div()",
             BuiltinTag::Input => "gpui::div()",

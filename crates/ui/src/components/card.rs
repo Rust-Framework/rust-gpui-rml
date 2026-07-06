@@ -6,7 +6,7 @@
 //! - `footer`：底部区域（用于 actions 等）
 //! - `bordered` / `borderless`：边框变体
 //! - `hoverable`：悬浮提升（shadow 效果）
-//! - `size`：尺寸变体（Default/Small，通过 Sizable trait）
+//! - `size`：尺寸变体（Small/Medium/Large，默认 Medium，通过 Sizable trait）
 //!
 //! RML `<Card>` 编译为 `rml_ui::Card::new(("rml_el", N)).<setters>...`：
 //! - `title="..."` / `title={expr}` → `.title(...)`
@@ -19,8 +19,8 @@
 
 use gpui::prelude::FluentBuilder as _;
 use gpui::{
-    AnyElement, App, Div, ElementId, InteractiveElement, IntoElement, ParentElement, RenderOnce,
-    StatefulInteractiveElement, Styled, Window, div, px,
+    AnyElement, App, BoxShadow, Div, ElementId, InteractiveElement, IntoElement, ParentElement,
+    RenderOnce, StatefulInteractiveElement, Styled, Window, div, hsla, point, px,
 };
 use gpui_component::{ActiveTheme, Sizable, Size, StyledExt, h_flex};
 
@@ -153,17 +153,27 @@ impl RenderOnce for Card {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = cx.theme();
         let bg = theme.background;
+        let fg = theme.foreground;
         let border_color = theme.border;
-        let radius = theme.radius;
 
         let size = self.size;
-        let (body_px, body_py) = match size {
-            Size::Small => (px(16.), px(16.)),
-            _ => (px(24.), px(24.)),
+        let radius = match size {
+            Size::Small | Size::XSmall => theme.radius,
+            Size::Large => px(12.),
+            Size::Medium | Size::Size(_) => theme.radius_lg,
         };
-        let (header_px, header_py) = match size {
-            Size::Small => (px(16.), px(12.)),
-            _ => (px(24.), px(16.)),
+        let (body_px, body_py) = match size {
+            Size::Small | Size::XSmall => (px(12.), px(12.)),
+            Size::Large => (px(32.), px(32.)),
+            Size::Medium | Size::Size(_) => (px(24.), px(24.)),
+        };
+        // AntD v5 Card head: min-height 48 (default) / 36 (small), padding 0,
+        // content vertically centered. Using min_h avoids padding-on-top-of-text
+        // height inflation (py(16) + line-height ≈ 52px > AntD's 48px).
+        let (header_px, header_min_h, footer_py) = match size {
+            Size::Small | Size::XSmall => (px(12.), px(36.), px(8.)),
+            Size::Large => (px(32.), px(56.), px(20.)),
+            Size::Medium | Size::Size(_) => (px(24.), px(48.), px(16.)),
         };
 
         let has_header = self.title.is_some() || self.extra.is_some();
@@ -175,9 +185,11 @@ impl RenderOnce for Card {
                     .items_center()
                     .justify_between()
                     .px(header_px)
-                    .py(header_py)
+                    .min_h(header_min_h)
+                    .border_b_1()
+                    .border_color(border_color)
                     .when_some(self.title, |this, title| {
-                        this.child(div().font_semibold().child(title))
+                        this.child(div().text_sm().font_semibold().child(title))
                     })
                     .when_some(self.extra, |this, extra| this.child(extra))
                     .into_any_element(),
@@ -194,21 +206,64 @@ impl RenderOnce for Card {
 
         let apply_border = self.variant == CardVariant::Default;
         let hoverable = self.hoverable;
+        let shadow_enabled = theme.shadow;
 
         self.base
             .id(self.id)
             .flex()
             .flex_col()
             .bg(bg)
+            .text_color(fg)
             .rounded(radius)
             .overflow_hidden()
             .when(apply_border, |this| {
                 this.border_1().border_color(border_color)
             })
-            .when(hoverable, |this| this.hover(|s| s.shadow_md()))
+            .when(hoverable && shadow_enabled, |this| {
+                let hover_shadow = vec![
+                    BoxShadow {
+                        color: hsla(0., 0., 0., 0.16),
+                        offset: point(px(0.), px(1.)),
+                        blur_radius: px(2.),
+                        spread_radius: px(-2.),
+                        inset: false,
+                    },
+                    BoxShadow {
+                        color: hsla(0., 0., 0., 0.12),
+                        offset: point(px(0.), px(3.)),
+                        blur_radius: px(6.),
+                        spread_radius: px(0.),
+                        inset: false,
+                    },
+                    BoxShadow {
+                        color: hsla(0., 0., 0., 0.09),
+                        offset: point(px(0.), px(5.)),
+                        blur_radius: px(12.),
+                        spread_radius: px(4.),
+                        inset: false,
+                    },
+                ];
+                this.hover(move |s| {
+                    let s = if apply_border {
+                        s.border_color(hsla(0., 0., 0., 0.))
+                    } else {
+                        s
+                    };
+                    s.shadow(hover_shadow.clone())
+                })
+            })
             .when_some(self.cover, |this, cover| this.child(cover))
             .when_some(header, |this, h| this.child(h))
             .when_some(body, |this, b| this.child(b))
-            .when_some(self.footer, |this, footer| this.child(footer))
+            .when_some(self.footer, |this, footer| {
+                this.child(
+                    div()
+                        .px(header_px)
+                        .py(footer_py)
+                        .border_t_1()
+                        .border_color(border_color)
+                        .child(footer),
+                )
+            })
     }
 }

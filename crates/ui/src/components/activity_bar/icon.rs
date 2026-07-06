@@ -1,17 +1,17 @@
 //! 活动栏图标渲染 —— `IContribution::icon` 返回的 `IconSpec` → 可渲染图标元素
 //!
 //! `IconSpec` 的 variant tag 直接决定渲染路径,无需字符串推断:
-//! 1. `Named(s)` → 查 `parse_icon_name` 表得 `IconName`,用 `Icon::new(name).small()`;
+//! 1. `Named(s)` → 查 `parse_icon_name` 表得 `IconName`,用 `Icon::new(name)`;
 //!    未匹配时 fallback `IconName::PanelLeft`
-//! 2. `Path(s)` → `Icon::default().path(s).small()`,经 `CompositeAssets` 路由,
+//! 2. `Path(s)` → `Icon::default().path(s)`,经 `CompositeAssets` 路由,
 //!    同时支持 gpui-component 内置 `icons/**/*.svg` 与 RML 用户嵌入资源(`assets/logo.svg` 等)
-//! 3. `Url(s)` → `gpui::img(s).size_4()`,加载外部/文件 URL 图片
+//! 3. `Url(s)` → `gpui::img(s).size_5()`,加载外部/文件 URL 图片
 //! 4. `None` → fallback `IconName::PanelLeft`
 //!
-//! 所有 `Icon` 实例统一应用 `.small()`(Sizable trait),与 TabWindow 标题栏图标尺寸一致。
+//! `Icon` 实例使用默认尺寸(18px,未调用 `Sizable::small()`),与 36px 按钮容器比例协调。
 
 use gpui::{AnyElement, IntoElement, Styled, Window, img};
-use gpui_component::{Icon, IconName, Sizable as _};
+use gpui_component::{Icon, IconName};
 use rml_core::contribution::IconSpec;
 
 /// 渲染贡献点 `IContribution::icon` 返回的 `IconSpec` 为可渲染图标元素。
@@ -24,19 +24,19 @@ use rml_core::contribution::IconSpec;
 pub fn resolve_icon(spec: Option<IconSpec>, window: &Window) -> AnyElement {
     match spec {
         Some(IconSpec::Named(s)) => match parse_icon_name(&s) {
-            Some(name) => Icon::new(name).small().into_any_element(),
-            None => Icon::new(IconName::PanelLeft).small().into_any_element(),
+            Some(name) => Icon::new(name).into_any_element(),
+            None => Icon::new(IconName::PanelLeft).into_any_element(),
         },
-        Some(IconSpec::Path(s)) => Icon::default().path(s).small().into_any_element(),
+        Some(IconSpec::Path(s)) => Icon::default().path(s).into_any_element(),
         Some(IconSpec::Url(s)) => {
             let text_color = window.text_style().color;
             img(s)
                 .flex_shrink_0()
-                .size_4()
+                .size_5()
                 .text_color(text_color)
                 .into_any_element()
         }
-        None => Icon::new(IconName::PanelLeft).small().into_any_element(),
+        None => Icon::new(IconName::PanelLeft).into_any_element(),
     }
 }
 

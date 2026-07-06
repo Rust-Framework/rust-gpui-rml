@@ -156,6 +156,11 @@ pub struct TabWindowShell {
     on_tab_click: Option<TabClickHandler>,
     /// 选项卡关闭按钮触发时调用，参数为被关闭选项卡的索引。
     on_tab_close: Option<TabClickHandler>,
+    /// "关闭全部"右键菜单项触发时调用（透传到 TabBar::on_close_all）。
+    on_tab_close_all: Option<ChromeToggleHandler>,
+    /// "关闭其他"右键菜单项触发时调用，参数为保留选项卡的索引
+    /// （透传到 TabBar::on_close_others）。
+    on_tab_close_others: Option<TabClickHandler>,
     on_chrome_toggle: Option<ChromeToggleHandler>,
     slot_left: Option<AnyElement>,
     slot_right: Option<AnyElement>,
@@ -180,6 +185,8 @@ impl TabWindowShell {
             selected_index: 0,
             on_tab_click: None,
             on_tab_close: None,
+            on_tab_close_all: None,
+            on_tab_close_others: None,
             on_chrome_toggle: None,
             slot_left: None,
             slot_right: None,
@@ -261,6 +268,29 @@ impl TabWindowShell {
         f: impl Fn(usize, &mut Window, &mut App) + 'static,
     ) -> Self {
         self.on_tab_close = Some(Rc::new(f));
+        self
+    }
+
+    /// Set the handler invoked when the "Close All" context menu item is
+    /// clicked. Forwarded to `TabBar::on_close_all`; the menu item only
+    /// renders when this handler is registered.
+    pub fn on_tab_close_all(
+        mut self,
+        f: impl Fn(&mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.on_tab_close_all = Some(Rc::new(f));
+        self
+    }
+
+    /// Set the handler invoked when the "Close Others" context menu item is
+    /// clicked. The parameter is the index of the tab to keep. Forwarded to
+    /// `TabBar::on_close_others`; the menu item only renders when this
+    /// handler is registered.
+    pub fn on_tab_close_others(
+        mut self,
+        f: impl Fn(usize, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.on_tab_close_others = Some(Rc::new(f));
         self
     }
 
@@ -352,8 +382,8 @@ impl RenderOnce for TabWindowShell {
                 .text()
                 .cursor_pointer()
                 .h(TITLE_BAR_HEIGHT)
-                .w(TITLE_BAR_HEIGHT)
                 .flex_shrink_0()
+                .px(px(6.))
                 .rounded(ButtonRounded::None)
                 .on_click(move |_, window, cx| {
                     if let Some(f) = &on_chrome_toggle {
@@ -366,8 +396,8 @@ impl RenderOnce for TabWindowShell {
                         .items_center()
                         .justify_center()
                         .gap_0p5()
-                        .child(Icon::empty().path(app_icon).small())
-                        .child(Icon::new(chevron).small()),
+                        .child(Icon::empty().path(app_icon).large())
+                        .child(Icon::new(chevron)),
                 )
                 .into_any_element()
         });
@@ -518,7 +548,17 @@ impl RenderOnce for TabWindowShell {
             tab_bar = tab_bar.on_close(move |ix, window, cx| on_close(*ix, window, cx));
         }
 
-        let mut title_row = h_flex()
+        if let Some(on_close_all) = self.on_tab_close_all {
+            tab_bar = tab_bar.on_close_all(move |window, cx| on_close_all(window, cx));
+        }
+
+        if let Some(on_close_others) = self.on_tab_close_others {
+            tab_bar = tab_bar.on_close_others(move |ix, window, cx| on_close_others(*ix, window, cx));
+        }
+
+        // chrome_toggle 必须放在 title_row（Drag 区域）之外，否则在 Windows 上
+        // Drag 区域会吞掉鼠标点击启动窗口拖拽，导致 Button 收不到 on_click。
+        let title_row = h_flex()
             .id("tab-window-title-drag")
             .h_full()
             .flex_1()
@@ -526,21 +566,18 @@ impl RenderOnce for TabWindowShell {
             .items_center()
             .when(!cfg!(target_family = "wasm"), |this| {
                 this.window_control_area(WindowControlArea::Drag)
-            });
-        if let Some(toggle) = chrome_toggle {
-            title_row = title_row.child(toggle);
-        }
-        title_row = title_row.child(
-            div()
-                .flex_1()
-                .min_w_0()
-                .h_full()
-                .flex()
-                .items_end()
-                .pt(tab_top_inset)
-                .overflow_x_hidden()
-                .child(tab_bar),
-        );
+            })
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .h_full()
+                    .flex()
+                    .items_end()
+                    .pt(tab_top_inset)
+                    .overflow_x_hidden()
+                    .child(tab_bar),
+            );
 
         // 自定义 title bar：不使用 gpui-component 的 TitleBar。
         // TitleBar 内部 #bar 有 flex_shrink_0 且无 min_w_0，把 TabBar 放进去后
@@ -548,8 +585,8 @@ impl RenderOnce for TabWindowShell {
         // 自定义布局让 TabBar wrapper（flex_1 + min_w_0 + overflow_hidden）能自由收缩，
         // 窗口控件（flex_shrink_0）始终固定在右侧。
         //
-        // window_control_area(Drag) 只设在 title_row 上，与窗口控件是兄弟关系，
-        // 避免 Drag 区域覆盖按钮导致点击无效。
+        // window_control_area(Drag) 只设在 title_row 上，与窗口控件和 chrome_toggle
+        // 是兄弟关系，避免 Drag 区域覆盖按钮导致点击无效。
         let title_bar = h_flex()
             .id("tab-window-title-bar")
             .h(TITLE_BAR_HEIGHT)
@@ -558,6 +595,7 @@ impl RenderOnce for TabWindowShell {
             .items_center()
             .bg(cx.theme().tokens.title_bar)
             .when(cfg!(target_os = "macos"), |this| this.pl(px(80.)))
+            .when_some(chrome_toggle, |this, toggle| this.child(toggle))
             .child(title_row)
             .child(render_window_controls(window, cx));
 

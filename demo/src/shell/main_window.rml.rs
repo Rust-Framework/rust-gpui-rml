@@ -397,6 +397,34 @@ impl MainWindow {
         }
     }
 
+    /// 关闭全部 workbench：清空后激活项置 None，bump `activated` 触发
+    /// `selected_tab` computed 失效与 RML 重投影。
+    #[command]
+    pub fn on_tab_close_all(&mut self, cx: &mut Context<Self>) {
+        if self.workbenches.is_empty() {
+            return;
+        }
+        self.workbenches.clear();
+        *self.activated.write().unwrap() = None;
+        self.__rml_bump_version("activated");
+        cx.notify();
+    }
+
+    /// 关闭其他 workbench：仅保留 index 对应项。clear + 重 push 保留项，
+    /// 避免 `remove_where` 仅移除首个导致的循环；activated 切到保留项。
+    #[command]
+    pub fn on_tab_close_others(&mut self, index: usize, cx: &mut Context<Self>) {
+        let keep = match self.workbenches.snapshot().get(index).cloned() {
+            Some(wb) => wb,
+            None => return,
+        };
+        self.workbenches.clear();
+        self.workbenches.push(keep.clone());
+        *self.activated.write().unwrap() = Some(keep);
+        self.__rml_bump_version("activated");
+        cx.notify();
+    }
+
     /// 由 ActivityPanel::on_case_activate 调用（经 MainWindowRef 回调）。
     #[command]
     pub fn open_case(&mut self, case_id: String, cx: &mut Context<Self>) {

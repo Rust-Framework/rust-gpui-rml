@@ -36,6 +36,30 @@ pub fn gen_code_editor(
         _ => None,
     });
 
+    let lv: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
+    let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
+
+    // 声明式 value 属性：绑定或静态字符串，用于 InputState::default_value
+    let value_expr: Option<String> = elem.attributes.iter().find_map(|attr| match attr {
+        Attribute::Bind { name, expr, .. } if name == "value" => {
+            Some(super::super::codegen::gen_expr_code(expr, &lv, &computed))
+        }
+        Attribute::Static { name, value, .. } if name == "value" => {
+            Some(format!("{:?}.to_string()", value))
+        }
+        _ => None,
+    });
+
+    // 声明式 language 属性：静态字符串，默认 "rml"
+    let language: &str = elem
+        .attributes
+        .iter()
+        .find_map(|attr| match attr {
+            Attribute::Static { name, value, .. } if name == "language" => Some(value.as_str()),
+            _ => None,
+        })
+        .unwrap_or("rml");
+
     // 收集 Input 事件处理器（on_change/on_enter/on_focus/on_blur）
     // 这些事件不走 setter 链路（component_event_setter 返回 None），
     // 由 block 表达式中的 cx.subscribe 统一处理
@@ -60,8 +84,33 @@ pub fn gen_code_editor(
          .text_size(cx.theme().mono_font_size)\n            \
          .size_full()";
 
-    let ctor_expr = if !input_event_handlers.is_empty() {
-        // block 表达式：({ let __rml_entity = ...; <subscribe>; Input::new(&__rml_entity) })
+    let ctor_expr = if let Some(value_code) = &value_expr {
+        // 声明式 value：内联创建 InputState，无需 editor_state 字段或 on_loaded 初始化
+        let ref_key = ref_name.unwrap_or(state_field);
+        let ctor_code = format!(
+            "move |w, c| rml_ui::InputState::new(w, c).code_editor({:?}).multi_line(true).default_value(&__code)",
+            language
+        );
+        if !input_event_handlers.is_empty() {
+            let subscribe_code: String = input_event_handlers
+                .iter()
+                .map(|(event_name, handler)| {
+                    super::super::input::gen_input_event_subscribe(ref_key, event_name, handler)
+                })
+                .collect::<Vec<_>>()
+                .join(" ");
+            format!(
+                "{{ let __code = {}; let __rml_entity = self.__rml_state.get_or_init_ref(\"{}\", _window, &mut *cx, {}); {} {}::new(&__rml_entity){style_chain} }}",
+                value_code, ref_key, ctor_code, subscribe_code, component.ctor_path
+            )
+        } else {
+            format!(
+                "{{ let __code = {}; {}::new(&self.__rml_state.get_or_init_ref(\"{}\", _window, &mut *cx, {})){style_chain} }}",
+                value_code, component.ctor_path, ref_key, ctor_code
+            )
+        }
+    } else if !input_event_handlers.is_empty() {
+        // block 表达式：{ let __rml_entity = ...; <subscribe>; Input::new(&__rml_entity) }
         let entity_expr = if let Some(name) = ref_name {
             format!(
                 "self.__rml_state.get_or_init_ref(\"{}\", _window, &mut *cx, {})",
@@ -83,7 +132,7 @@ pub fn gen_code_editor(
             .collect::<Vec<_>>()
             .join(" ");
         format!(
-            "({{ let __rml_entity = {entity_expr}; {subscribe_code} {}::new(&__rml_entity){style_chain} }})",
+            "{{ let __rml_entity = {entity_expr}; {subscribe_code} {}::new(&__rml_entity){style_chain} }}",
             component.ctor_path
         )
     } else if let Some(name) = ref_name {
@@ -101,11 +150,16 @@ pub fn gen_code_editor(
 
     let mut code = ctor_expr;
 
-    // 非事件属性的 setter 链（事件属性由 block 表达式处理，跳过）
-    let lv: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
-    let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
-
+    // 非事件属性的 setter 链（value/language 由内联创建处理，事件属性由 block 表达式处理）
     for attr in &elem.attributes {
+        let is_handled_inline = match attr {
+            Attribute::Static { name, .. } => name == "value" || name == "language",
+            Attribute::Bind { name, .. } => name == "value",
+            _ => false,
+        };
+        if is_handled_inline {
+            continue;
+        }
         match attr {
             Attribute::Static { name, value, .. } => {
                 if let Some(s) =
@@ -205,7 +259,7 @@ mod tests {
             gen_code_editor(&elem, code_editor_component(), &ctx(), 0, &mut id, &Vec::new())
                 .unwrap();
         // block 表达式包装
-        assert!(code.contains("({ let __rml_entity"));
+        assert!(code.contains("{ let __rml_entity"));
         assert!(code.contains("is_event_subscribed"));
         assert!(code.contains("cx.subscribe(&__rml_entity"));
         assert!(code.contains("InputEvent::Change"));
@@ -216,5 +270,78 @@ mod tests {
         // 仍应包含样式链
         assert!(code.contains(".font_family(cx.theme().mono_font_family.clone())"));
         assert!(code.contains(".size_full()"));
+    }
+
+    #[test]
+    fn gen_code_editor_with_value_bind() {
+        let mut c = ctx();
+        c.computed_methods = vec!["code_sample".into()];
+        let elem = make_element(
+            "CodeEditor",
+            vec![Attribute::Bind {
+                name: "value".into(),
+                expr: "code_sample".into(),
+                span: Span::empty(),
+            }],
+            vec![],
+        );
+        let mut id = 0;
+        let code =
+            gen_code_editor(&elem, code_editor_component(), &c, 0, &mut id, &Vec::new())
+                .unwrap();
+        // 声明式 value：内联创建，无需 editor_state 字段
+        assert!(code.contains("let __code = self.code_sample();"));
+        assert!(code.contains("get_or_init_ref(\"editor_state\""));
+        assert!(code.contains(".code_editor(\"rml\").multi_line(true).default_value(&__code)"));
+        assert!(code.contains(".font_family(cx.theme().mono_font_family.clone())"));
+        assert!(code.contains(".size_full()"));
+        // 不应出现 as_ref().expect 的旧路径
+        assert!(!code.contains("as_ref().expect"));
+    }
+
+    #[test]
+    fn gen_code_editor_with_value_and_language() {
+        let mut c = ctx();
+        c.computed_methods = vec!["code_sample".into()];
+        let elem = make_element(
+            "CodeEditor",
+            vec![
+                Attribute::Bind {
+                    name: "value".into(),
+                    expr: "code_sample".into(),
+                    span: Span::empty(),
+                },
+                Attribute::Static {
+                    name: "language".into(),
+                    value: "rust".into(),
+                    span: Span::empty(),
+                },
+            ],
+            vec![],
+        );
+        let mut id = 0;
+        let code =
+            gen_code_editor(&elem, code_editor_component(), &c, 0, &mut id, &Vec::new())
+                .unwrap();
+        assert!(code.contains(".code_editor(\"rust\").multi_line(true).default_value(&__code)"));
+    }
+
+    #[test]
+    fn gen_code_editor_with_value_static() {
+        let elem = make_element(
+            "CodeEditor",
+            vec![Attribute::Static {
+                name: "value".into(),
+                value: "let x = 1;".into(),
+                span: Span::empty(),
+            }],
+            vec![],
+        );
+        let mut id = 0;
+        let code =
+            gen_code_editor(&elem, code_editor_component(), &ctx(), 0, &mut id, &Vec::new())
+                .unwrap();
+        assert!(code.contains("let __code = \"let x = 1;\".to_string();"));
+        assert!(code.contains(".default_value(&__code)"));
     }
 }
