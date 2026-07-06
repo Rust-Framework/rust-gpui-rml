@@ -15,6 +15,7 @@ use crate::cases::common::build_api_table;
 #[component]
 #[derive(Default)]
 pub struct PopoverCase {
+    pub code_tab: usize,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
 }
@@ -41,5 +42,57 @@ impl ILifecycle for PopoverCase {
         ]);
         self.api_columns = cols;
         self.api_rows = rows;
+    }
+}
+
+impl PopoverCase {
+    #[computed]
+    pub fn rml_sample(&self) -> String {
+        r#"<!-- popover_case.rml：声明式 UI，描述结构 + 绑定 + 事件 -->
+<component>
+    <!-- 基础用法：slot="trigger" 标记触发元素，其余子节点为 content -->
+    <Popover>
+        <Button slot="trigger" label="点击展开" />
+        <div v-flex="" gap-2="" p-3="">
+            <p>这是气泡内容。</p>
+            <p>可以放置任意元素。</p>
+        </div>
+    </Popover>
+
+    <!-- 锚点定位 anchor -->
+    <Popover anchor="bottom-left">
+        <Button slot="trigger" label="bottom-left" />
+        <div p-2="">左下角锚点</div>
+    </Popover>
+
+    <!-- 默认展开 default-open="true" -->
+    <Popover default-open="true">
+        <Button slot="trigger" label="已展开" />
+        <div p-2="">初始展开的气泡内容</div>
+    </Popover>
+</component>"#
+            .to_string()
+    }
+
+    #[computed]
+    pub fn rust_sample(&self) -> String {
+        r#"// popover_case.rml.rs：后端状态 + computed + command handler
+use rml::prelude::*;
+
+#[component]
+#[derive(Default)]
+pub struct PopoverCase {}
+
+impl ILifecycle for PopoverCase {
+    fn on_loaded(&mut self, _w: &mut gpui::Window, _cx: &mut Context<Self>) {
+        // Popover 是无状态容器组件，无需 state
+    }
+}"#
+            .to_string()
+    }
+
+    #[command]
+    pub fn on_code_tab_change(&mut self, idx: usize, _cx: &mut Context<Self>) {
+        self.code_tab = idx;
     }
 }

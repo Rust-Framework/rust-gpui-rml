@@ -16,6 +16,7 @@ use crate::cases::common::build_api_table;
 #[derive(Default)]
 pub struct TabBarCase {
     pub active_tab: usize,
+    pub code_tab: usize,
     pub tab_bar_api_columns: Vec<TableColumn>,
     pub tab_bar_api_rows: Vec<TableRow>,
     pub tab_api_columns: Vec<TableColumn>,
@@ -69,21 +70,100 @@ impl TabBarCase {
     }
 
     #[computed]
-    pub fn code_sample(&self) -> String {
-        r#"<TabBar selected-index={active_tab} on-click={on_tab_select}>
-    <Tab label="Account" />
-    <Tab label="Profile" />
-</TabBar>
+    pub fn rml_sample(&self) -> String {
+        r#"<!-- tab_bar_case.rml：声明式 UI，描述结构 + 绑定 + 事件 -->
+<component>
+    <!-- 基础用法：selected-index={active_tab} on-click={on_tab_select} -->
+    <TabBar selected-index={active_tab} on-click={on_tab_select}>
+        <Tab label="Account" />
+        <Tab label="Profile" />
+        <Tab label="Settings" />
+    </TabBar>
 
-<!-- TabItem (WPF TabControl 模式)：title + body -->
-<TabBar selected-index={active_tab} on-click={on_tab_select}>
-    <tab-item title="Account">
-        <div>Account settings panel</div>
-    </tab-item>
-    <tab-item title="Profile">
-        <div>User profile panel</div>
-    </tab-item>
-</TabBar>"#
+    <!-- 5 种 variant：underline/pill/flat/outline/segmented -->
+    <TabBar underline="">
+        <Tab label="Underline" />
+    </TabBar>
+    <TabBar pill="">
+        <Tab label="Pill" />
+    </TabBar>
+    <TabBar segmented="">
+        <Tab label="Segmented" />
+    </TabBar>
+
+    <!-- 尺寸 size -->
+    <TabBar size="small">
+        <Tab label="small" />
+    </TabBar>
+
+    <!-- 带图标 -->
+    <TabBar>
+        <Tab icon="User" label="Account" />
+        <Tab icon="Bell" label="Notifications" />
+    </TabBar>
+
+    <!-- 禁用/选中 -->
+    <TabBar>
+        <Tab label="Normal" />
+        <Tab label="Disabled" disabled="true" />
+        <Tab label="Selected" selected="true" />
+    </TabBar>
+
+    <!-- menu 模式（标签过多时启用下拉） -->
+    <TabBar menu="true">
+        <Tab label="Tab 1" />
+        <Tab label="Tab 2" />
+        <Tab label="Tab 3" />
+    </TabBar>
+
+    <!-- 模板定制：Tab 内放置 element 子节点作为标题内容 -->
+    <TabBar selected-index={active_tab} on-click={on_tab_select}>
+        <Tab>
+            <span>Account</span>
+            <Badge>3</Badge>
+        </Tab>
+        <Tab>
+            <span>Profile</span>
+        </Tab>
+    </TabBar>
+
+    <!-- TabItem (WPF TabControl 模式)：title + body -->
+    <TabBar selected-index={active_tab} on-click={on_tab_select}>
+        <tab-item title="Account">
+            <div>Account settings panel</div>
+        </tab-item>
+        <tab-item title="Profile">
+            <div>User profile panel</div>
+        </tab-item>
+    </TabBar>
+</component>"#
+            .to_string()
+    }
+
+    #[computed]
+    pub fn rust_sample(&self) -> String {
+        r#"// tab_bar_case.rml.rs：后端状态 + computed + command handler
+use rml::prelude::*;
+
+#[component]
+#[derive(Default)]
+pub struct TabBarCase {
+    pub active_tab: usize,
+}
+
+impl TabBarCase {
+    #[computed]
+    pub fn status_text(&self) -> String {
+        format!("当前选中索引：{}", self.active_tab)
+    }
+
+    // on-click 回调签名：fn(index: usize, &mut Context<Self>)
+    #[command]
+    pub fn on_tab_select(&mut self, index: usize, cx: &mut Context<Self>) {
+        self.active_tab = index;
+        cx.notify();
+    }
+}"#
             .to_string()
     }
 
@@ -91,5 +171,10 @@ impl TabBarCase {
     pub fn on_tab_select(&mut self, index: usize, cx: &mut Context<Self>) {
         self.active_tab = index;
         cx.notify();
+    }
+
+    #[command]
+    pub fn on_code_tab_change(&mut self, idx: usize, _cx: &mut Context<Self>) {
+        self.code_tab = idx;
     }
 }

@@ -15,6 +15,7 @@ use crate::cases::common::build_api_table;
 #[component]
 #[derive(Default)]
 pub struct KbdCase {
+    pub code_tab: usize,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
 }
@@ -38,5 +39,54 @@ impl ILifecycle for KbdCase {
         ]);
         self.api_columns = cols;
         self.api_rows = rows;
+    }
+}
+
+impl KbdCase {
+    #[computed]
+    pub fn rml_sample(&self) -> String {
+        r#"<!-- kbd_case.rml：声明式 UI，描述结构 + 绑定 + 事件 -->
+<component>
+    <!-- 修饰键 + 字母 -->
+    <Kbd key="cmd-a" />
+    <Kbd key="ctrl-shift-c" />
+
+    <!-- 功能键 -->
+    <Kbd key="enter" />
+    <Kbd key="escape" />
+
+    <!-- 方向键 -->
+    <Kbd key="up" />
+    <Kbd key="down" />
+
+    <!-- outline 样式 -->
+    <Kbd key="cmd-a" outline="" />
+
+    <!-- appearance=false（仅文本） -->
+    <Kbd key="cmd-a" appearance="false" />
+</component>"#
+            .to_string()
+    }
+
+    #[computed]
+    pub fn rust_sample(&self) -> String {
+        r#"// kbd_case.rml.rs：后端状态 + computed + command handler
+use rml::prelude::*;
+
+#[component]
+#[derive(Default)]
+pub struct KbdCase {}
+
+impl ILifecycle for KbdCase {
+    fn on_loaded(&mut self, _w: &mut gpui::Window, _cx: &mut Context<Self>) {
+        // Kbd 是 RenderOnce 无 ElementId 组件，无需 state
+    }
+}"#
+            .to_string()
+    }
+
+    #[command]
+    pub fn on_code_tab_change(&mut self, idx: usize, _cx: &mut Context<Self>) {
+        self.code_tab = idx;
     }
 }

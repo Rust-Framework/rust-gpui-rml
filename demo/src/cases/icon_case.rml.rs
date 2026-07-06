@@ -16,6 +16,7 @@ use crate::cases::common::build_api_table;
 #[derive(Default)]
 pub struct IconCase {
     pub icon_index: u32,
+    pub code_tab: usize,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
 }
@@ -62,9 +63,70 @@ impl IconCase {
         }
     }
 
+    #[computed]
+    pub fn rml_sample(&self) -> String {
+        r#"<!-- icon_case.rml：声明式 UI，描述结构 + 绑定 + 事件 -->
+<component>
+    <!-- 基础用法：name="Settings" → Icon::new(IconName::Settings) -->
+    <Icon name="Settings" />
+    <Icon name="Bell" />
+    <Icon name="User" />
+
+    <!-- 尺寸 size（走通用 Sizable setter） -->
+    <Icon name="Settings" size="xsmall" />
+    <Icon name="Settings" size="small" />
+    <Icon name="Settings" size="medium" />
+    <Icon name="Settings" size="large" />
+
+    <!-- 动态绑定：name={current_icon} 绑定 computed 返回的 IconName 枚举 -->
+    <Icon name={current_icon} size="large" />
+
+    <!-- 自定义路径：path="icons/custom.svg" → Icon::empty().path(...) -->
+    <Icon path="icons/custom.svg" size="medium" />
+</component>"#
+            .to_string()
+    }
+
+    #[computed]
+    pub fn rust_sample(&self) -> String {
+        r#"// icon_case.rml.rs：后端状态 + computed + command handler
+use rml::prelude::*;
+use rml_ui::IconName;
+
+#[component]
+#[derive(Default)]
+pub struct IconCase {
+    pub icon_index: u32,
+}
+
+impl IconCase {
+    // computed 方法返回 IconName 枚举，供 name={current_icon} 绑定
+    #[computed]
+    pub fn current_icon(&self) -> IconName {
+        match self.icon_index % 3 {
+            0 => IconName::Settings,
+            1 => IconName::Bell,
+            _ => IconName::User,
+        }
+    }
+
     #[command]
     pub fn on_rotate_icon(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.icon_index = self.icon_index.saturating_add(1);
         cx.notify();
+    }
+}"#
+            .to_string()
+    }
+
+    #[command]
+    pub fn on_rotate_icon(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+        self.icon_index = self.icon_index.saturating_add(1);
+        cx.notify();
+    }
+
+    #[command]
+    pub fn on_code_tab_change(&mut self, idx: usize, _cx: &mut Context<Self>) {
+        self.code_tab = idx;
     }
 }

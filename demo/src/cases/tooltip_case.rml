@@ -2,9 +2,7 @@
     <div v-flex="" class="case-pane doc-pane">
         <h2>{t("case.tooltip.title")}</h2>
 
-        <Card title="组件说明">
-            <p>Tooltip 在 RML 中作为通用属性使用，而非独立组件。tooltip="text" 生成 .tooltip("text")，由专属 compiler/tooltip 模块处理组件白名单检查（Button/Checkbox/Clipboard/DropdownButton/Toggle/Radio/Switch）。</p>
-        </Card>
+        <p>Tooltip 在 RML 中作为通用属性使用，而非独立组件。tooltip="text" 生成 .tooltip("text")，由专属 compiler/tooltip 模块处理组件白名单检查（Button / IconButton / DropdownButton / Toggle / Checkbox / Clipboard / Radio / Switch）。</p>
 
         <Card title="基础用法">
             <p>悬浮按钮查看提示：</p>
@@ -23,6 +21,16 @@
             </div>
         </Card>
 
+        <Card title="代码示例">
+            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
+                <Tab label="rml" />
+                <Tab label="rml.rs" />
+            </TabBar>
+            <CodeEditor ref="rml_editor" value={rml_sample} />
+            <CodeEditor ref="rust_editor" value={rust_sample} />
+        </Card>
+
+        <h3>Tooltip</h3>
         <Card title="API">
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
         </Card>

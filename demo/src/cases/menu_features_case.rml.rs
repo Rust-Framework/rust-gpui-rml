@@ -26,6 +26,7 @@ pub struct MenuFeaturesCase {
     /// 类型为 `Arc<RelayCommand>`（具体类型）而非 `Arc<dyn ICommand>`，以便
     /// `#[derive(Default)]` 生效——框架已为 `RelayCommand` 实现 `Default`（no-op 空对象）。
     pub save_command: Arc<RelayCommand>,
+    pub code_tab: usize,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
 }
@@ -69,18 +70,65 @@ impl MenuFeaturesCase {
     }
 
     #[computed]
-    pub fn code_sample(&self) -> String {
-        r#"<dropdown-menu scrollable="" max-h="280">
-    <Button label="Features" ghost="" />
-    <menu-item label="Available" on-click={on_available} />
-    <menu-item label="Disabled" disabled="" on-click={on_disabled} />
-    <menu-item label="Checkable" checked={is_checked} on-click={on_toggle_check} />
-    <menu-separator />
-    <menu-item label="Docs" href="https://..." icon="Info" />
-    <menu-item label="Submenu">
-        <menu-item label="Item A" on-click={on_nested_a} />
-    </menu-item>
-</dropdown-menu>"#
+    pub fn rml_sample(&self) -> String {
+        r#"<!-- menu_features_case.rml：声明式 UI，描述结构 + 绑定 + 事件 -->
+<component>
+    <dropdown-menu scrollable="" max-h="280">
+        <Button label="Features" ghost="" />
+        <!-- disabled="" 禁用菜单项 -->
+        <menu-item label="Available" on-click={on_available} />
+        <menu-item label="Disabled" disabled="" on-click={on_disabled} />
+        <!-- checked={is_checked} 绑定布尔字段 -->
+        <menu-item label="Checkable" checked={is_checked} on-click={on_toggle_check} />
+        <menu-separator />
+        <!-- href 渲染外链 -->
+        <menu-item label="Docs" href="https://rml.dev/docs/" icon="Info" />
+        <!-- 子菜单：menu-item 内嵌 menu-item -->
+        <menu-item label="Submenu">
+            <menu-item label="Item A" on-click={on_nested_a} />
+        </menu-item>
+    </dropdown-menu>
+
+    <!-- B-1：command={save_command} 声明式命令绑定 -->
+    <menu-item label="Save (Command)" command={save_command} />
+</component>"#
+            .to_string()
+    }
+
+    #[computed]
+    pub fn rust_sample(&self) -> String {
+        r#"// menu_features_case.rml.rs：后端状态 + computed + command handler
+use std::sync::Arc;
+use gpui::SharedString;
+use rml::prelude::*;
+use rml_core::command::RelayCommand;
+
+#[component]
+#[derive(Default)]
+pub struct MenuFeaturesCase {
+    pub is_checked: bool,
+    pub last_action: String,
+    // command={save_command} 绑定 Arc<RelayCommand> 字段
+    pub save_command: Arc<RelayCommand>,
+}
+
+impl ILifecycle for MenuFeaturesCase {
+    fn on_loaded(&mut self, _w: &mut gpui::Window, cx: &mut Context<Self>) {
+        // 在 on_loaded 中初始化 RelayCommand
+        self.save_command = Arc::new(RelayCommand::new(cx, |this, cx| {
+            this.last_action = "Save command executed".to_string();
+            cx.notify();
+        }));
+    }
+}
+
+impl MenuFeaturesCase {
+    #[command]
+    pub fn on_toggle_check(&mut self, _: &ClickEvent, _: &mut Context<Self>) {
+        self.is_checked = !self.is_checked;
+        self.last_action = format!("Checked: {}", self.is_checked);
+    }
+}"#
             .to_string()
     }
 
@@ -108,5 +156,10 @@ impl MenuFeaturesCase {
     #[command]
     pub fn on_nested_b(&mut self, _: &ClickEvent, _: &mut Context<Self>) {
         self.last_action = "Nested B".to_string();
+    }
+
+    #[command]
+    pub fn on_code_tab_change(&mut self, idx: usize, _cx: &mut Context<Self>) {
+        self.code_tab = idx;
     }
 }

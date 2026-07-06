@@ -1,16 +1,7 @@
 <component>
     <div v-flex="" class="case-pane doc-pane">
-        <h2>Table 表格组件</h2>
-
-        <Card title="组件说明">
-            <p>Table 是 WPF DataGrid 风格的声明式表格组件，支持数据绑定式列定义和声明式 Column 子标签，提供列头模板、列数据模板、合并列等高级功能。</p>
-            <p>核心特性：columns/rows 数据绑定；Column 声明式子标签；template slot 插槽模板（header/cell/footer）；TableDelegate trait 模板委托；bordered/borderless/stripe 样式控制；合并列（col_span/row_span）。</p>
-            <p>支持大小写两种标签形式：Table/table、Column/column。</p>
-        </Card>
-
-        <Card title="示例代码">
-            <CodeEditor value={code_sample} />
-        </Card>
+        <h2>{t("case.table.title")}</h2>
+        <p>Table 是 RML 的 WPF DataGrid 风格表格组件，标签为 PascalCase <code>Table</code> 或小写 <code>table</code>。支持数据绑定式列定义（<code>columns</code>/<code>rows</code>）和声明式 <code>Column</code> 子标签，提供列头模板、列数据模板、合并列等高级功能。核心特性：<code>columns</code>/<code>rows</code> 数据绑定；<code>Column</code> 声明式子标签；<code>template slot</code> 插槽模板（header/cell/footer）；<code>TableDelegate</code> trait 模板委托；<code>bordered</code>/<code>borderless</code>/<code>stripe</code> 样式控制；合并列（<code>col_span</code>/<code>row_span</code>）。</p>
 
         <Card title="演示效果">
             <div class="demo-section">
@@ -75,6 +66,20 @@
                     <Column key="name" title="名称" />
                     <Column key="value" title="值" align="center" />
                 </Table>
+            </div>
+        </Card>
+
+        <Card title="示例代码">
+            <p>点击下方 Tab 切换 <code>.rml</code> 声明文件与 <code>.rml.rs</code> 后端文件：</p>
+            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
+                <Tab label=".rml" />
+                <Tab label=".rml.rs" />
+            </TabBar>
+            <div if={code_tab == 0}>
+                <CodeEditor ref="rml_editor" value={rml_sample} language="rust" />
+            </div>
+            <div if={code_tab == 1}>
+                <CodeEditor ref="rust_editor" value={rust_sample} language="rust" />
             </div>
         </Card>
     </div>

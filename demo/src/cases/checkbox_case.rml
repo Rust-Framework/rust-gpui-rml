@@ -1,13 +1,10 @@
 <component>
     <div v-flex="" class="case-pane doc-pane">
         <h2>{t("case.checkbox.title")}</h2>
-
-        <Card title="组件说明">
-            <p>Checkbox 是 RML 的复选框组件。Stateless 组件，通过 checked 属性绑定勾选状态（底层通过 Selectable trait 映射到 .checked()）。</p>
-        </Card>
+        <p>Checkbox 是 RML 的复选框组件，标签为 PascalCase <code>Checkbox</code>。Stateless 组件，通过 <code>checked</code> 属性绑定勾选状态（底层通过 Selectable trait 映射到 <code>.checked()</code>）。</p>
 
         <Card title="基础用法">
-            <p>checked 属性绑定布尔字段，点击按钮切换状态。</p>
+            <p><code>checked</code> 属性绑定布尔字段，<code>on-click</code> 回调签名 <code>(&amp;bool, &amp;mut Context)</code>。</p>
             <p>{status_text}</p>
             <div h-flex="" gap-4="">
                 <Checkbox label="同意条款" checked={is_checked} on-click={on_toggle_checked} />
@@ -15,15 +12,30 @@
             </div>
         </Card>
 
-        <Card title="禁用状态">
-            <p>disabled 属性禁用复选框交互。</p>
+        <Card title="禁用状态 disabled">
+            <p><code>disabled</code> 属性禁用复选框交互。</p>
             <div h-flex="" gap-4="">
                 <Checkbox label="禁用项" disabled={is_disabled} />
                 <Button label="切换禁用" on-click={on_toggle_disabled} />
             </div>
         </Card>
 
+        <Card title="示例代码">
+            <p>点击下方 Tab 切换 <code>.rml</code> 声明文件与 <code>.rml.rs</code> 后端文件：</p>
+            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
+                <Tab label=".rml" />
+                <Tab label=".rml.rs" />
+            </TabBar>
+            <div if={code_tab == 0}>
+                <CodeEditor ref="rml_editor" value={rml_sample} language="rust" />
+            </div>
+            <div if={code_tab == 1}>
+                <CodeEditor ref="rust_editor" value={rust_sample} language="rust" />
+            </div>
+        </Card>
+
         <Card title="API">
+            <h3>Checkbox</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
         </Card>
     </div>

@@ -16,6 +16,7 @@ use crate::cases::common::build_api_table;
 #[derive(Default)]
 pub struct TooltipCase {
     pub tooltip_text: SharedString,
+    pub code_tab: usize,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
 }
@@ -46,5 +47,58 @@ impl ILifecycle for TooltipCase {
         ]);
         self.api_columns = cols;
         self.api_rows = rows;
+    }
+}
+
+impl TooltipCase {
+    #[computed]
+    pub fn rml_sample(&self) -> String {
+        r#"<!-- tooltip_case.rml：声明式 UI，描述结构 + 绑定 + 事件 -->
+<component>
+    <!-- 静态 tooltip="text" -->
+    <Button label="保存" tooltip="保存文件 (Cmd+S)" />
+    <Button label="删除" tooltip="删除选中项" />
+
+    <!-- 动态绑定 tooltip={dynamic_tooltip} -->
+    <Button label="撤销" tooltip={dynamic_tooltip} />
+
+    <!-- Checkbox / Switch 等组件的 tooltip -->
+    <Checkbox tooltip="接受服务条款">同意条款</Checkbox>
+    <Switch tooltip="切换深色模式" />
+</component>"#
+            .to_string()
+    }
+
+    #[computed]
+    pub fn rust_sample(&self) -> String {
+        r#"// tooltip_case.rml.rs：后端状态 + computed + command handler
+use gpui::SharedString;
+use rml::prelude::*;
+
+#[component]
+#[derive(Default)]
+pub struct TooltipCase {
+    pub tooltip_text: SharedString,
+}
+
+impl ILifecycle for TooltipCase {
+    fn on_loaded(&mut self, _w: &mut gpui::Window, _cx: &mut Context<Self>) {
+        self.tooltip_text = "动态 Tooltip 内容".into();
+    }
+}
+
+impl TooltipCase {
+    // computed 方法返回 SharedString，供 tooltip={dynamic_tooltip} 绑定
+    #[computed]
+    pub fn dynamic_tooltip(&self) -> SharedString {
+        self.tooltip_text.clone()
+    }
+}"#
+            .to_string()
+    }
+
+    #[command]
+    pub fn on_code_tab_change(&mut self, idx: usize, _cx: &mut Context<Self>) {
+        self.code_tab = idx;
     }
 }

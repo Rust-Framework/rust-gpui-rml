@@ -2,18 +2,7 @@
     <div v-flex="" class="case-pane doc-pane">
         <h2>{t("case.menu.editor.title")}</h2>
 
-        <Card title="组件说明">
-            <p>Editor Menu 案例演示 dropdown-menu 的 check-side 属性与勾选状态绑定。check-side="Right" 将勾选标记显示在菜单项右侧，适用于编辑器类菜单场景。</p>
-            <p>核心概念：check-side 控制勾选标记位置；menu-item checked=&#123;bool&#125; 绑定布尔字段实现勾选状态同步；菜单项分组通过 menu-separator 实现；命令回调更新 last_action 状态。</p>
-        </Card>
-
-        <Card title="API">
-            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-        </Card>
-
-        <Card title="示例代码">
-            <CodeEditor value={code_sample} />
-        </Card>
+        <p>Editor Menu 案例演示 dropdown-menu 的 check-side 属性与勾选状态绑定。check-side="Right" 将勾选标记显示在菜单项右侧，适用于编辑器类菜单场景。核心概念：check-side 控制勾选标记位置；menu-item checked=&#123;bool&#125; 绑定布尔字段实现勾选状态同步；菜单项分组通过 menu-separator 实现；命令回调更新 last_action 状态。</p>
 
         <Card title="演示效果">
             <p>{editor_status}</p>
@@ -54,6 +43,20 @@
                     <menu-item label="Word Wrap" checked={word_wrap} on-click={on_toggle_wrap} />
                 </dropdown-menu>
             </div>
+        </Card>
+
+        <Card title="代码示例">
+            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
+                <Tab label="rml" />
+                <Tab label="rml.rs" />
+            </TabBar>
+            <CodeEditor ref="rml_editor" value={rml_sample} />
+            <CodeEditor ref="rust_editor" value={rust_sample} />
+        </Card>
+
+        <h3>Menu Editor</h3>
+        <Card title="API">
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
         </Card>
     </div>
 </component>

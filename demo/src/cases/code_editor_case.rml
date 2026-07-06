@@ -2,15 +2,23 @@
     <div v-flex="" class="case-pane doc-pane">
         <h2>{t("case.code_editor.title")}</h2>
 
-        <Card title="组件说明">
-            <p>CodeEditor 是基于 InputState 的代码编辑器组件，自动应用 mono 字体 + size_full。Stateful 模式，需在 on_loaded 中初始化 InputState Entity 并通过 .code_editor(language).multi_line(true) 配置。</p>
-        </Card>
+        <p>CodeEditor 是基于 InputState 的代码编辑器组件，自动应用 mono 字体 + size_full。Stateful 模式，需在 on_loaded 中初始化 InputState Entity 并通过 .code_editor(language).multi_line(true) 配置。</p>
 
         <Card title="基础用法">
             <p>默认 Rust 代码高亮，支持多行编辑。code_editor 方法设置语言，multi_line 启用多行模式。</p>
             <CodeEditor ref="editor_state" />
         </Card>
 
+        <Card title="代码示例">
+            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
+                <Tab label="rml" />
+                <Tab label="rml.rs" />
+            </TabBar>
+            <CodeEditor ref="rml_editor" value={rml_sample} />
+            <CodeEditor ref="rust_editor" value={rust_sample} />
+        </Card>
+
+        <h3>CodeEditor</h3>
         <Card title="API">
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
         </Card>

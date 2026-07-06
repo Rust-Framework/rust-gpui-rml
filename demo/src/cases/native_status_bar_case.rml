@@ -2,10 +2,7 @@
     <div v-flex="" class="case-pane doc-pane">
         <h2>{t("case.native_status_bar.title")}</h2>
 
-        <Card title="组件说明">
-            <p>NativeStatusBar 是 RML 的原生状态栏组件。无 ElementId 构造（StatelessNoId），容器模式。</p>
-            <p>子节点渲染在中央区域。通常用于 modern-window 的底部状态栏组合。</p>
-        </Card>
+        <p>NativeStatusBar 是 RML 的原生状态栏组件。无 ElementId 构造（StatelessNoId），容器模式。子节点渲染在中央区域。通常用于 modern-window 的底部状态栏组合。</p>
 
         <Card title="基础用法">
             <p>包裹子元素作为状态栏内容。</p>
@@ -31,6 +28,16 @@
             </div>
         </Card>
 
+        <Card title="代码示例">
+            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
+                <Tab label="rml" />
+                <Tab label="rml.rs" />
+            </TabBar>
+            <CodeEditor ref="rml_editor" value={rml_sample} />
+            <CodeEditor ref="rust_editor" value={rust_sample} />
+        </Card>
+
+        <h3>NativeStatusBar</h3>
         <Card title="API">
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
         </Card>

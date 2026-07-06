@@ -1,19 +1,16 @@
 <component>
     <div v-flex="" class="case-pane doc-pane">
         <h2>{t("case.icon.title")}</h2>
-
-        <Card title="组件说明">
-            <p>Icon 组件渲染矢量图标。构造器接受 IconName 枚举或 path 字符串：name="Settings" 生成 Icon::new(IconName::Settings)，path="icons/foo.svg" 生成 Icon::empty().path(...)。RenderOnce 无 ElementId，由专属 compiler/icon 模块处理 name/path 属性提取。</p>
-        </Card>
+        <p>Icon 是 RML 的矢量图标组件，标签为 PascalCase <code>Icon</code>。RenderOnce 无 ElementId，由专属 <code>compiler/icon</code> 模块处理 <code>name</code>/<code>path</code> 属性提取。<code>name="Settings"</code> 生成 <code>Icon::new(IconName::Settings)</code>，<code>path="icons/foo.svg"</code> 生成 <code>Icon::empty().path(...)</code>。</p>
 
         <Card title="基础用法">
-            <p>静态 IconName：</p>
+            <p>静态 <code>IconName</code>：</p>
             <div h-flex="" gap-4="">
                 <Icon name="Settings" />
                 <Icon name="Bell" />
                 <Icon name="User" />
             </div>
-            <p>不同尺寸（size 走通用 Sizable setter）：</p>
+            <p>不同尺寸（<code>size</code> 走通用 Sizable setter）：</p>
             <div h-flex="" gap-4="">
                 <Icon name="Settings" size="xsmall" />
                 <Icon name="Settings" size="small" />
@@ -28,15 +25,30 @@
                 <Icon name={current_icon} size="large" />
                 <Button label="切换图标" on-click={on_rotate_icon} />
             </div>
-            <p>注：name=&#123;current_icon&#125; 绑定到 computed 方法，返回 rml_ui::IconName 枚举值。</p>
+            <p>注：<code>name=\&#123;current_icon&#125;</code> 绑定到 computed 方法，返回 <code>rml_ui::IconName</code> 枚举值。</p>
         </Card>
 
         <Card title="自定义路径">
-            <p>path 属性指定自定义图标路径（相对 assets 目录）：</p>
+            <p><code>path</code> 属性指定自定义图标路径（相对 assets 目录）：</p>
             <Icon path="icons/custom.svg" size="medium" />
         </Card>
 
+        <Card title="示例代码">
+            <p>点击下方 Tab 切换 <code>.rml</code> 声明文件与 <code>.rml.rs</code> 后端文件：</p>
+            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
+                <Tab label=".rml" />
+                <Tab label=".rml.rs" />
+            </TabBar>
+            <div if={code_tab == 0}>
+                <CodeEditor ref="rml_editor" value={rml_sample} language="rust" />
+            </div>
+            <div if={code_tab == 1}>
+                <CodeEditor ref="rust_editor" value={rust_sample} language="rust" />
+            </div>
+        </Card>
+
         <Card title="API">
+            <h3>Icon</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
         </Card>
     </div>

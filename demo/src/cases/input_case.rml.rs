@@ -21,6 +21,7 @@ pub struct InputCase {
     /// placeholder 通过 InputState builder 在 on_loaded 中设置
     ///（Input element 不直接接收 placeholder 属性，需在 state 上设置）。
     pub input_state: ElementRef<InputState>,
+    pub code_tab: usize,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
 }
@@ -50,5 +51,45 @@ impl ILifecycle for InputCase {
         ]);
         self.api_columns = cols;
         self.api_rows = rows;
+    }
+}
+
+impl InputCase {
+    #[computed]
+    pub fn rml_sample(&self) -> String {
+        r#"<!-- input_case.rml：声明式 UI，描述结构 + 绑定 + 事件 -->
+<component>
+    <!-- 基础用法：ref="input_state" 惰性创建 Entity<InputState> -->
+    <Input ref="input_state" />
+</component>"#
+            .to_string()
+    }
+
+    #[computed]
+    pub fn rust_sample(&self) -> String {
+        r#"// input_case.rml.rs：后端状态 + computed + command handler
+use rml::prelude::*;
+use rml_ui::InputState;
+
+#[component]
+#[derive(Default)]
+pub struct InputCase {
+    // ref="input_state" 注入 Entity<InputState> 句柄
+    pub input_state: ElementRef<InputState>,
+}
+
+impl ILifecycle for InputCase {
+    fn on_loaded(&mut self, _w: &mut gpui::Window, _cx: &mut Context<Self>) {
+        // InputState Entity 在首次渲染时由 ref 指令惰性创建
+        // placeholder 等需在 state 上设置，应在首次 render 后通过
+        // ElementRef.with_mut 设置
+    }
+}"#
+            .to_string()
+    }
+
+    #[command]
+    pub fn on_code_tab_change(&mut self, idx: usize, _cx: &mut Context<Self>) {
+        self.code_tab = idx;
     }
 }

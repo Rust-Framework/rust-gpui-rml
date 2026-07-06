@@ -16,6 +16,7 @@ use crate::cases::common::build_api_table;
 #[derive(Default)]
 pub struct ButtonGroupCase {
     pub button_count: u8,
+    pub code_tab: usize,
     pub group_api_columns: Vec<TableColumn>,
     pub group_api_rows: Vec<TableRow>,
     pub button_api_columns: Vec<TableColumn>,
@@ -56,11 +57,64 @@ impl ILifecycle for ButtonGroupCase {
 
 impl ButtonGroupCase {
     #[computed]
-    pub fn code_sample(&self) -> String {
-        r#"<ButtonGroup>
-    <Button label="上一步" />
-    <Button label="下一步" primary="" />
-</ButtonGroup>"#
+    pub fn rml_sample(&self) -> String {
+        r#"<!-- button_group_case.rml：声明式 UI，描述结构 + 绑定 + 事件 -->
+<component>
+    <!-- 基础用法：包裹多个 Button 子节点 -->
+    <ButtonGroup>
+        <Button label="上一步" />
+        <Button label="下一步" primary="" />
+    </ButtonGroup>
+
+    <!-- 操作分组：variant 混合 -->
+    <ButtonGroup>
+        <Button label="保存" primary="" />
+        <Button label="取消" ghost="" />
+        <Button label="删除" danger="" />
+    </ButtonGroup>
+
+    <!-- 动态 if 条件渲染：根据 button_count 增减按钮 -->
+    <ButtonGroup>
+        <Button label="按钮 1" if={button_count >= 1} />
+        <Button label="按钮 2" primary="" if={button_count >= 2} />
+        <Button label="按钮 3" ghost="" if={button_count >= 3} />
+    </ButtonGroup>
+</component>"#
+            .to_string()
+    }
+
+    #[computed]
+    pub fn rust_sample(&self) -> String {
+        r#"// button_group_case.rml.rs：后端状态 + computed + command handler
+use rml::prelude::*;
+
+#[component]
+#[derive(Default)]
+pub struct ButtonGroupCase {
+    pub button_count: u8,
+}
+
+impl ILifecycle for ButtonGroupCase {
+    fn on_loaded(&mut self, _w: &mut gpui::Window, _cx: &mut Context<Self>) {
+        self.button_count = 3;
+    }
+}
+
+impl ButtonGroupCase {
+    #[command]
+    pub fn on_add_button(&mut self, _: &ClickEvent, _: &mut Context<Self>) {
+        if self.button_count < 5 {
+            self.button_count += 1;
+        }
+    }
+
+    #[command]
+    pub fn on_remove_button(&mut self, _: &ClickEvent, _: &mut Context<Self>) {
+        if self.button_count > 1 {
+            self.button_count -= 1;
+        }
+    }
+}"#
             .to_string()
     }
 
@@ -76,5 +130,10 @@ impl ButtonGroupCase {
         if self.button_count > 1 {
             self.button_count -= 1;
         }
+    }
+
+    #[command]
+    pub fn on_code_tab_change(&mut self, idx: usize, _cx: &mut Context<Self>) {
+        self.code_tab = idx;
     }
 }

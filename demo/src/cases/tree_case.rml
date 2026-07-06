@@ -2,16 +2,23 @@
     <div v-flex="" class="case-pane doc-pane">
         <h2>{t("case.tree.title")}</h2>
 
-        <Card title="组件说明">
-            <p>Tree 是 RML 的树视图组件。Stateful 模式，需在 on_loaded 中初始化 TreeState Entity 并设置 items。</p>
-        </Card>
+        <p>Tree 是 RML 的树视图组件。Stateful 模式，需在 on_loaded 中初始化 TreeState Entity 并设置 items。点击叶子节点触发 on-activate 事件，文件夹节点点击仅展开/折叠。</p>
 
         <Card title="基础用法">
-            <p>点击叶子节点触发 on-activate 事件，文件夹节点点击仅展开/折叠。</p>
             <p>{status_text}</p>
             <Tree ref="tree_state" on-activate={on_activate} />
         </Card>
 
+        <Card title="代码示例">
+            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
+                <Tab label="rml" />
+                <Tab label="rml.rs" />
+            </TabBar>
+            <CodeEditor ref="rml_editor" value={rml_sample} />
+            <CodeEditor ref="rust_editor" value={rust_sample} />
+        </Card>
+
+        <h3>Tree</h3>
         <Card title="API">
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
         </Card>

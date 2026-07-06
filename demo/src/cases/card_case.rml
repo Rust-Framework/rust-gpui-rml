@@ -1,35 +1,31 @@
 <component>
     <div v-flex="" class="case-pane doc-pane">
         <h2>{t("case.card.title")}</h2>
-
-        <Card title="组件说明">
-            <p>Card 是 RML 的卡片容器组件（Ant Design 风格）。容器模式，通过 title/extra/cover/footer 属性组合内容。</p>
-            <p>支持 bordered/borderless/hoverable 样式控制。</p>
-        </Card>
+        <p>Card 是 RML 的卡片容器组件（Ant Design 风格），标签为 PascalCase <code>Card</code>。容器模式，通过 <code>title</code>/<code>extra</code>/<code>cover</code>/<code>footer</code> 属性组合内容。支持 <code>bordered</code>/<code>borderless</code>/<code>hoverable</code> 样式控制。</p>
 
         <Card title="基础用法">
-            <p>title 属性设置卡片标题，子节点为卡片内容。</p>
+            <p><code>title</code> 属性设置卡片标题，子节点为卡片内容。</p>
             <Card title="基础卡片">
                 <p>这是卡片的内容区域，可以放置任意元素。</p>
             </Card>
         </Card>
 
-        <Card title="无边框模式">
-            <p>borderless 属性移除边框。</p>
+        <Card title="无边框模式 borderless">
+            <p><code>borderless=""</code> 移除边框。</p>
             <Card title="无边框卡片" borderless="">
                 <p>无边框卡片，适合嵌入其他容器。</p>
             </Card>
         </Card>
 
-        <Card title="悬浮效果">
-            <p>hoverable 属性启用鼠标悬浮交互效果。</p>
+        <Card title="悬浮效果 hoverable">
+            <p><code>hoverable=""</code> 启用鼠标悬浮交互效果。</p>
             <Card title="可悬浮卡片" hoverable="">
                 <p>鼠标悬浮时卡片会有视觉反馈。</p>
             </Card>
         </Card>
 
         <Card title="动态绑定(model 双向绑定 + hoverable 切换)">
-            <p>输入标题和内容,点击按钮切换 hoverable,观察 Card 实时变化(演示 model 双向绑定):</p>
+            <p>输入标题和内容，点击按钮切换 hoverable，观察 Card 实时变化（演示 model 双向绑定）：</p>
             <input model={card_title} placeholder="输入卡片标题" />
             <input model={card_body} placeholder="输入卡片内容" />
             <p>当前 hoverable: {hoverable}</p>
@@ -41,7 +37,22 @@
             </Card>
         </Card>
 
+        <Card title="示例代码">
+            <p>点击下方 Tab 切换 <code>.rml</code> 声明文件与 <code>.rml.rs</code> 后端文件：</p>
+            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
+                <Tab label=".rml" />
+                <Tab label=".rml.rs" />
+            </TabBar>
+            <div if={code_tab == 0}>
+                <CodeEditor ref="rml_editor" value={rml_sample} language="rust" />
+            </div>
+            <div if={code_tab == 1}>
+                <CodeEditor ref="rust_editor" value={rust_sample} language="rust" />
+            </div>
+        </Card>
+
         <Card title="API">
+            <h3>Card</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
         </Card>
     </div>

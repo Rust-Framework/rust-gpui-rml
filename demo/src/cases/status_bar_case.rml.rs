@@ -19,6 +19,7 @@ use crate::cases::common::build_api_table;
 #[derive(Default)]
 pub struct StatusBarCase {
     pub last_action: String,
+    pub code_tab: usize,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
 }
@@ -57,19 +58,42 @@ impl StatusBarCase {
     }
 
     #[computed]
-    pub fn code_sample(&self) -> String {
-        r#"#[contribute(host_id = "demo.shell", id = "status.ready", kind = "status", order = 0)]
+    pub fn rml_sample(&self) -> String {
+        r#"<!-- status_bar_case.rml：声明式 UI，描述结构 + 绑定 + 事件 -->
+<component>
+    <!-- StatusBar 案例演示贡献点机制（kind = "status"） -->
+    <p>请查看窗口底部状态栏，左侧 "就绪" 由 StatusReady 贡献点渲染。</p>
+    <p>{action_status}</p>
+    <Button label="查看就绪状态" on-click={on_show_ready} />
+    <Button label="查看案例状态" on-click={on_show_case} />
+</component>"#
+            .to_string()
+    }
+
+    #[computed]
+    pub fn rust_sample(&self) -> String {
+        r#"// status_bar_case.rml.rs：状态栏贡献点（kind = "status"）
+use gpui::{AnyElement, ParentElement, SharedString, Styled};
+use rml::prelude::*;
+use rml_core::contribution::IVisual;
+
+// 通过 #[contribute(kind = "status")] 注册到宿主 shell 的状态栏插槽
+#[contribute(host_id = "demo.shell", id = "status.ready", kind = "status", order = 0)]
 #[derive(Default)]
 pub struct StatusReady;
 
 impl IContribution for StatusReady {
     fn id(&self) -> &str { Self::CONTRIBUTION_ID }
-    fn name(&self) -> SharedString { t_static("shell.status_ready").into() }
+    fn name(&self) -> SharedString { t_static("shell.status_ready") }
 }
 
+// IVisual::render 自定义状态栏渲染内容
 impl IVisual for StatusReady {
     fn render(&self, _window: &mut gpui::Window, _cx: &mut gpui::App) -> AnyElement {
-        gpui::div().text_xs().child(t_static("shell.status_ready")).into_any_element()
+        gpui::div()
+            .text_xs()
+            .child(t_static("shell.status_ready"))
+            .into_any_element()
     }
 }"#
             .to_string()
@@ -83,6 +107,11 @@ impl IVisual for StatusReady {
     #[command]
     pub fn on_show_case(&mut self, _: &ClickEvent, _: &mut Context<Self>) {
         self.last_action = "查看案例状态".to_string();
+    }
+
+    #[command]
+    pub fn on_code_tab_change(&mut self, idx: usize, _cx: &mut Context<Self>) {
+        self.code_tab = idx;
     }
 }
 

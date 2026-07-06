@@ -2,18 +2,7 @@
     <div v-flex="" class="case-pane doc-pane">
         <h2>{t("case.menu.custom.title")}</h2>
 
-        <Card title="组件说明">
-            <p>Menu Custom 案例演示自定义菜单项的典型场景：分组标题（header）、主题切换（checked 状态）、外链跳转（href）、登出操作。模拟设置类菜单的完整交互。</p>
-            <p>核心概念：menu-item header 作为分组标题不可点击；menu-item on-click 绑定命令更新状态；href 渲染为外链；dark_mode 字段记录主题状态，dark_mode_label computed 提供显示文案。</p>
-        </Card>
-
-        <Card title="API">
-            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-        </Card>
-
-        <Card title="示例代码">
-            <CodeEditor value={code_sample} />
-        </Card>
+        <p>Menu Custom 案例演示自定义菜单项的典型场景：分组标题（header）、主题切换（checked 状态）、外链跳转（href）、登出操作。模拟设置类菜单的完整交互。核心概念：menu-item header 作为分组标题不可点击；menu-item on-click 绑定命令更新状态；href 渲染为外链；dark_mode 字段记录主题状态，dark_mode_label computed 提供显示文案。</p>
 
         <Card title="演示效果">
             <p>{custom_status}</p>
@@ -50,6 +39,20 @@
                     <menu-item label="Sign Out" icon="ExternalLink" on-click={on_sign_out} />
                 </dropdown-menu>
             </div>
+        </Card>
+
+        <Card title="代码示例">
+            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
+                <Tab label="rml" />
+                <Tab label="rml.rs" />
+            </TabBar>
+            <CodeEditor ref="rml_editor" value={rml_sample} />
+            <CodeEditor ref="rust_editor" value={rust_sample} />
+        </Card>
+
+        <h3>Menu Custom</h3>
+        <Card title="API">
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
         </Card>
     </div>
 </component>

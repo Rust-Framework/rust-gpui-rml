@@ -1,10 +1,7 @@
 <component>
     <div v-flex="" class="case-pane doc-pane">
         <h2>{t("case.popover.title")}</h2>
-
-        <Card title="组件说明">
-            <p>Popover 是浮动气泡容器，子节点通过 slot="trigger" 路由到 .trigger()，其余子节点作为 content 注入 .child()。anchor 属性控制气泡定位锚点，default-open 控制初始展开状态。</p>
-        </Card>
+        <p>Popover 是 RML 的浮动气泡容器组件，标签为 PascalCase <code>Popover</code>。子节点通过 <code>slot="trigger"</code> 路由到 <code>.trigger()</code>，其余子节点作为 content 注入 <code>.child()</code>。<code>anchor</code> 属性控制气泡定位锚点，<code>default-open</code> 控制初始展开状态。</p>
 
         <Card title="基础用法">
             <p>点击按钮展开气泡内容：</p>
@@ -17,8 +14,8 @@
             </Popover>
         </Card>
 
-        <Card title="锚点定位">
-            <p>anchor 属性控制气泡相对于 trigger 的定位：</p>
+        <Card title="锚点定位 anchor">
+            <p><code>anchor</code> 属性控制气泡相对于 trigger 的定位：</p>
             <div h-flex="" gap-4="">
                 <Popover anchor="bottom-left">
                     <Button slot="trigger" label="bottom-left" />
@@ -35,15 +32,30 @@
             </div>
         </Card>
 
-        <Card title="默认展开">
-            <p>default-open="true" 让气泡初始处于展开状态：</p>
+        <Card title="默认展开 default-open">
+            <p><code>default-open="true"</code> 让气泡初始处于展开状态：</p>
             <Popover default-open="true">
                 <Button slot="trigger" label="已展开" />
                 <div p-2="">初始展开的气泡内容</div>
             </Popover>
         </Card>
 
+        <Card title="示例代码">
+            <p>点击下方 Tab 切换 <code>.rml</code> 声明文件与 <code>.rml.rs</code> 后端文件：</p>
+            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
+                <Tab label=".rml" />
+                <Tab label=".rml.rs" />
+            </TabBar>
+            <div if={code_tab == 0}>
+                <CodeEditor ref="rml_editor" value={rml_sample} language="rust" />
+            </div>
+            <div if={code_tab == 1}>
+                <CodeEditor ref="rust_editor" value={rust_sample} language="rust" />
+            </div>
+        </Card>
+
         <Card title="API">
+            <h3>Popover</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
         </Card>
     </div>

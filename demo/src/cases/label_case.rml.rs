@@ -16,6 +16,7 @@ use crate::cases::common::build_api_table;
 #[derive(Default)]
 pub struct LabelCase {
     pub text: String,
+    pub code_tab: usize,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
 }
@@ -43,10 +44,43 @@ impl ILifecycle for LabelCase {
 
 impl LabelCase {
     #[computed]
-    pub fn code_sample(&self) -> String {
-        r#"<Label label="用户名" />
-<Label>用户名</Label>
-<Label label={dynamic_title} />"#
+    pub fn rml_sample(&self) -> String {
+        r#"<!-- label_case.rml：声明式 UI，描述结构 + 绑定 + 事件 -->
+<component>
+    <!-- label 属性：构造器参数 -->
+    <Label label="用户名" />
+
+    <!-- 文本子节点：等价于 label 属性 -->
+    <Label>用户名</Label>
+
+    <!-- 动态绑定：model 双向绑定 -->
+    <input model={text} placeholder="输入标签文本" />
+    <Label>{text}</Label>
+</component>"#
             .to_string()
+    }
+
+    #[computed]
+    pub fn rust_sample(&self) -> String {
+        r#"// label_case.rml.rs：后端状态 + computed + command handler
+use rml::prelude::*;
+
+#[component]
+#[derive(Default)]
+pub struct LabelCase {
+    pub text: String,
+}
+
+impl ILifecycle for LabelCase {
+    fn on_loaded(&mut self, _w: &mut gpui::Window, _cx: &mut Context<Self>) {
+        self.text = "用户名".into();
+    }
+}"#
+            .to_string()
+    }
+
+    #[command]
+    pub fn on_code_tab_change(&mut self, idx: usize, _cx: &mut Context<Self>) {
+        self.code_tab = idx;
     }
 }

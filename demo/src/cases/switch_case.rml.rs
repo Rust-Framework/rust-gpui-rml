@@ -17,6 +17,7 @@ use crate::cases::common::build_api_table;
 pub struct SwitchCase {
     pub is_on: bool,
     pub is_disabled: bool,
+    pub code_tab: usize,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
 }
@@ -53,6 +54,53 @@ impl SwitchCase {
         }
     }
 
+    #[computed]
+    pub fn rml_sample(&self) -> String {
+        r#"<!-- switch_case.rml：声明式 UI，描述结构 + 绑定 + 事件 -->
+<component>
+    <!-- 基础用法：checked={is_on} on-click={on_toggle} -->
+    <Switch label="自动保存" checked={is_on} on-click={on_toggle} />
+
+    <!-- 禁用状态：disabled={is_disabled} -->
+    <Switch checked={is_disabled} disabled={is_disabled} />
+</component>"#
+            .to_string()
+    }
+
+    #[computed]
+    pub fn rust_sample(&self) -> String {
+        r#"// switch_case.rml.rs：后端状态 + computed + command handler
+use rml::prelude::*;
+
+#[component]
+#[derive(Default)]
+pub struct SwitchCase {
+    pub is_on: bool,
+    pub is_disabled: bool,
+}
+
+impl SwitchCase {
+    #[computed]
+    pub fn status_text(&self) -> String {
+        if self.is_on { "开启".into() } else { "关闭".into() }
+    }
+
+    // on-click 回调签名：(&bool, &mut Context<Self>)
+    #[command]
+    pub fn on_toggle(&mut self, checked: &bool, cx: &mut Context<Self>) {
+        self.is_on = *checked;
+        cx.notify();
+    }
+
+    #[command]
+    pub fn on_toggle_disabled(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+        self.is_disabled = !self.is_disabled;
+        cx.notify();
+    }
+}"#
+            .to_string()
+    }
+
     #[command]
     pub fn on_toggle(&mut self, checked: &bool, cx: &mut Context<Self>) {
         self.is_on = *checked;
@@ -69,5 +117,10 @@ impl SwitchCase {
     pub fn on_toggle_disabled(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.is_disabled = !self.is_disabled;
         cx.notify();
+    }
+
+    #[command]
+    pub fn on_code_tab_change(&mut self, idx: usize, _cx: &mut Context<Self>) {
+        self.code_tab = idx;
     }
 }

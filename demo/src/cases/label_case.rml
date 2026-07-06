@@ -1,13 +1,10 @@
 <component>
     <div v-flex="" class="case-pane doc-pane">
         <h2>{t("case.label.title")}</h2>
-
-        <Card title="组件说明">
-            <p>Label 是 RML 的标签组件。构造器接受 label 文本作为参数（非 ElementId），通过 label 属性或文本子节点设置。</p>
-        </Card>
+        <p>Label 是 RML 的标签组件，标签为 PascalCase <code>Label</code>。构造器接受 label 文本作为参数（非 ElementId），通过 <code>label</code> 属性或文本子节点设置。</p>
 
         <Card title="基础用法">
-            <p>通过 label 属性设置标签文本。</p>
+            <p>通过 <code>label</code> 属性设置标签文本。</p>
             <div v-flex="" gap-2="">
                 <Label label="用户名" />
                 <Label label="邮箱地址" />
@@ -16,18 +13,33 @@
         </Card>
 
         <Card title="文本子节点">
-            <p>也可以通过文本子节点设置标签内容。</p>
+            <p>也可以通过文本子节点设置标签内容，等价于 <code>label</code> 属性。</p>
             <Label>通过子节点设置的标签</Label>
         </Card>
 
         <Card title="动态绑定(model 双向绑定)">
-            <p>输入文本,下方 Label 实时更新(演示 model 双向绑定):</p>
+            <p>输入文本，下方 Label 实时更新（演示 model 双向绑定）：</p>
             <input model={text} placeholder="输入标签文本" />
             <p>当前文本: {text}</p>
             <Label>{text}</Label>
         </Card>
 
+        <Card title="示例代码">
+            <p>点击下方 Tab 切换 <code>.rml</code> 声明文件与 <code>.rml.rs</code> 后端文件：</p>
+            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
+                <Tab label=".rml" />
+                <Tab label=".rml.rs" />
+            </TabBar>
+            <div if={code_tab == 0}>
+                <CodeEditor ref="rml_editor" value={rml_sample} language="rust" />
+            </div>
+            <div if={code_tab == 1}>
+                <CodeEditor ref="rust_editor" value={rust_sample} language="rust" />
+            </div>
+        </Card>
+
         <Card title="API">
+            <h3>Label</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
         </Card>
     </div>

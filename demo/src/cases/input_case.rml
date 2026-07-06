@@ -1,18 +1,29 @@
 <component>
     <div v-flex="" class="case-pane doc-pane">
         <h2>{t("case.input.title")}</h2>
-
-        <Card title="组件说明">
-            <p>Input 是 RML 的文本输入组件。Stateful 模式，通过 ref 指令惰性创建 InputState Entity，由 __rml_populate_refs 注入到对应的 ElementRef 字段。</p>
-            <p>placeholder 与 default_value 需在 InputState builder 上设置，disabled 通过 Input 组件 RML 属性设置。</p>
-        </Card>
+        <p>Input 是 RML 的文本输入组件，标签为 PascalCase <code>Input</code>。Stateful 模式，通过 <code>ref</code> 指令惰性创建 <code>InputState</code> Entity，由 <code>__rml_populate_refs</code> 注入到对应的 <code>ElementRef</code> 字段。<code>placeholder</code> 与 <code>default_value</code> 需在 InputState builder 上设置，<code>disabled</code> 通过 Input 组件 RML 属性设置。</p>
 
         <Card title="基础用法">
-            <p>通过 ref 指令绑定到 ElementRef 字段，InputState Entity 在首次渲染时自动创建。</p>
+            <p>通过 <code>ref</code> 指令绑定到 <code>ElementRef</code> 字段，InputState Entity 在首次渲染时自动创建。</p>
             <Input ref="input_state" />
         </Card>
 
+        <Card title="示例代码">
+            <p>点击下方 Tab 切换 <code>.rml</code> 声明文件与 <code>.rml.rs</code> 后端文件：</p>
+            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
+                <Tab label=".rml" />
+                <Tab label=".rml.rs" />
+            </TabBar>
+            <div if={code_tab == 0}>
+                <CodeEditor ref="rml_editor" value={rml_sample} language="rust" />
+            </div>
+            <div if={code_tab == 1}>
+                <CodeEditor ref="rust_editor" value={rust_sample} language="rust" />
+            </div>
+        </Card>
+
         <Card title="API">
+            <h3>Input</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
         </Card>
     </div>

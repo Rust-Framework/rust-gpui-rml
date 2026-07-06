@@ -23,6 +23,7 @@ pub struct AccordionCase {
     pub with_icon_open: Vec<usize>,
     pub nested_open: Vec<usize>,
     pub nested_child_open: Vec<usize>,
+    pub code_tab: usize,
     pub accordion_api_columns: Vec<TableColumn>,
     pub accordion_api_rows: Vec<TableRow>,
     pub item_api_columns: Vec<TableColumn>,
@@ -74,24 +75,92 @@ impl AccordionCase {
     }
 
     #[computed]
-    pub fn code_sample(&self) -> String {
-        r#"<accordion bordered="" open-ixs={basic_open}>
-    <item title="第一项">
-        <p>内容</p>
-    </item>
-    <item title="第二项">
-        <p>内容</p>
-    </item>
-    <item title="禁用项" disabled="true">
-        <p>内容</p>
-    </item>
-</accordion>
+    pub fn rml_sample(&self) -> String {
+        r#"<!-- accordion_case.rml：声明式 UI，描述结构 + 绑定 + 事件 -->
+<component>
+    <!-- 基础用法：bordered + open-ixs={basic_open}（Vec<usize> 绑定） -->
+    <accordion bordered="" open-ixs={basic_open}>
+        <item title="第一项">
+            <p>内容</p>
+        </item>
+        <item title="第二项">
+            <p>内容</p>
+        </item>
+        <item title="禁用项" disabled="true">
+            <p>内容</p>
+        </item>
+    </accordion>
 
-<accordion multiple="" bordered="" open-ixs={multiple_open}>
-    <item title="多项展开">
-        <p>允许多项同时展开</p>
-    </item>
-</accordion>"#
+    <!-- multiple：允许多项同时展开 -->
+    <accordion multiple="" bordered="" open-ixs={multiple_open}>
+        <item title="多项展开">
+            <p>允许多项同时展开</p>
+        </item>
+    </accordion>
+
+    <!-- size 尺寸 + on-toggle-click 回调 -->
+    <accordion size="small" bordered="" open-ixs={small_open} on-toggle-click={on_toggle}>
+        <item title="small 尺寸">
+            <p>内容</p>
+        </item>
+    </accordion>
+
+    <!-- item 的 icon 属性 -->
+    <accordion bordered="" open-ixs={icon_open} on-toggle-click={on_toggle}>
+        <item title="设置" icon="Settings">
+            <p>内容</p>
+        </item>
+        <item title="禁用" icon="Bell" disabled="true">
+            <p>内容</p>
+        </item>
+    </accordion>
+
+    <!-- 嵌套 -->
+    <accordion bordered="" open-ixs={nested_open}>
+        <item title="父级">
+            <accordion bordered="" multiple="" open-ixs={child_open}>
+                <item title="子级 1">
+                    <p>内容</p>
+                </item>
+                <item title="子级 2">
+                    <p>内容</p>
+                </item>
+            </accordion>
+        </item>
+    </accordion>
+</component>"#
+            .to_string()
+    }
+
+    #[computed]
+    pub fn rust_sample(&self) -> String {
+        r#"// accordion_case.rml.rs：后端状态 + computed + command handler
+use rml::prelude::*;
+
+#[component]
+#[derive(Default)]
+pub struct AccordionCase {
+    pub basic_open: Vec<usize>,
+    pub multiple_open: Vec<usize>,
+    pub nested_open: Vec<usize>,
+    pub nested_child_open: Vec<usize>,
+}
+
+impl ILifecycle for AccordionCase {
+    fn on_loaded(&mut self, _w: &mut gpui::Window, _cx: &mut Context<Self>) {
+        // 受控模式：初始展开态由状态字段决定
+        self.basic_open = vec![0];
+        self.multiple_open = vec![0, 1];
+    }
+}
+
+impl AccordionCase {
+    // on-toggle-click 回调签名：fn(&[usize], &mut Context<Self>)
+    #[command]
+    pub fn on_toggle(&mut self, open_ixs: &[usize], cx: &mut Context<Self>) {
+        cx.notify();
+    }
+}"#
             .to_string()
     }
 
@@ -99,5 +168,10 @@ impl AccordionCase {
     pub fn on_toggle(&mut self, open_ixs: &[usize], cx: &mut Context<Self>) {
         self.last_open = format!("{:?}", open_ixs);
         cx.notify();
+    }
+
+    #[command]
+    pub fn on_code_tab_change(&mut self, idx: usize, _cx: &mut Context<Self>) {
+        self.code_tab = idx;
     }
 }

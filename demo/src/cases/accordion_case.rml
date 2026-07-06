@@ -1,93 +1,105 @@
 <component>
     <div v-flex="" class="case-pane doc-pane">
         <h2>{t("case.accordion.title")}</h2>
-        <p>Accordion 是 RML 的折叠面板组件，标签为 PascalCase <code>Accordion</code> 或小写 <code>accordion</code>。子项用 item 标签，title 属性指定面板标题，open-ixs 属性控制展开状态。支持 multiple 多展开、bordered 边框、size 尺寸、item 的 icon/disabled 属性。</p>
+        <p>Accordion 是 RML 的折叠面板组件，标签为 PascalCase <code>Accordion</code> 或小写 <code>accordion</code>。子项用 <code>item</code> 标签，<code>title</code> 属性指定面板标题，<code>open-ixs</code> 属性控制展开状态。支持 <code>multiple</code> 多展开、<code>bordered</code> 边框、<code>size</code> 尺寸、item 的 <code>icon</code>/<code>disabled</code> 属性。</p>
 
-        <div class="demo-section">
-            <h3>{t("case.accordion.basic")}</h3>
-            <p>默认单展开模式（同时只能展开一项）。{status_text}</p>
-            <accordion bordered="" open-ixs={basic_open}>
-                <item title={t("case.accordion.section1")}>
-                    <p>{t("case.accordion.content1")}</p>
-                </item>
-                <item title={t("case.accordion.section2")}>
-                    <p>{t("case.accordion.content2")}</p>
-                </item>
-                <item title={t("case.accordion.section3")}>
-                    <p>{t("case.accordion.content3")}</p>
-                </item>
-            </accordion>
-        </div>
+        <Card title="演示效果">
+            <p>{status_text}</p>
 
-        <div class="demo-section">
-            <h3>{t("case.accordion.multiple")}</h3>
-            <p>multiple 属性允许多项同时展开。</p>
-            <accordion multiple="" bordered="" open-ixs={multiple_open}>
-                <item title={t("case.accordion.section1")}>
-                    <p>{t("case.accordion.content1")}</p>
-                </item>
-                <item title={t("case.accordion.section2")}>
-                    <p>{t("case.accordion.content2")}</p>
-                </item>
-            </accordion>
-        </div>
+            <div class="demo-section">
+                <h3>{t("case.accordion.basic")}</h3>
+                <p>默认单展开模式（同时只能展开一项）。</p>
+                <accordion bordered="" open-ixs={basic_open}>
+                    <item title={t("case.accordion.section1")}>
+                        <p>{t("case.accordion.content1")}</p>
+                    </item>
+                    <item title={t("case.accordion.section2")}>
+                        <p>{t("case.accordion.content2")}</p>
+                    </item>
+                    <item title={t("case.accordion.section3")}>
+                        <p>{t("case.accordion.content3")}</p>
+                    </item>
+                </accordion>
+            </div>
 
-        <div class="demo-section">
-            <h3>{t("case.accordion.sizes")}</h3>
-            <p>size 属性控制尺寸：small / large。</p>
-            <accordion size="small" bordered="" open-ixs={sizes_small_open} on-toggle-click={on_toggle}>
-                <item title={t("case.accordion.small")}>
-                    <p>{t("case.accordion.content1")}</p>
-                </item>
-            </accordion>
-            <accordion size="large" bordered="" open-ixs={sizes_large_open} on-toggle-click={on_toggle}>
-                <item title={t("case.accordion.large")}>
-                    <p>{t("case.accordion.content1")}</p>
-                </item>
-            </accordion>
-        </div>
+            <div class="demo-section">
+                <h3>{t("case.accordion.multiple")}</h3>
+                <p><code>multiple</code> 属性允许多项同时展开。</p>
+                <accordion multiple="" bordered="" open-ixs={multiple_open}>
+                    <item title={t("case.accordion.section1")}>
+                        <p>{t("case.accordion.content1")}</p>
+                    </item>
+                    <item title={t("case.accordion.section2")}>
+                        <p>{t("case.accordion.content2")}</p>
+                    </item>
+                </accordion>
+            </div>
 
-        <div class="demo-section">
-            <h3>{t("case.accordion.with_icon")}</h3>
-            <p>item 的 icon 属性添加图标，disabled 禁用面板。</p>
-            <accordion bordered="" open-ixs={with_icon_open} on-toggle-click={on_toggle}>
-                <item title={t("case.accordion.settings")} icon="Settings">
-                    <p>{t("case.accordion.content1")}</p>
-                </item>
-                <item title={t("case.accordion.disabled")} icon="Bell" disabled="true">
-                    <p>{t("case.accordion.content2")}</p>
-                </item>
-            </accordion>
-        </div>
+            <div class="demo-section">
+                <h3>{t("case.accordion.sizes")}</h3>
+                <p><code>size</code> 属性控制尺寸：<code>small</code> / <code>large</code>。</p>
+                <accordion size="small" bordered="" open-ixs={sizes_small_open} on-toggle-click={on_toggle}>
+                    <item title={t("case.accordion.small")}>
+                        <p>{t("case.accordion.content1")}</p>
+                    </item>
+                </accordion>
+                <accordion size="large" bordered="" open-ixs={sizes_large_open} on-toggle-click={on_toggle}>
+                    <item title={t("case.accordion.large")}>
+                        <p>{t("case.accordion.content1")}</p>
+                    </item>
+                </accordion>
+            </div>
 
-        <div class="demo-section">
-            <h3>{t("case.accordion.nested")}</h3>
-            <p>accordion 可嵌套使用。</p>
-            <accordion bordered="" open-ixs={nested_open}>
-                <item title={t("case.accordion.parent")}>
-                    <accordion bordered="" multiple="" open-ixs={nested_child_open}>
-                        <item title={t("case.accordion.child1")}>
-                            <p>{t("case.accordion.content1")}</p>
-                        </item>
-                        <item title={t("case.accordion.child2")}>
-                            <p>{t("case.accordion.content2")}</p>
-                        </item>
-                    </accordion>
-                </item>
-            </accordion>
-        </div>
+            <div class="demo-section">
+                <h3>{t("case.accordion.with_icon")}</h3>
+                <p>item 的 <code>icon</code> 属性添加图标，<code>disabled</code> 禁用面板。</p>
+                <accordion bordered="" open-ixs={with_icon_open} on-toggle-click={on_toggle}>
+                    <item title={t("case.accordion.settings")} icon="Settings">
+                        <p>{t("case.accordion.content1")}</p>
+                    </item>
+                    <item title={t("case.accordion.disabled")} icon="Bell" disabled="true">
+                        <p>{t("case.accordion.content2")}</p>
+                    </item>
+                </accordion>
+            </div>
 
-        <div class="demo-section">
-            <h3>示例代码</h3>
-            <CodeEditor value={code_sample} />
-        </div>
+            <div class="demo-section">
+                <h3>{t("case.accordion.nested")}</h3>
+                <p>accordion 可嵌套使用。</p>
+                <accordion bordered="" open-ixs={nested_open}>
+                    <item title={t("case.accordion.parent")}>
+                        <accordion bordered="" multiple="" open-ixs={nested_child_open}>
+                            <item title={t("case.accordion.child1")}>
+                                <p>{t("case.accordion.content1")}</p>
+                            </item>
+                            <item title={t("case.accordion.child2")}>
+                                <p>{t("case.accordion.content2")}</p>
+                            </item>
+                        </accordion>
+                    </item>
+                </accordion>
+            </div>
+        </Card>
 
-        <div class="demo-section">
-            <h3>API</h3>
-            <h4>Accordion</h4>
+        <Card title="示例代码">
+            <p>点击下方 Tab 切换 <code>.rml</code> 声明文件与 <code>.rml.rs</code> 后端文件：</p>
+            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
+                <Tab label=".rml" />
+                <Tab label=".rml.rs" />
+            </TabBar>
+            <div if={code_tab == 0}>
+                <CodeEditor ref="rml_editor" value={rml_sample} language="rust" />
+            </div>
+            <div if={code_tab == 1}>
+                <CodeEditor ref="rust_editor" value={rust_sample} language="rust" />
+            </div>
+        </Card>
+
+        <Card title="API">
+            <h3>Accordion</h3>
             <Table columns={accordion_api_columns} rows={accordion_api_rows} bordered="" stripe="" />
-            <h4>AccordionItem（item）</h4>
+            <h3>AccordionItem（item）</h3>
             <Table columns={item_api_columns} rows={item_api_rows} bordered="" stripe="" />
-        </div>
+        </Card>
     </div>
 </component>

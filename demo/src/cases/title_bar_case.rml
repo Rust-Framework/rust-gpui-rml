@@ -2,10 +2,7 @@
     <div v-flex="" class="case-pane doc-pane">
         <h2>{t("case.title_bar.title")}</h2>
 
-        <Card title="组件说明">
-            <p>TitleBar 是 RML 的窗口标题栏组件。无 ElementId 构造（StatelessNoId），容器模式。</p>
-            <p>自动渲染窗口控制按钮（最小化/最大化/关闭），子节点渲染在中央区域。通常用于 modern-window 的标题栏组合。</p>
-        </Card>
+        <p>TitleBar 是 RML 的窗口标题栏组件。无 ElementId 构造（StatelessNoId），容器模式。自动渲染窗口控制按钮（最小化/最大化/关闭），子节点渲染在中央区域。通常用于 modern-window 的标题栏组合。</p>
 
         <Card title="基础用法">
             <p>包裹子元素作为标题栏中央内容。窗口控制按钮自动渲染。</p>
@@ -30,6 +27,16 @@
             </div>
         </Card>
 
+        <Card title="代码示例">
+            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
+                <Tab label="rml" />
+                <Tab label="rml.rs" />
+            </TabBar>
+            <CodeEditor ref="rml_editor" value={rml_sample} />
+            <CodeEditor ref="rust_editor" value={rust_sample} />
+        </Card>
+
+        <h3>TitleBar</h3>
         <Card title="API">
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
         </Card>
