@@ -3,21 +3,21 @@
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, IntoElement, SharedString, Window};
-use rml_core::contribution::{IContribution, IVisual};
+use rml_core::contribution::{IContribution, IconSpec, IVisual};
 
 use super::traits::IActivityPanel;
 
 /// 活动栏面板项（纯元数据，`render` 返回空 div）
 pub struct ActivityPanel {
     id: String,
-    icon: SharedString,
+    icon: IconSpec,
     title: SharedString,
 }
 
 impl ActivityPanel {
     pub fn new(
         id: impl Into<String>,
-        icon: impl Into<SharedString>,
+        icon: impl Into<IconSpec>,
         title: impl Into<SharedString>,
     ) -> Self {
         Self {
@@ -39,7 +39,7 @@ impl IContribution for ActivityPanel {
     fn name(&self) -> SharedString {
         self.title.clone()
     }
-    fn icon(&self) -> Option<SharedString> {
+    fn icon(&self) -> Option<IconSpec> {
         Some(self.icon.clone())
     }
 }

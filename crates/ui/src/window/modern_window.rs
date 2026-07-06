@@ -12,14 +12,14 @@ use gpui::{
     AnyElement, App, IntoElement, ParentElement, RenderOnce, Styled, Window, div,
     prelude::FluentBuilder as _,
 };
-use gpui_component::{Icon, IconName, Sizable as _, TitleBar, h_flex};
+use gpui_component::{Icon, Sizable as _, TitleBar, h_flex};
 use smallvec::SmallVec;
 
 /// ModernWindowShell —— 内置封装 TitleBar + 插槽 + StatusBar 的 RenderOnce 组件
 #[derive(IntoElement)]
 pub struct ModernWindowShell {
     title: Option<gpui::SharedString>,
-    icon: Option<IconName>,
+    icon: Option<gpui::SharedString>,
     show_chrome: bool,
     menu_slot: Option<AnyElement>,
     title_ext_slot: Option<AnyElement>,
@@ -45,8 +45,8 @@ impl ModernWindowShell {
         self
     }
 
-    pub fn icon(mut self, icon: IconName) -> Self {
-        self.icon = Some(icon);
+    pub fn icon(mut self, icon: impl Into<gpui::SharedString>) -> Self {
+        self.icon = Some(icon.into());
         self
     }
 
@@ -106,7 +106,12 @@ impl RenderOnce for ModernWindowShell {
                             .h_full()
                             .items_center()
                             .when_some(self.icon, |this, icon| {
-                                this.child(h_flex().items_center().pl_2().child(Icon::new(icon).small()))
+                                this.child(
+                                    h_flex()
+                                        .items_center()
+                                        .pl_2()
+                                        .child(Icon::empty().path(icon).small()),
+                                )
                             })
                             .when(self.show_chrome, |this| {
                                 this.when_some(self.menu_slot, |bar, menu| bar.child(menu))

@@ -3,7 +3,7 @@
     width="1100"
     height="720"
     startup="CenterScreen"
-    icon={IconName::Frame}
+    icon="logo.svg"
     selected-index={selected_tab}
     on-tab-click="on_tab_click"
     on-tab-close="on_tab_close"
@@ -21,10 +21,6 @@
 
     <template slot="menu">
         <component content={self.render_menu_bar(_window, cx)} />
-    </template>
-
-    <template slot="bottom">
-        <div>Output panel — drag the top edge to resize</div>
     </template>
 
     <template slot="footer">

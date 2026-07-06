@@ -36,6 +36,7 @@
 | [status-bar.md](./status-bar.md) | `status_bar` | StatelessNoId（MVVM 绑定包装） |
 | [activity-bar.md](./activity-bar.md) | `ActivityBar` | Stateless（容器 + 数据绑定） |
 | [tab-bar.md](./tab-bar.md) | `TabBar` / `Tab` / `tab-item` | Stateless（容器 + 两种子项模式） |
+| [icon.md](./icon.md) | —— | `IconSpec` 贡献点图标规格（跨组件基础设施） |
 
 ## 数据 / 导航（Data / Navigation）
 

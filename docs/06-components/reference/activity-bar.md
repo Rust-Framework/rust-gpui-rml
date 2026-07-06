@@ -47,7 +47,7 @@ Demo 使用 `shell_chrome::map_activity_panels`。带 `bindings` 的 `#[contribu
 | 方法 | 说明 |
 |------|------|
 | `id()` | 面板 ID |
-| `icon()` | `IconName` |
+| `icon()` | `Option<IconSpec>` —— 图标规格，详见 [icon.md](./icon.md) |
 | `title()` | 工具提示文字 |
 | `panel()` | 面板内容（视觉贡献渲染） |
 

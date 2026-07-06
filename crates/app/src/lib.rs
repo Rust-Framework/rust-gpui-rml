@@ -9,6 +9,7 @@ extern crate rust_rml_core as rml_core;
 extern crate rust_rml_ui as rml_ui;
 
 pub mod application;
+pub mod assets;
 pub mod contribution;
 pub mod extensions;
 pub mod lifecycle;

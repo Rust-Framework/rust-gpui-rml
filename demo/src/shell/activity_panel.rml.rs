@@ -1,5 +1,6 @@
 use gpui::{SharedString, Window};
 use rml::prelude::*;
+use rml_core::contribution::IconSpec;
 use rml_core::i18n::t_static;
 use rml_ui::TreeState;
 
@@ -30,8 +31,8 @@ impl IContribution for ActivityPanel {
     fn name(&self) -> SharedString {
         t_static("shell.samples")
     }
-    fn icon(&self) -> Option<SharedString> {
-        Some("BookOpen".into())
+    fn icon(&self) -> Option<IconSpec> {
+        Some(IconSpec::named("BookOpen"))
     }
 }
 

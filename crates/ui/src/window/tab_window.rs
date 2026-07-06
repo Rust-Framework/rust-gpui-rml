@@ -141,7 +141,7 @@ fn render_window_controls(window: &Window, cx: &App) -> AnyElement {
 #[derive(IntoElement)]
 pub struct TabWindowShell {
     title: Option<SharedString>,
-    icon: Option<IconName>,
+    icon: Option<SharedString>,
     show_chrome: bool,
     menu_slot: Option<AnyElement>,
     title_ext_slot: Option<AnyElement>,
@@ -197,8 +197,8 @@ impl TabWindowShell {
         self
     }
 
-    pub fn icon(mut self, icon: IconName) -> Self {
-        self.icon = Some(icon);
+    pub fn icon(mut self, icon: impl Into<SharedString>) -> Self {
+        self.icon = Some(icon.into());
         self
     }
 
@@ -366,7 +366,7 @@ impl RenderOnce for TabWindowShell {
                         .items_center()
                         .justify_center()
                         .gap_0p5()
-                        .child(Icon::new(app_icon).small())
+                        .child(Icon::empty().path(app_icon).small())
                         .child(Icon::new(chevron).small()),
                 )
                 .into_any_element()

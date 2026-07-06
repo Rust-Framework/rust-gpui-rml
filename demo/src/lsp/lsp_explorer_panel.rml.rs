@@ -1,5 +1,6 @@
 use gpui::{SharedString, Window};
 use rml::prelude::*;
+use rml_core::contribution::IconSpec;
 use rml_core::i18n::t_static;
 use rml_ui::{TreeItem, TreeState};
 
@@ -27,8 +28,8 @@ impl IContribution for LspExplorerPanel {
     fn name(&self) -> SharedString {
         t_static("shell.lsp_explorer")
     }
-    fn icon(&self) -> Option<SharedString> {
-        Some("FileCode".into())
+    fn icon(&self) -> Option<IconSpec> {
+        Some(IconSpec::named("FileCode"))
     }
 }
 

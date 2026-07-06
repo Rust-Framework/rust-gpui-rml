@@ -6,7 +6,7 @@ when_to_apply: 在 RML 框架内新增组件、修改组件属性、调整数据
 
 # RML 组件支持规范
 
-本 Skill 是 RML 框架组件开发的权威规范，覆盖 7 个维度：
+本 Skill 是 RML 框架组件开发的权威规范，覆盖 8 个维度：
 1. 命名规范（声明式 kebab-case / 内部 snake_case 双层模型）
 2. 组件注册（三处同步协议）
 3. 属性分类（static / bind / event 三类，组件专用 / 通用 / 警告丢弃 三级）
@@ -14,6 +14,7 @@ when_to_apply: 在 RML 框架内新增组件、修改组件属性、调整数据
 5. 插槽模板（基础插槽 / Table 专用模板 / Scoped slot）
 6. CSS 定制（选择器父链匹配 / 主题变量）
 7. 尺寸布局（size=medium / vertical=true / variant 快捷方法）
+8. 图标处理（IconSpec：Named / Path / Url 三 variant + 嵌入资源集成）
 
 ## 核心设计原则
 
@@ -36,6 +37,7 @@ when_to_apply: 在 RML 框架内新增组件、修改组件属性、调整数据
 | 插槽 | `<template slot="name">`，Table 专用模板，scoped slot | [05-slot-template.md](05-slot-template.md) |
 | CSS | Class/Id/Tag/Universal/Compound/Descendant/Child 选择器 | [06-css-customization.md](06-css-customization.md) |
 | 尺寸 | size=xsmall\|small\|medium\|large，vertical=true | [07-size-layout-conventions.md](07-size-layout-conventions.md) |
+| 图标 | `IContribution::icon() -> Option<IconSpec>`；Named/Path/Url；Path 经 CompositeAssets 透明支持嵌入资源 | [09-icon-handling.md](09-icon-handling.md) |
 
 ## 支持的组件清单
 

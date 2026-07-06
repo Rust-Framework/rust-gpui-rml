@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use gpui::{App, SharedString, Window};
 use rml_core::command::{CallContext, ICommand};
-use rml_core::contribution::IContribution;
+use rml_core::contribution::{IContribution, IconSpec};
 
 use super::traits::IActivityAct;
 
@@ -13,7 +13,7 @@ type ActClickHandler = Arc<dyn Fn(&mut Window, &mut App) + Send + Sync>;
 /// 活动栏底部动作项
 pub struct ActivityAct {
     id: String,
-    icon: SharedString,
+    icon: IconSpec,
     title: SharedString,
     on_click: Option<ActClickHandler>,
 }
@@ -21,7 +21,7 @@ pub struct ActivityAct {
 impl ActivityAct {
     pub fn new(
         id: impl Into<String>,
-        icon: impl Into<SharedString>,
+        icon: impl Into<IconSpec>,
         title: impl Into<SharedString>,
     ) -> Self {
         Self {
@@ -52,7 +52,7 @@ impl IContribution for ActivityAct {
     fn name(&self) -> SharedString {
         self.title.clone()
     }
-    fn icon(&self) -> Option<SharedString> {
+    fn icon(&self) -> Option<IconSpec> {
         Some(self.icon.clone())
     }
 }

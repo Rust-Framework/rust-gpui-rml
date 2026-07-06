@@ -371,8 +371,9 @@ impl MainWindow {
     }
 
     #[command]
-    pub fn on_chrome_toggle(&mut self, _cx: &mut Context<Self>) {
+    pub fn on_chrome_toggle(&mut self, cx: &mut Context<Self>) {
         self.show_chrome = !self.show_chrome;
+        cx.notify();
     }
 
     #[command]

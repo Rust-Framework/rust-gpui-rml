@@ -72,7 +72,7 @@ impl RmlApplication<NoWindow> {
     /// 此处无需任何 init 调用。
     pub fn run<A: IAppLifecycle + 'static>(self) {
         gpui_platform::application()
-            .with_assets(gpui_component_assets::Assets)
+            .with_assets(crate::assets::CompositeAssets)
             .run(move |cx: &mut App| {
                 bootstrap_runtime(cx);
                 A::default().on_launch(cx);
@@ -87,7 +87,7 @@ impl<W: IWindow + Default + 'static> RmlApplication<W> {
     /// 此处无需任何 init 调用。
     pub fn run<L: IAppLifecycle + 'static>(self) {
         gpui_platform::application()
-            .with_assets(gpui_component_assets::Assets)
+            .with_assets(crate::assets::CompositeAssets)
             .run(move |cx: &mut App| {
                 bootstrap_runtime(cx);
                 L::default().on_launch(cx);

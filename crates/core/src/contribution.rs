@@ -64,6 +64,56 @@ impl ContributionOptions {
     }
 }
 
+/// 图标规格 —— `IContribution::icon` 的返回类型,描述"用什么图标"的元数据。
+///
+/// 设计为封闭 enum(而非 `Any`):图标种类是有限集合,variant tag 让框架无需
+/// 猜测字符串语义,编译期强制穷举匹配。`IconSpec` 本身仍是 metadata,
+/// 不携带 `&Window`/`&App`,保持 `IContribution` 元数据 trait 语义。
+///
+/// 渲染由 `rml_ui::resolve_icon` 统一处理:variant tag 直接决定渲染路径,
+/// 无需 `is_url`/`is_asset_path` 等字符串推断。
+///
+/// # Variants
+///
+/// - `Named(SharedString)` — 内置命名图标(如 `"BookOpen"`),由 `IconName` 枚举解析。
+///   字符串→`IconName` 映射在 ui 层维护(gpui-component 的 `IconName` 未实现 `FromStr`)。
+/// - `Path(SharedString)` — SVG 资产路径(如 `"icons/foo.svg"`、`"logo.svg"`)。
+///   经 `CompositeAssets` 路由:同时支持 gpui-component 内置图标 `icons/**/*.svg`
+///   与 RML 用户嵌入资源(`assets/logo.svg` 等,由 `rml_core::assets::load` 管理)。
+/// - `Url(SharedString)` — 外部 URL(`http:`/`https:`/`file:` 等),通过 `gpui::img` 加载。
+///
+/// # 与嵌入资源系统的集成
+///
+/// RML 框架的 `CompositeAssets`(在 `rml_app::assets`)已将 gpui-component-assets
+/// 与 `rml_core::assets::load` 桥接为统一 `AssetSource`。因此 `IconSpec::Path("logo.svg")`
+/// 会自动解析到用户在 `assets/logo.svg` 嵌入的资源,无需额外配置或新 variant。
+#[derive(Debug, Clone)]
+pub enum IconSpec {
+    /// 内置命名图标(字符串对应 `IconName` 变体名,如 `"BookOpen"`)。
+    Named(SharedString),
+    /// SVG 资产路径(同时支持内置 `icons/**/*.svg` 与用户嵌入资源)。
+    Path(SharedString),
+    /// 外部 URL(`http:`/`https:`/`file:` 等)。
+    Url(SharedString),
+}
+
+impl IconSpec {
+    /// 构造命名图标规格。`s` 应为 `IconName` 变体名(如 `"BookOpen"`)。
+    pub fn named(s: impl Into<SharedString>) -> Self {
+        Self::Named(s.into())
+    }
+
+    /// 构造 SVG 资产路径规格。路径相对资产根(如 `"icons/foo.svg"`、`"logo.svg"`)。
+    pub fn path(s: impl Into<SharedString>) -> Self {
+        Self::Path(s.into())
+    }
+
+    /// 构造外部 URL 图标规格(如 `"https://example.com/logo.png"`)。
+    pub fn url(s: impl Into<SharedString>) -> Self {
+        Self::Url(s.into())
+    }
+}
+
 /// 能力贡献点：仅元数据，不渲染。
 /// 业务贡献（菜单项、状态栏项、案例树节点等）实现此 trait。
 ///
@@ -75,7 +125,11 @@ pub trait IContribution: IValue {
     fn description(&self) -> SharedString {
         SharedString::default()
     }
-    fn icon(&self) -> Option<SharedString> {
+    /// 贡献的图标规格。返回 `None` 时由框架走 fallback(`IconName::PanelLeft`)。
+    ///
+    /// 返回 `IconSpec` 而非 `SharedString`——variant tag 显式声明图标种类,
+    /// 框架无需字符串推断。详见 [`IconSpec`]。
+    fn icon(&self) -> Option<IconSpec> {
         None
     }
 }

@@ -1,4 +1,4 @@
-﻿//! 窗口外壳包裹代码生成
+//! 窗口外壳包裹代码生成
 //!
 //! - `<modern-window>` → `ModernWindowShell` 包裹
 //! - `<tab-window>` → `TabWindowShell` 包裹 + 插槽分区
@@ -39,56 +39,62 @@ pub(super) fn gen_modern_window_wrapper(
     code.push_str(".title(self.title().to_string())");
 
     for attr in &elem.attributes {
-        if let Attribute::Bind { name, expr, .. } = attr {
-            match name.as_str() {
-                "menu" | "footer" => {
-                    let rust_expr = match expr::parse(expr) {
-                        Ok(expr::Expr::Field(field_name))
-                            if computed.contains(&field_name.as_str()) =>
-                        {
-                            format!("self.{}()", field_name)
-                        }
-                        Ok(parsed) => expr::to_rust_code_with_ctx(&parsed, &empty),
-                        Err(_) => {
-                            let trimmed = expr.trim();
-                            if computed.contains(&trimmed) {
-                                format!("self.{}()", trimmed)
-                            } else {
-                                format!("self.{}", trimmed)
+        match attr {
+            Attribute::Static { name, value, .. } if name == "icon" => {
+                code.push_str(&format!(".icon({:?})", value));
+            }
+            Attribute::Bind { name, expr, .. } => {
+                match name.as_str() {
+                    "menu" | "footer" => {
+                        let rust_expr = match expr::parse(expr) {
+                            Ok(expr::Expr::Field(field_name))
+                                if computed.contains(&field_name.as_str()) =>
+                            {
+                                format!("self.{}()", field_name)
                             }
-                        }
-                    };
-                    match name.as_str() {
-                        "menu" => code.push_str(&format!(".menu_slot({})", rust_expr)),
-                        "footer" => {
-                            code.push_str(&format!(".status_slot({})", rust_expr))
-                        }
-                        _ => {
-                            if crate::compiler::props_registry::is_shell_prop_registered("modern-window", name) {
-                                eprintln!(
-                                    "[rml warning] <modern-window> bind property `{}` is registered in SHELL_PROPS \
-                                     but has no mapping in gen_modern_window_wrapper; property will be silently dropped. \
-                                     Add a match arm in crates/engine/src/compiler/codegen/shell.rs.",
-                                    name
-                                );
+                            Ok(parsed) => expr::to_rust_code_with_ctx(&parsed, &empty),
+                            Err(_) => {
+                                let trimmed = expr.trim();
+                                if computed.contains(&trimmed) {
+                                    format!("self.{}()", trimmed)
+                                } else {
+                                    format!("self.{}", trimmed)
+                                }
+                            }
+                        };
+                        match name.as_str() {
+                            "menu" => code.push_str(&format!(".menu_slot({})", rust_expr)),
+                            "footer" => {
+                                code.push_str(&format!(".status_slot({})", rust_expr))
+                            }
+                            _ => {
+                                if crate::compiler::props_registry::is_shell_prop_registered("modern-window", name) {
+                                    eprintln!(
+                                        "[rml warning] <modern-window> bind property `{}` is registered in SHELL_PROPS \
+                                         but has no mapping in gen_modern_window_wrapper; property will be silently dropped. \
+                                         Add a match arm in crates/engine/src/compiler/codegen/shell.rs.",
+                                        name
+                                    );
+                                }
                             }
                         }
                     }
+                    "icon" => {
+                        let rust_expr = match expr::parse(expr) {
+                            Ok(expr::Expr::Field(field_name))
+                                if computed.contains(&field_name.as_str()) =>
+                            {
+                                format!("self.{}()", field_name)
+                            }
+                            Ok(parsed) => expr::to_rust_code_with_ctx(&parsed, &empty),
+                            Err(_) => expr.trim().to_string(),
+                        };
+                        code.push_str(&format!(".icon({})", rust_expr));
+                    }
+                    _ => {}
                 }
-                "icon" => {
-                    let rust_expr = match expr::parse(expr) {
-                        Ok(expr::Expr::Field(field_name))
-                            if computed.contains(&field_name.as_str()) =>
-                        {
-                            format!("self.{}()", field_name)
-                        }
-                        Ok(parsed) => expr::to_rust_code_with_ctx(&parsed, &empty),
-                        Err(_) => expr.trim().to_string(),
-                    };
-                    code.push_str(&format!(".icon(rml_ui::{})", rust_expr));
-                }
-                _ => {}
             }
+            _ => {}
         }
     }
 
@@ -272,6 +278,9 @@ pub(super) fn gen_tab_window_wrapper(
 
     for attr in &elem.attributes {
         match attr {
+            Attribute::Static { name, value, .. } if name == "icon" => {
+                code.push_str(&format!(".icon({:?})", value));
+            }
             Attribute::Bind { name, expr, .. } => {
                 if name == "icon" {
                     let rust_expr = match expr::parse(expr) {
@@ -283,12 +292,7 @@ pub(super) fn gen_tab_window_wrapper(
                         Ok(parsed) => expr::to_rust_code_with_ctx(&parsed, &empty),
                         Err(_) => expr.trim().to_string(),
                     };
-                    let icon_expr = if rust_expr.contains("IconName::") {
-                        format!("rml_ui::{rust_expr}")
-                    } else {
-                        rust_expr
-                    };
-                    code.push_str(&format!(".icon({icon_expr})"));
+                    code.push_str(&format!(".icon({})", rust_expr));
                     continue;
                 }
                 if name == "tab_item_template" {

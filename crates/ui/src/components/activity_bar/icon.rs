@@ -1,28 +1,34 @@
-//! 活动栏图标解析 —— `IContribution::icon` 字符串 → 可渲染图标元素
+//! 活动栏图标渲染 —— `IContribution::icon` 返回的 `IconSpec` → 可渲染图标元素
 //!
-//! 解析规则（按优先级）：
-//! 1. URL 格式（`file:`/`http:`/`https:` 等开头）→ 通过 `gpui::img` 加载（支持 SVG/PNG/JPG 等）
-//! 2. 命名图标（匹配 `IconName` 变体名，如 `"BookOpen"`）→ `Icon::new(name).small()`
-//! 3. SVG 资产路径（非 URL、含 `/` 或以 `.svg` 结尾、未匹配命名）→ `Icon::default().path(s).small()`
-//!    利用 Icon 组件的 `path()` 能力加载自定义 SVG 资产（如 `"icons/custom.svg"`）
-//! 4. 其他未匹配字符串 → fallback `IconName::PanelLeft`
-//! 5. `None` → fallback `IconName::PanelLeft`
+//! `IconSpec` 的 variant tag 直接决定渲染路径,无需字符串推断:
+//! 1. `Named(s)` → 查 `parse_icon_name` 表得 `IconName`,用 `Icon::new(name).small()`;
+//!    未匹配时 fallback `IconName::PanelLeft`
+//! 2. `Path(s)` → `Icon::default().path(s).small()`,经 `CompositeAssets` 路由,
+//!    同时支持 gpui-component 内置 `icons/**/*.svg` 与 RML 用户嵌入资源(`assets/logo.svg` 等)
+//! 3. `Url(s)` → `gpui::img(s).size_4()`,加载外部/文件 URL 图片
+//! 4. `None` → fallback `IconName::PanelLeft`
 //!
-//! 所有 `Icon` 实例统一应用 `.small()`（Sizable trait），与 TabWindow 标题栏图标尺寸一致。
+//! 所有 `Icon` 实例统一应用 `.small()`(Sizable trait),与 TabWindow 标题栏图标尺寸一致。
 
-use gpui::{AnyElement, IntoElement, SharedString, Styled, Window, img};
+use gpui::{AnyElement, IntoElement, Styled, Window, img};
 use gpui_component::{Icon, IconName, Sizable as _};
+use rml_core::contribution::IconSpec;
 
-/// 解析贡献点 `IContribution::icon` 字符串为可渲染图标元素。
+/// 渲染贡献点 `IContribution::icon` 返回的 `IconSpec` 为可渲染图标元素。
 ///
-/// 充分利用 `Icon` 组件能力处理不同数据类型：
-/// - URL → `img`（外部图片，Icon 无法加载 URL）
-/// - 命名图标 → `Icon::new(name)`（内置 `IconName` 枚举）
-/// - SVG 资产路径 → `Icon::default().path(s)`（自定义 SVG 资产）
-/// - 其他 → fallback `IconName::PanelLeft`
-pub fn resolve_icon(icon: Option<SharedString>, window: &Window) -> AnyElement {
-    match icon.as_deref() {
-        Some(s) if is_url(s) => {
+/// 按 variant tag 直接分派,无需 `is_url`/`is_asset_path` 等字符串推断:
+/// - `Named` → 内置 `IconName` 枚举(查表未命中走 fallback)
+/// - `Path` → `Icon::default().path(s)`(经 `CompositeAssets` 支持嵌入资源)
+/// - `Url` → `gpui::img`(外部图片,Icon 无法加载 URL)
+/// - `None` → fallback `IconName::PanelLeft`
+pub fn resolve_icon(spec: Option<IconSpec>, window: &Window) -> AnyElement {
+    match spec {
+        Some(IconSpec::Named(s)) => match parse_icon_name(&s) {
+            Some(name) => Icon::new(name).small().into_any_element(),
+            None => Icon::new(IconName::PanelLeft).small().into_any_element(),
+        },
+        Some(IconSpec::Path(s)) => Icon::default().path(s).small().into_any_element(),
+        Some(IconSpec::Url(s)) => {
             let text_color = window.text_style().color;
             img(s)
                 .flex_shrink_0()
@@ -30,39 +36,22 @@ pub fn resolve_icon(icon: Option<SharedString>, window: &Window) -> AnyElement {
                 .text_color(text_color)
                 .into_any_element()
         }
-        Some(s) => match parse_icon_name(s) {
-            Some(name) => Icon::new(name).small().into_any_element(),
-            None if is_asset_path(s) => {
-                Icon::default().path(s).small().into_any_element()
-            }
-            None => Icon::new(IconName::PanelLeft).small().into_any_element(),
-        },
         None => Icon::new(IconName::PanelLeft).small().into_any_element(),
     }
 }
 
-/// 判断字符串是否为 URL 格式（含 `file:`/`http:`/`https:` 等协议前缀）。
-fn is_url(s: &str) -> bool {
-    s.starts_with("file:")
-        || s.starts_with("http:")
-        || s.starts_with("https:")
-        || s.contains("://")
-}
-
-/// 判断字符串是否像 SVG 资产路径（非 URL、含路径分隔符或 `.svg` 后缀）。
-///
-/// 用于在 `parse_icon_name` 未匹配时，将字符串交给 `Icon::default().path(s)`
-/// 作为自定义 SVG 资产路径加载（如 `"icons/custom.svg"`、`"my-icon.svg"`）。
-fn is_asset_path(s: &str) -> bool {
-    s.contains('/') || s.ends_with(".svg")
-}
-
 /// 解析图标名字符串 → `IconName`。
 ///
-/// `IconName` 由 `icon_named!` 宏从 `gpui-component-assets` 的 SVG 文件名生成（kebab-case → PascalCase），
-/// 未实现 `FromStr`。此处维护完整映射，覆盖 assets 目录下全部 SVG 图标。
+/// `IconName` 由 `icon_named!` 宏从 `gpui-component-assets` 的 SVG 文件名生成(kebab-case → PascalCase),
+/// 未实现 `FromStr`。此处维护完整映射,覆盖 assets 目录下全部 SVG 图标。
 ///
-/// 未匹配时返回 `None`，调用方按资产路径或 fallback 处理。
+/// 未匹配时返回 `None`,调用方走 fallback `IconName::PanelLeft`。
+///
+/// # 后续优化路径
+///
+/// 此映射表是 `IconSpec::Named(SharedString)` 设计选择的副作用——`rml_core` 不依赖
+/// `gpui-component`(框架中立),故 `Named` 载荷为字符串而非 `IconName`。彻底消除此表
+/// 的方案是给上游 `gpui-component` 的 `icon_named!` 宏加 `FromStr` impl 生成,一次性投入。
 fn parse_icon_name(s: &str) -> Option<IconName> {
     match s {
         // A
