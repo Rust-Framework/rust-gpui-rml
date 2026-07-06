@@ -5,7 +5,7 @@
 //! RA 升级时只需修改 `adapter.rs` 中的类型转换函数，其余代码零改动。
 
 use lsp_types::{
-    CompletionItemKind, DiagnosticSeverity, Position, Range, Url,
+    CompletionItemKind, DiagnosticSeverity, DocumentSymbol, FoldingRange, Position, Range, Url,
 };
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -185,4 +185,18 @@ pub trait RustSemanticQuery: Send + Sync {
         old_name: &str,
         new_name: &str,
     ) -> std::collections::HashMap<Url, Vec<lsp_types::TextEdit>>;
+
+    // ── documentSymbol / foldingRange ──
+
+    /// 文档符号（用于面包屑导航与符号大纲）
+    ///
+    /// 返回嵌套的 `DocumentSymbol` 列表，供 handler 直接包装为
+    /// `DocumentSymbolResponse::Nested`。
+    fn document_symbol(&self, uri: &Url) -> Option<Vec<DocumentSymbol>>;
+
+    /// 折叠区域（用于代码折叠）
+    ///
+    /// 返回 `FoldingRange` 列表。实现可采用缩进策略或语法树策略，
+    /// 接口不绑定具体实现。
+    fn folding_ranges(&self, uri: &Url) -> Vec<FoldingRange>;
 }

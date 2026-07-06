@@ -24,13 +24,17 @@ pub fn handle_did_open(
     let text = params.text_document.text.clone();
     let version = params.text_document.version;
 
-    if doctype::is_rust_codebehind(&uri) {
-        state.workspace.refresh_codebehind(&uri, &text);
+    if doctype::is_rust_file(&uri) {
+        if doctype::is_rust_codebehind(&uri) {
+            state.workspace.refresh_codebehind(&uri, &text);
+        }
         state.rust_query.open_document(&uri, &text);
         let diags = diagnostics::collect_rust(&uri, state);
         crate::server::dispatch::send_diagnostics(&uri, diags, conn)?;
-        // .rml.rs 变更可能影响配对 .rml 的语义诊断，触发重诊断
-        refresh_paired_rml(&uri, state, conn);
+        if doctype::is_rust_codebehind(&uri) {
+            // .rml.rs 变更可能影响配对 .rml 的语义诊断，触发重诊断
+            refresh_paired_rml(&uri, state, conn);
+        }
     } else if doctype::is_rml_markup(&uri) {
         state.workspace.auto_pair(&uri);
         state.workspace.open_document(uri.clone(), &text, version);
@@ -59,12 +63,16 @@ pub fn handle_did_change(
         .map(|e| e.text)
         .unwrap_or_default();
 
-    if doctype::is_rust_codebehind(&uri) {
-        state.workspace.refresh_codebehind(&uri, &text);
+    if doctype::is_rust_file(&uri) {
+        if doctype::is_rust_codebehind(&uri) {
+            state.workspace.refresh_codebehind(&uri, &text);
+        }
         state.rust_query.apply_change(&uri, &text);
         let diags = diagnostics::collect_rust(&uri, state);
         crate::server::dispatch::send_diagnostics(&uri, diags, conn)?;
-        refresh_paired_rml(&uri, state, conn);
+        if doctype::is_rust_codebehind(&uri) {
+            refresh_paired_rml(&uri, state, conn);
+        }
     } else if doctype::is_rml_markup(&uri) {
         state.workspace.update_document(&uri, &text, version);
         let diags = diagnostics::collect(&uri, &state.workspace);
@@ -83,14 +91,20 @@ pub fn handle_did_save(
     let params: DidSaveTextDocumentParams = serde_json::from_value(params)?;
     let uri = params.text_document.uri.clone();
 
-    if doctype::is_rust_codebehind(&uri) {
+    if doctype::is_rust_file(&uri) {
+        if doctype::is_rust_codebehind(&uri) {
+            if let Some(text) = params.text {
+                state.workspace.refresh_codebehind(&uri, &text);
+            }
+        }
         if let Some(text) = params.text {
-            state.workspace.refresh_codebehind(&uri, &text);
             state.rust_query.apply_change(&uri, &text);
         }
         let diags = diagnostics::collect_rust(&uri, state);
         crate::server::dispatch::send_diagnostics(&uri, diags, conn)?;
-        refresh_paired_rml(&uri, state, conn);
+        if doctype::is_rust_codebehind(&uri) {
+            refresh_paired_rml(&uri, state, conn);
+        }
     } else if doctype::is_rml_markup(&uri) {
         if let Some(text) = params.text {
             state.workspace.update_document(&uri, &text, 0);
@@ -109,7 +123,7 @@ pub fn handle_did_close(
 ) -> Result<()> {
     let params: DidCloseTextDocumentParams = serde_json::from_value(params)?;
     let uri = params.text_document.uri;
-    if doctype::is_rust_codebehind(&uri) {
+    if doctype::is_rust_file(&uri) {
         state.rust_query.close_document(&uri);
     } else {
         state.workspace.close_document(&uri);

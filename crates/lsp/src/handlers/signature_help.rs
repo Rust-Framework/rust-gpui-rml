@@ -15,8 +15,8 @@ pub fn handle_signature_help(
     let uri = params.text_document_position_params.text_document.uri.clone();
     let position = params.text_document_position_params.position;
 
-    // .rml.rs → 不提供签名帮助（rust-analyzer 自身处理）
-    if doctype::is_rust_codebehind(&uri) {
+    // .rs / .rml.rs → 不提供签名帮助（rust-analyzer 自身处理）
+    if doctype::is_rust_file(&uri) {
         return Ok(None);
     }
 

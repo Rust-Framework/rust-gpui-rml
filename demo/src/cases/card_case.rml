@@ -3,7 +3,7 @@
         <h2>{t("case.card.title")}</h2>
 
         <Card title="组件说明">
-            <p>Card 是 gpui-component 卡片容器组件的 RML 封装（Ant Design 风格）。容器模式，通过 title/extra/cover/footer 属性组合内容。</p>
+            <p>Card 是 RML 的卡片容器组件（Ant Design 风格）。容器模式，通过 title/extra/cover/footer 属性组合内容。</p>
             <p>支持 bordered/borderless/hoverable 样式控制。</p>
         </Card>
 

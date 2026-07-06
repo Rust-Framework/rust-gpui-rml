@@ -16,8 +16,8 @@ pub fn handle_rename(
     let position = params.text_document_position.position;
     let new_name = params.new_name;
 
-    // .rml.rs → 暂不支持（rust-analyzer 自身处理）
-    if doctype::is_rust_codebehind(&uri) {
+    // .rs / .rml.rs → 暂不支持（rust-analyzer 自身处理）
+    if doctype::is_rust_file(&uri) {
         return Ok(None);
     }
 

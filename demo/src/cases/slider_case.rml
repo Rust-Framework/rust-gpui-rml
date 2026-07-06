@@ -3,7 +3,7 @@
         <h2>{t("case.slider.title")}</h2>
 
         <Card title="组件说明">
-            <p>Slider 是 gpui-component 滑块组件的 RML 封装。Stateful 模式，需在 on_loaded 中初始化 SliderState Entity 并设置 min/max/default_value。</p>
+            <p>Slider 是 RML 的滑块组件。Stateful 模式，需在 on_loaded 中初始化 SliderState Entity 并设置 min/max/default_value。</p>
         </Card>
 
         <Card title="基础用法">

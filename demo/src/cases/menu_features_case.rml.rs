@@ -1,4 +1,4 @@
-﻿use std::sync::Arc;
+use std::sync::Arc;
 
 use gpui::SharedString;
 use rml::prelude::*;
@@ -22,7 +22,7 @@ pub struct MenuFeaturesCase {
     pub last_action: String,
     /// B-1 demo：声明式命令绑定字段。
     /// RML `<menu-item command={save_command} />` 据此生成 clone-Arc-out 闭包，
-    /// 点击时经 `ICommand::execute` 调度（区别于 `onclick={method}` 的强类型直接调用）。
+    /// 点击时经 `ICommand::execute` 调度（区别于 `on-click={method}` 的强类型直接调用）。
     /// 类型为 `Arc<RelayCommand>`（具体类型）而非 `Arc<dyn ICommand>`，以便
     /// `#[derive(Default)]` 生效——框架已为 `RelayCommand` 实现 `Default`（no-op 空对象）。
     pub save_command: Arc<RelayCommand>,
@@ -72,13 +72,13 @@ impl MenuFeaturesCase {
     pub fn code_sample(&self) -> String {
         r#"<dropdown-menu scrollable="" max-h="280">
     <Button label="Features" ghost="" />
-    <menu-item label="Available" onclick={on_available} />
-    <menu-item label="Disabled" disabled="" onclick={on_disabled} />
-    <menu-item label="Checkable" checked={is_checked} onclick={on_toggle_check} />
+    <menu-item label="Available" on-click={on_available} />
+    <menu-item label="Disabled" disabled="" on-click={on_disabled} />
+    <menu-item label="Checkable" checked={is_checked} on-click={on_toggle_check} />
     <menu-separator />
     <menu-item label="Docs" href="https://..." icon="Info" />
     <menu-item label="Submenu">
-        <menu-item label="Item A" onclick={on_nested_a} />
+        <menu-item label="Item A" on-click={on_nested_a} />
     </menu-item>
 </dropdown-menu>"#
             .to_string()

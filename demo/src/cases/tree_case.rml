@@ -3,7 +3,7 @@
         <h2>{t("case.tree.title")}</h2>
 
         <Card title="组件说明">
-            <p>Tree 是 gpui-component 树视图组件的 RML 封装。Stateful 模式，需在 on_loaded 中初始化 TreeState Entity 并设置 items。</p>
+            <p>Tree 是 RML 的树视图组件。Stateful 模式，需在 on_loaded 中初始化 TreeState Entity 并设置 items。</p>
         </Card>
 
         <Card title="基础用法">

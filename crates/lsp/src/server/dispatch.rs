@@ -31,6 +31,10 @@ pub fn handle_request(
             handlers::document_symbol::handle_document_symbol(req.params, state)
                 .map(|v| v.and_then(|s| serde_json::to_value(s).ok()))
         }
+        "textDocument/foldingRange" => {
+            handlers::folding_range::handle_folding_range(req.params, state)
+                .map(|v| v.and_then(|f| serde_json::to_value(f).ok()))
+        }
         "textDocument/references" => {
             handlers::references::handle_references(req.params, state)
                 .map(|v| v.and_then(|r| serde_json::to_value(r).ok()))

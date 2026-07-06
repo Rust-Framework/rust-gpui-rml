@@ -3,7 +3,7 @@
         <h2>{t("case.checkbox.title")}</h2>
 
         <Card title="组件说明">
-            <p>Checkbox 是 gpui-component 复选框组件的 RML 封装。Stateless 组件，通过 checked 属性绑定勾选状态（底层通过 Selectable trait 映射到 .checked()）。</p>
+            <p>Checkbox 是 RML 的复选框组件。Stateless 组件，通过 checked 属性绑定勾选状态（底层通过 Selectable trait 映射到 .checked()）。</p>
         </Card>
 
         <Card title="基础用法">

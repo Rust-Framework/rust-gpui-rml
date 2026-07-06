@@ -152,6 +152,7 @@ pub fn build_capabilities() -> ServerCapabilities {
             work_done_progress_options: Default::default(),
         }),
         rename_provider: Some(lsp_types::OneOf::Left(true)),
+        folding_range_provider: Some(lsp_types::FoldingRangeProviderCapability::Simple(true)),
         semantic_tokens_provider: Some(
             lsp_types::SemanticTokensServerCapabilities::SemanticTokensOptions(
                 lsp_types::SemanticTokensOptions {

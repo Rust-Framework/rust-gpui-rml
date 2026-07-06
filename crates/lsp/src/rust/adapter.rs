@@ -162,7 +162,16 @@ impl RustSemanticQuery for RaAdapter {
     }
 
     fn hover(&self, uri: &Url, pos: Position) -> Option<HoverInfo> {
-        let analysis = self.host.analysis()?;
+        let analysis = match self.host.analysis() {
+            Some(a) => a,
+            None => {
+                // RaHost 未就绪：返回加载提示，避免用户误以为功能损坏
+                return Some(HoverInfo {
+                    content: "Loading rust-analyzer workspace...".to_string(),
+                    range: None,
+                });
+            }
+        };
         let file_id = url_to_file_id(&self.host, uri)?;
         let (_, line_index) = file_text_and_index(&self.host, file_id)?;
         let offset = position_to_offset(&line_index, pos);
@@ -480,6 +489,196 @@ impl RustSemanticQuery for RaAdapter {
     ) -> std::collections::HashMap<Url, Vec<lsp_types::TextEdit>> {
         // RA 后端实现待 ra_ap_* 依赖恢复后补齐
         std::collections::HashMap::new()
+    }
+
+    fn document_symbol(&self, uri: &Url) -> Option<Vec<lsp_types::DocumentSymbol>> {
+        let analysis = self.host.analysis()?;
+        let file_id = url_to_file_id(&self.host, uri)?;
+        let (_, line_index) = file_text_and_index(&self.host, file_id)?;
+        let config = ra_ap_ide::FileStructureConfig { exclude_locals: false };
+        let nodes = analysis.file_structure(&config, file_id).ok()?;
+
+        // 构建 parent → children 映射，递归生成嵌套 DocumentSymbol
+        let symbols = build_document_symbols(&nodes, &line_index);
+        if symbols.is_empty() {
+            None
+        } else {
+            Some(symbols)
+        }
+    }
+
+    fn folding_ranges(&self, uri: &Url) -> Vec<lsp_types::FoldingRange> {
+        // 基于缩进的折叠策略（语言无关，覆盖 .rs / .rml.rs / .rml）
+        // 与 VSCode indentation strategy 行为一致
+        let Some(text) = file_text(&self.host, uri) else {
+            return Vec::new();
+        };
+        indent_folding_ranges(&text)
+    }
+}
+
+/// 获取文件文本（不返回 LineIndex，用于折叠扫描）
+fn file_text(host: &RaHost, uri: &Url) -> Option<String> {
+    let analysis = host.analysis()?;
+    let file_id = url_to_file_id(host, uri)?;
+    analysis.file_text(file_id).ok().map(|t| t.to_string())
+}
+
+/// 基于缩进扫描生成折叠区域
+///
+/// 算法：维护缩进栈，遇到更深缩进时，前一行成为折叠起点，栈顶缩进回退时折叠结束。
+/// 仅生成跨 ≥ 2 行的区域（gpui-component FoldMap 要求 MIN_FOLD_LINES = 2）。
+fn indent_folding_ranges(text: &str) -> Vec<lsp_types::FoldingRange> {
+    let lines: Vec<&str> = text.lines().collect();
+    if lines.len() < 3 {
+        return Vec::new();
+    }
+
+    let indent_of = |line: &str| -> usize {
+        line.chars().take_while(|c| *c == ' ' || *c == '\t').count()
+    };
+
+    let mut ranges = Vec::new();
+    // 栈元素：(indent, start_line)
+    let mut stack: Vec<(usize, usize)> = Vec::new();
+
+    for (idx, line) in lines.iter().enumerate() {
+        // 空行不参与缩进比较
+        if line.trim().is_empty() {
+            continue;
+        }
+        let cur_indent = indent_of(line);
+
+        // 弹出所有缩进 >= 当前的栈顶，生成折叠区域
+        while let Some(&(top_indent, start_line)) = stack.last() {
+            if top_indent >= cur_indent {
+                stack.pop();
+                let end_line = idx.saturating_sub(1);
+                if end_line > start_line + 1 {
+                    ranges.push(lsp_types::FoldingRange {
+                        start_line: start_line as u32,
+                        end_line: end_line as u32,
+                        start_character: None,
+                        end_character: None,
+                        kind: Some(lsp_types::FoldingRangeKind::Region),
+                        collapsed_text: None,
+                    });
+                }
+            } else {
+                break;
+            }
+        }
+
+        // 当前行可能成为下一个折叠起点：检查下一非空行是否缩进更深
+        let next_indent = lines[idx + 1..]
+            .iter()
+            .find(|l| !l.trim().is_empty())
+            .map(indent_of)
+            .unwrap_or(0);
+        if next_indent > cur_indent {
+            stack.push((cur_indent, idx));
+        }
+    }
+
+    // 处理栈中剩余区域（文件末尾）
+    let last_line = lines.len() - 1;
+    while let Some((_, start_line)) = stack.pop() {
+        if last_line > start_line + 1 {
+            ranges.push(lsp_types::FoldingRange {
+                start_line: start_line as u32,
+                end_line: last_line as u32,
+                start_character: None,
+                end_character: None,
+                kind: Some(lsp_types::FoldingRangeKind::Region),
+                collapsed_text: None,
+            });
+        }
+    }
+
+    ranges
+}
+
+/// 递归构建嵌套 DocumentSymbol
+fn build_document_symbols(
+    nodes: &[ra_ap_ide::StructureNode],
+    line_index: &ra_ap_ide::LineIndex,
+) -> Vec<lsp_types::DocumentSymbol> {
+    // 顶层节点：parent 为 None 的节点
+    let top_level: Vec<usize> = nodes
+        .iter()
+        .enumerate()
+        .filter(|(_, n)| n.parent.is_none())
+        .map(|(i, _)| i)
+        .collect();
+
+    top_level
+        .into_iter()
+        .filter_map(|i| build_one_symbol(nodes, i, line_index))
+        .collect()
+}
+
+fn build_one_symbol(
+    nodes: &[ra_ap_ide::StructureNode],
+    idx: usize,
+    line_index: &ra_ap_ide::LineIndex,
+) -> Option<lsp_types::DocumentSymbol> {
+    let node = &nodes[idx];
+    let range = text_range_to_range(line_index, node.node_range);
+    let selection_range = text_range_to_range(line_index, node.navigation_range);
+
+    // 收集子节点
+    let children: Vec<lsp_types::DocumentSymbol> = nodes
+        .iter()
+        .enumerate()
+        .filter(|(_, n)| n.parent == Some(idx))
+        .filter_map(|(i, _)| build_one_symbol(nodes, i, line_index))
+        .collect();
+
+    Some(lsp_types::DocumentSymbol {
+        name: node.label.clone(),
+        detail: node.detail.clone(),
+        kind: map_structure_kind(node.kind),
+        tags: if node.deprecated {
+            Some(vec![lsp_types::SymbolTag::DEPRECATED])
+        } else {
+            None
+        },
+        range,
+        selection_range,
+        children: if children.is_empty() {
+            None
+        } else {
+            Some(children)
+        },
+    })
+}
+
+/// StructureNodeKind → lsp_types::SymbolKind
+fn map_structure_kind(kind: ra_ap_ide::StructureNodeKind) -> lsp_types::SymbolKind {
+    use ra_ap_ide::StructureNodeKind;
+    use ra_ap_ide_db::SymbolKind as Sk;
+    match kind {
+        StructureNodeKind::SymbolKind(sk) => match sk {
+            Sk::Function | Sk::Method => lsp_types::SymbolKind::FUNCTION,
+            Sk::Struct => lsp_types::SymbolKind::STRUCT,
+            Sk::Enum => lsp_types::SymbolKind::ENUM,
+            Sk::Variant => lsp_types::SymbolKind::ENUM_MEMBER,
+            Sk::Trait => lsp_types::SymbolKind::INTERFACE,
+            Sk::Const | Sk::Static => lsp_types::SymbolKind::CONSTANT,
+            Sk::Field => lsp_types::SymbolKind::FIELD,
+            Sk::Local | Sk::SelfParam | Sk::SelfType | Sk::LifetimeParam | Sk::Label => {
+                lsp_types::SymbolKind::VARIABLE
+            }
+            Sk::Module | Sk::CrateRoot => lsp_types::SymbolKind::MODULE,
+            Sk::TypeAlias | Sk::TypeParam | Sk::ConstParam => lsp_types::SymbolKind::TYPE_PARAMETER,
+            Sk::Macro | Sk::ProcMacro => lsp_types::SymbolKind::FUNCTION,
+            Sk::Union => lsp_types::SymbolKind::STRUCT,
+            Sk::ValueParam => lsp_types::SymbolKind::VARIABLE,
+            Sk::BuiltinAttr | Sk::ToolModule | Sk::Attribute | Sk::Derive | Sk::DeriveHelper
+            | Sk::InlineAsmRegOrRegClass => lsp_types::SymbolKind::PROPERTY,
+        },
+        StructureNodeKind::ExternBlock => lsp_types::SymbolKind::MODULE,
+        StructureNodeKind::Region => lsp_types::SymbolKind::NAMESPACE,
     }
 }
 

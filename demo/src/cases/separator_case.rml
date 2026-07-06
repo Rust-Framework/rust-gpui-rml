@@ -3,7 +3,7 @@
         <h2>{t("case.separator.title")}</h2>
 
         <Card title="组件说明">
-            <p>Separator 是 gpui-component 分隔符组件的 RML 封装。无 new() 构造器，使用 horizontal()/vertical() 关联函数。</p>
+            <p>Separator 是 RML 的分隔符组件。无 new() 构造器，使用 horizontal()/vertical() 关联函数。</p>
             <p>通过 vertical 属性切换水平/垂直方向，dashed 属性切换虚线样式。</p>
         </Card>
 

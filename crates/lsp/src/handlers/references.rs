@@ -16,8 +16,8 @@ pub fn handle_references(
     let position = params.text_document_position.position;
     let include_decl = params.context.include_declaration;
 
-    if doctype::is_rust_codebehind(&uri) {
-        // .rml.rs → 委托 rust_query.find_references
+    if doctype::is_rust_file(&uri) {
+        // .rs / .rml.rs → 委托 rust_query.find_references
         let locs = state
             .rust_query
             .find_references(&uri, position, include_decl)

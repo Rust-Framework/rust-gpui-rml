@@ -1,4 +1,4 @@
-﻿use gpui::SharedString;
+use gpui::SharedString;
 use rml::prelude::*;
 use rml_core::i18n::{t_static, I18nState};
 use rml_core::theme::ThemeExt;
@@ -57,8 +57,8 @@ impl I18nCase {
     #[computed]
     pub fn code_sample(&self) -> String {
         r#"<p>{t("demo.hello")}</p>
-<Button label={t("menu.lang_en")} onclick={on_switch_en} />
-<Button label={t("menu.theme_toggle")} onclick={on_toggle_theme} />"#
+<Button label={t("menu.lang_en")} on-click={on_switch_en} />
+<Button label={t("menu.theme_toggle")} on-click={on_toggle_theme} />"#
             .to_string()
     }
 

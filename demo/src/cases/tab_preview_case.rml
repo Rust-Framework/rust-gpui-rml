@@ -8,7 +8,10 @@
         </Card>
 
         <Card title="API">
-            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+            <h3>TabBar</h3>
+            <Table columns={tab_bar_api_columns} rows={tab_bar_api_rows} bordered="" stripe="" />
+            <h3>Tab</h3>
+            <Table columns={tab_api_columns} rows={tab_api_rows} bordered="" stripe="" />
         </Card>
 
         <Card title="示例代码">

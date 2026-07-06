@@ -4,7 +4,7 @@
 
         <Card title="组件说明">
             <p>Menu Custom 案例演示自定义菜单项的典型场景：分组标题（header）、主题切换（checked 状态）、外链跳转（href）、登出操作。模拟设置类菜单的完整交互。</p>
-            <p>核心概念：menu-item header 作为分组标题不可点击；menu-item onclick 绑定命令更新状态；href 渲染为外链；dark_mode 字段记录主题状态，dark_mode_label computed 提供显示文案。</p>
+            <p>核心概念：menu-item header 作为分组标题不可点击；menu-item on-click 绑定命令更新状态；href 渲染为外链；dark_mode 字段记录主题状态，dark_mode_label computed 提供显示文案。</p>
         </Card>
 
         <Card title="API">
@@ -26,7 +26,7 @@
                     <menu-item header="" label="Display" />
                     <menu-item label="Dark Mode" on-click={on_toggle_dark} />
                     <menu-separator />
-                    <menu-item label="Help Center" href="https://longbridge.github.io/gpui-component/" icon="Info" />
+                    <menu-item label="Help Center" href="https://rml.dev/help/" icon="Info" />
                     <menu-item label="Sign Out" on-click={on_sign_out} />
                 </dropdown-menu>
             </div>
@@ -45,7 +45,7 @@
                 <p>Help Center 为外链，Sign Out 触发命令更新状态：</p>
                 <dropdown-menu>
                     <Button label="Account" ghost="" />
-                    <menu-item label="Help Center" href="https://longbridge.github.io/gpui-component/" icon="Info" />
+                    <menu-item label="Help Center" href="https://rml.dev/help/" icon="Info" />
                     <menu-separator />
                     <menu-item label="Sign Out" icon="ExternalLink" on-click={on_sign_out} />
                 </dropdown-menu>

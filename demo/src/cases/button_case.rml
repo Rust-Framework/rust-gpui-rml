@@ -1,64 +1,120 @@
 <component>
     <div v-flex="" class="case-pane doc-pane">
         <h2>{t("case.button.title")}</h2>
-        <p>Button 是 gpui-component 按钮的 RML 封装，标签为 PascalCase。支持 label / primary / ghost / danger / disabled / selected / size / compact 等属性。小写 button 属于内置 HTML 轨，映射为 gpui::div()，不是本组件。</p>
+        <p>Button 是 RML 的按钮组件，标签为 PascalCase <code>Button</code>。支持 9 种 variant、4 种尺寸、disabled/selected/loading 状态、compact 紧凑模式、tooltip 悬浮提示等能力。小写 button 属于内置 HTML 轨，映射为 gpui::div()，不是本组件。</p>
 
-        <div class="demo-section">
-            <h3>基础用法</h3>
-            <p>点击按钮累计计数，演示 on-click 事件绑定与四种变体。{basic_click_text}</p>
+        <Card title="变体 variants">
+            <p>9 种 variant 通过同名空属性切换（<code>primary=""</code> / <code>secondary=""</code> / <code>danger=""</code> / <code>success=""</code> / <code>warning=""</code> / <code>info=""</code> / <code>ghost=""</code> / <code>link=""</code> / <code>text=""</code>）。不写 variant 即默认 Default。</p>
             <div class="button-row">
                 <Button label="Default" on-click={on_basic_click} />
                 <Button label="Primary" primary="" on-click={on_basic_click} />
-                <Button label="Ghost" ghost="" on-click={on_basic_click} />
+                <Button label="Secondary" secondary="" on-click={on_basic_click} />
                 <Button label="Danger" danger="" on-click={on_basic_click} />
+                <Button label="Success" success="" on-click={on_basic_click} />
+                <Button label="Warning" warning="" on-click={on_basic_click} />
+                <Button label="Info" info="" on-click={on_basic_click} />
+                <Button label="Ghost" ghost="" on-click={on_basic_click} />
+                <Button label="Link" link="" on-click={on_basic_click} />
+                <Button label="Text" text="" on-click={on_basic_click} />
             </div>
-        </div>
+            <p>累计点击次数：{basic_clicks}</p>
+        </Card>
 
-        <div class="demo-section">
-            <h3>按钮尺寸</h3>
-            <p>size 属性控制按钮大小：small / medium / large。</p>
+        <Card title="尺寸 size">
+            <p>size 属性控制按钮大小：xsmall / small / medium / large。</p>
             <div class="button-row">
+                <Button label="XSmall" size="xsmall" primary="" />
                 <Button label="Small" size="small" primary="" />
                 <Button label="Medium" size="medium" primary="" />
                 <Button label="Large" size="large" primary="" />
             </div>
-        </div>
+            <p class="hint">注：在 gpui-component 底层实现中，<code>Size::Large</code> 与 <code>Size::Medium</code> 走同一高度分支（h_8 + px_4 + text_base），视觉等价。建议优先使用 XSmall/Small/Medium 三档以体现尺寸差异。</p>
+        </Card>
 
-        <div class="demo-section">
-            <h3>不可用状态</h3>
-            <p>disabled 属性禁用按钮交互，点击切换查看效果。{disabled_status_text}</p>
+        <Card title="状态 state">
+            <h3>disabled 禁用</h3>
+            <p>disabled 属性禁用按钮交互，点击切换查看效果。当前：{disabled_status_text}</p>
             <div class="button-row">
                 <Button label="切换禁用" on-click={on_toggle_disabled} />
                 <Button label="Disabled Button" disabled={is_disabled} primary="" />
             </div>
-        </div>
 
-        <div class="demo-section">
-            <h3>选中状态</h3>
-            <p>selected 属性切换按钮选中态，点击切换查看效果。{selected_status_text}</p>
+            <h3>selected 选中</h3>
+            <p>selected 属性切换按钮选中态，点击切换查看效果。当前：{selected_status_text}</p>
             <div class="button-row">
                 <Button label="切换选中" on-click={on_toggle_selected} />
                 <Button label="Selected Button" selected={is_selected} />
             </div>
-        </div>
 
-        <div class="demo-section">
-            <h3>按钮组 ButtonGroup</h3>
-            <p>ButtonGroup 容器组合多个按钮，常用于操作分组。</p>
-            <ButtonGroup>
-                <Button label="上一页" />
-                <Button label="下一页" />
-            </ButtonGroup>
-        </div>
+            <h3>loading 加载中</h3>
+            <p>loading 属性显示加载指示器，点击切换查看效果。当前：{loading_status_text}</p>
+            <div class="button-row">
+                <Button label="切换 Loading" on-click={on_toggle_loading} />
+                <Button label="Loading Button" loading={is_loading} primary="" />
+            </div>
+        </Card>
 
-        <div class="demo-section">
-            <h3>示例代码</h3>
-            <CodeEditor value={code_sample} />
-        </div>
+        <Card title="紧凑模式 compact">
+            <p>compact 属性减少按钮内边距，常用于工具栏或密集表单。</p>
+            <div class="button-row">
+                <Button label="Normal" primary="" />
+                <Button label="Compact" primary="" compact="" />
+            </div>
+        </Card>
 
-        <div class="demo-section">
-            <h3>API</h3>
+        <Card title="tooltip 悬浮提示">
+            <p>tooltip 属性添加鼠标悬浮提示文本，常用于图标按钮或操作说明。</p>
+            <div class="button-row">
+                <Button label="Save" primary="" tooltip="保存当前文档 (Ctrl+S)" />
+                <Button label="Delete" danger="" tooltip="删除后不可恢复" />
+            </div>
+        </Card>
+
+        <Card title="字体权重 font weight">
+            <p>font_bold / font_semibold / font_medium 等属性切换字体权重（StyledExt trait）。</p>
+            <div class="button-row">
+                <Button label="Normal" primary="" />
+                <Button label="Bold" primary="" font-bold="" />
+                <Button label="Semibold" primary="" font-semibold="" />
+                <Button label="Medium" primary="" font-medium="" />
+            </div>
+        </Card>
+
+        <Card title="按钮组 ButtonGroup">
+            <p>ButtonGroup 容器组合多个按钮，常用于操作分组。支持 size 属性统一子按钮尺寸。</p>
+            <div class="button-row">
+                <ButtonGroup>
+                    <Button label="上一页" />
+                    <Button label="下一页" />
+                </ButtonGroup>
+                <ButtonGroup size="small">
+                    <Button label="A" />
+                    <Button label="B" />
+                    <Button label="C" />
+                </ButtonGroup>
+            </div>
+            <p>详见 <code>button_group_case</code> 案例。</p>
+        </Card>
+
+        <Card title="示例代码">
+            <p>点击下方 Tab 切换 <code>.rml</code> 声明文件与 <code>.rml.rs</code> 后端文件：</p>
+            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
+                <Tab label=".rml" />
+                <Tab label=".rml.rs" />
+            </TabBar>
+            <div if={code_tab == 0}>
+                <CodeEditor ref="rml_editor" value={rml_sample} language="rust" />
+            </div>
+            <div if={code_tab == 1}>
+                <CodeEditor ref="rust_editor" value={rust_sample} language="rust" />
+            </div>
+        </Card>
+
+        <Card title="API">
+            <h3>Button</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-        </div>
+            <p>另：<code>tooltip</code> 属性为字符串，映射到 <code>.tooltip(text)</code>。</p>
+            <p>另：<code>font_bold</code> / <code>font_semibold</code> / <code>font_medium</code> / <code>font_light</code> 等字体权重属性来自 StyledExt trait。</p>
+        </Card>
     </div>
 </component>

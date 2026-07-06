@@ -76,11 +76,17 @@ pub fn is_hover_event(name: &str) -> bool {
 ///
 /// 标准事件：`.on_click(cx.listener(move |this, ev: &gpui::ClickEvent, _window, cx| { ... }))`
 /// 悬停事件：委托给 `apply_hover_event`
+/// on-action 事件：委托给 `apply_action_event`（多 Action 类型注册）
 /// 不支持事件：返回空字符串
 pub fn apply_event(name: &str, handler: &EventHandler, _ctx: &CodegenCtx) -> String {
     // on_hover 特殊处理：GPUI on_hover 回调接收 &bool 而非 &EventType
     if is_hover_event(name) {
         return apply_hover_event(name, handler);
+    }
+
+    // on_action 特殊处理：值为逗号分隔的 `ActionType:method` 对
+    if name == "on_action" {
+        return apply_action_event(handler);
     }
 
     // 未知事件名：跳过
@@ -119,6 +125,45 @@ pub fn apply_event(name: &str, handler: &EventHandler, _ctx: &CodegenCtx) -> Str
             }
         }
     }
+}
+
+/// 生成 on-action 事件绑定代码
+///
+/// `on-action` 属性值为逗号分隔的 `ActionType:method` 对，例如：
+/// `"FormatDocument:on_format, RenameSymbol:on_rename"`
+///
+/// 对每对生成：
+/// `.on_action::<ActionType>(cx.listener(move |this, _action: &ActionType, _window, cx| { this.method(_action, _window, cx); }))`
+///
+/// handler 方法签名：`fn method(&mut self, action: &ActionType, window: &mut Window, cx: &mut Context<Self>)`
+///
+/// 解析失败（空值、缺冒号、缺方法名）时返回空字符串（容错，不阻断编译）。
+pub fn apply_action_event(handler: &EventHandler) -> String {
+    let value = match handler {
+        EventHandler::Ident(s) | EventHandler::MethodName(s) => s.as_str(),
+        EventHandler::WithArgs(s, _) => s.as_str(),
+    };
+
+    let mut parts = Vec::new();
+    for pair in value.split(',') {
+        let pair = pair.trim();
+        if pair.is_empty() {
+            continue;
+        }
+        let Some((type_name, method)) = pair.split_once(':') else {
+            return String::new();
+        };
+        let type_name = type_name.trim();
+        let method = method.trim();
+        if type_name.is_empty() || method.is_empty() {
+            return String::new();
+        }
+        parts.push(format!(
+            ".on_action::<{type_name}>(cx.listener(move |this, _action: &{type_name}, _window, cx| {{\n                    \
+             this.{method}(_action, _window, cx);\n                }}))"
+        ));
+    }
+    parts.join(" ")
 }
 
 /// 生成 on-hover/on-mouse-enter/on-mouse-leave 事件绑定代码
@@ -439,5 +484,82 @@ mod tests {
         let code = apply_hover_event("on_hover", &handler);
         assert!(code.contains("this.on_hover_change"));
         assert!(!code.contains("p0"));
+    }
+
+    // ─── apply_action_event ───
+
+    #[test]
+    fn apply_action_event_single_pair() {
+        let handler = EventHandler::MethodName("FormatDocument:on_format".into());
+        let code = apply_action_event(&handler);
+        assert!(code.contains(".on_action::<FormatDocument>"));
+        assert!(code.contains("cx.listener"));
+        assert!(code.contains("_action: &FormatDocument"));
+        assert!(code.contains("this.on_format(_action, _window, cx)"));
+    }
+
+    #[test]
+    fn apply_action_event_multiple_pairs() {
+        let handler = EventHandler::MethodName(
+            "FormatDocument:on_format, RenameSymbol:on_rename, FindReferences:on_refs".into(),
+        );
+        let code = apply_action_event(&handler);
+        assert!(code.contains(".on_action::<FormatDocument>"));
+        assert!(code.contains(".on_action::<RenameSymbol>"));
+        assert!(code.contains(".on_action::<FindReferences>"));
+        assert!(code.contains("this.on_format("));
+        assert!(code.contains("this.on_rename("));
+        assert!(code.contains("this.on_refs("));
+    }
+
+    #[test]
+    fn apply_action_event_trims_whitespace() {
+        let handler =
+            EventHandler::MethodName("FormatDocument : on_format , RenameSymbol : on_rename".into());
+        let code = apply_action_event(&handler);
+        assert!(code.contains(".on_action::<FormatDocument>"));
+        assert!(code.contains(".on_action::<RenameSymbol>"));
+        assert!(code.contains("this.on_format("));
+        assert!(code.contains("this.on_rename("));
+    }
+
+    #[test]
+    fn apply_action_event_empty_returns_empty() {
+        let handler = EventHandler::MethodName("".into());
+        assert_eq!(apply_action_event(&handler), "");
+    }
+
+    #[test]
+    fn apply_action_event_missing_colon_returns_empty() {
+        let handler = EventHandler::MethodName("FormatDocument".into());
+        assert_eq!(apply_action_event(&handler), "");
+    }
+
+    #[test]
+    fn apply_action_event_empty_method_returns_empty() {
+        let handler = EventHandler::MethodName("FormatDocument:".into());
+        assert_eq!(apply_action_event(&handler), "");
+    }
+
+    #[test]
+    fn apply_action_event_empty_type_returns_empty() {
+        let handler = EventHandler::MethodName(":on_format".into());
+        assert_eq!(apply_action_event(&handler), "");
+    }
+
+    #[test]
+    fn apply_action_event_ident_handler() {
+        let handler = EventHandler::Ident("FormatDocument:on_format".into());
+        let code = apply_action_event(&handler);
+        assert!(code.contains(".on_action::<FormatDocument>"));
+        assert!(code.contains("this.on_format("));
+    }
+
+    #[test]
+    fn apply_action_event_via_apply_event_routing() {
+        let handler = EventHandler::MethodName("FormatDocument:on_format".into());
+        let direct = apply_action_event(&handler);
+        let via_apply = apply_event("on_action", &handler, &ctx());
+        assert_eq!(direct, via_apply);
     }
 }

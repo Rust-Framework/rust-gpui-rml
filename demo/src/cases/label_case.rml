@@ -3,7 +3,7 @@
         <h2>{t("case.label.title")}</h2>
 
         <Card title="组件说明">
-            <p>Label 是 gpui-component 标签组件的 RML 封装。构造器接受 label 文本作为参数（非 ElementId），通过 label 属性或文本子节点设置。</p>
+            <p>Label 是 RML 的标签组件。构造器接受 label 文本作为参数（非 ElementId），通过 label 属性或文本子节点设置。</p>
         </Card>
 
         <Card title="基础用法">

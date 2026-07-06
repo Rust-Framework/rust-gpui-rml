@@ -4,6 +4,7 @@ pub mod completion;
 pub mod definition;
 pub mod diagnostics;
 pub mod document_symbol;
+pub mod folding_range;
 pub mod formatting;
 pub mod hover;
 pub mod initialize;

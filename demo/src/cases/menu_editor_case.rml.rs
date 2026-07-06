@@ -1,4 +1,4 @@
-﻿use gpui::SharedString;
+use gpui::SharedString;
 use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
@@ -36,7 +36,7 @@ impl ILifecycle for MenuEditorCase {
             ("check-side", "枚举", "勾选标记位置（Right/Left）"),
             ("menu-item checked", "布尔", "勾选状态绑定"),
             ("menu-item label", "字符串", "菜单项文案"),
-            ("menu-item onclick", "事件", "点击回调"),
+            ("menu-item on-click", "事件", "点击回调"),
             ("menu-separator", "标签", "分组分隔线"),
         ]);
         self.api_columns = cols;
@@ -62,9 +62,9 @@ impl MenuEditorCase {
     pub fn code_sample(&self) -> String {
         r#"<dropdown-menu check-side="Right">
     <Button label="Edit" ghost="" />
-    <menu-item label="Save" onclick={on_save} />
+    <menu-item label="Save" on-click={on_save} />
     <menu-separator />
-    <menu-item label="Word Wrap" checked={word_wrap} onclick={on_toggle_wrap} />
+    <menu-item label="Word Wrap" checked={word_wrap} on-click={on_toggle_wrap} />
 </dropdown-menu>"#
             .to_string()
     }

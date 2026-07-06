@@ -3,13 +3,17 @@
         <h2>{t("case.description_list.title")}</h2>
 
         <Card title="组件说明">
-            <p>DescriptionList 是 gpui-component 描述列表组件的 RML 封装，用于呈现键值对形式的只读信息（如用户详情、产品属性）。</p>
+            <p>DescriptionList 是 RML 的描述列表组件，用于呈现键值对形式的只读信息（如用户详情、产品属性）。</p>
             <p>核心特性：默认 horizontal 布局，vertical 控制纵向；bordered 边框控制；columns 多列布局；label-width 标签列宽；items 绑定批量数据（Vec&lt;Arc&lt;dyn IValue&gt;&gt;）；description 子项支持 label 必填 + value/span 属性；separator 分隔符；value 支持文本属性、文本子节点、元素子节点三种形式。</p>
             <p>支持大小写两种标签形式：DescriptionList/descriptions、DescriptionItem/description、separator（仅小写，避免与独立 Separator 组件冲突）。</p>
         </Card>
 
         <Card title="API">
-            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+            <h3>DescriptionList</h3>
+            <Table columns={list_api_columns} rows={list_api_rows} bordered="" stripe="" />
+            <h3>DescriptionItem（description）</h3>
+            <Table columns={item_api_columns} rows={item_api_rows} bordered="" stripe="" />
+            <p>另：<code>separator</code> 子标签无属性，作为分隔符插入子项之间。</p>
         </Card>
 
         <Card title="示例代码">

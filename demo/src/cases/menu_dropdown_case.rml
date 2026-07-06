@@ -3,7 +3,7 @@
         <h2>{t("case.menu.dropdown.title")}</h2>
 
         <Card title="组件说明">
-            <p>Dropdown Menu 是 gpui-component 下拉菜单的 RML 封装，标签为 dropdown-menu。第一个子元素作为触发器，点击触发弹出菜单。</p>
+            <p>Dropdown Menu 是 RML 的下拉菜单组件，标签为 kebab-case <code>dropdown-menu</code>。第一个子元素作为触发器，点击触发弹出菜单。</p>
             <p>核心概念：第一个子节点（通常是 Button）作为触发器；anchor 控制弹出位置（TopRight/BottomLeft 等）；menu-item 定义菜单项；menu-separator 分组分隔。</p>
         </Card>
 

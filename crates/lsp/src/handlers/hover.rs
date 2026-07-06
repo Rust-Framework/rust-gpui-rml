@@ -15,7 +15,7 @@ pub fn handle_hover(
     let uri = params.text_document_position_params.text_document.uri.clone();
     let position = params.text_document_position_params.position;
 
-    if doctype::is_rust_codebehind(&uri) {
+    if doctype::is_rust_file(&uri) {
         Ok(state
             .rust_query
             .hover(&uri, position)

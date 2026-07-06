@@ -1,4 +1,4 @@
-﻿use gpui::SharedString;
+use gpui::SharedString;
 use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
@@ -16,8 +16,10 @@ use crate::cases::common::build_api_table;
 #[derive(Default)]
 pub struct AvatarGroupCase {
     pub avatar_count: u8,
-    pub api_columns: Vec<TableColumn>,
-    pub api_rows: Vec<TableRow>,
+    pub group_api_columns: Vec<TableColumn>,
+    pub group_api_rows: Vec<TableRow>,
+    pub avatar_api_columns: Vec<TableColumn>,
+    pub avatar_api_rows: Vec<TableRow>,
 }
 
 impl IContribution for AvatarGroupCase {
@@ -35,10 +37,17 @@ impl ILifecycle for AvatarGroupCase {
         let (cols, rows) = build_api_table(&[
             ("limit", "数字", "最大显示数量"),
             ("ellipsis", "布尔标志", "溢出显示 +N"),
-            ("子节点", "Avatar[]", "头像列表"),
         ]);
-        self.api_columns = cols;
-        self.api_rows = rows;
+        self.group_api_columns = cols;
+        self.group_api_rows = rows;
+
+        let (cols, rows) = build_api_table(&[
+            ("src", "字符串", "图片源 URL"),
+            ("name", "字符串", "首字母 fallback"),
+            ("placeholder", "图标名", "占位图标"),
+        ]);
+        self.avatar_api_columns = cols;
+        self.avatar_api_rows = rows;
     }
 }
 

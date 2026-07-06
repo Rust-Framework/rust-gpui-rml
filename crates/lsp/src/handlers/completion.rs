@@ -17,7 +17,7 @@ pub fn handle_completion(
     let uri = params.text_document_position.text_document.uri.clone();
     let position = params.text_document_position.position;
 
-    if doctype::is_rust_codebehind(&uri) {
+    if doctype::is_rust_file(&uri) {
         Ok(complete_rust(&uri, position, state))
     } else {
         Ok(completion::complete(
@@ -29,7 +29,7 @@ pub fn handle_completion(
     }
 }
 
-/// `.rml.rs` 文件补全：从 rust_query 获取并转换为 LSP CompletionItem
+/// `.rs` / `.rml.rs` 文件补全：从 rust_query 获取并转换为 LSP CompletionItem
 fn complete_rust(
     uri: &lsp_types::Url,
     position: lsp_types::Position,

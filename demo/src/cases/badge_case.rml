@@ -3,7 +3,7 @@
         <h2>{t("case.badge.title")}</h2>
 
         <Card title="组件说明">
-            <p>Badge 是 gpui-component 徽标组件的 RML 封装，标签为 Badge。无 ElementId 构造（StatelessNoId），支持容器模式包裹子内容。</p>
+            <p>Badge 是 RML 的徽标组件，标签为 PascalCase <code>Badge</code>。无 ElementId 构造（StatelessNoId），支持容器模式包裹子内容。</p>
             <p>核心用法：包裹子元素显示数字徽标，或通过 primary/secondary/danger/success 变体属性显示彩色徽标。</p>
         </Card>
 

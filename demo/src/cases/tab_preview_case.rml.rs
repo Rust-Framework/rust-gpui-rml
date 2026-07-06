@@ -1,4 +1,4 @@
-﻿use gpui::SharedString;
+use gpui::SharedString;
 use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
@@ -24,8 +24,10 @@ pub struct TabData {
 pub struct TabPreviewCase {
     pub tabs: Vec<TabData>,
     pub selected_index: usize,
-    pub api_columns: Vec<TableColumn>,
-    pub api_rows: Vec<TableRow>,
+    pub tab_bar_api_columns: Vec<TableColumn>,
+    pub tab_bar_api_rows: Vec<TableRow>,
+    pub tab_api_columns: Vec<TableColumn>,
+    pub tab_api_rows: Vec<TableRow>,
 }
 
 impl IContribution for TabPreviewCase {
@@ -41,15 +43,23 @@ impl ILifecycle for TabPreviewCase {
     fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
         self.reset_tabs();
         let (cols, rows) = build_api_table(&[
+            ("selected-index", "绑定", "当前选中索引"),
+            ("on-click", "事件", "切换选中，签名 fn(index: usize)"),
             ("on-close", "事件", "关闭按钮回调，签名 fn(index: usize)"),
             ("on-close-all", "事件", "关闭全部回调，签名 fn()"),
             ("on-close-others", "事件", "关闭其他回调，签名 fn(index: usize)"),
             ("on-promote", "事件", "双击 promote 回调，签名 fn(index: usize)"),
-            ("Tab closable", "布尔", "显示关闭按钮"),
-            ("Tab preview", "布尔", "预览模式（italic 标题）"),
         ]);
-        self.api_columns = cols;
-        self.api_rows = rows;
+        self.tab_bar_api_columns = cols;
+        self.tab_bar_api_rows = rows;
+
+        let (cols, rows) = build_api_table(&[
+            ("label", "字符串/绑定", "标签标题"),
+            ("closable", "布尔/绑定", "显示关闭按钮"),
+            ("preview", "布尔/绑定", "预览模式（italic 标题）"),
+        ]);
+        self.tab_api_columns = cols;
+        self.tab_api_rows = rows;
     }
 }
 

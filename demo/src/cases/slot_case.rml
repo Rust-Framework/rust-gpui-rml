@@ -3,7 +3,7 @@
         <h2>{t("case.slot.title")}</h2>
 
         <Card title="组件说明">
-            <p>Slot 案例演示框架 Card 组件的标准用法。Card 是 rml_ui 提供的 Stateless 容器组件，标签为 PascalCase Card，支持 title 属性、hoverable 悬浮效果，body 子节点直接作为卡片内容。</p>
+            <p>Slot 案例演示 RML Card 组件的标准用法。Card 是 RML 的 Stateless 容器组件，标签为 PascalCase <code>Card</code>，支持 title 属性、hoverable 悬浮效果，body 子节点直接作为卡片内容。</p>
             <p>核心概念：Card title 绑定标题文本；hoverable 启用悬浮提升效果；children 直接作为卡片 body；与 Button 等子组件组合构建内容区块。</p>
         </Card>
 

@@ -1,4 +1,4 @@
-﻿use gpui::SharedString;
+use gpui::SharedString;
 use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
@@ -16,8 +16,10 @@ use crate::cases::common::build_api_table;
 #[derive(Default)]
 pub struct ButtonGroupCase {
     pub button_count: u8,
-    pub api_columns: Vec<TableColumn>,
-    pub api_rows: Vec<TableRow>,
+    pub group_api_columns: Vec<TableColumn>,
+    pub group_api_rows: Vec<TableRow>,
+    pub button_api_columns: Vec<TableColumn>,
+    pub button_api_rows: Vec<TableRow>,
 }
 
 impl IContribution for ButtonGroupCase {
@@ -34,10 +36,21 @@ impl ILifecycle for ButtonGroupCase {
         self.button_count = 3;
         let (cols, rows) = build_api_table(&[
             ("size", "small/medium/large", "尺寸"),
-            ("子节点", "Button[]", "按钮列表"),
         ]);
-        self.api_columns = cols;
-        self.api_rows = rows;
+        self.group_api_columns = cols;
+        self.group_api_rows = rows;
+
+        let (cols, rows) = build_api_table(&[
+            ("label", "字符串", "按钮文本"),
+            ("primary/ghost/danger", "布尔标志", "三种 variant"),
+            ("disabled", "布尔/绑定", "禁用按钮"),
+            ("selected", "布尔/绑定", "选中状态"),
+            ("size", "small/medium/large", "尺寸"),
+            ("compact", "布尔标志", "紧凑模式"),
+            ("on-click", "事件", "点击回调（ClickEvent）"),
+        ]);
+        self.button_api_columns = cols;
+        self.button_api_rows = rows;
     }
 }
 

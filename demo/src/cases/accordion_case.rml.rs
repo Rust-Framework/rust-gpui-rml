@@ -1,4 +1,4 @@
-﻿use gpui::SharedString;
+use gpui::SharedString;
 use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
@@ -23,8 +23,10 @@ pub struct AccordionCase {
     pub with_icon_open: Vec<usize>,
     pub nested_open: Vec<usize>,
     pub nested_child_open: Vec<usize>,
-    pub api_columns: Vec<TableColumn>,
-    pub api_rows: Vec<TableRow>,
+    pub accordion_api_columns: Vec<TableColumn>,
+    pub accordion_api_rows: Vec<TableRow>,
+    pub item_api_columns: Vec<TableColumn>,
+    pub item_api_rows: Vec<TableRow>,
 }
 
 impl IContribution for AccordionCase {
@@ -45,14 +47,19 @@ impl ILifecycle for AccordionCase {
             ("bordered", "布尔标志", "显示边框"),
             ("multiple", "布尔标志", "允许多项同时展开"),
             ("size", "small/medium/large", "尺寸变体"),
+            ("open-ixs", "绑定", "展开项索引列表（Vec<usize>）"),
             ("on-toggle-click", "事件", "展开状态变化回调"),
-            ("item title", "字符串", "面板标题"),
-            ("item open", "布尔标志", "初始展开"),
-            ("item icon", "图标名", "标题图标"),
-            ("item disabled", "布尔", "禁用面板"),
         ]);
-        self.api_columns = cols;
-        self.api_rows = rows;
+        self.accordion_api_columns = cols;
+        self.accordion_api_rows = rows;
+
+        let (cols, rows) = build_api_table(&[
+            ("title", "字符串/绑定", "面板标题"),
+            ("icon", "图标名", "标题图标"),
+            ("disabled", "布尔", "禁用面板"),
+        ]);
+        self.item_api_columns = cols;
+        self.item_api_rows = rows;
     }
 }
 

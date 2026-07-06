@@ -1,4 +1,4 @@
-﻿use std::sync::Once;
+use std::sync::Once;
 
 use gpui::{AnyElement, ParentElement, SharedString, Styled};
 use rml::prelude::*;

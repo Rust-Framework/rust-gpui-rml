@@ -1,4 +1,4 @@
-﻿use gpui::SharedString;
+use gpui::SharedString;
 use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
@@ -34,7 +34,7 @@ impl ILifecycle for MenuContextCase {
         let (cols, rows) = build_api_table(&[
             ("menu-item label", "字符串", "菜单项文案"),
             ("menu-item icon", "图标名", "菜单项图标"),
-            ("menu-item onclick", "事件", "点击回调"),
+            ("menu-item on-click", "事件", "点击回调"),
             ("menu-separator", "标签", "分组分隔线"),
             ("menu-item 子节点", "menu-item", "子菜单"),
         ]);
@@ -61,10 +61,10 @@ impl MenuContextCase {
     pub fn code_sample(&self) -> String {
         r#"<context-menu>
     <div>右键目标</div>
-    <menu-item label="Open" icon="FolderOpen" onclick={on_open} />
+    <menu-item label="Open" icon="FolderOpen" on-click={on_open} />
     <menu-separator />
     <menu-item label="New">
-        <menu-item label="File" onclick={on_new_file} />
+        <menu-item label="File" on-click={on_new_file} />
     </menu-item>
 </context-menu>"#
             .to_string()

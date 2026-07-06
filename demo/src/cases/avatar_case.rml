@@ -3,7 +3,7 @@
         <h2>{t("case.avatar.title")}</h2>
 
         <Card title="组件说明">
-            <p>Avatar 是 gpui-component 头像组件的 RML 封装，标签为 PascalCase Avatar。支持图片源（src）、首字母（name）、占位图标（placeholder）三种模式。</p>
+            <p>Avatar 是 RML 的头像组件，标签为 PascalCase <code>Avatar</code>。支持图片源（src）、首字母（name）、占位图标（placeholder）三种模式。</p>
             <p>核心概念：src 优先级最高，加载失败回退到 name 首字母，再回退到 placeholder 图标；size 控制尺寸；AvatarGroup 分组展示并支持 limit + ellipsis 折叠溢出项。</p>
         </Card>
 

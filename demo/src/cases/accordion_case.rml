@@ -1,7 +1,7 @@
 <component>
     <div v-flex="" class="case-pane doc-pane">
         <h2>{t("case.accordion.title")}</h2>
-        <p>Accordion 是 gpui-component 折叠面板的 RML 封装，标签为小写 accordion。子项用 item 标签，title 属性指定面板标题，open-ixs 属性控制展开状态。支持 multiple 多展开、bordered 边框、size 尺寸、item 的 icon/disabled 属性。</p>
+        <p>Accordion 是 RML 的折叠面板组件，标签为 PascalCase <code>Accordion</code> 或小写 <code>accordion</code>。子项用 item 标签，title 属性指定面板标题，open-ixs 属性控制展开状态。支持 multiple 多展开、bordered 边框、size 尺寸、item 的 icon/disabled 属性。</p>
 
         <div class="demo-section">
             <h3>{t("case.accordion.basic")}</h3>
@@ -84,7 +84,10 @@
 
         <div class="demo-section">
             <h3>API</h3>
-            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+            <h4>Accordion</h4>
+            <Table columns={accordion_api_columns} rows={accordion_api_rows} bordered="" stripe="" />
+            <h4>AccordionItem（item）</h4>
+            <Table columns={item_api_columns} rows={item_api_rows} bordered="" stripe="" />
         </div>
     </div>
 </component>

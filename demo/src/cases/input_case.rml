@@ -3,7 +3,7 @@
         <h2>{t("case.input.title")}</h2>
 
         <Card title="组件说明">
-            <p>Input 是 gpui-component 文本输入组件的 RML 封装。Stateful 模式，通过 ref 指令惰性创建 InputState Entity，由 __rml_populate_refs 注入到对应的 ElementRef 字段。</p>
+            <p>Input 是 RML 的文本输入组件。Stateful 模式，通过 ref 指令惰性创建 InputState Entity，由 __rml_populate_refs 注入到对应的 ElementRef 字段。</p>
             <p>placeholder 与 default_value 需在 InputState builder 上设置，disabled 通过 Input 组件 RML 属性设置。</p>
         </Card>
 

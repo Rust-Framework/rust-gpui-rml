@@ -3,13 +3,16 @@
         <h2>{t("case.tab_bar.title")}</h2>
 
         <Card title="组件说明">
-            <p>TabBar 是 gpui-component 标签栏的 RML 封装，标签为 PascalCase TabBar 或小写 tab_bar。子项用 Tab 标签，label 属性指定标题，icon 属性添加图标。</p>
+            <p>TabBar 是 RML 的标签栏组件，标签为 PascalCase <code>TabBar</code> 或 kebab-case <code>tab-bar</code>。子项用 Tab 标签，label 属性指定标题，icon 属性添加图标。</p>
             <p>核心概念：5 种 variant（underline/pill/flat/outline/segmented）通过同名属性切换；尺寸用 size 属性；prefix/suffix 注入首尾元素；menu 模式启用下拉；on-click 事件回调选中索引（签名 fn(index: usize)）。</p>
             <p>模板定制（高级）：Tab 实现 ParentElement，element 子节点通过 .child() 注入作为标题内容，绕过 label/icon 限制。</p>
         </Card>
 
         <Card title="API">
-            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+            <h3>TabBar</h3>
+            <Table columns={tab_bar_api_columns} rows={tab_bar_api_rows} bordered="" stripe="" />
+            <h3>Tab</h3>
+            <Table columns={tab_api_columns} rows={tab_api_rows} bordered="" stripe="" />
         </Card>
 
         <Card title="示例代码">

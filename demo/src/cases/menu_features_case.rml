@@ -51,7 +51,7 @@
                 <p>href 渲染为外链，icon 添加图标：</p>
                 <dropdown-menu>
                     <Button label="链接项" ghost="" />
-                    <menu-item label="Documentation" href="https://longbridge.github.io/gpui-component/" icon="Info" />
+                    <menu-item label="Documentation" href="https://rml.dev/docs/" icon="Info" />
                 </dropdown-menu>
             </div>
 
@@ -65,7 +65,7 @@
                     <menu-item label="Disabled" disabled="" on-click={on_disabled} />
                     <menu-item label="Checkable" checked={is_checked} on-click={on_toggle_check} />
                     <menu-separator />
-                    <menu-item label="Documentation" href="https://longbridge.github.io/gpui-component/" icon="Info" />
+                    <menu-item label="Documentation" href="https://rml.dev/docs/" icon="Info" />
                     <menu-separator />
                     <menu-item label="Submenu">
                         <menu-item label="Item A" on-click={on_nested_a} />

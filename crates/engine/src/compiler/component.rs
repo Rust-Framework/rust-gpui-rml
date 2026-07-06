@@ -547,6 +547,11 @@ pub fn component_bind_setter(
             let rust_expr = component_bind_rust_expr(expr_str, loop_vars, computed);
             Some(format!(".with_size({})", rust_expr))
         }
+        // loading={bool_expr} → .loading(self.is_loading)
+        "loading" => {
+            let rust_expr = component_bind_rust_expr(expr_str, loop_vars, computed);
+            Some(format!(".loading({})", rust_expr))
+        }
         _ => None,
     }
 }

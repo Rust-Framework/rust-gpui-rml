@@ -3,7 +3,7 @@
         <h2>{t("case.tag.title")}</h2>
 
         <Card title="组件说明">
-            <p>Tag 是 gpui-component 标签组件的 RML 封装。无 ElementId 构造（StatelessNoId），容器模式，文本通过子节点设置。</p>
+            <p>Tag 是 RML 的标签组件。无 ElementId 构造（StatelessNoId），容器模式，文本通过子节点设置。</p>
             <p>支持 primary/secondary/danger/success/warning/info 等变体属性和 size 尺寸。</p>
         </Card>
 

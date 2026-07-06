@@ -14,8 +14,8 @@ pub fn handle_formatting(
     let params: DocumentFormattingParams = serde_json::from_value(params)?;
     let uri = params.text_document.uri;
 
-    // .rml.rs 格式化由 rustfmt 处理，LSP 不参与
-    if doctype::is_rust_codebehind(&uri) {
+    // .rs / .rml.rs 格式化由 rustfmt 处理，LSP 不参与
+    if doctype::is_rust_file(&uri) {
         return Ok(None);
     }
 

@@ -269,6 +269,13 @@ impl LspClient {
         self.send_request("textDocument/documentSymbol", params)
     }
 
+    pub fn folding_range(&self, uri: &Uri) -> Receiver<Result<Value>> {
+        let params = serde_json::json!({
+            "textDocument": { "uri": uri.as_str() },
+        });
+        self.send_request("textDocument/foldingRange", params)
+    }
+
     pub fn formatting(&self, uri: &Uri) -> Receiver<Result<Value>> {
         let params = serde_json::json!({
             "textDocument": { "uri": uri.as_str() },

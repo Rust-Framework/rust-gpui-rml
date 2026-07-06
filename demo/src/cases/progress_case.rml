@@ -3,7 +3,7 @@
         <h2>{t("case.progress.title")}</h2>
 
         <Card title="组件说明">
-            <p>Progress 是 gpui-component 进度条组件的 RML 封装。通过 value 属性设置进度值（0-100），loading 属性切换加载中状态。</p>
+            <p>Progress 是 RML 的进度条组件。通过 value 属性设置进度值（0-100），loading 属性切换加载中状态。</p>
         </Card>
 
         <Card title="基础用法">

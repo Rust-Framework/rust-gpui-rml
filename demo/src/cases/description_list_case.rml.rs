@@ -1,4 +1,4 @@
-﻿use std::sync::Arc;
+use std::sync::Arc;
 use std::sync::Once;
 
 use gpui::SharedString;
@@ -48,8 +48,10 @@ pub struct DescriptionListCase {
     pub width: gpui::Pixels,
     pub is_vertical: bool,
     pub desitems: Vec<Arc<dyn IValue>>,
-    pub api_columns: Vec<TableColumn>,
-    pub api_rows: Vec<TableRow>,
+    pub list_api_columns: Vec<TableColumn>,
+    pub list_api_rows: Vec<TableRow>,
+    pub item_api_columns: Vec<TableColumn>,
+    pub item_api_rows: Vec<TableRow>,
 }
 
 impl IContribution for DescriptionListCase {
@@ -75,13 +77,18 @@ impl ILifecycle for DescriptionListCase {
             ("columns", "数字", "列数"),
             ("label-width", "像素值", "标签列宽"),
             ("items", "绑定", "批量数据绑定（Vec<Arc<dyn IValue>>）"),
-            ("description label", "字符串", "子项标签（必填）"),
-            ("description value", "字符串/元素", "子项值"),
-            ("description span", "数字", "跨列数"),
-            ("separator", "无属性", "分隔符"),
         ]);
-        self.api_columns = cols;
-        self.api_rows = rows;
+        self.list_api_columns = cols;
+        self.list_api_rows = rows;
+
+        let (cols, rows) = build_api_table(&[
+            ("label", "字符串", "子项标签（必填）"),
+            ("value", "字符串/绑定/元素", "子项值"),
+            ("span", "数字", "跨列数"),
+        ]);
+        self.item_api_columns = cols;
+        self.item_api_rows = rows;
+
         self.desitems = vec![
             Arc::new(DescEntry { name: "产品名称".into(), id: "RML 框架".into() }),
             Arc::new(DescEntry { name: "版本".into(), id: "1.0.0".into() }),

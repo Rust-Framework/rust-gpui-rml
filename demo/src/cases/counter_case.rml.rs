@@ -1,4 +1,4 @@
-﻿use gpui::SharedString;
+use gpui::SharedString;
 use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
@@ -51,7 +51,7 @@ impl CounterCase {
 
     #[computed]
     pub fn code_sample(&self) -> String {
-        r#"<Button label="点击 +1" onclick={on_click} />
+        r#"<Button label="点击 +1" on-click={on_click} />
 <p>{counter_text}</p>"#.to_string()
     }
 

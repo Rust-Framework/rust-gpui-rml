@@ -3,7 +3,7 @@
         <h2>{t("case.button_group.title")}</h2>
 
         <Card title="组件说明">
-            <p>ButtonGroup 是 gpui-component 按钮组容器组件的 RML 封装。容器模式，子节点为 Button 组件。</p>
+            <p>ButtonGroup 是 RML 的按钮组容器组件。容器模式，子节点为 Button 组件。</p>
             <p>用于将多个相关操作按钮分组展示，提供视觉一致性。</p>
         </Card>
 
@@ -41,7 +41,10 @@
         </Card>
 
         <Card title="API">
-            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+            <h3>ButtonGroup</h3>
+            <Table columns={group_api_columns} rows={group_api_rows} bordered="" stripe="" />
+            <h3>Button</h3>
+            <Table columns={button_api_columns} rows={button_api_rows} bordered="" stripe="" />
         </Card>
     </div>
 </component>

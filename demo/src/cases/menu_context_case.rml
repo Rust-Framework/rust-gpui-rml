@@ -3,8 +3,8 @@
         <h2>{t("case.menu.context.title")}</h2>
 
         <Card title="组件说明">
-            <p>Context Menu 是 gpui-component 右键菜单的 RML 封装，标签为 context-menu。包裹目标区域后，右键点击触发菜单弹出。</p>
-            <p>核心概念：context-menu 包裹触发区域；menu-item 定义菜单项，label 显示文案，icon 添加图标，onclick 绑定命令；menu-separator 分组分隔；menu-item 内嵌 menu-item 形成子菜单。</p>
+            <p>Context Menu 是 RML 的右键菜单组件，标签为 kebab-case <code>context-menu</code>。包裹目标区域后，右键点击触发菜单弹出。</p>
+            <p>核心概念：context-menu 包裹触发区域；menu-item 定义菜单项，label 显示文案，icon 添加图标，on-click 绑定命令；menu-separator 分组分隔；menu-item 内嵌 menu-item 形成子菜单。</p>
         </Card>
 
         <Card title="API">

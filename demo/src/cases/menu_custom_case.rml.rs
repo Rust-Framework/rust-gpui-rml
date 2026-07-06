@@ -1,4 +1,4 @@
-﻿use gpui::SharedString;
+use gpui::SharedString;
 use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
@@ -35,7 +35,7 @@ impl ILifecycle for MenuCustomCase {
         let (cols, rows) = build_api_table(&[
             ("menu-item header", "布尔标志", "分组标题（不可点击）"),
             ("menu-item label", "字符串", "菜单项文案"),
-            ("menu-item onclick", "事件", "点击回调"),
+            ("menu-item on-click", "事件", "点击回调"),
             ("menu-item href", "URL", "外链跳转"),
             ("menu-item icon", "图标名", "菜单项图标"),
             ("menu-separator", "标签", "分组分隔线"),
@@ -65,10 +65,10 @@ impl MenuCustomCase {
         r#"<dropdown-menu>
     <Button label="Settings" ghost="" />
     <menu-item header="" label="Display" />
-    <menu-item label="Dark Mode" onclick={on_toggle_dark} />
+    <menu-item label="Dark Mode" on-click={on_toggle_dark} />
     <menu-separator />
     <menu-item label="Help" href="https://..." icon="Info" />
-    <menu-item label="Sign Out" onclick={on_sign_out} />
+    <menu-item label="Sign Out" on-click={on_sign_out} />
 </dropdown-menu>"#
             .to_string()
     }

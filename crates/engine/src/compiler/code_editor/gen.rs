@@ -68,6 +68,15 @@ pub fn gen_code_editor(
         _ => false,
     });
 
+    // 声明式 context-menu 属性：指定右键菜单构建方法名
+    // 方法签名：fn(&self, NativeMenu, &mut Window, &mut Context<Self>) -> NativeMenu
+    let context_menu_method: Option<&str> = elem.attributes.iter().find_map(|attr| match attr {
+        Attribute::Static { name, value, .. } if name == "context-menu" && !value.is_empty() => {
+            Some(value.as_str())
+        }
+        _ => None,
+    });
+
     // 收集 Input 事件处理器（on_change/on_enter/on_focus/on_blur）
     // 这些事件不走 setter 链路（component_event_setter 返回 None），
     // 由 block 表达式中的 cx.subscribe 统一处理
@@ -176,7 +185,7 @@ pub fn gen_code_editor(
     for attr in &elem.attributes {
         let is_handled_inline = match attr {
             Attribute::Static { name, .. } => {
-                name == "value" || name == "language" || name == "h-full"
+                name == "value" || name == "language" || name == "h-full" || name == "context-menu"
             }
             Attribute::Bind { name, .. } => name == "value",
             _ => false,
@@ -210,6 +219,16 @@ pub fn gen_code_editor(
                 }
             }
         }
+    }
+
+    // context-menu 属性：生成 .context_menu(closure) 调用
+    // 闭包通过 cx.entity().update() 桥接 &mut App → &mut Context<Self>
+    if let Some(method) = context_menu_method {
+        code.push_str(&format!(
+            "\n            .context_menu({{\n                \
+             let __view = cx.entity();\n                \
+             move |menu, w, c| __view.update(c, |this, cx| this.{method}(menu, w, cx))\n            }})"
+        ));
     }
 
     Ok(code)

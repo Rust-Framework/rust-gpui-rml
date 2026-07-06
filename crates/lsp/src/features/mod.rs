@@ -4,6 +4,7 @@ pub mod ast_util;
 pub mod completion;
 pub mod definition;
 pub mod document_symbol;
+pub mod fold;
 pub mod formatting;
 pub mod hover;
 pub mod references;
