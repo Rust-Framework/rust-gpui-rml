@@ -1,4 +1,4 @@
-//! LSP 状态栏贡献 —— 跨组件通信演示。
+﻿//! LSP 状态栏贡献 —— 跨组件通信演示。
 //!
 //! `LspStatusState` Entity 持有最近一次 LSP 命令摘要，经 IAppContext 注册为单例。
 //! `CodeEditorTab`（producer）经 `get_service::<LspStatusStateRef>()` 写入 →

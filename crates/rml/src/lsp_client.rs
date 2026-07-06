@@ -1,9 +1,11 @@
-//! LspClient: spawn `rml-lsp --stdio` 子进程，管理 LSP 协议通信。
+//! LspClient: spawn LSP server 子进程，管理 LSP 协议通信。
 //!
 //! 设计：
 //! - I/O 线程：reader 从子进程 stdout 读 Message，writer 向子进程 stdin 写 Message
 //! - 请求/响应关联：`AtomicU64` 生成 ID，`HashMap<u64, Sender>` 存储待响应通道
 //! - 后台接收线程：从 reader channel 读消息，Response 按 id 匹配 pending 通道
+//!
+//! `LspClient` 是 `LanguageClient` 的内部 IPC 层，外部应优先使用 `LanguageClient`。
 
 use std::collections::HashMap;
 use std::io::BufReader;
@@ -18,6 +20,8 @@ use crossbeam_channel::{Receiver, Sender, unbounded};
 use lsp_server::{Message, Notification, Request, RequestId};
 use lsp_types::{Position, Uri};
 use serde_json::Value;
+
+use crate::language_profile::LanguageProfile;
 
 /// 将文件路径转换为 `lsp_types::Uri`（lsp-types 0.97 用 Uri 替代 Url）。
 pub fn file_path_to_uri(path: &Path) -> Result<Uri> {
@@ -36,17 +40,23 @@ pub struct LspClient {
 }
 
 impl LspClient {
-    /// spawn rml-lsp --stdio 子进程并完成 initialize 握手。
-    pub fn spawn(workspace_root: &Path) -> Result<Self> {
-        let bin_path = resolve_binary(workspace_root)?;
+    /// spawn LSP server 子进程并完成 initialize 握手。
+    ///
+    /// `profile` 描述 server 二进制名、参数与搜索路径；`workspace_root` 用于
+    /// `initialize` 的 rootUri 与二进制相对路径解析。
+    pub fn spawn(profile: &LanguageProfile, workspace_root: &Path) -> Result<Self> {
+        let bin_path = resolve_binary(profile, workspace_root)?;
 
-        let mut child = Command::new(&bin_path)
-            .arg("--stdio")
+        let mut cmd = Command::new(&bin_path);
+        for arg in &profile.server_args {
+            cmd.arg(arg);
+        }
+        let mut child = cmd
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::null())
             .spawn()
-            .map_err(|e| anyhow!("failed to spawn rml-lsp at {}: {}", bin_path.display(), e))?;
+            .map_err(|e| anyhow!("failed to spawn {} at {}: {}", profile.server_binary, bin_path.display(), e))?;
 
         let stdin = child
             .stdin
@@ -318,22 +328,32 @@ fn request_id_to_u64(id: &RequestId) -> Option<u64> {
     }
 }
 
-fn resolve_binary(workspace_root: &Path) -> Result<PathBuf> {
-    if let Ok(path) = std::env::var("RML_LSP_PATH") {
-        let p = PathBuf::from(path);
-        if p.exists() {
-            return Ok(p);
+fn resolve_binary(profile: &LanguageProfile, workspace_root: &Path) -> Result<PathBuf> {
+    // 1. 环境变量覆盖（如 RML_LSP_PATH / RA_PATH）
+    if let Some(env_var) = profile.server_path_env {
+        if let Ok(path) = std::env::var(env_var) {
+            let p = PathBuf::from(path);
+            if p.exists() {
+                return Ok(p);
+            }
         }
     }
-    for target_dir in ["target", "crates/lsp/target"] {
-        for profile in ["debug", "release"] {
-            for bin in ["rml-lsp.exe", "rml-lsp"] {
-                let p = workspace_root.join(target_dir).join(profile).join(bin);
+    // 2. workspace_root 下的搜索路径（target/debug, target/release 等）
+    let bins = if cfg!(windows) {
+        vec![format!("{}.exe", profile.server_binary), profile.server_binary.clone()]
+    } else {
+        vec![profile.server_binary.clone()]
+    };
+    for search_dir in &profile.server_search_paths {
+        for build_profile in ["debug", "release"] {
+            for bin in &bins {
+                let p = workspace_root.join(search_dir).join(build_profile).join(bin);
                 if p.exists() {
                     return Ok(p);
                 }
             }
         }
     }
-    Ok(PathBuf::from("rml-lsp"))
+    // 3. 回退：依赖 PATH 查找（返回二进制名，由 OS 解析）
+    Ok(PathBuf::from(&profile.server_binary))
 }

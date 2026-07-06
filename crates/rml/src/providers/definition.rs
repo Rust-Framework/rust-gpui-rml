@@ -1,4 +1,4 @@
-//! RmlDefinitionProvider: 桥接 gpui-component DefinitionProvider → LspClient。
+//! LspDefinitionProvider: 桥接 gpui-component DefinitionProvider → LspClient。
 
 use std::sync::Arc;
 
@@ -11,18 +11,18 @@ use serde_json::Value;
 
 use crate::lsp_client::LspClient;
 
-pub struct RmlDefinitionProvider {
+pub struct LspDefinitionProvider {
     client: Arc<LspClient>,
     uri: Uri,
 }
 
-impl RmlDefinitionProvider {
+impl LspDefinitionProvider {
     pub fn new(client: Arc<LspClient>, uri: Uri) -> Self {
         Self { client, uri }
     }
 }
 
-impl DefinitionProvider for RmlDefinitionProvider {
+impl DefinitionProvider for LspDefinitionProvider {
     fn definitions(
         &self,
         text: &Rope,

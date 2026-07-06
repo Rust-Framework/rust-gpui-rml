@@ -1,4 +1,4 @@
-//! Workbench 实现 —— IWorkbench 实例与 LSP 工厂。
+﻿//! Workbench 实现 —— IWorkbench 实例与 LSP 工厂。
 //!
 //! - `CaseWorkbench` / `LspWorkbench`：`IWorkbench + IContribution + IVisual`
 //!   三 trait impl，供 MainWindow 经 `as_visual()` 渲染。
@@ -13,12 +13,13 @@ use std::sync::{Arc, Once, RwLock};
 
 use gpui::{AnyElement, App, Entity, SharedString, Window};
 use rml::prelude::*;
+use rust_rml_client::LanguageClient;
 use rml_core::contribution::{
     register_contribution_ability, register_visual_ability, IContribution, IVisual,
 };
 use rml_core::workbench::{IWorkbench, IWorkbenchProvider, Uri};
 
-use crate::lsp::{CodeEditorTab, LspClient};
+use crate::lsp::CodeEditorTab;
 use crate::shell::case_view_model::CaseViewModel;
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -88,16 +89,20 @@ impl IWorkbench for CaseWorkbench {
 pub struct LspWorkbench {
     uri: SharedString,
     title: SharedString,
-    lsp_client: Option<Arc<LspClient>>,
+    language_client: Option<Arc<LanguageClient>>,
     tab: RwLock<Option<Entity<CodeEditorTab>>>,
 }
 
 impl LspWorkbench {
-    pub fn new(uri: SharedString, title: SharedString, lsp_client: Option<Arc<LspClient>>) -> Self {
+    pub fn new(
+        uri: SharedString,
+        title: SharedString,
+        language_client: Option<Arc<LanguageClient>>,
+    ) -> Self {
         Self {
             uri,
             title,
-            lsp_client,
+            language_client,
             tab: RwLock::new(None),
         }
     }
@@ -116,7 +121,7 @@ impl IVisual for LspWorkbench {
     fn render(&self, window: &mut Window, cx: &mut App) -> AnyElement {
         let mut tab_lock = self.tab.write().unwrap();
         if tab_lock.is_none() {
-            if let Some(client) = self.lsp_client.clone() {
+            if let Some(client) = self.language_client.clone() {
                 let relative_path = self
                     .uri
                     .strip_prefix("lsp://")
@@ -154,12 +159,12 @@ impl IWorkbench for LspWorkbench {
 /// `LspWorkbench` 的 `CodeEditorTab` Entity 延迟到首次 `render` 时创建——
 /// `IWorkbenchProvider::render` 无 window/cx 参数，无法创建 Entity。
 pub struct LspWorkbenchProvider {
-    lsp_client: Option<Arc<LspClient>>,
+    language_client: Option<Arc<LanguageClient>>,
 }
 
 impl LspWorkbenchProvider {
-    pub fn new(lsp_client: Option<Arc<LspClient>>) -> Self {
-        Self { lsp_client }
+    pub fn new(language_client: Option<Arc<LanguageClient>>) -> Self {
+        Self { language_client }
     }
 
     /// 构造 LspWorkbench（inherent 方法，避免与 trait `render` 同名阴影）。
@@ -177,7 +182,7 @@ impl LspWorkbenchProvider {
         Arc::new(LspWorkbench::new(
             uri.as_str().into(),
             title,
-            self.lsp_client.clone(),
+            self.language_client.clone(),
         ))
     }
 }

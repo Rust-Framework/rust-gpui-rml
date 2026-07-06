@@ -1,8 +1,9 @@
-use std::sync::{Arc, RwLock};
+﻿use std::sync::{Arc, RwLock};
 
 use gpui::prelude::StatefulInteractiveElement as _;
 use gpui::{InteractiveElement, IntoElement, ParentElement, Styled, WeakEntity, Window};
 use rml::prelude::*;
+use rust_rml_client::LanguageClient;
 use rml_app::IAppContextExt;
 use rml_core::command::CommandAbilityExt;
 use rml_core::contribution::{IContribution, VisualAbilityExt};
@@ -13,7 +14,7 @@ use rml_core::workbench::{IWorkbench, IWorkbenchManager, Uri};
 use rml_ui::{ActivityBar, IActivityPanel, VisualActivityPanel};
 
 use crate::lsp::lsp_explorer_panel::LspExplorerPanel;
-use crate::lsp::{ensure_lsp_status_item_registered, LspClient, LspStatusState, LspStatusStateRef};
+use crate::lsp::{ensure_lsp_status_item_registered, LspStatusState, LspStatusStateRef};
 use crate::shell::activity_panel::ActivityPanel;
 use crate::shell::case_view_model::CaseViewModel;
 use crate::shell::menu_view_model::MenuViewModel;
@@ -63,7 +64,7 @@ pub struct MainWindow {
     // 框架仪式
     activity_bar: Option<gpui::Entity<ActivityBar>>,
     entries: Arc<std::sync::RwLock<Vec<ContribEntry>>>,
-    lsp_client: Option<Arc<LspClient>>,
+    language_client: Option<Arc<LanguageClient>>,
 }
 
 /// 手写 `Default`——`#[window]` 宏注入的版本计数器 / 缓存 / 状态字段全部用 `Default::default()` 初始化。
@@ -81,7 +82,7 @@ impl Default for MainWindow {
             lsp_provider: Arc::new(LspWorkbenchProvider::new(None)),
             activity_bar: None,
             entries: Arc::new(std::sync::RwLock::new(Vec::new())),
-            lsp_client: None,
+            language_client: None,
             __rml_state: Default::default(),
         }
     }
@@ -134,12 +135,12 @@ impl MainWindow {
         cx.set_service(Arc::new(LspStatusStateRef(lsp_status.downgrade())));
     }
 
-    /// 启动 LSP 子进程（失败时优雅降级）。
+    /// 启动语言服务子进程（失败时优雅降级）。
     fn init_lsp(&mut self) {
         if let Ok(workspace_root) = std::env::current_dir() {
-            match LspClient::spawn(&workspace_root) {
-                Ok(client) => self.lsp_client = Some(Arc::new(client)),
-                Err(e) => log::warn!("Failed to start LSP server: {e}"),
+            match LanguageClient::unified(&workspace_root) {
+                Ok(client) => self.language_client = Some(Arc::new(client)),
+                Err(e) => log::warn!("Failed to start language server: {e}"),
             }
         }
     }
@@ -147,7 +148,7 @@ impl MainWindow {
     /// 初始化 workbench 状态：注册能力 + 构造 LSP provider + 打开 welcome tab。
     fn init_workbench(&mut self, _cx: &mut Context<Self>) {
         register_workbench_abilities();
-        self.lsp_provider = Arc::new(LspWorkbenchProvider::new(self.lsp_client.clone()));
+        self.lsp_provider = Arc::new(LspWorkbenchProvider::new(self.language_client.clone()));
 
         let uri: Uri = "rml://welcome".parse().unwrap();
         if IWorkbenchManager::open(self, &uri).is_some() {

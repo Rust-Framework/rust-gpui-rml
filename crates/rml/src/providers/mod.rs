@@ -5,7 +5,7 @@ pub mod definition;
 pub mod hover;
 pub mod semantic_tokens;
 
-pub use completion::RmlCompletionProvider;
-pub use definition::RmlDefinitionProvider;
-pub use hover::RmlHoverProvider;
-pub use semantic_tokens::RmlSemanticTokensProvider;
+pub use completion::LspCompletionProvider;
+pub use definition::LspDefinitionProvider;
+pub use hover::LspHoverProvider;
+pub use semantic_tokens::LspSemanticTokensProvider;

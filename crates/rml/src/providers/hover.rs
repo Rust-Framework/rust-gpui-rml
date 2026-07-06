@@ -1,4 +1,4 @@
-//! RmlHoverProvider: 桥接 gpui-component HoverProvider → LspClient。
+//! LspHoverProvider: 桥接 gpui-component HoverProvider → LspClient。
 
 use std::sync::Arc;
 
@@ -10,18 +10,18 @@ use ropey::Rope;
 
 use crate::lsp_client::LspClient;
 
-pub struct RmlHoverProvider {
+pub struct LspHoverProvider {
     client: Arc<LspClient>,
     uri: Uri,
 }
 
-impl RmlHoverProvider {
+impl LspHoverProvider {
     pub fn new(client: Arc<LspClient>, uri: Uri) -> Self {
         Self { client, uri }
     }
 }
 
-impl HoverProvider for RmlHoverProvider {
+impl HoverProvider for LspHoverProvider {
     fn hover(
         &self,
         text: &Rope,

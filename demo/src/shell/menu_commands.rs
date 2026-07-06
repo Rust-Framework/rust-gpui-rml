@@ -1,4 +1,4 @@
-//! 菜单命令贡献 —— 7 个叶子命令 + 5 个 submenu root，全部经 `#[contribute]` 注册到 `demo.shell`。
+﻿//! 菜单命令贡献 —— 7 个叶子命令 + 5 个 submenu root，全部经 `#[contribute]` 注册到 `demo.shell`。
 //!
 //! 叶子命令实现 `IContribution` + `ICommand`，经 `as_command()` 查询；
 //! submenu root 仅实现 `IContribution`（无命令），作为分组节点。

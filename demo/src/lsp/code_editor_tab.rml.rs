@@ -14,17 +14,15 @@ use std::sync::Arc;
 use gpui_component::input::{InputState, TabSize};
 use lsp_types::{DocumentSymbolResponse, Location, Position, TextEdit, Uri, WorkspaceEdit};
 use rml::prelude::*;
+use rust_rml_client::{file_path_to_uri, LanguageClient};
 
-use crate::lsp::{
-    file_path_to_uri, LspClient, LspStatusStateRef, RmlCompletionProvider, RmlDefinitionProvider,
-    RmlHoverProvider,
-};
+use crate::lsp::LspStatusStateRef;
 
 #[component]
 #[derive(Default)]
 pub struct CodeEditorTab {
     editor_state: Option<Entity<InputState>>,
-    lsp_client: Option<Arc<LspClient>>,
+    language_client: Option<Arc<LanguageClient>>,
     uri: Option<Uri>,
 }
 
@@ -32,7 +30,7 @@ impl CodeEditorTab {
     pub fn new(
         file_path: &str,
         full_path: &Path,
-        lsp_client: Arc<LspClient>,
+        language_client: Arc<LanguageClient>,
         window: &mut Window,
         cx: &mut App,
     ) -> Entity<Self> {
@@ -47,7 +45,7 @@ impl CodeEditorTab {
             "rml"
         };
 
-        lsp_client.open_document(&uri, &text, language);
+        language_client.open_document(&uri, &text);
 
         let editor_state = cx.new(|cx| {
             let mut state = InputState::new(window, cx)
@@ -58,32 +56,13 @@ impl CodeEditorTab {
                     ..Default::default()
                 })
                 .default_value(&text);
-            state.lsp.completion_provider =
-                Some(std::rc::Rc::new(RmlCompletionProvider::new(
-                    lsp_client.clone(),
-                    uri.clone(),
-                )));
-            state.lsp.hover_provider =
-                Some(std::rc::Rc::new(RmlHoverProvider::new(lsp_client.clone(), uri.clone())));
-            state.lsp.definition_provider = Some(std::rc::Rc::new(RmlDefinitionProvider::new(
-                lsp_client.clone(),
-                uri.clone(),
-            )));
-            if let Some(legend) = lsp_client.semantic_tokens_legend() {
-                state.lsp.semantic_tokens_provider = Some(std::rc::Rc::new(
-                    crate::lsp::RmlSemanticTokensProvider::new(
-                        lsp_client.clone(),
-                        uri.clone(),
-                        legend,
-                    ),
-                ));
-            }
+            language_client.install_providers(&mut state, uri.clone());
             state
         });
 
         cx.new(|cx| {
             let uri_clone = uri.clone();
-            let client_clone = lsp_client.clone();
+            let client_clone = language_client.clone();
             cx.observe(&editor_state, move |_, state, obs_cx| {
                 let text = state.read(obs_cx).text().to_string();
                 client_clone.change_document(&uri_clone, &text);
@@ -92,7 +71,7 @@ impl CodeEditorTab {
 
             Self {
                 editor_state: Some(editor_state),
-                lsp_client: Some(lsp_client),
+                language_client: Some(language_client),
                 uri: Some(uri),
                 ..Default::default()
             }
@@ -123,11 +102,11 @@ impl CodeEditorTab {
     /// 格式化文档：调 LSP formatting，通过 apply_lsp_edits 应用到编辑器
     #[command]
     pub fn on_format_document(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
-        let (client, uri) = match (&self.lsp_client, &self.uri) {
+        let (client, uri) = match (&self.language_client, &self.uri) {
             (Some(c), Some(u)) => (c.clone(), u.clone()),
             _ => return,
         };
-        let rx = client.formatting(&uri);
+        let rx = client.lsp().formatting(&uri);
         cx.spawn(async move |this, cx| {
             match rx.recv() {
                 Ok(Ok(value)) => {
@@ -154,7 +133,7 @@ impl CodeEditorTab {
     /// MVP：new_name 取 "renamed"（实际应弹输入框，待 UI 组件就绪后补齐）。
     #[command]
     pub fn on_rename_symbol(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
-        let (client, uri) = match (&self.lsp_client, &self.uri) {
+        let (client, uri) = match (&self.language_client, &self.uri) {
             (Some(c), Some(u)) => (c.clone(), u.clone()),
             _ => return,
         };
@@ -162,7 +141,7 @@ impl CodeEditorTab {
             Some(p) => p,
             None => return,
         };
-        let rx = client.rename(&uri, position, "renamed");
+        let rx = client.lsp().rename(&uri, position, "renamed");
         cx.spawn(async move |this, cx| {
             match rx.recv() {
                 Ok(Ok(value)) => {
@@ -187,7 +166,7 @@ impl CodeEditorTab {
     /// 查找引用：将引用计数摘要写入状态栏
     #[command]
     pub fn on_find_references(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
-        let (client, uri) = match (&self.lsp_client, &self.uri) {
+        let (client, uri) = match (&self.language_client, &self.uri) {
             (Some(c), Some(u)) => (c.clone(), u.clone()),
             _ => return,
         };
@@ -195,7 +174,7 @@ impl CodeEditorTab {
             Some(p) => p,
             None => return,
         };
-        let rx = client.references(&uri, position, true);
+        let rx = client.lsp().references(&uri, position, true);
         cx.spawn(async move |this, cx| {
             match rx.recv() {
                 Ok(Ok(value)) => {
@@ -217,11 +196,11 @@ impl CodeEditorTab {
     /// 显示文档符号：将符号计数摘要写入状态栏
     #[command]
     pub fn on_show_document_symbols(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
-        let (client, uri) = match (&self.lsp_client, &self.uri) {
+        let (client, uri) = match (&self.language_client, &self.uri) {
             (Some(c), Some(u)) => (c.clone(), u.clone()),
             _ => return,
         };
-        let rx = client.document_symbol(&uri);
+        let rx = client.lsp().document_symbol(&uri);
         cx.spawn(async move |this, cx| {
             match rx.recv() {
                 Ok(Ok(value)) => {

@@ -1,4 +1,4 @@
-//! RmlSemanticTokensProvider: 桥接 gpui-component DocumentRangeSemanticTokensProvider → LspClient。
+//! LspSemanticTokensProvider: 桥接 gpui-component DocumentRangeSemanticTokensProvider → LspClient。
 //!
 //! gpui-component 的 `Lsp::update_semantic_tokens` 内部已实现 100ms debounce +
 //! viewport 二分过滤 + delta 解码。本 provider 仅需在 trait 方法被调用时通过
@@ -15,13 +15,13 @@ use ropey::Rope;
 
 use crate::lsp_client::LspClient;
 
-pub struct RmlSemanticTokensProvider {
+pub struct LspSemanticTokensProvider {
     client: Arc<LspClient>,
     uri: Uri,
     legend: SemanticTokensLegend,
 }
 
-impl RmlSemanticTokensProvider {
+impl LspSemanticTokensProvider {
     pub fn new(client: Arc<LspClient>, uri: Uri, legend: SemanticTokensLegend) -> Self {
         Self {
             client,
@@ -31,7 +31,7 @@ impl RmlSemanticTokensProvider {
     }
 }
 
-impl DocumentRangeSemanticTokensProvider for RmlSemanticTokensProvider {
+impl DocumentRangeSemanticTokensProvider for LspSemanticTokensProvider {
     fn legend(&self) -> SemanticTokensLegend {
         self.legend.clone()
     }

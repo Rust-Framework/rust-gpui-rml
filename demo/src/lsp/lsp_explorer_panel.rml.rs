@@ -1,4 +1,4 @@
-use gpui::{SharedString, Window};
+﻿use gpui::{SharedString, Window};
 use rml::prelude::*;
 use rml_core::contribution::IconSpec;
 use rml_core::i18n::t_static;

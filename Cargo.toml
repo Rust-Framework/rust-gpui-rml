@@ -27,7 +27,7 @@ rust-rml-ui = { path = "crates/ui" }
 rust-rml-app = { path = "crates/app" }
 rust-rml-lsp = { path = "crates/lsp" }
 rust-rml-dap = { path = "crates/dap" }
-rust-rml-client = { path = "crates/rml" }
+rust-rml-client = { path = "crates/rml", package = "rust-rml-client" }
 
 # 客户端共用依赖（rust-rml-client 与 demo 共用）
 tree-sitter = "0.26"

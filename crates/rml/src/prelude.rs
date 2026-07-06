@@ -1,9 +1,9 @@
 //! 便捷 re-exports：`use rust_rml_client::prelude::*;`
 
-pub use crate::editor::install_lsp_providers;
-pub use crate::grammar::{language, HIGHLIGHTS_QUERY, INJECTIONS_QUERY};
+pub use crate::debug_client::DebugClient;
+pub use crate::language_client::LanguageClient;
+pub use crate::language_profile::{DebugProfile, LanguageDescriptor, LanguageProfile};
 pub use crate::lsp_client::{file_path_to_uri, LspClient};
 pub use crate::providers::{
-    RmlCompletionProvider, RmlDefinitionProvider, RmlHoverProvider, RmlSemanticTokensProvider,
+    LspCompletionProvider, LspDefinitionProvider, LspHoverProvider, LspSemanticTokensProvider,
 };
-pub use crate::registry::register_rml_language;

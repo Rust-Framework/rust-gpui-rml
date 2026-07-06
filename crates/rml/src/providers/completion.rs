@@ -1,4 +1,4 @@
-//! RmlCompletionProvider: 桥接 gpui-component CompletionProvider → LspClient。
+//! LspCompletionProvider: 桥接 gpui-component CompletionProvider → LspClient。
 
 use std::sync::Arc;
 
@@ -10,18 +10,18 @@ use ropey::Rope;
 
 use crate::lsp_client::LspClient;
 
-pub struct RmlCompletionProvider {
+pub struct LspCompletionProvider {
     client: Arc<LspClient>,
     uri: Uri,
 }
 
-impl RmlCompletionProvider {
+impl LspCompletionProvider {
     pub fn new(client: Arc<LspClient>, uri: Uri) -> Self {
         Self { client, uri }
     }
 }
 
-impl CompletionProvider for RmlCompletionProvider {
+impl CompletionProvider for LspCompletionProvider {
     fn completions(
         &self,
         text: &Rope,
