@@ -1,6 +1,6 @@
 //! RML grammar for tree-sitter.
 //!
-//! Provides the compiled parser C ABI (`LANGUAGE`) and highlight/injection
+//! Provides the compiled parser C ABI (`language()`) and highlight/injection
 //! query strings used by gpui-component's `LanguageRegistry`.
 
 use tree_sitter_language::LanguageFn;
@@ -19,13 +19,19 @@ pub fn language() -> LanguageFn {
 /// Maps RML syntactic constructs to gpui-component's `HighlightTheme`
 /// vocabulary: `tag`, `type`, `attribute`, `keyword`, `function`, `string`,
 /// `variable`, `comment`, `punctuation.bracket`.
-pub const HIGHLIGHTS_QUERY: &str = include_str!("queries/highlights.scm");
+pub const HIGHLIGHTS_QUERY: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/queries/highlights.scm"
+));
 
 /// Tree-sitter injection query.
 ///
 /// Routes `{expr}` bindings/interpolations to the `rust` language for
 /// embedded highlighting of field paths and expressions.
-pub const INJECTIONS_QUERY: &str = include_str!("queries/injections.scm");
+pub const INJECTIONS_QUERY: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/queries/injections.scm"
+));
 
 #[cfg(test)]
 mod tests {

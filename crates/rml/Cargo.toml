@@ -1,0 +1,24 @@
+[package]
+name = "rust-rml-client"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "RML client: tree-sitter grammar + LSP client + CodeEditor providers"
+
+build = "build.rs"
+
+[dependencies]
+gpui-component = { workspace = true }
+tree-sitter = { workspace = true }
+tree-sitter-language = { workspace = true }
+lsp-types = { workspace = true }
+lsp-server = { workspace = true }
+crossbeam-channel = { workspace = true }
+anyhow = { workspace = true }
+serde_json = { workspace = true }
+log = { workspace = true }
+url = { workspace = true }
+ropey = { workspace = true }
+
+[build-dependencies]
+cc = "1"

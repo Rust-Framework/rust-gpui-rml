@@ -9,7 +9,7 @@ use lsp_types::{Location, LocationLink, Uri};
 use ropey::Rope;
 use serde_json::Value;
 
-use crate::lsp::LspClient;
+use crate::lsp_client::LspClient;
 
 pub struct RmlDefinitionProvider {
     client: Arc<LspClient>,

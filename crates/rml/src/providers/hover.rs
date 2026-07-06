@@ -8,7 +8,7 @@ use gpui_component::{input::HoverProvider, RopeExt};
 use lsp_types::{Hover, Uri};
 use ropey::Rope;
 
-use crate::lsp::LspClient;
+use crate::lsp_client::LspClient;
 
 pub struct RmlHoverProvider {
     client: Arc<LspClient>,

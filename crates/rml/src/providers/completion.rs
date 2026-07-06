@@ -8,7 +8,7 @@ use gpui_component::{input::{CompletionProvider, InputState}, RopeExt};
 use lsp_types::{CompletionContext, CompletionResponse, Uri};
 use ropey::Rope;
 
-use crate::lsp::LspClient;
+use crate::lsp_client::LspClient;
 
 pub struct RmlCompletionProvider {
     client: Arc<LspClient>,

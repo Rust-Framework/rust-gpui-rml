@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/core", "crates/macros", "crates/engine", "crates/ui", "crates/app", "crates/tree-sitter-rml", "demo"]
+members = ["crates/core", "crates/macros", "crates/engine", "crates/ui", "crates/app", "crates/rml", "demo"]
 # lsp/dap 暂移出 workspace：其 rust-analyzer/lldb 重型 git 依赖在受限网络下阻塞编译。
 # 需要时 cd 进对应目录单独构建，或重新加入 members。
 exclude = ["crates/lsp", "crates/dap"]
@@ -27,7 +27,19 @@ rust-rml-ui = { path = "crates/ui" }
 rust-rml-app = { path = "crates/app" }
 rust-rml-lsp = { path = "crates/lsp" }
 rust-rml-dap = { path = "crates/dap" }
-tree-sitter-rml = { path = "crates/tree-sitter-rml" }
+rust-rml-client = { path = "crates/rml" }
+
+# 客户端共用依赖（rust-rml-client 与 demo 共用）
+tree-sitter = "0.26"
+tree-sitter-language = "0.1"
+lsp-types = "0.97"
+lsp-server = "0.7"
+crossbeam-channel = "0.5"
+url = "2"
+ropey = "=2.0.0-beta.1"
+anyhow = "1"
+serde_json = "1"
+log = "0.4"
 
 # 过程宏依赖
 syn = { version = "2", features = ["full", "extra-traits", "visit", "visit-mut"] }

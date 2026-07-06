@@ -13,7 +13,7 @@ use gpui_component::input::DocumentRangeSemanticTokensProvider;
 use lsp_types::{SemanticTokens, SemanticTokensLegend, Uri};
 use ropey::Rope;
 
-use crate::lsp::LspClient;
+use crate::lsp_client::LspClient;
 
 pub struct RmlSemanticTokensProvider {
     client: Arc<LspClient>,
