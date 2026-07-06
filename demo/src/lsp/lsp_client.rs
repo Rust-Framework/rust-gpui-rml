@@ -31,6 +31,7 @@ pub struct LspClient {
     next_id: AtomicU64,
     pending: Arc<Mutex<HashMap<u64, Sender<Result<Value>>>>>,
     doc_version: AtomicU32,
+    semantic_tokens_legend: Mutex<Option<lsp_types::SemanticTokensLegend>>,
     _child: Child,
 }
 
@@ -118,6 +119,7 @@ impl LspClient {
             next_id: AtomicU64::new(1),
             pending,
             doc_version: AtomicU32::new(0),
+            semantic_tokens_legend: Mutex::new(None),
             _child: child,
         };
 
@@ -170,6 +172,16 @@ impl LspClient {
             .recv()
             .map_err(|e| anyhow!("initialize recv error: {e}"))??;
         log::info!("LSP initialize success: {:?}", result);
+
+        // 缓存 semantic tokens legend（供 CodeEditorTab 安装 provider 时读取）
+        let legend = result
+            .get("capabilities")
+            .and_then(|c| c.get("semanticTokensProvider"))
+            .and_then(|p| p.get("legend"))
+            .and_then(|l| serde_json::from_value::<lsp_types::SemanticTokensLegend>(l.clone()).ok());
+        if let Some(lg) = legend {
+            *self.semantic_tokens_legend.lock().unwrap() = Some(lg);
+        }
 
         self.send_notification("initialized", serde_json::json!({}));
 
@@ -275,6 +287,25 @@ impl LspClient {
             "newName": new_name,
         });
         self.send_request("textDocument/rename", params)
+    }
+
+    /// 返回 LSP server 在 initialize 阶段声明的 semantic tokens legend
+    ///
+    /// 供 `RmlSemanticTokensProvider::new` 读取，避免 provider 实例化时硬编码 legend。
+    pub fn semantic_tokens_legend(&self) -> Option<lsp_types::SemanticTokensLegend> {
+        self.semantic_tokens_legend.lock().unwrap().clone()
+    }
+
+    /// textDocument/semanticTokens/full
+    ///
+    /// 拉取整个文档的 semantic tokens（delta 编码的 `SemanticTokens`）。
+    /// gpui-component 的 `Lsp::update_semantic_tokens` 内部已做 viewport 过滤，
+    /// provider 调本方法取全量后由 gpui-component 端裁剪。
+    pub fn semantic_tokens_full(&self, uri: &Uri) -> Receiver<Result<Value>> {
+        let params = serde_json::json!({
+            "textDocument": { "uri": uri.as_str() },
+        });
+        self.send_request("textDocument/semanticTokens/full", params)
     }
 }
 

@@ -1,0 +1,16 @@
+{
+  "name": "tree-sitter-rml",
+  "version": "0.1.0",
+  "description": "RML grammar for tree-sitter",
+  "main": "grammar.js",
+  "keywords": [
+    "tree-sitter",
+    "rml"
+  ],
+  "tree-sitter": [
+    {
+      "scope": "source.rml",
+      "file-types": ["rml"]
+    }
+  ]
+}

@@ -69,6 +69,15 @@ impl CodeEditorTab {
                 lsp_client.clone(),
                 uri.clone(),
             )));
+            if let Some(legend) = lsp_client.semantic_tokens_legend() {
+                state.lsp.semantic_tokens_provider = Some(std::rc::Rc::new(
+                    crate::lsp::RmlSemanticTokensProvider::new(
+                        lsp_client.clone(),
+                        uri.clone(),
+                        legend,
+                    ),
+                ));
+            }
             state
         });
 

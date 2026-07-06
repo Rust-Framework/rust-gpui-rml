@@ -152,6 +152,19 @@ pub fn build_capabilities() -> ServerCapabilities {
             work_done_progress_options: Default::default(),
         }),
         rename_provider: Some(lsp_types::OneOf::Left(true)),
+        semantic_tokens_provider: Some(
+            lsp_types::SemanticTokensServerCapabilities::SemanticTokensOptions(
+                lsp_types::SemanticTokensOptions {
+                    legend: lsp_types::SemanticTokensLegend {
+                        token_types: crate::semantics::tokens::RML_TOKEN_TYPES.to_vec(),
+                        token_modifiers: crate::semantics::tokens::RML_TOKEN_MODIFIERS.to_vec(),
+                    },
+                    range: Some(true),
+                    full: Some(lsp_types::SemanticTokensFullOptions::Bool(true)),
+                    ..Default::default()
+                },
+            ),
+        ),
         ..Default::default()
     }
 }

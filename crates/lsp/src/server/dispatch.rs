@@ -47,6 +47,14 @@ pub fn handle_request(
             handlers::rename::handle_rename(req.params, state)
                 .map(|v| v.and_then(|e| serde_json::to_value(e).ok()))
         }
+        "textDocument/semanticTokens/full" => {
+            handlers::semantic_tokens::handle_full(req.params, state)
+                .map(|v| v.and_then(|t| serde_json::to_value(t).ok()))
+        }
+        "textDocument/semanticTokens/range" => {
+            handlers::semantic_tokens::handle_range(req.params, state)
+                .map(|v| v.and_then(|t| serde_json::to_value(t).ok()))
+        }
         _ => {
             log::debug!("unhandled request: {}", req.method);
             Ok(None)

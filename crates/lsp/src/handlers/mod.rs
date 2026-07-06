@@ -9,5 +9,6 @@ pub mod hover;
 pub mod initialize;
 pub mod references;
 pub mod rename;
+pub mod semantic_tokens;
 pub mod signature_help;
 pub mod sync;

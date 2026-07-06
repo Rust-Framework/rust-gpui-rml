@@ -5,3 +5,4 @@
 pub mod binder;
 pub mod diagnostics;
 pub mod model;
+pub mod tokens;
