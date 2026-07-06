@@ -42,7 +42,7 @@ pub fn gen_once_element(
 
     // 2. 克隆元素并移除 Once 指令，递归生成元素代码
     let mut elem_clone = elem.clone();
-    elem_clone.directives.retain(|d| !matches!(d, Directive::Once));
+    elem_clone.directives.retain(|d| !matches!(d, Directive::Once { .. }));
     let (elem_code, is_iter) = gen_element(&elem_clone, ctx, depth, id_counter, loop_vars, parents)?;
 
     // 3. 收集字段引用（去重，保持顺序）
@@ -88,7 +88,7 @@ fn collect_element_fields(elem: &Element, loop_vars: &[&str], fields: &mut Vec<S
     // each 的 iterable 用原始 loop_vars 收集（在循环外求值），其余用有效作用域
     let mut effective_vars: Vec<String> = loop_vars.iter().map(|s| s.to_string()).collect();
     for d in &elem.directives {
-        if let Directive::Each(clause) = d {
+        if let Directive::Each { clause, .. } = d {
             effective_vars.push(clause.item.clone());
             if let Some(idx) = &clause.index {
                 effective_vars.push(idx.clone());
@@ -100,20 +100,20 @@ fn collect_element_fields(elem: &Element, loop_vars: &[&str], fields: &mut Vec<S
     // 指令：if/show/each iterable 用原始 loop_vars，model.field 直接收集
     for d in &elem.directives {
         match d {
-            Directive::If(c) | Directive::Show(c) => {
+            Directive::If { expr: c, .. } | Directive::Show { expr: c, .. } => {
                 fields.extend(expr::collect_fields(c, loop_vars));
             }
-            Directive::Each(clause) => {
+            Directive::Each { clause, .. } => {
                 fields.extend(expr::collect_fields(&clause.iterable, loop_vars));
             }
             Directive::Model { field, .. } => {
                 fields.push(field.clone());
             }
-            Directive::Html(expr) => {
+            Directive::Html { expr, .. } => {
                 // html 表达式在 each 作用域内求值，用 effective_refs 跳过循环变量
                 fields.extend(expr::collect_fields(expr, &effective_refs));
             }
-            Directive::Key(expr) => {
+            Directive::Key { expr, .. } => {
                 // key 表达式在 each 作用域内求值，用 effective_refs 跳过循环变量
                 fields.extend(expr::collect_fields(expr, &effective_refs));
             }
@@ -139,7 +139,7 @@ fn collect_element_fields(elem: &Element, loop_vars: &[&str], fields: &mut Vec<S
     for child in &elem.children {
         match child {
             Node::Element(child_elem) => {
-                if child_elem.directives.iter().any(|d| matches!(d, Directive::Once)) {
+                if child_elem.directives.iter().any(|d| matches!(d, Directive::Once { .. })) {
                     continue;
                 }
                 collect_element_fields(child_elem, &effective_refs, fields);

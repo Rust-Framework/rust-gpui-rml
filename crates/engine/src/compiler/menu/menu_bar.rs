@@ -1,4 +1,4 @@
-﻿//! `MenuBar` 声明式 / `each` 迭代 codegen
+//! `MenuBar` 声明式 / `each` 迭代 codegen
 //!
 //! 顶层容器统一生成为 `rml_ui::MenuBar`（ui crate 组件）；`<menu-item>` 子节点编译为
 //! `menu_bar_button` + `PopupMenu` 后作为 `MenuBar` 的 children。
@@ -44,7 +44,7 @@ pub fn gen_menu_bar(
     // 检测第一个 top_item 是否带 each 指令
     let each_clause = top_items.first().and_then(|item| {
         item.directives.iter().find_map(|d| match d {
-            Directive::Each(c) => Some(c.clone()),
+            Directive::Each { clause: c, .. } => Some(c.clone()),
             _ => None,
         })
     });

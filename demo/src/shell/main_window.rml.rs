@@ -12,8 +12,8 @@ use rml_core::theme::ThemeExt;
 use rml_core::workbench::{IWorkbench, IWorkbenchManager, Uri};
 use rml_ui::{ActivityBar, IActivityPanel, VisualActivityPanel};
 
-use crate::lsp::LspClient;
 use crate::lsp::lsp_explorer_panel::LspExplorerPanel;
+use crate::lsp::{ensure_lsp_status_item_registered, LspClient, LspStatusState, LspStatusStateRef};
 use crate::shell::activity_panel::ActivityPanel;
 use crate::shell::case_view_model::CaseViewModel;
 use crate::shell::menu_view_model::MenuViewModel;
@@ -122,12 +122,16 @@ impl MainWindow {
         cx.register_host(Self::ID, self.entries.clone());
         rml_app::contribution::bootstrap_host_contributions(cx, Self::ID);
         crate::cases::status_bar_case::ensure_status_ready_registered();
+        ensure_lsp_status_item_registered();
     }
 
-    /// 注册 MainWindowRef 单例（ActivityPanel/LspExplorerPanel 经 IAppContext 查询）。
+    /// 注册 MainWindowRef + LspStatusStateRef 单例（经 IAppContext 查询）。
     fn init_services(&mut self, cx: &mut Context<Self>) {
         let shell_weak = cx.weak_entity();
         cx.set_service(Arc::new(MainWindowRef(shell_weak)));
+
+        let lsp_status = cx.new(|_| LspStatusState::new());
+        cx.set_service(Arc::new(LspStatusStateRef(lsp_status.downgrade())));
     }
 
     /// 启动 LSP 子进程（失败时优雅降级）。
@@ -176,7 +180,7 @@ impl MainWindow {
         }
     }
 
-    /// observe 框架缓存的 ActivityPanel / LspExplorerPanel Entity → 触发重渲。
+    /// observe 框架缓存的 ActivityPanel / LspExplorerPanel Entity + LspStatusState → 触发重渲。
     fn init_panel_observers(&mut self, cx: &mut Context<Self>) {
         let panel_entity = rml_app::contribution::visual_entity::<ActivityPanel>(cx);
         cx.observe(&panel_entity, |_, _, cx| {
@@ -187,6 +191,17 @@ impl MainWindow {
         cx.observe(&lsp_panel_entity, |_, _, cx| {
             cx.notify();
         }).detach();
+
+        // LspStatusState 变化 → 状态栏重渲（LspStatusItem::render 读取最新消息）
+        if let Some(entity) = cx
+            .get_service::<LspStatusStateRef>()
+            .and_then(|r| r.0.upgrade())
+        {
+            cx.observe(&entity, |_, _, cx| {
+                cx.notify();
+            })
+            .detach();
+        }
     }
 
     /// observe `I18nState` 全局变化 → 自动重建 menus/status ViewModel + 重渲。

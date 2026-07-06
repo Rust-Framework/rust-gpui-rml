@@ -203,19 +203,20 @@ impl Parser {
             match name.as_str() {
                 "if" => {
                     if let AttrValue::Binding(expr) = attr.value {
-                        directives.push(Directive::If(expr));
+                        directives.push(Directive::If { expr, span: attr.span });
                     }
                 }
-                "else" => directives.push(Directive::Else),
+                "else" => directives.push(Directive::Else { span: attr.span }),
                 "each" => {
                     if let AttrValue::Binding(expr) = attr.value {
-                        directives.push(Directive::Each(parse_each_expr(
-                            &expr, attr.line, attr.column,
-                        )?));
+                        let clause = parse_each_expr(&expr, attr.line, attr.column)?;
+                        directives.push(Directive::Each { clause, span: attr.span });
                     }
                 }
                 "key" => match attr.value {
-                    AttrValue::Binding(expr) => directives.push(Directive::Key(expr)),
+                    AttrValue::Binding(expr) => {
+                        directives.push(Directive::Key { expr, span: attr.span })
+                    }
                     AttrValue::Static(v) => attributes.push(Attribute::Static {
                         name,
                         value: v,
@@ -229,23 +230,23 @@ impl Parser {
                         } else {
                             (expr, None)
                         };
-                        directives.push(Directive::Model { field, converter });
+                        directives.push(Directive::Model { field, converter, span: attr.span });
                     }
                 }
                 "show" => {
                     if let AttrValue::Binding(expr) = attr.value {
-                        directives.push(Directive::Show(expr));
+                        directives.push(Directive::Show { expr, span: attr.span });
                     }
                 }
-                "once" => directives.push(Directive::Once),
+                "once" => directives.push(Directive::Once { span: attr.span }),
                 "html" => {
                     if let AttrValue::Binding(expr) = attr.value {
-                        directives.push(Directive::Html(expr));
+                        directives.push(Directive::Html { expr, span: attr.span });
                     }
                 }
                 "ref" => {
                     if let AttrValue::Static(s) = attr.value {
-                        directives.push(Directive::Ref(s));
+                        directives.push(Directive::Ref { name: s, span: attr.span });
                     }
                 }
                 // `slot="name"` 属性：标记此元素为具名插槽内容载体（Vue 风格 `<template slot="x">`）
@@ -643,7 +644,7 @@ mod tests {
         match root {
             Node::Element(e) => {
                 assert_eq!(e.directives.len(), 1);
-                assert!(matches!(&e.directives[0], Directive::If(expr) if expr == "visible"));
+                assert!(matches!(&e.directives[0], Directive::If { expr, .. } if expr == "visible"));
             }
             other => panic!("expected Element, got {:?}", other),
         }
@@ -655,7 +656,7 @@ mod tests {
         match root {
             Node::Element(e) => {
                 assert_eq!(e.directives.len(), 1);
-                assert!(matches!(&e.directives[0], Directive::Else));
+                assert!(matches!(&e.directives[0], Directive::Else { .. }));
             }
             other => panic!("expected Element, got {:?}", other),
         }
@@ -668,7 +669,7 @@ mod tests {
             Node::Element(e) => {
                 assert_eq!(e.directives.len(), 1);
                 match &e.directives[0] {
-                    Directive::Each(EachClause { item, index, iterable }) => {
+                    Directive::Each { clause: EachClause { item, index, iterable }, .. } => {
                         assert_eq!(item, "item");
                         assert_eq!(index, &None);
                         assert_eq!(iterable, "items");
@@ -685,7 +686,7 @@ mod tests {
         let root = parse(r#"<li each={index, item in items}></li>"#).unwrap();
         match root {
             Node::Element(e) => match &e.directives[0] {
-                Directive::Each(EachClause { item, index, iterable }) => {
+                Directive::Each { clause: EachClause { item, index, iterable }, .. } => {
                     assert_eq!(item, "item");
                     assert_eq!(index.as_deref(), Some("index"));
                     assert_eq!(iterable, "items");
@@ -703,7 +704,7 @@ mod tests {
             Node::Element(e) => {
                 assert_eq!(e.directives.len(), 1);
                 match &e.directives[0] {
-                    Directive::Model { field, converter } => {
+                    Directive::Model { field, converter, .. } => {
                         assert_eq!(field, "name");
                         assert_eq!(converter, &None);
                     }
@@ -720,7 +721,7 @@ mod tests {
         let root = parse(r#"<input model={price | Currency}></input>"#).unwrap();
         match root {
             Node::Element(e) => match &e.directives[0] {
-                Directive::Model { field, converter } => {
+                Directive::Model { field, converter, .. } => {
                     assert_eq!(field, "price");
                     assert_eq!(converter.as_deref(), Some("Currency"));
                 }
@@ -736,7 +737,7 @@ mod tests {
         match root {
             Node::Element(e) => {
                 assert_eq!(e.directives.len(), 1);
-                assert!(matches!(&e.directives[0], Directive::Show(s) if s == "is_visible"));
+                assert!(matches!(&e.directives[0], Directive::Show { expr, .. } if expr == "is_visible"));
             }
             other => panic!("expected Element, got {:?}", other),
         }
@@ -748,7 +749,7 @@ mod tests {
         match root {
             Node::Element(e) => {
                 assert_eq!(e.directives.len(), 1);
-                assert!(matches!(&e.directives[0], Directive::Once));
+                assert!(matches!(&e.directives[0], Directive::Once { .. }));
             }
             other => panic!("expected Element, got {:?}", other),
         }
@@ -760,7 +761,7 @@ mod tests {
         match root {
             Node::Element(e) => {
                 assert_eq!(e.directives.len(), 1);
-                assert!(matches!(&e.directives[0], Directive::Html(s) if s == "raw_html"));
+                assert!(matches!(&e.directives[0], Directive::Html { expr, .. } if expr == "raw_html"));
             }
             other => panic!("expected Element, got {:?}", other),
         }
@@ -772,7 +773,7 @@ mod tests {
         match root {
             Node::Element(e) => {
                 assert_eq!(e.directives.len(), 1);
-                assert!(matches!(&e.directives[0], Directive::Ref(s) if s == "username"));
+                assert!(matches!(&e.directives[0], Directive::Ref { name, .. } if name == "username"));
             }
             other => panic!("expected Element, got {:?}", other),
         }
@@ -798,7 +799,7 @@ mod tests {
         match root {
             Node::Element(e) => {
                 assert_eq!(e.directives.len(), 1);
-                assert!(matches!(&e.directives[0], Directive::Key(s) if s == "item.id"));
+                assert!(matches!(&e.directives[0], Directive::Key { expr, .. } if expr == "item.id"));
             }
             other => panic!("expected Element, got {:?}", other),
         }
@@ -845,9 +846,9 @@ mod tests {
             Node::Element(e) => {
                 assert_eq!(e.directives.len(), 3); // each + if + key
                 // 指令顺序保持源码顺序
-                assert!(matches!(&e.directives[0], Directive::Each(_)));
-                assert!(matches!(&e.directives[1], Directive::If(_)));
-                assert!(matches!(&e.directives[2], Directive::Key(_)));
+                assert!(matches!(&e.directives[0], Directive::Each { .. }));
+                assert!(matches!(&e.directives[1], Directive::If { .. }));
+                assert!(matches!(&e.directives[2], Directive::Key { .. }));
             }
             other => panic!("expected Element, got {:?}", other),
         }

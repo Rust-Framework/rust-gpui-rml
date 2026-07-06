@@ -58,7 +58,7 @@ pub fn gen_component(
     //    若元素有 ref="name" 指令，使用稳定 ID `("rml_ref", "name")`，
     //    否则使用自增计数器生成 ID。
     let ref_name: Option<&str> = elem.directives.iter().find_map(|d| match d {
-        Directive::Ref(name) => Some(name.as_str()),
+        Directive::Ref { name, .. } => Some(name.as_str()),
         _ => None,
     });
 
@@ -1235,7 +1235,7 @@ mod tests {
                 handler: EventHandler::Ident("on_input_change".into()),
                 span: Span::empty(),
             }],
-            vec![Directive::Ref("input_state".into())],
+            vec![Directive::Ref { name: "input_state".into(), span: Span::empty() }],
             vec![],
         );
         let mut id = 0;
@@ -1305,7 +1305,7 @@ mod tests {
         let elem = make_element_with_directives(
             "Button",
             vec![],
-            vec![Directive::Ref("submit_btn".into())],
+            vec![Directive::Ref { name: "submit_btn".into(), span: Span::empty() }],
             vec![],
         );
         let mut id = 0;
@@ -1342,7 +1342,7 @@ mod tests {
                     span: Span::empty(),
                 },
             ],
-            vec![Directive::Ref("btn".into())],
+            vec![Directive::Ref { name: "btn".into(), span: Span::empty() }],
             vec![],
         );
         let mut id = 0;
@@ -1377,7 +1377,7 @@ mod tests {
         let elem = make_element_with_directives(
             "TitleBar",
             vec![],
-            vec![Directive::Ref("my_titlebar".into())],
+            vec![Directive::Ref { name: "my_titlebar".into(), span: Span::empty() }],
             vec![],
         );
         let mut id = 0;

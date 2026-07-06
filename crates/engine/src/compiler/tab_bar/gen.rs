@@ -301,7 +301,7 @@ mod tests {
         let elem = make_element_with_directives(
             "TabBar",
             vec![],
-            vec![Directive::Ref("my_tabs".into())],
+            vec![Directive::Ref { name: "my_tabs".into(), span: Span::empty() }],
             vec![],
         );
         let mut id = 0;
@@ -474,11 +474,14 @@ mod tests {
                 expr: "tab.title".into(),
                 span: Span::empty(),
             }],
-            vec![Directive::Each(EachClause {
-                item: "tab".into(),
-                index: None,
-                iterable: "tabs".into(),
-            })],
+            vec![Directive::Each {
+                clause: EachClause {
+                    item: "tab".into(),
+                    index: None,
+                    iterable: "tabs".into(),
+                },
+                span: Span::empty(),
+            }],
             vec![],
         );
         let bar = make_element("TabBar", vec![], vec![Node::Element(item)]);
@@ -512,11 +515,14 @@ mod tests {
                     span: Span::empty(),
                 },
             ],
-            vec![Directive::Each(EachClause {
-                item: "tab".into(),
-                index: None,
-                iterable: "tabs".into(),
-            })],
+            vec![Directive::Each {
+                clause: EachClause {
+                    item: "tab".into(),
+                    index: None,
+                    iterable: "tabs".into(),
+                },
+                span: Span::empty(),
+            }],
             vec![],
         );
         let bar = make_element("TabBar", vec![], vec![Node::Element(tab)]);

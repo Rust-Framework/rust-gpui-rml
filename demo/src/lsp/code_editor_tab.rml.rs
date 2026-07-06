@@ -6,7 +6,7 @@
 //! `#[command]` 方法提供 format/rename/references/documentSymbol 入口；
 //! format/rename 通过 `cx.active_window()` + `AnyWindowHandle::update` 获取
 //! `&mut Window`，调用 `InputState::apply_lsp_edits` 将 LSP 编辑应用到编辑器。
-//! references/documentSymbol 解析响应并格式化显示在 `last_lsp_result`。
+//! references/documentSymbol 解析响应并将摘要写入 `LspStatusState`（状态栏显示）。
 
 use std::path::Path;
 use std::sync::Arc;
@@ -16,7 +16,8 @@ use lsp_types::{DocumentSymbolResponse, Location, Position, TextEdit, Uri, Works
 use rml::prelude::*;
 
 use crate::lsp::{
-    file_path_to_uri, LspClient, RmlCompletionProvider, RmlDefinitionProvider, RmlHoverProvider,
+    file_path_to_uri, LspClient, LspStatusStateRef, RmlCompletionProvider, RmlDefinitionProvider,
+    RmlHoverProvider,
 };
 
 #[component]
@@ -25,8 +26,6 @@ pub struct CodeEditorTab {
     editor_state: Option<Entity<InputState>>,
     lsp_client: Option<Arc<LspClient>>,
     uri: Option<Uri>,
-    /// 最近一次 LSP 命令结果（供 UI 展示，每行一个元素）
-    last_lsp_result: Vec<String>,
 }
 
 impl CodeEditorTab {
@@ -129,8 +128,7 @@ impl CodeEditorTab {
                         if count > 0 {
                             apply_edits_to_editor(this, &edits, cx);
                         }
-                        this.last_lsp_result = vec![format!("formatting: applied {count} edit(s)")];
-                        cx.notify();
+                        set_lsp_status(cx, format!("formatting: applied {count} edit(s)"));
                     });
                     log::info!("LSP formatting: applied {count} edits for {}", uri.as_str());
                 }
@@ -165,8 +163,7 @@ impl CodeEditorTab {
                         if count > 0 {
                             apply_edits_to_editor(this, &edits, cx);
                         }
-                        this.last_lsp_result = vec![format!("rename: applied {count} edit(s)")];
-                        cx.notify();
+                        set_lsp_status(cx, format!("rename: applied {count} edit(s)"));
                     });
                     log::info!("LSP rename: applied {count} edits for {}", uri.as_str());
                 }
@@ -178,7 +175,7 @@ impl CodeEditorTab {
         .detach();
     }
 
-    /// 查找引用：格式化显示所有引用位置（file:line:col）
+    /// 查找引用：将引用计数摘要写入状态栏
     #[command]
     pub fn on_find_references(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         let (client, uri) = match (&self.lsp_client, &self.uri) {
@@ -194,12 +191,11 @@ impl CodeEditorTab {
             match rx.recv() {
                 Ok(Ok(value)) => {
                     let locations = parse_locations(&value);
-                    let lines = format_references(&locations);
-                    let _ = this.update(cx, |this, cx| {
-                        this.last_lsp_result = lines;
-                        cx.notify();
+                    let count = locations.len();
+                    let _ = this.update(cx, |_, cx| {
+                        set_lsp_status(cx, format!("references: {count} location(s)"));
                     });
-                    log::info!("LSP references: {} locations for {}", locations.len(), uri.as_str());
+                    log::info!("LSP references: {} locations for {}", count, uri.as_str());
                 }
                 Ok(Err(e)) => log::warn!("LSP references error: {e}"),
                 Err(e) => log::warn!("LSP references channel: {e}"),
@@ -209,7 +205,7 @@ impl CodeEditorTab {
         .detach();
     }
 
-    /// 显示文档符号：格式化显示符号名称列表
+    /// 显示文档符号：将符号计数摘要写入状态栏
     #[command]
     pub fn on_show_document_symbols(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         let (client, uri) = match (&self.lsp_client, &self.uri) {
@@ -220,10 +216,9 @@ impl CodeEditorTab {
         cx.spawn(async move |this, cx| {
             match rx.recv() {
                 Ok(Ok(value)) => {
-                    let lines = format_document_symbols(&value);
-                    let _ = this.update(cx, |this, cx| {
-                        this.last_lsp_result = lines;
-                        cx.notify();
+                    let count = count_document_symbols(&value);
+                    let _ = this.update(cx, |_, cx| {
+                        set_lsp_status(cx, format!("documentSymbol: {count} symbol(s)"));
                     });
                     log::info!("LSP documentSymbol for {}", uri.as_str());
                 }
@@ -233,6 +228,16 @@ impl CodeEditorTab {
             Ok::<(), anyhow::Error>(())
         })
         .detach();
+    }
+}
+
+/// 将摘要消息写入 `LspStatusState`（经 IAppContext 服务查询）。
+fn set_lsp_status(cx: &mut Context<CodeEditorTab>, message: String) {
+    if let Some(entity) = cx
+        .get_service::<LspStatusStateRef>()
+        .and_then(|r| r.0.upgrade())
+    {
+        entity.update(cx, |state, state_cx| state.set_message(message, state_cx));
     }
 }
 
@@ -287,52 +292,12 @@ fn parse_locations(value: &serde_json::Value) -> Vec<Location> {
     }
 }
 
-/// 格式化引用列表为行向量（file:line:col，最多显示 5 条）
-fn format_references(locations: &[Location]) -> Vec<String> {
-    if locations.is_empty() {
-        return vec!["references: 0 location(s)".to_string()];
-    }
-    let count = locations.len();
-    let mut lines = vec![format!("references: {count} location(s)")];
-    for loc in locations.iter().take(5) {
-        let path = uri_to_short_path(&loc.uri);
-        let line = loc.range.start.line + 1;
-        let col = loc.range.start.character + 1;
-        lines.push(format!("  {path}:{line}:{col}"));
-    }
-    if count > 5 {
-        lines.push(format!("  ... +{} more", count - 5));
-    }
-    lines
-}
-
-/// 格式化文档符号为行向量（名称列表，最多显示 10 条）
-fn format_document_symbols(value: &serde_json::Value) -> Vec<String> {
+/// 统计文档符号数量（documentSymbol 响应）
+fn count_document_symbols(value: &serde_json::Value) -> usize {
     let response: DocumentSymbolResponse = serde_json::from_value(value.clone())
         .unwrap_or(DocumentSymbolResponse::Flat(Vec::new()));
-    let names: Vec<String> = match response {
-        DocumentSymbolResponse::Flat(symbols) => {
-            symbols.iter().take(10).map(|s| s.name.to_string()).collect()
-        }
-        DocumentSymbolResponse::Nested(symbols) => {
-            symbols.iter().take(10).map(|s| s.name.to_string()).collect()
-        }
-    };
-    if names.is_empty() {
-        return vec!["documentSymbol: 0 symbol(s)".to_string()];
-    }
-    let count = names.len();
-    let mut lines = vec![format!("documentSymbol: {count} symbol(s)")];
-    lines.push(names.join(", "));
-    lines
-}
-
-/// 将 file:// URI 转换为简短路径（仅文件名）
-fn uri_to_short_path(uri: &Uri) -> String {
-    let s = uri.as_str();
-    if let Some(idx) = s.rfind('/') {
-        s[idx + 1..].to_string()
-    } else {
-        s.to_string()
+    match response {
+        DocumentSymbolResponse::Flat(symbols) => symbols.len(),
+        DocumentSymbolResponse::Nested(symbols) => symbols.len(),
     }
 }

@@ -32,6 +32,8 @@
 
   "shell.status_ready": "Ready — pick a sample from the tree",
 
+  "shell.status_lsp": "LSP Status",
+
   "shell.status_case": "Current case",
 
   "shell.case_default": "Case",

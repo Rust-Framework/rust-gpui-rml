@@ -32,6 +32,8 @@
 
   "shell.status_ready": "就绪 — 请从左侧案例树选择示例",
 
+  "shell.status_lsp": "LSP 状态",
+
   "shell.status_case": "当前案例",
 
   "shell.case_default": "案例",

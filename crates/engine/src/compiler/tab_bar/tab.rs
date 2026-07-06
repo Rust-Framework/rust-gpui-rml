@@ -31,7 +31,7 @@ pub fn gen_tab_child(
     loop_vars: &[String],
 ) -> Result<(String, bool), CodegenError> {
     let each_clause = elem.directives.iter().find_map(|d| match d {
-        Directive::Each(c) => Some(c.clone()),
+        Directive::Each { clause: c, .. } => Some(c.clone()),
         _ => None,
     });
 

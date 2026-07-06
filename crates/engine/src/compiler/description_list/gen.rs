@@ -1,4 +1,4 @@
-﻿//! DescriptionList 容器 codegen —— 构造 + 属性 + 子节点 `.child()`/`.separator()` 注入。
+//! DescriptionList 容器 codegen —— 构造 + 属性 + 子节点 `.child()`/`.separator()` 注入。
 //!
 //! 将 `<descriptions><description label="A" value="B" /><separator /></descriptions>` 转译为
 //! `rml_ui::DescriptionList::new().child(rml_ui::DescriptionItem::new("A").value("B")).separator()`。
@@ -299,7 +299,7 @@ mod tests {
         let elem = make_element_with_directives(
             "descriptions",
             vec![],
-            vec![Directive::Ref("my_list".into())],
+            vec![Directive::Ref { name: "my_list".into(), span: Span::empty() }],
             vec![],
         );
         let mut id = 0;

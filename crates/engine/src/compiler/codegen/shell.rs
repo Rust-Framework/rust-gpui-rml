@@ -168,7 +168,7 @@ pub(super) fn partition_slot_children(children: &[Node]) -> ShellSlots {
                             // 检测 each 指令：<template slot="tabs" each={w in workbenches}>
                             // 模板定制模式下由 render.rs 生成 .map(|w| ...) 迭代代码
                             for dir in &elem.directives {
-                                if let Directive::Each(each) = dir {
+                                if let Directive::Each { clause: each, .. } = dir {
                                     slots.tabs_each = Some(each.clone());
                                     break;
                                 }
@@ -559,11 +559,14 @@ mod tests {
             "tabs",
             vec![Node::Element(make_tab("X"))],
         );
-        tabs_tmpl.directives = vec![Directive::Each(crate::parser::ast::EachClause {
-            item: "w".into(),
-            index: None,
-            iterable: "workbenches".into(),
-        })];
+        tabs_tmpl.directives = vec![Directive::Each {
+            clause: crate::parser::ast::EachClause {
+                item: "w".into(),
+                index: None,
+                iterable: "workbenches".into(),
+            },
+            span: crate::parser::Span::empty(),
+        }];
         let children = vec![Node::Element(tabs_tmpl)];
         let slots = partition_slot_children(&children);
         assert_eq!(slots.tabs.len(), 1);

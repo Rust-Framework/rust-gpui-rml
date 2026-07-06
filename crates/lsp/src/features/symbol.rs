@@ -210,11 +210,14 @@ mod tests {
         let elem = Element {
             tag: "li".to_string(),
             span: Span::new(0, 40),
-            directives: vec![rust_rml_engine::parser::ast::Directive::Each(EachClause {
-                item: "item".to_string(),
-                index: None,
-                iterable: "items".to_string(),
-            })],
+            directives: vec![rust_rml_engine::parser::ast::Directive::Each {
+                clause: EachClause {
+                    item: "item".to_string(),
+                    index: None,
+                    iterable: "items".to_string(),
+                },
+                span: rust_rml_engine::parser::Span::empty(),
+            }],
             ..Default::default()
         };
         let root = Node::Element(elem);

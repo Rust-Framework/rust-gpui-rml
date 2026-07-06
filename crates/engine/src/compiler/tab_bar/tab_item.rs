@@ -1,4 +1,4 @@
-﻿//! `<tab-item>` 子节点 codegen — 生成 `TabItem::new().title(...).body(closure)` 表达式。
+//! `<tab-item>` 子节点 codegen — 生成 `TabItem::new().title(...).body(closure)` 表达式。
 //!
 //! 与 [`super::tab`] 的关键差异：
 //! - `<Tab>` 仅有 header（label/icon/children），无 body 概念
@@ -31,7 +31,7 @@ pub fn gen_tab_item_child(
     loop_vars: &[String],
 ) -> Result<(String, bool), CodegenError> {
     let each_clause = elem.directives.iter().find_map(|d| match d {
-        Directive::Each(c) => Some(c.clone()),
+        Directive::Each { clause: c, .. } => Some(c.clone()),
         _ => None,
     });
 
@@ -234,11 +234,14 @@ mod tests {
                 expr: "tab.title".into(),
                 span: Span::empty(),
             }],
-            vec![Directive::Each(EachClause {
-                item: "tab".into(),
-                index: None,
-                iterable: "tabs".into(),
-            })],
+            vec![Directive::Each {
+                clause: EachClause {
+                    item: "tab".into(),
+                    index: None,
+                    iterable: "tabs".into(),
+                },
+                span: Span::empty(),
+            }],
             vec![],
         );
         let mut id = 0;
@@ -328,11 +331,14 @@ mod tests {
                 expr: "tab.title".into(),
                 span: Span::empty(),
             }],
-            vec![Directive::Each(EachClause {
-                item: "tab".into(),
-                index: None,
-                iterable: "tabs".into(),
-            })],
+            vec![Directive::Each {
+                clause: EachClause {
+                    item: "tab".into(),
+                    index: None,
+                    iterable: "tabs".into(),
+                },
+                span: Span::empty(),
+            }],
             vec![Node::Element(div)],
         );
         let mut id = 0;

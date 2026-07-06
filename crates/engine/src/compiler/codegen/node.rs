@@ -95,7 +95,7 @@ pub(crate) fn gen_element(
     parents: &[ParentInfo],
 ) -> Result<GenResult, CodegenError> {
     // 0. 处理 once 指令：数据快照（必须在所有其他处理之前）
-    if elem.directives.iter().any(|d| matches!(d, Directive::Once)) {
+    if elem.directives.iter().any(|d| matches!(d, Directive::Once { .. })) {
         return super::once::gen_once_element(elem, ctx, depth, id_counter, loop_vars, parents);
     }
 
@@ -105,11 +105,11 @@ pub(crate) fn gen_element(
     // 元素的其他属性和子节点被忽略（html 指令的语义是"用 raw 替换整个元素内容"）。
     // if/show/each 指令仍然生效（控制是否渲染 / 迭代 Label）。
     if let Some(html_expr) = elem.directives.iter().find_map(|d| match d {
-        Directive::Html(expr) => Some(expr.clone()),
+        Directive::Html { expr, .. } => Some(expr.clone()),
         _ => None,
     }) {
         let each_clause = elem.directives.iter().find_map(|d| match d {
-            Directive::Each(c) => Some(c.clone()),
+            Directive::Each { clause: c, .. } => Some(c.clone()),
             _ => None,
         });
 
@@ -147,7 +147,7 @@ pub(crate) fn gen_element(
 
         // if/show 条件包裹：与 gen_element 末尾的 if/show 处理语义一致
         let cond: Option<String> = elem.directives.iter().find_map(|d| match d {
-            Directive::If(c) | Directive::Show(c) => Some(c.clone()),
+            Directive::If { expr: c, .. } | Directive::Show { expr: c, .. } => Some(c.clone()),
             _ => None,
         });
         if let Some(cond) = cond {
@@ -197,7 +197,7 @@ pub(crate) fn gen_element(
             // 检测 each 指令 — 必须在生成 code 前将 loop 变量加入 scope_vars，
             // 否则 gen_expr_code 会把 `group` 误加 `self.` 前缀变成 `self.group`
             let each_clause = elem.directives.iter().find_map(|d| match d {
-                Directive::Each(c) => Some(c.clone()),
+                Directive::Each { clause: c, .. } => Some(c.clone()),
                 _ => None,
             });
             if let Some(clause) = &each_clause {
@@ -305,7 +305,7 @@ pub(crate) fn gen_element(
     })?;
 
     let each_clause = elem.directives.iter().find_map(|d| match d {
-        Directive::Each(c) => Some(c.clone()),
+        Directive::Each { clause: c, .. } => Some(c.clone()),
         _ => None,
     });
 
@@ -330,12 +330,12 @@ pub(crate) fn gen_element(
     //   使列表项重新排序后 GPUI 可正确跟踪元素状态
     // - 事件处理器：仅需元素有任意 id 即可触发交互
     let ref_name: Option<&str> = elem.directives.iter().find_map(|d| match d {
-        Directive::Ref(name) => Some(name.as_str()),
+        Directive::Ref { name, .. } => Some(name.as_str()),
         _ => None,
     });
 
     let key_expr: Option<String> = elem.directives.iter().find_map(|d| match d {
-        Directive::Key(expr) => Some(expr.clone()),
+        Directive::Key { expr, .. } => Some(expr.clone()),
         _ => None,
     });
 
@@ -397,8 +397,8 @@ pub(crate) fn gen_element(
 
         // 4a. 检测独立 else（无前置 if 兄弟）：报错
         if let Node::Element(e) = child {
-            let has_else = e.directives.iter().any(|d| matches!(d, Directive::Else));
-            let has_if = e.directives.iter().any(|d| matches!(d, Directive::If(_)));
+            let has_else = e.directives.iter().any(|d| matches!(d, Directive::Else { .. }));
+            let has_if = e.directives.iter().any(|d| matches!(d, Directive::If { .. }));
             if has_else && !has_if {
                 return Err(CodegenError {
                     message: "`else` 指令必须紧跟在 `if` 指令之后".to_string(),
@@ -409,7 +409,7 @@ pub(crate) fn gen_element(
         // 4b. 检测 if + 紧邻 else 配对
         let if_cond: Option<String> = if let Node::Element(e) = child {
             e.directives.iter().find_map(|d| match d {
-                Directive::If(c) => Some(c.clone()),
+                Directive::If { expr: c, .. } => Some(c.clone()),
                 _ => None,
             })
         } else {
@@ -421,7 +421,7 @@ pub(crate) fn gen_element(
             let next_has_else = next_idx < elem.children.len()
                 && matches!(
                     &elem.children[next_idx],
-                    Node::Element(e) if e.directives.iter().any(|d| matches!(d, Directive::Else))
+                    Node::Element(e) if e.directives.iter().any(|d| matches!(d, Directive::Else { .. }))
                 );
 
             if next_has_else {
@@ -432,9 +432,9 @@ pub(crate) fn gen_element(
                 };
 
                 let mut if_clone = if_e.clone();
-                if_clone.directives.retain(|d| !matches!(d, Directive::If(_)));
+                if_clone.directives.retain(|d| !matches!(d, Directive::If { .. }));
                 let mut else_clone = else_e.clone();
-                else_clone.directives.retain(|d| !matches!(d, Directive::Else));
+                else_clone.directives.retain(|d| !matches!(d, Directive::Else { .. }));
 
                 let (if_code, if_is_iter) = gen_node_impl(
                     &Node::Element(if_clone),
@@ -497,14 +497,14 @@ pub(crate) fn gen_element(
     //
     // 若 if 与 show 同时存在，if 优先（show 被忽略）：if 为 false 时元素不存在，show 无意义。
     let if_cond: Option<String> = elem.directives.iter().find_map(|d| match d {
-        Directive::If(c) => Some(c.clone()),
+        Directive::If { expr: c, .. } => Some(c.clone()),
         _ => None,
     });
     let show_cond: Option<String> = if if_cond.is_some() {
         None
     } else {
         elem.directives.iter().find_map(|d| match d {
-            Directive::Show(c) => Some(c.clone()),
+            Directive::Show { expr: c, .. } => Some(c.clone()),
             _ => None,
         })
     };

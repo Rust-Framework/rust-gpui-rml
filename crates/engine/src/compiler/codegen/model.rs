@@ -1,4 +1,4 @@
-﻿//! Model 字段收集 —— 提取 RML 中所有 `model={field}` 绑定的字段名
+//! Model 字段收集 —— 提取 RML 中所有 `model={field}` 绑定的字段名
 
 use crate::compiler::InputHandlers;
 use crate::parser::ast::{Attribute, Directive, Element, EventHandler, Node};
@@ -41,7 +41,7 @@ pub fn collect_model_converters(root: &Node) -> HashMap<String, String> {
 
 fn collect_model_converters_recursive(elem: &Element, converters: &mut HashMap<String, String>) {
     for directive in &elem.directives {
-        if let Directive::Model { field, converter: Some(c) } = directive {
+        if let Directive::Model { field, converter: Some(c), .. } = directive {
             converters.insert(field.clone(), c.clone());
         }
     }

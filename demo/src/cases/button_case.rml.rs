@@ -71,6 +71,26 @@ impl ButtonCase {
         }
     }
 
+    #[computed]
+    pub fn code_sample(&self) -> String {
+        r#"<Button label="Default" on-click={on_basic_click} />
+<Button label="Primary" primary="" on-click={on_basic_click} />
+<Button label="Ghost" ghost="" on-click={on_basic_click} />
+<Button label="Danger" danger="" on-click={on_basic_click} />
+
+<Button label="Small" size="small" primary="" />
+<Button label="Large" size="large" primary="" />
+
+<Button label="Disabled" disabled={is_disabled} primary="" />
+<Button label="Selected" selected={is_selected} />
+
+<ButtonGroup>
+    <Button label="上一页" />
+    <Button label="下一页" />
+</ButtonGroup>"#
+            .to_string()
+    }
+
     #[command]
     pub fn on_basic_click(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.basic_clicks += 1;

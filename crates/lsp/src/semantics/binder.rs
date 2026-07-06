@@ -48,16 +48,16 @@ fn bind_element(elem: &Element, meta: Option<&StructMetadata>, diags: &mut Vec<S
     // 检查指令中的绑定表达式
     for directive in &elem.directives {
         match directive {
-            Directive::If(expr) | Directive::Show(expr) | Directive::Key(expr) => {
+            Directive::If { expr, .. } | Directive::Show { expr, .. } | Directive::Key { expr, .. } => {
                 check_binding_expr(expr, elem.span, meta, diags);
             }
             Directive::Model { field, .. } => {
                 check_binding_expr(field, elem.span, meta, diags);
             }
-            Directive::Html(expr) => {
+            Directive::Html { expr, .. } => {
                 check_binding_expr(expr, elem.span, meta, diags);
             }
-            Directive::Each(each) => {
+            Directive::Each { clause: each, .. } => {
                 // 检查迭代源（iterable），item/index 变量不检查
                 check_binding_expr(&each.iterable, elem.span, meta, diags);
             }

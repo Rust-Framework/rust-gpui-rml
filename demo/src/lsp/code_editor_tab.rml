@@ -1,16 +1,15 @@
 <component>
     <div v-flex="" class="lsp-editor-pane">
         <div h-flex="" class="lsp-toolbar">
-            <Button label="Format" ghost="" on-click="on_format_document" />
-            <Button label="Rename" ghost="" on-click="on_rename_symbol" />
-            <Button label="References" ghost="" on-click="on_find_references" />
-            <Button label="Symbols" ghost="" on-click="on_show_document_symbols" />
-        </div>
-        <div v-flex="" class="lsp-result">
-            <div each={line in last_lsp_result}>{line}</div>
+            <ButtonGroup>
+                <Button label="Format" ghost="" size="small" on-click="on_format_document" />
+                <Button label="Rename" ghost="" size="small" on-click="on_rename_symbol" />
+                <Button label="References" ghost="" size="small" on-click="on_find_references" />
+                <Button label="Symbols" ghost="" size="small" on-click="on_show_document_symbols" />
+            </ButtonGroup>
         </div>
         <div class="lsp-editor-area">
-            <CodeEditor />
+            <CodeEditor h-full="" />
         </div>
     </div>
 </component>

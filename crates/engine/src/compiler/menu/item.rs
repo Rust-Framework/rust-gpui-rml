@@ -1,4 +1,4 @@
-﻿//! `MenuItem` / `MenuSeparator` → PopupMenu builder 链
+//! `MenuItem` / `MenuSeparator` → PopupMenu builder 链
 
 use crate::compiler::codegen::gen_node;
 use crate::compiler::menu::hoist::MenuHoist;
@@ -44,7 +44,7 @@ pub fn gen_popup_menu_body(
     for item in items {
         // 检测 each 指令——运行时迭代子项
         let each_clause = item.directives.iter().find_map(|d| match d {
-            Directive::Each(c) => Some(c.clone()),
+            Directive::Each { clause: c, .. } => Some(c.clone()),
             _ => None,
         });
         if let Some(clause) = each_clause {

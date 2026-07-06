@@ -1,60 +1,64 @@
 <component>
     <div v-flex="" class="case-pane doc-pane">
         <h2>{t("case.button.title")}</h2>
+        <p>Button 是 gpui-component 按钮的 RML 封装，标签为 PascalCase。支持 label / primary / ghost / danger / disabled / selected / size / compact 等属性。小写 button 属于内置 HTML 轨，映射为 gpui::div()，不是本组件。</p>
 
-        <Card title="组件说明">
-            <p>Button 是 gpui-component 按钮的 RML 封装，标签为 PascalCase。路由表注册为 Stateless 组件，codegen 生成 rml_ui::Button::new(id) 链式调用。</p>
-            <p>支持 label / primary / ghost / danger / disabled / selected / size / compact 等属性。小写 button 属于内置 HTML 轨，映射为 gpui::div()，不是本组件。</p>
-        </Card>
-
-        <Card title="基础用法">
-            <p>点击按钮累计计数，演示 on-click 事件绑定与四种变体。</p>
-            <p>{basic_click_text}</p>
+        <div class="demo-section">
+            <h3>基础用法</h3>
+            <p>点击按钮累计计数，演示 on-click 事件绑定与四种变体。{basic_click_text}</p>
             <div class="button-row">
                 <Button label="Default" on-click={on_basic_click} />
                 <Button label="Primary" primary="" on-click={on_basic_click} />
                 <Button label="Ghost" ghost="" on-click={on_basic_click} />
                 <Button label="Danger" danger="" on-click={on_basic_click} />
             </div>
-        </Card>
+        </div>
 
-        <Card title="按钮尺寸">
+        <div class="demo-section">
+            <h3>按钮尺寸</h3>
             <p>size 属性控制按钮大小：small / medium / large。</p>
             <div class="button-row">
                 <Button label="Small" size="small" primary="" />
                 <Button label="Medium" size="medium" primary="" />
                 <Button label="Large" size="large" primary="" />
             </div>
-        </Card>
+        </div>
 
-        <Card title="不可用状态">
-            <p>disabled 属性禁用按钮交互，点击切换查看效果。</p>
-            <p>{disabled_status_text}</p>
+        <div class="demo-section">
+            <h3>不可用状态</h3>
+            <p>disabled 属性禁用按钮交互，点击切换查看效果。{disabled_status_text}</p>
             <div class="button-row">
                 <Button label="切换禁用" on-click={on_toggle_disabled} />
                 <Button label="Disabled Button" disabled={is_disabled} primary="" />
             </div>
-        </Card>
+        </div>
 
-        <Card title="选中状态">
-            <p>selected 属性切换按钮选中态，点击切换查看效果。</p>
-            <p>{selected_status_text}</p>
+        <div class="demo-section">
+            <h3>选中状态</h3>
+            <p>selected 属性切换按钮选中态，点击切换查看效果。{selected_status_text}</p>
             <div class="button-row">
                 <Button label="切换选中" on-click={on_toggle_selected} />
                 <Button label="Selected Button" selected={is_selected} />
             </div>
-        </Card>
+        </div>
 
-        <Card title="按钮组 ButtonGroup">
+        <div class="demo-section">
+            <h3>按钮组 ButtonGroup</h3>
             <p>ButtonGroup 容器组合多个按钮，常用于操作分组。</p>
             <ButtonGroup>
                 <Button label="上一页" />
                 <Button label="下一页" />
             </ButtonGroup>
-        </Card>
+        </div>
 
-        <Card title="API">
+        <div class="demo-section">
+            <h3>示例代码</h3>
+            <CodeEditor value={code_sample} />
+        </div>
+
+        <div class="demo-section">
+            <h3>API</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-        </Card>
+        </div>
     </div>
 </component>

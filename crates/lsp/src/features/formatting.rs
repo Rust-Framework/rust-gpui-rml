@@ -213,19 +213,19 @@ fn format_handler(h: &EventHandler, out: &mut String) {
 /// 格式化指令
 fn format_directive(d: &Directive, out: &mut String) {
     match d {
-        Directive::If(expr) => {
+        Directive::If { expr, .. } => {
             out.push_str("if={");
             out.push_str(expr);
             out.push('}');
         }
-        Directive::Else => out.push_str("else"),
-        Directive::Each(each) => format_each(each, out),
-        Directive::Key(expr) => {
+        Directive::Else { .. } => out.push_str("else"),
+        Directive::Each { clause: each, .. } => format_each(each, out),
+        Directive::Key { expr, .. } => {
             out.push_str("key={");
             out.push_str(expr);
             out.push('}');
         }
-        Directive::Model { field, converter } => {
+        Directive::Model { field, converter, .. } => {
             out.push_str("model={");
             out.push_str(field);
             if let Some(c) = converter {
@@ -234,18 +234,18 @@ fn format_directive(d: &Directive, out: &mut String) {
             }
             out.push('}');
         }
-        Directive::Show(expr) => {
+        Directive::Show { expr, .. } => {
             out.push_str("show={");
             out.push_str(expr);
             out.push('}');
         }
-        Directive::Once => out.push_str("once"),
-        Directive::Html(expr) => {
+        Directive::Once { .. } => out.push_str("once"),
+        Directive::Html { expr, .. } => {
             out.push_str("html={");
             out.push_str(expr);
             out.push('}');
         }
-        Directive::Ref(name) => {
+        Directive::Ref { name, .. } => {
             out.push_str("ref=\"");
             out.push_str(name);
             out.push('"');

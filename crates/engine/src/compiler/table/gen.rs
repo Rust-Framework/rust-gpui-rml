@@ -1,4 +1,4 @@
-﻿//! Table 容器 codegen —— 构造 + 属性 + Column 子节点 + template slot 子节点。
+//! Table 容器 codegen —— 构造 + 属性 + Column 子节点 + template slot 子节点。
 //!
 //! 将 `<Table ...><Column ... /><template slot="...">...</template></Table>`
 //! 转译为 `rml_ui::Table::new(id).<setters>.column(...).header_template(...)...`。
@@ -298,7 +298,7 @@ mod tests {
         let elem = make_element_with_directives(
             "Table",
             vec![],
-            vec![Directive::Ref("my_table".into())],
+            vec![Directive::Ref { name: "my_table".into(), span: Span::empty() }],
             vec![],
         );
         let mut id = 0;

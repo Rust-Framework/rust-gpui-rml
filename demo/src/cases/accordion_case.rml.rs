@@ -68,12 +68,21 @@ impl AccordionCase {
 
     #[computed]
     pub fn code_sample(&self) -> String {
-        r#"<accordion bordered="">
-    <item title="第一项" open="">
+        r#"<accordion bordered="" open-ixs={basic_open}>
+    <item title="第一项">
         <p>内容</p>
     </item>
     <item title="第二项">
         <p>内容</p>
+    </item>
+    <item title="禁用项" disabled="true">
+        <p>内容</p>
+    </item>
+</accordion>
+
+<accordion multiple="" bordered="" open-ixs={multiple_open}>
+    <item title="多项展开">
+        <p>允许多项同时展开</p>
     </item>
 </accordion>"#
             .to_string()

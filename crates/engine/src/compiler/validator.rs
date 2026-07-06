@@ -60,7 +60,7 @@ fn validate_element(
     for d in &elem.directives {
         match d {
             Directive::Model { .. } => has_model = true,
-            Directive::Ref(name) => {
+            Directive::Ref { name, .. } => {
                 if !ctx.ref_names.insert(name.clone()) {
                     return Err(ValidationError {
                         message: format!("duplicate ref name: {}", name),
@@ -69,8 +69,8 @@ fn validate_element(
             }
             // Phase B-1：允许 if/each/else/once/html/key/show 通过校验
             // Phase B-2 会补全 else 必须紧跟 if 的语义校验、each 子句校验等
-            Directive::If(_) | Directive::Each(_) | Directive::Else | Directive::Once
-            | Directive::Html(_) | Directive::Key(_) | Directive::Show(_) => {}
+            Directive::If { .. } | Directive::Each { .. } | Directive::Else { .. } | Directive::Once { .. }
+            | Directive::Html { .. } | Directive::Key { .. } | Directive::Show { .. } => {}
         }
     }
 

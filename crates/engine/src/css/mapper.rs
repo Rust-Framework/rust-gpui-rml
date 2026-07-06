@@ -56,6 +56,12 @@ fn map_declaration(decl: &Declaration, vars: &HashMap<String, Value>) -> Option<
         "margin-left" => length_method("ml", &value),
         "margin-right" => length_method("mr", &value),
         "border-radius" => length_method("rounded", &value),
+        "border" => shorthand_border(&value, vars, ""),
+        "border-color" => color_method("border_color", &value, vars),
+        "border-top" => shorthand_border(&value, vars, "t"),
+        "border-bottom" => shorthand_border(&value, vars, "b"),
+        "border-left" => shorthand_border(&value, vars, "l"),
+        "border-right" => shorthand_border(&value, vars, "r"),
 
         // ─── 文本 ───
         "font-size" => length_method("text_size", &value),
@@ -351,6 +357,64 @@ fn shorthand_margin(value: &Value) -> Option<String> {
     }
 }
 
+/// border 简写：`1px solid <color>` / `1px dashed <color>` / `1px` / `<color>`
+///
+/// GPUI 限制：`border_color` 应用于所有边，无法 per-side 着色。
+/// per-side border（`border_t_1` 等）仅设宽度，color 仍全局生效。
+/// border-style（solid/dashed/dotted）GPUI 不支持，忽略。
+fn shorthand_border(value: &Value, vars: &HashMap<String, Value>, side: &str) -> Option<String> {
+    let items = match value {
+        Value::List(items) => items.clone(),
+        _ => vec![value.clone()],
+    };
+
+    let mut width_n: Option<u32> = None;
+    let mut color_value: Option<Value> = None;
+
+    for item in &items {
+        match item {
+            Value::Length(n, _) if *n == 0.0 => return None,
+            Value::Length(n, Unit::Px) => width_n = Some(*n as u32),
+            Value::Keyword(k)
+                if matches!(k.as_str(), "solid" | "dashed" | "dotted" | "double" | "none" | "hidden") => {}
+            Value::Color(_) | Value::Var(_, _) => color_value = Some(item.clone()),
+            _ => {}
+        }
+    }
+
+    let mut code = String::new();
+
+    if let Some(n) = width_n {
+        let n_str = match n {
+            1 => "1",
+            2 => "2",
+            3 => "3",
+            4 => "4",
+            _ => "1",
+        };
+        if side.is_empty() {
+            code.push_str(&format!("border_{}()", n_str));
+        } else {
+            code.push_str(&format!("border_{}_{}()", side, n_str));
+        }
+    }
+
+    if let Some(cv) = color_value {
+        if let Some(color_code) = color_method("border_color", &cv, vars) {
+            if !code.is_empty() {
+                code.push('.');
+            }
+            code.push_str(&color_code);
+        }
+    }
+
+    if code.is_empty() {
+        None
+    } else {
+        Some(code)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -548,5 +612,67 @@ mod tests {
         let d = decl("min-width", Value::Length(100.0, Unit::Percent));
         let code = map_declarations(&[d], &HashMap::new());
         assert!(code.contains(".min_w(gpui::relative(1.0))"), "expected min_w relative, got: {}", code);
+    }
+
+    #[test]
+    fn map_border_shorthand_with_color() {
+        let d = decl("border", Value::List(vec![
+            Value::Length(1.0, Unit::Px),
+            Value::Keyword("solid".into()),
+            Value::Color(Color::rgb(229, 231, 235)),
+        ]));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".border_1()"), "expected border_1, got: {}", code);
+        assert!(code.contains(".border_color("), "expected border_color, got: {}", code);
+    }
+
+    #[test]
+    fn map_border_shorthand_with_var() {
+        let d = decl("border", Value::List(vec![
+            Value::Length(1.0, Unit::Px),
+            Value::Keyword("solid".into()),
+            Value::Var("--border-color".into(), None),
+        ]));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".border_1()"));
+        assert!(code.contains("rml::theme::color(\"--border-color\")"));
+    }
+
+    #[test]
+    fn map_border_bottom_shorthand() {
+        let d = decl("border-bottom", Value::List(vec![
+            Value::Length(1.0, Unit::Px),
+            Value::Keyword("dashed".into()),
+            Value::Var("--border-color".into(), None),
+        ]));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".border_b_1()"), "expected border_b_1, got: {}", code);
+        assert!(code.contains(".border_color("));
+    }
+
+    #[test]
+    fn map_border_color_property() {
+        let d = decl("border-color", Value::Var("--border-color".into(), None));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".border_color("));
+        assert!(code.contains("rml::theme::color(\"--border-color\")"));
+    }
+
+    #[test]
+    fn map_border_width_only() {
+        let d = decl("border", Value::Length(2.0, Unit::Px));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".border_2()"), "expected border_2, got: {}", code);
+        assert!(!code.contains(".border_color("));
+    }
+
+    #[test]
+    fn map_border_zero_skipped() {
+        let d = decl("border", Value::List(vec![
+            Value::Length(0.0, Unit::Px),
+            Value::Keyword("solid".into()),
+        ]));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.is_empty(), "expected no border for width=0, got: {}", code);
     }
 }

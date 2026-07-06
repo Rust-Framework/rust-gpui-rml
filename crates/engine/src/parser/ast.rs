@@ -77,30 +77,35 @@ pub enum Attribute {
 }
 
 /// 指令
+///
+/// 每个变体携带 `span: Span`，覆盖指令名 + `={值}` 的字节区间（如 `if={cond}`），
+/// 供 LSP 语义 token 发射与诊断定位使用。`EachClause` 不携带子 span —— LSP token
+/// emitter 从 `Directive::Each.span` 内扫描源码提取 `item`/`in`/`iterable` 子区间。
 #[derive(Debug, Clone)]
 pub enum Directive {
     /// `if={cond}` 条件渲染
-    If(String),
+    If { expr: String, span: Span },
     /// `else` 分支
-    Else,
+    Else { span: Span },
     /// `each={item in items}` 列表渲染
-    Each(EachClause),
+    Each { clause: EachClause, span: Span },
     /// `key={expr}` 列表项唯一标识
-    Key(String),
+    Key { expr: String, span: Span },
     /// `model={field}` 或 `model={field | Converter}` 双向绑定
     Model {
         field: String,
         /// 可选 converter 名（`| Converter` 语法），codegen 反向绑定时调用 `Converter::convert_back`
         converter: Option<String>,
+        span: Span,
     },
     /// `show={cond}` 显示/隐藏
-    Show(String),
+    Show { expr: String, span: Span },
     /// `once` 仅首次渲染
-    Once,
+    Once { span: Span },
     /// `html={raw}` 渲染 HTML 字符串
-    Html(String),
+    Html { expr: String, span: Span },
     /// `ref="name"` 元素引用
-    Ref(String),
+    Ref { name: String, span: Span },
 }
 
 /// `each` 子句

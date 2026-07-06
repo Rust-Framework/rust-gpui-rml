@@ -317,7 +317,7 @@ mod tests {
         let elem = make_element_with_directives(
             "Accordion",
             vec![],
-            vec![Directive::Ref("my_accordion".into())],
+            vec![Directive::Ref { name: "my_accordion".into(), span: Span::empty() }],
             vec![],
         );
         let mut id = 0;

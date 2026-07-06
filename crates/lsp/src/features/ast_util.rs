@@ -69,11 +69,11 @@ pub fn iter_directive_exprs(elem: &Element) -> impl Iterator<Item = &str> {
 /// 取指令携带的表达式（若有）
 pub fn directive_expr(d: &Directive) -> Option<&str> {
     match d {
-        Directive::If(expr) | Directive::Show(expr) | Directive::Key(expr) | Directive::Html(expr) => {
+        Directive::If { expr, .. } | Directive::Show { expr, .. } | Directive::Key { expr, .. } | Directive::Html { expr, .. } => {
             Some(expr)
         }
         Directive::Model { field, .. } => Some(field),
-        Directive::Each(each) => Some(&each.iterable),
+        Directive::Each { clause: each, .. } => Some(&each.iterable),
         _ => None,
     }
 }
@@ -119,24 +119,28 @@ mod tests {
 
     #[test]
     fn directive_expr_extracts() {
-        assert_eq!(directive_expr(&Directive::If("count".into())), Some("count"));
-        assert_eq!(directive_expr(&Directive::Show("visible".into())), Some("visible"));
-        assert_eq!(directive_expr(&Directive::Key("id".into())), Some("id"));
-        assert_eq!(directive_expr(&Directive::Html("raw".into())), Some("raw"));
+        use rust_rml_engine::parser::Span;
+        assert_eq!(directive_expr(&Directive::If { expr: "count".into(), span: Span::empty() }), Some("count"));
+        assert_eq!(directive_expr(&Directive::Show { expr: "visible".into(), span: Span::empty() }), Some("visible"));
+        assert_eq!(directive_expr(&Directive::Key { expr: "id".into(), span: Span::empty() }), Some("id"));
+        assert_eq!(directive_expr(&Directive::Html { expr: "raw".into(), span: Span::empty() }), Some("raw"));
         assert_eq!(
-            directive_expr(&Directive::Model { field: "name".into(), converter: None }),
+            directive_expr(&Directive::Model { field: "name".into(), converter: None, span: Span::empty() }),
             Some("name")
         );
         assert_eq!(
-            directive_expr(&Directive::Each(EachClause {
-                item: "x".into(),
-                index: None,
-                iterable: "items".into(),
-            })),
+            directive_expr(&Directive::Each {
+                clause: EachClause {
+                    item: "x".into(),
+                    index: None,
+                    iterable: "items".into(),
+                },
+                span: Span::empty(),
+            }),
             Some("items")
         );
-        assert_eq!(directive_expr(&Directive::Else), None);
-        assert_eq!(directive_expr(&Directive::Once), None);
-        assert_eq!(directive_expr(&Directive::Ref("input".into())), None);
+        assert_eq!(directive_expr(&Directive::Else { span: Span::empty() }), None);
+        assert_eq!(directive_expr(&Directive::Once { span: Span::empty() }), None);
+        assert_eq!(directive_expr(&Directive::Ref { name: "input".into(), span: Span::empty() }), None);
     }
 }

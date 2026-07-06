@@ -1,6 +1,6 @@
 //! CodeEditor 构造器 codegen
 //!
-//! CodeEditor 基于 Input，自动应用 `font_family(mono)` + `text_size(mono)` + `size_full()`。
+//! CodeEditor 基于 Input，自动应用 `font_family(mono)` + `text_size(mono)` + `w_full()` + `max_h(360.)` + `focus_bordered(false)`。
 //!
 //! ## Input 事件架构
 //!
@@ -32,7 +32,7 @@ pub fn gen_code_editor(
 
     let resolved = tags::normalize_component_tag(&elem.tag);
     let ref_name: Option<&str> = elem.directives.iter().find_map(|d| match d {
-        crate::parser::ast::Directive::Ref(name) => Some(name.as_str()),
+        crate::parser::ast::Directive::Ref { name, .. } => Some(name.as_str()),
         _ => None,
     });
 
@@ -60,6 +60,14 @@ pub fn gen_code_editor(
         })
         .unwrap_or("rml");
 
+    // 声明式 h-full 属性：让 CodeEditor 高度填满父容器（用于 LSP 编辑器等场景）
+    let h_full = elem.attributes.iter().any(|attr| match attr {
+        Attribute::Static { name, value, .. } if name == "h-full" => {
+            value.is_empty() || value.eq_ignore_ascii_case("true")
+        }
+        _ => false,
+    });
+
     // 收集 Input 事件处理器（on_change/on_enter/on_focus/on_blur）
     // 这些事件不走 setter 链路（component_event_setter 返回 None），
     // 由 block 表达式中的 cx.subscribe 统一处理
@@ -80,9 +88,23 @@ pub fn gen_code_editor(
         .collect();
 
     // CodeEditor 额外应用的样式链
-    let style_chain = ".font_family(cx.theme().mono_font_family.clone())\n            \
-         .text_size(cx.theme().mono_font_size)\n            \
-         .size_full()";
+    // - w_full(): 宽度铺满
+    // - h(360.): 默认固定高度 360px，避免父容器高度 auto 时只显示单行
+    // - h_full(): 声明 h-full 时填满父容器（如 LSP 编辑器工作区）
+    // - focus_bordered(false): 关闭聚焦边框（暗色主题 ring=neutral-950 近黑色）
+    let height_chain = if h_full {
+        "\n            .w_full()\n            \
+         .h_full()"
+    } else {
+        "\n            .w_full()\n            \
+         .h(gpui::px(360.))"
+    };
+    let style_chain = format!(
+        ".font_family(cx.theme().mono_font_family.clone())\n            \
+         .text_size(cx.theme().mono_font_size){}\n            \
+         .focus_bordered(false)",
+        height_chain
+    );
 
     let ctor_expr = if let Some(value_code) = &value_expr {
         // 声明式 value：内联创建 InputState，无需 editor_state 字段或 on_loaded 初始化
@@ -153,7 +175,9 @@ pub fn gen_code_editor(
     // 非事件属性的 setter 链（value/language 由内联创建处理，事件属性由 block 表达式处理）
     for attr in &elem.attributes {
         let is_handled_inline = match attr {
-            Attribute::Static { name, .. } => name == "value" || name == "language",
+            Attribute::Static { name, .. } => {
+                name == "value" || name == "language" || name == "h-full"
+            }
             Attribute::Bind { name, .. } => name == "value",
             _ => false,
         };
@@ -240,7 +264,9 @@ mod tests {
         assert!(code.contains("rml_ui::Input::new(self.editor_state.as_ref().expect(\"init editor_state in on_loaded\"))"));
         assert!(code.contains(".font_family(cx.theme().mono_font_family.clone())"));
         assert!(code.contains(".text_size(cx.theme().mono_font_size)"));
-        assert!(code.contains(".size_full()"));
+        assert!(code.contains(".w_full()"));
+        assert!(code.contains(".h(gpui::px(360.))"));
+        assert!(code.contains(".focus_bordered(false)"));
     }
 
     #[test]
@@ -269,7 +295,9 @@ mod tests {
         assert!(code.contains("Input::new(&__rml_entity)"));
         // 仍应包含样式链
         assert!(code.contains(".font_family(cx.theme().mono_font_family.clone())"));
-        assert!(code.contains(".size_full()"));
+        assert!(code.contains(".w_full()"));
+        assert!(code.contains(".h(gpui::px(360.))"));
+        assert!(code.contains(".focus_bordered(false)"));
     }
 
     #[test]
@@ -294,9 +322,30 @@ mod tests {
         assert!(code.contains("get_or_init_ref(\"editor_state\""));
         assert!(code.contains(".code_editor(\"rml\").multi_line(true).default_value(&__code)"));
         assert!(code.contains(".font_family(cx.theme().mono_font_family.clone())"));
-        assert!(code.contains(".size_full()"));
+        assert!(code.contains(".w_full()"));
+        assert!(code.contains(".h(gpui::px(360.))"));
         // 不应出现 as_ref().expect 的旧路径
         assert!(!code.contains("as_ref().expect"));
+    }
+
+    #[test]
+    fn gen_code_editor_h_full() {
+        let elem = make_element(
+            "CodeEditor",
+            vec![Attribute::Static {
+                name: "h-full".into(),
+                value: "".into(),
+                span: Span::empty(),
+            }],
+            vec![],
+        );
+        let mut id = 0;
+        let code =
+            gen_code_editor(&elem, code_editor_component(), &ctx(), 0, &mut id, &Vec::new())
+                .unwrap();
+        assert!(code.contains(".h_full()"));
+        assert!(!code.contains(".h(gpui::px(360.))"));
+        assert!(code.contains(".focus_bordered(false)"));
     }
 
     #[test]
