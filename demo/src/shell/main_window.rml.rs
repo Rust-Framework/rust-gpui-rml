@@ -1,4 +1,4 @@
-﻿use std::sync::{Arc, RwLock};
+use std::sync::{Arc, RwLock};
 
 use gpui::prelude::StatefulInteractiveElement as _;
 use gpui::{InteractiveElement, IntoElement, ParentElement, Styled, WeakEntity, Window};
@@ -389,14 +389,12 @@ impl MainWindow {
     #[command]
     pub fn on_chrome_toggle(&mut self, cx: &mut Context<Self>) {
         self.show_chrome = !self.show_chrome;
-        cx.notify();
     }
 
     #[command]
     pub fn on_tab_click(&mut self, index: usize, cx: &mut Context<Self>) {
         self.activate_by_index(index);
         self.__rml_bump_version("activated");
-        cx.notify();
     }
 
     /// 关闭指定索引的 tab：调用 `IWorkbenchManager::close` 移除 workbench，
@@ -409,7 +407,6 @@ impl MainWindow {
             let uri: Uri = wb.uri().parse().unwrap();
             IWorkbenchManager::close(self, &uri);
             self.__rml_bump_version("activated");
-            cx.notify();
         }
     }
 
@@ -423,7 +420,6 @@ impl MainWindow {
         self.workbenches.clear();
         *self.activated.write().unwrap() = None;
         self.__rml_bump_version("activated");
-        cx.notify();
     }
 
     /// 关闭其他 workbench：仅保留 index 对应项。clear + 重 push 保留项，
@@ -438,7 +434,6 @@ impl MainWindow {
         self.workbenches.push(keep.clone());
         *self.activated.write().unwrap() = Some(keep);
         self.__rml_bump_version("activated");
-        cx.notify();
     }
 
     /// 由 ActivityPanel::on_case_activate 调用（经 MainWindowRef 回调）。
@@ -450,7 +445,6 @@ impl MainWindow {
         let uri: Uri = format!("rml://{}", case_id).parse().unwrap();
         if IWorkbenchManager::open(self, &uri).is_some() {
             self.__rml_bump_version("activated");
-            cx.notify();
         }
     }
 
@@ -460,7 +454,6 @@ impl MainWindow {
         let uri: Uri = format!("lsp://{}", relative_path).parse().unwrap();
         if IWorkbenchManager::open(self, &uri).is_some() {
             self.__rml_bump_version("activated");
-            cx.notify();
         }
     }
 

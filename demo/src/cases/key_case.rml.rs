@@ -99,13 +99,11 @@ impl KeyCase {
             },
         );
         self.__rml_bump_version("items");
-        cx.notify();
     }
 
     #[command]
     pub fn on_clear(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.items.clear();
         self.__rml_bump_version("items");
-        cx.notify();
     }
 }

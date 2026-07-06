@@ -45,6 +45,5 @@ impl ElseCase {
     #[command]
     pub fn on_toggle(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.show_a = !self.show_a;
-        cx.notify();
     }
 }

@@ -11,7 +11,8 @@
 //!   /`%=`/`&=`/`|=`/`^=`/`<<=`/`>>=`）。
 //! - 在每个包含字段修改的语句后注入 `self.__rml_bump_version("<field>");`。
 //! - 若方法返回 `()` 且存在 `&mut Context<Self>` 参数，且未指定 `no_notify`，
-//!   方法末尾追加 `<cx>.notify();`。
+//!   在每个 `return;` 语句前注入 `<cx>.notify();`（覆盖 early return 路径，跳过闭包/async 块），
+//!   并在方法末尾追加 `<cx>.notify();`。
 //! - 用户已写的 `cx.notify()` 不剥离（GPUI 多次 notify 幂等）。
 //!
 //! ## 参数
@@ -28,9 +29,10 @@
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::visit::Visit;
+use syn::visit_mut::{visit_block_mut, VisitMut};
 use syn::{
-    parse_quote, BinOp, Expr, ExprAssign, ExprBinary, ExprField, ExprMethodCall, ExprPath, FnArg,
-    Ident, ItemFn, LitStr, Member, Pat, ReturnType, Stmt, Token,
+    parse_quote, BinOp, Block, Expr, ExprAssign, ExprBinary, ExprField, ExprMethodCall, ExprPath,
+    FnArg, Ident, ItemFn, LitStr, Member, Pat, ReturnType, Stmt, Token,
 };
 
 /// `#[command]` 参数
@@ -108,7 +110,6 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
     let cx_ident = extract_context_param(&item.sig.inputs);
 
     // 处理方法体：在每个修改 self.<field> 的语句后注入 bump_version
-    let mut all_mutated_fields: Vec<String> = Vec::new();
     let mut new_stmts: Vec<Stmt> = Vec::new();
     for stmt in item.block.stmts.drain(..) {
         // 用 Visitor 检测该语句内的所有字段修改
@@ -120,9 +121,6 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
 
         // 为每个修改的字段注入 bump_version 调用
         for field in &visitor.mutated_fields {
-            if !all_mutated_fields.contains(field) {
-                all_mutated_fields.push(field.clone());
-            }
             let field_lit = LitStr::new(field, proc_macro2::Span::call_site());
             let bump: Stmt = parse_quote! {
                 self.__rml_bump_version(#field_lit);
@@ -132,12 +130,34 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
     }
     item.block.stmts = new_stmts;
 
+    // 若有 Context 参数且方法返回 () 且未指定 no_notify，注入 cx.notify()
+    // 1. 在每个 return; 语句前注入 cx.notify();（覆盖 early return 路径，跳过闭包/async 块）
+    // 2. 若方法体最后一条语句不是 return，在末尾追加 cx.notify();
+    // 返回类型非 () 时不注入（避免改变返回值类型，用户需手动调用）
+    if !cmd_args.no_notify {
+        if let Some(cx) = &cx_ident {
+            if let ReturnType::Default = item.sig.output {
+                let mut injector = NotifyInjector { cx };
+                injector.visit_block_mut(&mut item.block);
+
+                let last_is_return = item.block.stmts.last().map_or(false, is_return_stmt);
+                if !last_is_return {
+                    let notify: Stmt = parse_quote! {
+                        #cx.notify();
+                    };
+                    item.block.stmts.push(notify);
+                }
+            }
+        }
+    }
+
     // 若指定了 debounce，在方法体开头注入时间窗口检查
     // 仅对返回 () 的方法生效（return; 需要 () 返回类型）
     // 实现说明：用函数局部 static AtomicU64 持久化上次调用时间戳。
     //   - `#[command]` 是方法级宏，无法向结构体注入字段；
-    //   - 函数局部 static 跨调用持久化、天然 Send+Sync；
+    //   - 函数局部 static 跨调用持久化、天生 Send+Sync；
     //   - 代价：同一 ViewModel 类型的多个实例共享 debounce 状态（典型 UI 单窗口场景无影响）。
+    // 注意：debounce 检查在 notify 注入之后插入，确保 debounce 命中时的 early return 不触发 notify。
     if let Some(window_ms) = cmd_args.debounce_ms {
         if let ReturnType::Default = item.sig.output {
             let debounce_check: Stmt = parse_quote! {
@@ -159,22 +179,11 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
         }
     }
 
-    // 若检测到字段修改且有 Context 参数且方法返回 () 且未指定 no_notify，末尾追加 cx.notify()
-    // 返回类型非 () 时不注入（避免改变返回值类型，用户需手动调用）
-    if !all_mutated_fields.is_empty() && !cmd_args.no_notify {
-        if let Some(cx) = cx_ident {
-            if let ReturnType::Default = item.sig.output {
-                let notify: Stmt = parse_quote! {
-                    #cx.notify();
-                };
-                item.block.stmts.push(notify);
-            }
-        }
-    }
-
     // #[command] 方法经 RML 模板绑定调用（如 on-click={on_click}），编译器无法看到引用，
     // 标记 #[allow(dead_code)] 消除误报。字段在方法内被读取，也随之消除"never read"误报。
+    // #[allow(unreachable_code)] 抑制 return 后追加 notify 导致的不可达警告。
     item.attrs.push(parse_quote! { #[allow(dead_code)] });
+    item.attrs.push(parse_quote! { #[allow(unreachable_code)] });
     quote! { #item }
 }
 
@@ -223,6 +232,46 @@ impl<'ast> Visit<'ast> for FieldMutationVisitor {
         }
         syn::visit::visit_expr_method_call(self, node);
     }
+}
+
+/// `#[command]` 方法体 return 注入器
+///
+/// 遍历方法体所有 Block（跳过闭包和 async 块），在每个 `return;` 语句前注入 `cx.notify();`。
+/// 确保 early return 路径也触发通知，避免用户遗漏。
+struct NotifyInjector<'a> {
+    cx: &'a Ident,
+}
+
+impl<'a> VisitMut for NotifyInjector<'a> {
+    fn visit_block_mut(&mut self, block: &mut Block) {
+        let mut new_stmts: Vec<Stmt> = Vec::with_capacity(block.stmts.len());
+        for stmt in block.stmts.drain(..) {
+            if is_return_stmt(&stmt) {
+                let cx = self.cx;
+                let notify: Stmt = parse_quote! { #cx.notify(); };
+                new_stmts.push(notify);
+            }
+            new_stmts.push(stmt);
+        }
+        block.stmts = new_stmts;
+        visit_block_mut(self, block);
+    }
+
+    fn visit_expr_mut(&mut self, expr: &mut Expr) {
+        match expr {
+            Expr::Closure(_) | Expr::Async(_) => {
+                // 跳过闭包和 async 块：其中的 return 退出闭包/async，不退出 command 方法
+            }
+            _ => {
+                syn::visit_mut::visit_expr_mut(self, expr);
+            }
+        }
+    }
+}
+
+/// 判断语句是否为 `return` 语句（含 `return;` 和 `return expr;`）
+fn is_return_stmt(stmt: &Stmt) -> bool {
+    matches!(stmt, Stmt::Expr(Expr::Return(_), _))
 }
 
 /// 判断 `BinOp` 是否为复合赋值运算符（+=, -=, *=, /=, %=, ^=, &=, |=, <<=, >>=）

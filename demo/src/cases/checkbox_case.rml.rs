@@ -104,19 +104,16 @@ impl CheckboxCase {
     #[command]
     pub fn on_toggle_checked(&mut self, checked: &bool, cx: &mut Context<Self>) {
         self.is_checked = *checked;
-        cx.notify();
     }
 
     #[command]
     pub fn on_toggle_checked_button(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.is_checked = !self.is_checked;
-        cx.notify();
     }
 
     #[command]
     pub fn on_toggle_disabled(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.is_disabled = !self.is_disabled;
-        cx.notify();
     }
 
     #[command]

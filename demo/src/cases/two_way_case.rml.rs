@@ -82,13 +82,11 @@ impl TwoWayCase {
     #[command]
     pub fn on_name_input(&mut self, _ev: &InputEvent, cx: &mut Context<Self>) {
         self.input_event_count += 1;
-        cx.notify();
     }
 
     /// B-3 demo：onchange 在值提交时触发（失焦/回车），与 oninput 的逐键触发互补。
     #[command]
     pub fn on_age_change(&mut self, _ev: &ChangeEvent, cx: &mut Context<Self>) {
         self.change_event_count += 1;
-        cx.notify();
     }
 }

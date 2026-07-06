@@ -77,13 +77,11 @@ impl ListCase {
         let idx = self.items.len() + 1;
         self.items.push(format!("Item {}", idx).into());
         self.__rml_bump_version("items");
-        cx.notify();
     }
 
     #[command]
     pub fn on_remove_item(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.items.pop();
         self.__rml_bump_version("items");
-        cx.notify();
     }
 }

@@ -67,12 +67,10 @@ impl ExpressionCase {
     #[command]
     pub fn on_increase_a(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.a += 1;
-        cx.notify();
     }
 
     #[command]
     pub fn on_increase_b(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.b += 1;
-        cx.notify();
     }
 }

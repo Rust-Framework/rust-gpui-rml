@@ -122,7 +122,6 @@ impl IconCase {
     #[command]
     pub fn on_rotate_icon(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.icon_index = self.icon_index.saturating_add(1);
-        cx.notify();
     }
 
     #[command]

@@ -57,24 +57,20 @@ impl ConditionalCase {
     #[command]
     pub fn on_tab_overview(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.tab_index = 0;
-        cx.notify();
     }
 
     #[command]
     pub fn on_tab_detail(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.tab_index = 1;
-        cx.notify();
     }
 
     #[command]
     pub fn on_tab_settings(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.tab_index = 2;
-        cx.notify();
     }
 
     #[command]
     pub fn on_toggle_detail(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.show_detail = !self.show_detail;
-        cx.notify();
     }
 }

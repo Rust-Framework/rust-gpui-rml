@@ -48,12 +48,10 @@ impl ShowCase {
     #[command]
     pub fn on_toggle_show(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.show_card = !self.show_card;
-        cx.notify();
     }
 
     #[command]
     pub fn on_toggle_if(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.if_card = !self.if_card;
-        cx.notify();
     }
 }

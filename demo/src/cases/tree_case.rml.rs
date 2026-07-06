@@ -67,7 +67,6 @@ impl TreeCase {
     #[command]
     pub fn on_activate(&mut self, item_id: &gpui::SharedString, cx: &mut Context<Self>) {
         self.last_activated = item_id.clone();
-        cx.notify();
     }
 
     #[computed]

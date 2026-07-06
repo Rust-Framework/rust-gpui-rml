@@ -56,18 +56,15 @@ impl ThemeCase {
     #[command]
     pub fn on_theme_default(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.theme_index = 0;
-        cx.notify();
     }
 
     #[command]
     pub fn on_theme_primary(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.theme_index = 1;
-        cx.notify();
     }
 
     #[command]
     pub fn on_theme_danger(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.theme_index = 2;
-        cx.notify();
     }
 }

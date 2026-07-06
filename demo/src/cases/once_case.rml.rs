@@ -45,6 +45,5 @@ impl OnceCase {
     #[command]
     pub fn on_increment(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.counter = self.counter.saturating_add(1);
-        cx.notify();
     }
 }

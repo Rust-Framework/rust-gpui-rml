@@ -175,7 +175,6 @@ impl TabBarCase {
     #[command]
     pub fn on_tab_select(&mut self, index: usize, cx: &mut Context<Self>) {
         self.active_tab = index;
-        cx.notify();
     }
 
     #[command]

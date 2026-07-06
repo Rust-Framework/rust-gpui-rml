@@ -188,14 +188,12 @@ impl TabPreviewCase {
     #[command]
     pub fn on_reset(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         self.reset_tabs();
-        cx.notify();
     }
 
     #[command]
     pub fn on_tab_select(&mut self, index: usize, cx: &mut Context<Self>) {
         if index < self.tabs.len() {
             self.selected_index = index;
-            cx.notify();
         }
     }
 
@@ -215,7 +213,6 @@ impl TabPreviewCase {
             self.selected_index = 0;
         }
         self.__rml_bump_version("tabs");
-        cx.notify();
     }
 
     #[command]
@@ -241,7 +238,6 @@ impl TabPreviewCase {
             self.selected_index = non_closable_before_selected;
         }
         self.__rml_bump_version("tabs");
-        cx.notify();
     }
 
     #[command]
@@ -263,14 +259,12 @@ impl TabPreviewCase {
         self.tabs = new_tabs;
         self.selected_index = new_selected;
         self.__rml_bump_version("tabs");
-        cx.notify();
     }
 
     #[command]
     pub fn on_tab_promote(&mut self, index: usize, cx: &mut Context<Self>) {
         if index < self.tabs.len() {
             self.tabs[index].preview = false;
-            cx.notify();
         }
     }
 

@@ -167,7 +167,6 @@ impl AccordionCase {
     #[command]
     pub fn on_toggle(&mut self, open_ixs: &[usize], cx: &mut Context<Self>) {
         self.last_open = format!("{:?}", open_ixs);
-        cx.notify();
     }
 
     #[command]
