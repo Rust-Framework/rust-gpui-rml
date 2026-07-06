@@ -573,7 +573,7 @@ fn indent_folding_ranges(text: &str) -> Vec<lsp_types::FoldingRange> {
         let next_indent = lines[idx + 1..]
             .iter()
             .find(|l| !l.trim().is_empty())
-            .map(indent_of)
+            .map(|l| indent_of(*l))
             .unwrap_or(0);
         if next_indent > cur_indent {
             stack.push((cur_indent, idx));
@@ -643,6 +643,8 @@ fn build_one_symbol(
         } else {
             None
         },
+        #[allow(deprecated)]
+        deprecated: if node.deprecated { Some(true) } else { None },
         range,
         selection_range,
         children: if children.is_empty() {
@@ -676,6 +678,7 @@ fn map_structure_kind(kind: ra_ap_ide::StructureNodeKind) -> lsp_types::SymbolKi
             Sk::ValueParam => lsp_types::SymbolKind::VARIABLE,
             Sk::BuiltinAttr | Sk::ToolModule | Sk::Attribute | Sk::Derive | Sk::DeriveHelper
             | Sk::InlineAsmRegOrRegClass => lsp_types::SymbolKind::PROPERTY,
+            Sk::Impl => lsp_types::SymbolKind::OBJECT,
         },
         StructureNodeKind::ExternBlock => lsp_types::SymbolKind::MODULE,
         StructureNodeKind::Region => lsp_types::SymbolKind::NAMESPACE,

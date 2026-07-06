@@ -1,5 +1,6 @@
 //! Roslyn Workspace 抽象：持有所有打开文档 + 项目索引
 
+pub mod assets;
 pub mod document;
 pub mod project_index;
 
@@ -11,6 +12,8 @@ use crate::semantics::model::SemanticModel;
 use crate::syntax::parse::parse_document;
 use crate::workspace::document::Document;
 use crate::workspace::project_index::ProjectIndex;
+
+pub use assets::{CssClassEntry, CssIndex, I18nEntry, I18nIndex};
 
 /// Roslyn Workspace 等价物
 pub struct Workspace {

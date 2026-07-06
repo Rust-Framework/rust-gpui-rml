@@ -51,12 +51,14 @@ impl ILifecycle for TabBarCase {
         self.tab_bar_api_rows = rows;
 
         let (cols, rows) = build_api_table(&[
-            ("label", "字符串/绑定", "标签标题"),
-            ("icon", "图标名", "标签图标"),
+            ("label", "字符串/绑定", "标签标题（底层映射 TabItem::title）"),
+            ("icon", "图标名", "标签图标（底层映射 TabItem::title_icon）"),
             ("disabled", "布尔/绑定", "禁用标签"),
             ("closable", "布尔/绑定", "显示关闭按钮"),
             ("preview", "布尔/绑定", "预览模式（italic 标题）"),
             ("on-click", "事件", "点击回调（ClickEvent）"),
+            ("子节点", "内容", "element 子节点作为 body（选中时渲染，WPF TabItem 模式）"),
+            ("template slot=\"header\"", "插槽", "header 自定义插槽（覆盖 label/icon）"),
         ]);
         self.tab_api_columns = cols;
         self.tab_api_rows = rows;
@@ -102,11 +104,10 @@ impl TabBarCase {
         <Tab icon="Bell" label="Notifications" />
     </TabBar>
 
-    <!-- 禁用/选中 -->
+    <!-- 禁用/选中（选中状态由 TabBar::selected-index 控制） -->
     <TabBar>
         <Tab label="Normal" />
         <Tab label="Disabled" disabled="true" />
-        <Tab label="Selected" selected="true" />
     </TabBar>
 
     <!-- menu 模式（标签过多时启用下拉） -->
@@ -116,25 +117,29 @@ impl TabBarCase {
         <Tab label="Tab 3" />
     </TabBar>
 
-    <!-- 模板定制：Tab 内放置 element 子节点作为标题内容 -->
+    <!-- header 自定义插槽：template slot="header" 注入任意标题元素 -->
     <TabBar selected-index={active_tab} on-click={on_tab_select}>
         <Tab>
-            <span>Account</span>
-            <Badge>3</Badge>
+            <template slot="header">
+                <span>Account</span>
+                <Badge>3</Badge>
+            </template>
         </Tab>
         <Tab>
-            <span>Profile</span>
+            <template slot="header">
+                <span>Profile</span>
+            </template>
         </Tab>
     </TabBar>
 
-    <!-- TabItem (WPF TabControl 模式)：title + body -->
+    <!-- 内容面板 body：Tab 直接包裹 element 子节点（WPF TabControl/TabItem 模式） -->
     <TabBar selected-index={active_tab} on-click={on_tab_select}>
-        <tab-item title="Account">
+        <Tab label="Account">
             <div>Account settings panel</div>
-        </tab-item>
-        <tab-item title="Profile">
+        </Tab>
+        <Tab label="Profile">
             <div>User profile panel</div>
-        </tab-item>
+        </Tab>
     </TabBar>
 </component>"#
             .to_string()

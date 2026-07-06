@@ -47,11 +47,13 @@
 
         <Card title="代码示例">
             <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
-                <Tab label="rml" />
-                <Tab label="rml.rs" />
+                <Tab label=".rml">
+                    <CodeEditor ref="rml_editor" value={rml_sample} language="rml" />
+                </Tab>
+                <Tab label=".rml.rs">
+                    <CodeEditor ref="rust_editor" value={rust_sample} language="rust" />
+                </Tab>
             </TabBar>
-            <CodeEditor ref="rml_editor" value={rml_sample} />
-            <CodeEditor ref="rust_editor" value={rust_sample} />
         </Card>
 
         <h3>Menu Editor</h3>

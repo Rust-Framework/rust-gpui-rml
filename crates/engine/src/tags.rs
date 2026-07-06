@@ -542,9 +542,11 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
 /// 判断标签是否为 `StatelessWithItems` 组件的子项 builder
 ///
 /// Accordion 支持三种形式：`AccordionItem`（PascalCase）、`item`（短标签）、`accordion-item`（kebab-case）。
-/// TabBar 支持三种形式：`Tab`（PascalCase）、`tab`（短标签）、`tab`（已是短形式）。
+/// TabBar 支持两种形式：`Tab`（PascalCase）、`tab`（短标签）。
 /// 仅在 `<accordion>`/`<tab-bar>` 内合法，不在 `component_lookup` 中注册
 /// （避免被误用为顶层扩展组件），在 validator 和 codegen 中通过此函数识别。
+///
+/// 注：`<tab-item>` 已弃用并移除——RML 架构保持干净整洁，统一用 `<tab>` 即可。
 pub fn is_item_builder_tag(tag: &str) -> bool {
     matches!(
         tag,
@@ -552,7 +554,6 @@ pub fn is_item_builder_tag(tag: &str) -> bool {
             | "DescriptionItem" | "description" | "DescriptionSeparator" | "separator"
     ) || normalize_component_tag(tag) == "AccordionItem"
         || normalize_component_tag(tag) == "Tab"
-        || normalize_component_tag(tag) == "TabItem"
         || normalize_component_tag(tag) == "Column"
         || normalize_component_tag(tag) == "DescriptionItem"
         || normalize_component_tag(tag) == "DescriptionSeparator"

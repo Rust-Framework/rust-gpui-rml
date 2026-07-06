@@ -21,7 +21,8 @@ use crate::parser::ast::EventHandler;
 /// - `closable` / `closable="true"` → `.closable(true)`（Tab / TabItem 共用）
 pub fn static_setter(name: &str, value: &str, tag: &str) -> Option<String> {
     match name {
-        "underline" | "pill" | "flat" | "outline" | "segmented" => {
+        // variant 快捷方法仅 TabBar 支持（TabItem 无这些方法）
+        "underline" | "pill" | "flat" | "outline" | "segmented" if tag == "TabBar" => {
             if value.is_empty() || value.eq_ignore_ascii_case("true") {
                 Some(format!(".{}()", name))
             } else {
@@ -52,9 +53,14 @@ pub fn static_setter(name: &str, value: &str, tag: &str) -> Option<String> {
             };
             Some(format!(".preview({})", bool_val))
         }
-        "icon" if tag == "Tab" => Some(format!(".icon(rml_ui::IconName::{})", value)),
-        "title" if tag == "TabItem" => Some(format!(".title({:?})", value)),
-        "title_icon" if tag == "TabItem" => Some(format!(".title_icon(rml_ui::IconName::{})", value)),
+        "icon" if tag == "Tab" => Some(format!(".title_icon(rml_ui::IconName::{})", value)),
+        // <tab label="A" /> → TabItem::new().title("A")
+        // label 在 Tab 上是 title 的别名（保持 RML 习惯命名），底层编译为 TabItem.title
+        "label" if tag == "Tab" => Some(format!(".title({:?})", value)),
+        // Tab 上 selected/prefix/suffix/variant 在 TabItem 底层无对应方法，
+        // 显式返回空字符串避免回退到公共 setter 生成不存在的方法调用。
+        // 选中状态应由 TabBar::selected_index 控制。
+        "selected" | "prefix" | "suffix" if tag == "Tab" => Some(String::new()),
         _ => None,
     }
 }
@@ -101,19 +107,23 @@ pub fn bind_setter(
             );
             Some(format!(".preview({})", rust_expr))
         }
-        "prefix" | "suffix" => {
+        "prefix" | "suffix" if tag == "TabBar" => {
             let rust_expr = super::super::component::component_bind_rust_expr(
                 expr_str, loop_vars, computed,
             );
             Some(format!(".{}({})", name, rust_expr))
         }
-        "title" if tag == "TabItem" => {
+        // Tab 上 selected/prefix/suffix 在 TabItem 底层无对应方法，no-op 避免回退到公共 setter
+        "selected" | "prefix" | "suffix" if tag == "Tab" => Some(String::new()),
+        // <tab label={expr} /> → .title(expr.clone())（TabItem::title 接收 SharedString）
+        "label" if tag == "Tab" => {
             let rust_expr = super::super::component::component_bind_rust_expr(
                 expr_str, loop_vars, computed,
             );
             Some(format!(".title({}.clone())", rust_expr))
         }
-        "title_icon" if tag == "TabItem" => {
+        // <tab icon={expr} /> → .title_icon(expr)
+        "icon" if tag == "Tab" => {
             let rust_expr = super::super::component::component_bind_rust_expr(
                 expr_str, loop_vars, computed,
             );
@@ -181,8 +191,20 @@ mod tests {
 
     #[test]
     fn static_setter_tab_variants() {
-        assert_eq!(static_setter("underline", "", "Tab").unwrap(), ".underline()");
-        assert_eq!(static_setter("pill", "", "Tab").unwrap(), ".pill()");
+        // variant 快捷方法仅 TabBar 支持（Tab 底层 TabItem 无这些方法）
+        assert_eq!(static_setter("underline", "", "TabBar").unwrap(), ".underline()");
+        assert_eq!(static_setter("pill", "", "TabBar").unwrap(), ".pill()");
+        // Tab 上 variant 属性返回 None（不处理）
+        assert!(static_setter("underline", "", "Tab").is_none());
+    }
+
+    #[test]
+    fn static_setter_tab_selected_no_op() {
+        // Tab 上 selected 在 TabItem 底层无对应方法，返回空字符串避免回退到公共 setter
+        // 选中状态应由 TabBar::selected_index 控制
+        assert_eq!(static_setter("selected", "true", "Tab").unwrap(), "");
+        assert_eq!(static_setter("prefix", "x", "Tab").unwrap(), "");
+        assert_eq!(static_setter("suffix", "x", "Tab").unwrap(), "");
     }
 
     #[test]
@@ -206,8 +228,16 @@ mod tests {
 
     #[test]
     fn static_setter_tab_icon() {
+        // Tab 的 icon 属性映射为 TabItem::title_icon
         let code = static_setter("icon", "User", "Tab").unwrap();
-        assert_eq!(code, ".icon(rml_ui::IconName::User)");
+        assert_eq!(code, ".title_icon(rml_ui::IconName::User)");
+    }
+
+    #[test]
+    fn static_setter_tab_label() {
+        // Tab 的 label 属性映射为 TabItem::title
+        let code = static_setter("label", "Account", "Tab").unwrap();
+        assert_eq!(code, ".title(\"Account\")");
     }
 
     #[test]
@@ -225,9 +255,9 @@ mod tests {
 
     #[test]
     fn static_setter_preview() {
-        // preview 同 closable，Tab / TabItem 共用
+        // preview 同 closable，Tab 共用（<tab-item> 已弃用移除）
         assert_eq!(static_setter("preview", "", "Tab").unwrap(), ".preview(true)");
-        assert_eq!(static_setter("preview", "true", "TabItem").unwrap(), ".preview(true)");
+        assert_eq!(static_setter("preview", "true", "Tab").unwrap(), ".preview(true)");
         assert_eq!(static_setter("preview", "false", "Tab").unwrap(), ".preview(false)");
     }
 
@@ -271,16 +301,21 @@ mod tests {
 
     #[test]
     fn bind_setter_prefix_suffix() {
+        // prefix/suffix 仅 TabBar 支持（Tab 底层 TabItem 无这些方法）
         let code = bind_setter("prefix", "back_btn", &[], &[], "TabBar").unwrap();
         assert_eq!(code, ".prefix(self.back_btn)");
-        let code = bind_setter("suffix", "more_btn", &[], &[], "Tab").unwrap();
+        let code = bind_setter("suffix", "more_btn", &[], &[], "TabBar").unwrap();
         assert_eq!(code, ".suffix(self.more_btn)");
+        // Tab 上 prefix/suffix 返回空字符串 no-op
+        assert_eq!(bind_setter("prefix", "x", &[], &[], "Tab").unwrap(), "");
+        assert_eq!(bind_setter("suffix", "x", &[], &[], "Tab").unwrap(), "");
     }
 
     #[test]
     fn bind_setter_preview() {
         // preview={is_preview} → .preview(self.is_preview)
-        let code = bind_setter("preview", "is_preview", &[], &[], "TabItem").unwrap();
+        // <tab-item> 已弃用移除，统一用 <tab>
+        let code = bind_setter("preview", "is_preview", &[], &[], "Tab").unwrap();
         assert_eq!(code, ".preview(self.is_preview)");
         // 在 each 循环内：preview={item.preview} → .preview(item.preview)
         let code = bind_setter("preview", "item.preview", &["item"], &[], "Tab").unwrap();
@@ -295,7 +330,8 @@ mod tests {
     #[test]
     fn bind_setter_unknown_returns_none() {
         assert!(bind_setter("value", "x", &[], &[], "TabBar").is_none());
-        assert!(bind_setter("label", "x", &[], &[], "Tab").is_none());
+        // label 在 Tab 上是支持的（映射为 title），不再返回 None
+        assert!(bind_setter("foo", "x", &[], &[], "Tab").is_none());
     }
 
     #[test]

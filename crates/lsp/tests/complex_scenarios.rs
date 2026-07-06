@@ -148,7 +148,6 @@ fn references_on_field_finds_all_bindings() {
     let ws = ws_with_doc(&uri, source);
     let q = NoopQuery;
 
-    let root = parser::parse(source).expect("should parse");
     // 定位到第一个 count={count} 的绑定属性
     let first_bind = source.find("count={count}").expect("should find first bind");
     let cursor_offset = first_bind + 8; // 光标在 = 后的 count 标识符中间

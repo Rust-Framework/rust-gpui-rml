@@ -100,14 +100,13 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
         "menu", "track_scroll",
         "underline", "pill", "flat", "outline", "segmented",
     ]),
-    // Tab 专用（标签项，label/icon + variant 快捷方法 + prefix/suffix + on_click + closable + preview）
+    // Tab 专用（统一底层为 TabItem：label→title, icon→title_icon, body 通过子节点注入）
+    // <tab-item> 已弃用移除，统一用 <tab>
     ("Tab", &[
         "label", "icon", "disabled", "selected", "prefix", "suffix", "on_click",
         "closable", "preview",
         "underline", "pill", "flat", "outline", "segmented",
     ]),
-    // TabItem 专用（item builder 子标签，WPF TabItem 模式：title + body + closable）
-    ("TabItem", &["title", "title_icon", "disabled", "on_click", "closable"]),
     // Table 专用（WPF DataGrid 风格表格）
     ("Table", &["columns", "rows", "delegate", "bordered", "borderless", "stripe"]),
     // Column 专用（item builder 子标签，不在 component_lookup 中）
@@ -329,7 +328,7 @@ mod tests {
         assert!(is_prop_registered("Tab", "suffix"));
         assert!(is_prop_registered("Tab", "on_click"));
         assert!(is_prop_registered("Tab", "closable"));
-        assert!(is_prop_registered("TabItem", "closable"));
+        // <tab-item> 已弃用移除，统一用 <tab>
         assert!(is_prop_registered("Tab", "underline"));
         assert!(is_prop_registered("Tab", "pill"));
     }

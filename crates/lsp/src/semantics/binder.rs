@@ -124,7 +124,6 @@ fn emit_directive_token(
     if directive_span.is_empty() {
         return;
     }
-    let directive_text = span_text(directive_span, source);
 
     match directive {
         Directive::If { expr, .. } => {

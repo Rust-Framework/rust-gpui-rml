@@ -27,6 +27,13 @@ pub fn handle_hover(
                 }),
             }))
     } else {
-        Ok(hover::hover(&uri, position, &state.workspace))
+        Ok(hover::hover(
+            &uri,
+            position,
+            &state.workspace,
+            state.rust_query.as_ref(),
+            &state.i18n_index,
+            &state.css_index,
+        ))
     }
 }

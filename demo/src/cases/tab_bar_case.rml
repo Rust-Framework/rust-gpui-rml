@@ -1,7 +1,7 @@
 <component>
     <div v-flex="" class="case-pane doc-pane">
         <h2>{t("case.tab_bar.title")}</h2>
-        <p>TabBar 是 RML 的标签栏组件，标签为 PascalCase <code>TabBar</code> 或 kebab-case <code>tab-bar</code>。子项用 <code>Tab</code> 标签，<code>label</code> 属性指定标题，<code>icon</code> 属性添加图标。核心概念：5 种 variant（<code>underline</code>/<code>pill</code>/<code>flat</code>/<code>outline</code>/<code>segmented</code>）通过同名属性切换；尺寸用 <code>size</code> 属性；<code>prefix</code>/<code>suffix</code> 注入首尾元素；<code>menu</code> 模式启用下拉；<code>on-click</code> 事件回调选中索引（签名 <code>fn(index: usize)</code>）。模板定制（高级）：Tab 实现 ParentElement，element 子节点通过 <code>.child()</code> 注入作为标题内容，绕过 label/icon 限制。</p>
+        <p>TabBar 是 RML 的标签栏组件，标签为 PascalCase <code>TabBar</code> 或 kebab-case <code>tab-bar</code>。子项用 <code>Tab</code> 标签（统一底层为 TabItem），<code>label</code> 属性指定标题，<code>icon</code> 属性添加图标。核心概念：5 种 variant（<code>underline</code>/<code>pill</code>/<code>flat</code>/<code>outline</code>/<code>segmented</code>）通过同名属性切换；尺寸用 <code>size</code> 属性；<code>prefix</code>/<code>suffix</code> 注入首尾元素；<code>menu</code> 模式启用下拉；<code>on-click</code> 事件回调选中索引（签名 <code>fn(index: usize)</code>）。内容面板（body）：Tab 可直接包裹 element 子节点作为选中时渲染的内容（WPF TabControl/TabItem 模式）。header 自定义插槽：通过 <code>&lt;template slot="header"&gt;</code> 在 Tab 内注入任意标题元素。</p>
 
         <Card title="演示效果">
             <p>{status_text}</p>
@@ -69,7 +69,6 @@
                 <TabBar>
                     <Tab label="Normal" />
                     <Tab label="Disabled" disabled="true" />
-                    <Tab label="Selected" selected="true" />
                 </TabBar>
             </div>
 
@@ -86,38 +85,42 @@
             </div>
 
             <div class="demo-section">
-                <h3>{t("case.tab_bar.template")}</h3>
-                <p>Tab 内放置 element 子节点作为标题内容（绕过 label 限制）：</p>
+                <h3>header 自定义插槽 slot="header"</h3>
+                <p>当 label + icon 不足以表达标题时，用 <code>template slot="header"</code> 注入任意元素：</p>
                 <TabBar selected-index={active_tab} on-click={on_tab_select}>
                     <Tab>
-                        <span>Account</span>
-                        <Badge>3</Badge>
+                        <template slot="header">
+                            <span>Account</span>
+                            <Badge>3</Badge>
+                        </template>
                     </Tab>
                     <Tab>
-                        <span>Profile</span>
+                        <template slot="header">
+                            <span>Profile</span>
+                        </template>
                     </Tab>
                 </TabBar>
             </div>
 
             <div class="demo-section">
-                <h3>{t("case.tab_bar.tab_item")}</h3>
-                <p>TabItem 同时承载 title (header) 与 body (选中时渲染的内容)，对应 WPF TabControl/TabItem 模式：</p>
+                <h3>内容面板 body</h3>
+                <p>Tab 直接包裹 element 子节点作为选中时渲染的内容（WPF TabControl/TabItem 模式）：</p>
                 <TabBar selected-index={active_tab} on-click={on_tab_select}>
-                    <tab-item title="Account">
+                    <Tab label="Account">
                         <div class="tab-body">
                             <p>Account settings panel</p>
                         </div>
-                    </tab-item>
-                    <tab-item title="Profile">
+                    </Tab>
+                    <Tab label="Profile">
                         <div class="tab-body">
                             <p>User profile panel</p>
                         </div>
-                    </tab-item>
-                    <tab-item title="Settings">
+                    </Tab>
+                    <Tab label="Settings">
                         <div class="tab-body">
                             <p>System settings panel</p>
                         </div>
-                    </tab-item>
+                    </Tab>
                 </TabBar>
             </div>
         </Card>
@@ -125,15 +128,13 @@
         <Card title="示例代码">
             <p>点击下方 Tab 切换 <code>.rml</code> 声明文件与 <code>.rml.rs</code> 后端文件：</p>
             <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
-                <Tab label=".rml" />
-                <Tab label=".rml.rs" />
+                <Tab label=".rml">
+                    <CodeEditor ref="rml_editor" value={rml_sample} language="rml" />
+                </Tab>
+                <Tab label=".rml.rs">
+                    <CodeEditor ref="rust_editor" value={rust_sample} language="rust" />
+                </Tab>
             </TabBar>
-            <div if={code_tab == 0}>
-                <CodeEditor ref="rml_editor" value={rml_sample} language="rust" />
-            </div>
-            <div if={code_tab == 1}>
-                <CodeEditor ref="rust_editor" value={rust_sample} language="rust" />
-            </div>
         </Card>
 
         <Card title="API">

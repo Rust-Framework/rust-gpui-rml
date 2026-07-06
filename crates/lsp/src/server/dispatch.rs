@@ -112,6 +112,7 @@ pub fn handle_notification(
         "initialized" => {
             log::debug!("client initialized");
             start_rust_backend(state);
+            scan_workspace_assets(state);
         }
         _ => {
             log::debug!("unhandled notification: {}", not.method);
@@ -142,6 +143,22 @@ fn start_rust_backend(state: &mut ServerState) {
 
 #[cfg(not(feature = "rust-backend"))]
 fn start_rust_backend(_state: &mut ServerState) {}
+
+/// 扫描 workspace 下的 i18n JSON 与 CSS 文件,构建资源索引
+fn scan_workspace_assets(state: &mut ServerState) {
+    if let Some(root) = state.root_path.clone() {
+        log::info!("scanning workspace assets at {:?}", root);
+        state.i18n_index.scan(&root);
+        state.css_index.scan(&root);
+        log::info!(
+            "asset scan done: {} i18n keys, {} css classes",
+            state.i18n_index.len(),
+            state.css_index.len()
+        );
+    } else {
+        log::warn!("root_path unavailable, workspace assets not scanned");
+    }
+}
 
 /// 发送诊断通知
 pub fn send_diagnostics(

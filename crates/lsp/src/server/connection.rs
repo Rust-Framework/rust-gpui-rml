@@ -18,7 +18,7 @@ use crate::rust::NoopQuery;
 #[cfg(feature = "rust-backend")]
 use crate::rust::{RaAdapter, RaHost};
 use crate::server::dispatch;
-use crate::workspace::Workspace;
+use crate::workspace::{CssIndex, I18nIndex, Workspace};
 
 /// 服务端共享状态（主线程持有，同步处理）
 pub struct ServerState {
@@ -29,6 +29,10 @@ pub struct ServerState {
     pub ra_host: Arc<RaHost>,
     /// 从 initialize 参数提取的工作区根路径
     pub root_path: Option<PathBuf>,
+    /// i18n 资源索引(initialized 时扫描 workspace)
+    pub i18n_index: I18nIndex,
+    /// CSS class 索引(initialized 时扫描 workspace)
+    pub css_index: CssIndex,
     pub shutdown_requested: bool,
 }
 
@@ -51,6 +55,8 @@ impl ServerState {
             #[cfg(feature = "rust-backend")]
             ra_host: host,
             root_path: None,
+            i18n_index: I18nIndex::new(),
+            css_index: CssIndex::new(),
             shutdown_requested: false,
         }
     }
