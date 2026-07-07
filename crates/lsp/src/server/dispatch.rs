@@ -3,7 +3,8 @@
 //! 按 LSP method 字符串分派到对应 handler 模块。
 
 use anyhow::Result;
-use lsp_server::{Connection, Notification, Request, Response};
+use crossbeam_channel::Sender;
+use lsp_server::{Connection, Message, Notification, Request, Response};
 
 use crate::handlers;
 use crate::server::connection::ServerState;
@@ -111,7 +112,7 @@ pub fn handle_notification(
         }
         "initialized" => {
             log::debug!("client initialized");
-            start_rust_backend(state);
+            start_rust_backend(state, conn.sender.clone());
             scan_workspace_assets(state);
         }
         _ => {
@@ -123,7 +124,7 @@ pub fn handle_notification(
 
 /// 在后台线程加载 rust-analyzer workspace（不阻塞主循环）
 #[cfg(feature = "rust-backend")]
-fn start_rust_backend(state: &mut ServerState) {
+fn start_rust_backend(state: &mut ServerState, conn_sender: Sender<Message>) {
     let root_path = match state.root_path.clone() {
         Some(p) => p,
         None => {
@@ -134,15 +135,32 @@ fn start_rust_backend(state: &mut ServerState) {
     let host = std::sync::Arc::clone(&state.ra_host);
     std::thread::spawn(move || {
         log::info!("loading rust-analyzer workspace at {:?}", root_path);
+        send_server_status(&conn_sender, "loading", "Loading rust-analyzer workspace...");
         match host.load(root_path) {
-            Ok(()) => log::info!("rust-analyzer workspace loaded"),
-            Err(e) => log::error!("rust-analyzer workspace load failed: {}", e),
+            Ok(()) => {
+                log::info!("rust-analyzer workspace loaded");
+                send_server_status(&conn_sender, "ready", "rust-analyzer ready");
+            }
+            Err(e) => {
+                log::error!("rust-analyzer workspace load failed: {}", e);
+                send_server_status(&conn_sender, "error", &format!("{e}"));
+            }
         }
     });
 }
 
 #[cfg(not(feature = "rust-backend"))]
-fn start_rust_backend(_state: &mut ServerState) {}
+fn start_rust_backend(_state: &mut ServerState, _conn_sender: Sender<Message>) {}
+
+/// 发送 `rml/serverStatus` 自定义通知给 client
+fn send_server_status(sender: &Sender<Message>, status: &str, message: &str) {
+    let params = serde_json::json!({ "status": status, "message": message });
+    let not = Notification {
+        method: "rml/serverStatus".into(),
+        params,
+    };
+    let _ = sender.send(not.into());
+}
 
 /// 扫描 workspace 下的 i18n JSON 与 CSS 文件,构建资源索引
 fn scan_workspace_assets(state: &mut ServerState) {

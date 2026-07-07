@@ -114,6 +114,13 @@ impl LanguageClient {
         &self.lsp
     }
 
+    /// 返回 server 状态接收器（`rml/serverStatus` 通知驱动）
+    ///
+    /// 调用方应在后台 task 中 `recv()` 此 receiver，状态变化时更新 UI。
+    pub fn status_receiver(&self) -> crossbeam_channel::Receiver<crate::lsp_client::ServerStatus> {
+        self.lsp.status_receiver()
+    }
+
     /// 语言 profile
     pub fn profile(&self) -> &LanguageProfile {
         &self.profile

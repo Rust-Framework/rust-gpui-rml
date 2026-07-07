@@ -68,19 +68,26 @@ pub(super) fn gen_render_impl_from_children(
     };
 
     macro_rules! gen_slot_code {
-        ($node:expr) => {
-            $node
-                .as_ref()
-                .map(|n| gen_node(n, ctx, 0, &mut id_counter, &empty).map(|(c, _)| c))
+        ($slot:expr) => {{
+            let slot = &$slot;
+            slot.as_ref()
+                .map(|(n, scope_var)| {
+                    let loop_vars: Vec<String> = scope_var
+                        .as_ref()
+                        .map(|s| vec![s.clone()])
+                        .unwrap_or_default();
+                    gen_node(n, ctx, 0, &mut id_counter, &loop_vars)
+                        .map(|(c, _)| (c, scope_var.clone()))
+                })
                 .transpose()?
-        };
+        }};
     }
-    let slot_menu_code = gen_slot_code!(&slots.menu);
-    let slot_title_code = gen_slot_code!(&slots.title);
-    let slot_footer_code = gen_slot_code!(&slots.footer);
-    let slot_left_code = gen_slot_code!(&slots.left);
-    let slot_right_code = gen_slot_code!(&slots.right);
-    let slot_bottom_code = gen_slot_code!(&slots.bottom);
+    let slot_menu_code = gen_slot_code!(slots.menu);
+    let slot_title_code = gen_slot_code!(slots.title);
+    let slot_footer_code = gen_slot_code!(slots.footer);
+    let slot_left_code = gen_slot_code!(slots.left);
+    let slot_right_code = gen_slot_code!(slots.right);
+    let slot_bottom_code = gen_slot_code!(slots.bottom);
 
     // slot_tabs：两种模式
     // 1) each 模式：<template slot="tabs" each={w in workbenches}><Tab title={w.name()} /></template>
@@ -170,21 +177,21 @@ pub(super) fn gen_render_impl_from_children(
             elem,
             ctx,
             &body,
-            slot_menu_code.as_deref(),
-            slot_title_code.as_deref(),
-            slot_footer_code.as_deref(),
+            slot_menu_code.as_ref().map(|(c, _)| c.as_str()),
+            slot_title_code.as_ref().map(|(c, _)| c.as_str()),
+            slot_footer_code.as_ref().map(|(c, _)| c.as_str()),
         )?,
         ShellWrap::Tab => shell::gen_tab_window_wrapper(
             elem,
             ctx,
             &body,
             shell::TabWindowSlotCodes {
-                menu: slot_menu_code.as_deref(),
-                title: slot_title_code.as_deref(),
-                footer: slot_footer_code.as_deref(),
-                left: slot_left_code.as_deref(),
-                right: slot_right_code.as_deref(),
-                bottom: slot_bottom_code.as_deref(),
+                menu: slot_menu_code.as_ref().map(|(c, s)| (c.as_str(), s.as_deref())),
+                title: slot_title_code.as_ref().map(|(c, s)| (c.as_str(), s.as_deref())),
+                footer: slot_footer_code.as_ref().map(|(c, s)| (c.as_str(), s.as_deref())),
+                left: slot_left_code.as_ref().map(|(c, s)| (c.as_str(), s.as_deref())),
+                right: slot_right_code.as_ref().map(|(c, s)| (c.as_str(), s.as_deref())),
+                bottom: slot_bottom_code.as_ref().map(|(c, s)| (c.as_str(), s.as_deref())),
                 tabs: slot_tabs_ref.as_deref(),
                 tabs_each: slot_tabs_each,
             },

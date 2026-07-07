@@ -1,58 +1,88 @@
 <component>
-    <div display="flex" flex-direction="column" class="case-pane doc-pane">
-        <h2>{t("case.button_group.title")}</h2>
-        <p>ButtonGroup 是 RML 的按钮组容器组件，标签为 PascalCase <code>ButtonGroup</code>。容器模式，子节点为 <code>Button</code> 组件。用于将多个相关操作按钮分组展示，提供视觉一致性。</p>
-
-        <Card title="基础用法">
-            <p>包裹多个 <code>Button</code> 子节点，组合为操作分组。</p>
-            <ButtonGroup>
-                <Button label="上一步" />
-                <Button label="下一步" primary="" />
-            </ButtonGroup>
-        </Card>
-
-        <Card title="操作分组">
-            <p>用于对齐排列的操作按钮，混合 variant。</p>
-            <ButtonGroup>
-                <Button label="保存" primary="" />
-                <Button label="取消" ghost="" />
-                <Button label="删除" danger="" />
-            </ButtonGroup>
-        </Card>
-
-        <Card title="动态按钮(if 条件渲染)">
-            <p>点击按钮增减 Button 数量，观察 ButtonGroup 实时变化（演示 if 条件渲染）：</p>
-            <p>当前按钮数: {button_count}</p>
-            <div class="button-row">
-                <Button label="添加按钮" primary="" on-click={on_add_button} />
-                <Button label="移除按钮" on-click={on_remove_button} />
+    <CaseDocPage
+        title={t("case.button_group.title")}
+        description="ButtonGroup 是 RML 的按钮组容器组件，标签为 PascalCase ButtonGroup。容器模式，子节点为 Button 组件。用于将多个相关操作按钮分组展示，提供视觉一致性。支持 size 属性统一子按钮尺寸，支持 multiple 模式实现切换式按钮组。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <div class="demo-section">
+                <h3>基础用法</h3>
+                <p>包裹多个 Button 子节点，组合为操作分组。常用于分页、向导等场景。</p>
+                <div class="button-row">
+                    <ButtonGroup>
+                        <Button label="上一步" />
+                        <Button label="下一步" primary="" />
+                    </ButtonGroup>
+                </div>
             </div>
-            <ButtonGroup>
-                <Button label="按钮 1" if={button_count >= 1} />
-                <Button label="按钮 2" primary="" if={button_count >= 2} />
-                <Button label="按钮 3" ghost="" if={button_count >= 3} />
-                <Button label="按钮 4" danger="" if={button_count >= 4} />
-                <Button label="按钮 5" warning="" if={button_count >= 5} />
-            </ButtonGroup>
-        </Card>
 
-        <Card title="示例代码">
-            <p>点击下方 Tab 切换 <code>.rml</code> 声明文件与 <code>.rml.rs</code> 后端文件：</p>
-            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
-                <Tab label=".rml">
-                    <CodeEditor ref="rml_editor" value={rml_sample} language="rml" />
-                </Tab>
-                <Tab label=".rml.rs">
-                    <CodeEditor ref="rust_editor" value={rust_sample} language="rust" />
-                </Tab>
-            </TabBar>
-        </Card>
+            <div class="demo-section">
+                <h3>操作分组</h3>
+                <p>用于对齐排列的操作按钮，混合 variant 展示语义差异。</p>
+                <div class="button-row">
+                    <ButtonGroup>
+                        <Button label="保存" primary="" />
+                        <Button label="取消" ghost="" />
+                        <Button label="删除" danger="" />
+                    </ButtonGroup>
+                </div>
+            </div>
 
-        <Card title="API">
+            <div class="demo-section">
+                <h3>尺寸 size</h3>
+                <p>size 属性统一子按钮尺寸：small / medium / large。</p>
+                <div class="button-row">
+                    <ButtonGroup size="small">
+                        <Button label="Small A" />
+                        <Button label="Small B" />
+                    </ButtonGroup>
+                    <ButtonGroup size="medium">
+                        <Button label="Medium A" />
+                        <Button label="Medium B" />
+                    </ButtonGroup>
+                    <ButtonGroup size="large">
+                        <Button label="Large A" />
+                        <Button label="Large B" />
+                    </ButtonGroup>
+                </div>
+            </div>
+
+            <div class="demo-section">
+                <h3>动态按钮（if 条件渲染）</h3>
+                <p>点击按钮增减 Button 数量，观察 ButtonGroup 实时变化（演示 if 条件渲染）。</p>
+                <p>当前按钮数: {button_count}</p>
+                <div class="button-row">
+                    <Button label="添加按钮" primary="" on-click={on_add_button} />
+                    <Button label="移除按钮" on-click={on_remove_button} />
+                </div>
+                <ButtonGroup>
+                    <Button label="按钮 1" if={button_count >= 1} />
+                    <Button label="按钮 2" primary="" if={button_count >= 2} />
+                    <Button label="按钮 3" ghost="" if={button_count >= 3} />
+                    <Button label="按钮 4" danger="" if={button_count >= 4} />
+                    <Button label="按钮 5" warning="" if={button_count >= 5} />
+                </ButtonGroup>
+            </div>
+
+            <div class="demo-section">
+                <h3>切换式按钮组（selected 状态）</h3>
+                <p>子按钮通过 selected 属性标记选中态，常用于多选/单选场景。</p>
+                <div class="button-row">
+                    <ButtonGroup>
+                        <Button label="选项 A" selected="" />
+                        <Button label="选项 B" />
+                        <Button label="选项 C" selected="" />
+                    </ButtonGroup>
+                </div>
+                <p>注：底层 gpui-component 的 ButtonGroup 支持 multiple 属性启用多选模式，RML 中通过子按钮的 selected 属性表达选中态。</p>
+            </div>
+        </template>
+
+        <template slot="api">
             <h3>ButtonGroup</h3>
             <Table columns={group_api_columns} rows={group_api_rows} bordered="" stripe="" />
             <h3>Button</h3>
             <Table columns={button_api_columns} rows={button_api_rows} bordered="" stripe="" />
-        </Card>
-    </div>
+        </template>
+    </CaseDocPage>
 </component>

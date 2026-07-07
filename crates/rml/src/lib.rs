@@ -30,7 +30,7 @@ pub mod providers;
 pub use debug_client::DebugClient;
 pub use language_client::LanguageClient;
 pub use language_profile::{DebugProfile, LanguageDescriptor, LanguageProfile, TreeSitterGrammar};
-pub use lsp_client::{file_path_to_uri, LspClient};
+pub use lsp_client::{file_path_to_uri, LspClient, ServerStatus};
 pub use providers::{
     LspCompletionProvider, LspDefinitionProvider, LspHoverProvider, LspSemanticTokensProvider,
 };

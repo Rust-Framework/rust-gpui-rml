@@ -1,71 +1,67 @@
 <component>
-    <div display="flex" flex-direction="column" class="case-pane doc-pane">
-        <h2>{t("case.link.title")}</h2>
-        <p>Link 是 RML 的超链接组件，标签为 PascalCase <code>Link</code>。Stateless 组件，构造器接受 <code>ElementId</code>，实现 <code>ParentElement</code>（可包含子元素）。支持 <code>href</code> 跳转、<code>on-click</code> 事件回调和 <code>disabled</code> 禁用。</p>
-
-        <Card title="基础用法">
-            <p>文本作为子节点设置链接内容。<code>href</code> 属性指定目标 URL（点击会调用系统打开）。</p>
-            <div display="flex" flex-direction="column" gap="8px">
-                <Link href="https://github.com/longbridge/gpui-component">gpui-component 文档</Link>
-                <Link href="https://github.com/longbridge/gpui-component">GitHub 仓库</Link>
-                <Link href="https://crates.io">crates.io</Link>
-            </div>
-        </Card>
-
-        <Card title="动态绑定 href">
-            <p><code>href=&#123;url_field&#125;</code> 绑定动态 URL 字段，演示字段绑定。</p>
-            <div display="flex" flex-direction="column" gap="8px">
-                <Link href={dynamic_url}>{dynamic_label}</Link>
-                <p>当前 URL: {dynamic_url}</p>
-                <div class="button-row">
-                    <Button label="切换 URL" on-click={on_cycle_url} />
+    <CaseDocPage
+        title={t("case.link.title")}
+        description="Link 是 RML 的超链接组件，标签为 PascalCase Link。Stateless 组件，构造器接受 ElementId，实现 ParentElement（可包含子元素）。支持 href 跳转（点击调用系统打开 URL）、on-click 事件回调和 disabled 禁用。常用于文档内引用、外部链接、操作入口。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <div class="demo-section">
+                <h3>基础用法</h3>
+                <p>文本作为子节点设置链接内容。href 属性指定目标 URL（点击会调用系统打开）。</p>
+                <div display="flex" flex-direction="column" gap="8px">
+                    <Link href="https://github.com/longbridge/gpui-component">gpui-component 文档</Link>
+                    <Link href="https://github.com/longbridge/gpui-component">GitHub 仓库</Link>
+                    <Link href="https://crates.io">crates.io</Link>
                 </div>
             </div>
-        </Card>
 
-        <Card title="on-click 事件回调">
-            <p><code>on-click</code> 设置点击事件回调，事件类型为 <code>ClickEvent</code>。设置后会同时触发回调与 href 跳转。</p>
-            <div display="flex" flex-direction="column" gap="8px">
-                <Link href="https://example.com" on-click={on_link_click}>点击我（计数 + 1）</Link>
-                <p>累计点击次数：{click_count}</p>
-            </div>
-        </Card>
-
-        <Card title="disabled 禁用">
-            <p><code>disabled=&#123;true&#125;</code> 禁用链接交互（视觉变灰，不响应点击）。</p>
-            <div display="flex" flex-direction="column" gap="8px">
-                <Link href="https://example.com" disabled={is_disabled}>禁用的链接</Link>
-                <Link href="https://example.com" disabled={!is_disabled}>可用链接</Link>
-                <div class="button-row">
-                    <Button label="切换禁用" on-click={on_toggle_disabled} />
+            <div class="demo-section">
+                <h3>动态绑定 href</h3>
+                <p>href 属性绑定到 dynamic_url 字段，演示字段绑定。点击下方按钮切换 URL。</p>
+                <div display="flex" flex-direction="column" gap="8px">
+                    <Link href={dynamic_url}>{dynamic_label}</Link>
+                    <p>当前 URL: {dynamic_url}</p>
+                    <div class="button-row">
+                        <Button label="切换 URL" primary="" on-click={on_cycle_url} />
+                    </div>
                 </div>
             </div>
-        </Card>
 
-        <Card title="富文本子节点">
-            <p>Link 实现了 <code>ParentElement</code>，可包含任意子元素（不仅是文本）。</p>
-            <div display="flex" flex-direction="row" gap="8px" align-items="center">
-                <Link href="https://example.com">
-                    <span>带图标的链接</span>
-                </Link>
+            <div class="demo-section">
+                <h3>on-click 事件回调</h3>
+                <p>on-click 设置点击事件回调，事件类型为 ClickEvent。设置后会同时触发回调与 href 跳转。</p>
+                <div display="flex" flex-direction="column" gap="8px">
+                    <Link href="https://example.com" on-click={on_link_click}>点击我（计数 + 1）</Link>
+                    <p>累计点击次数：{click_count}</p>
+                </div>
             </div>
-        </Card>
 
-        <Card title="示例代码">
-            <p>点击下方 Tab 切换 <code>.rml</code> 声明文件与 <code>.rml.rs</code> 后端文件：</p>
-            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
-                <Tab label=".rml">
-                    <CodeEditor ref="rml_editor" value={rml_sample} language="rml" />
-                </Tab>
-                <Tab label=".rml.rs">
-                    <CodeEditor ref="rust_editor" value={rust_sample} language="rust" />
-                </Tab>
-            </TabBar>
-        </Card>
+            <div class="demo-section">
+                <h3>disabled 禁用</h3>
+                <p>disabled={true} 禁用链接交互（视觉变灰，不响应点击）。</p>
+                <div display="flex" flex-direction="column" gap="8px">
+                    <Link href="https://example.com" disabled={is_disabled}>禁用的链接</Link>
+                    <Link href="https://example.com" disabled={!is_disabled}>可用链接</Link>
+                    <div class="button-row">
+                        <Button label="切换禁用" on-click={on_toggle_disabled} />
+                    </div>
+                </div>
+            </div>
 
-        <Card title="API">
+            <div class="demo-section">
+                <h3>富文本子节点</h3>
+                <p>Link 实现了 ParentElement，可包含任意子元素（不仅是文本）。</p>
+                <div display="flex" flex-direction="row" gap="8px" align-items="center">
+                    <Link href="https://example.com">
+                        <span>带图标的链接</span>
+                    </Link>
+                </div>
+            </div>
+        </template>
+
+        <template slot="api">
             <h3>Link</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-        </Card>
-    </div>
+        </template>
+    </CaseDocPage>
 </component>

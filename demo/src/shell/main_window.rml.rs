@@ -1,9 +1,10 @@
 use std::sync::{Arc, RwLock};
 
+use crossbeam_channel::Receiver;
 use gpui::prelude::StatefulInteractiveElement as _;
 use gpui::{InteractiveElement, IntoElement, ParentElement, Styled, WeakEntity, Window};
 use rml::prelude::*;
-use rust_rml_client::LanguageClient;
+use rust_rml_client::{LanguageClient, ServerStatus};
 use rml_app::IAppContextExt;
 use rml_core::command::CommandAbilityExt;
 use rml_core::contribution::{IContribution, VisualAbilityExt};
@@ -106,7 +107,7 @@ impl ILifecycle for MainWindow {
         self.init_contribution_host(cx);
         self.project_entries();
         self.init_services(cx);
-        self.init_lsp();
+        self.init_lsp(cx);
         self.init_workbench(cx);
         self.init_activity_bar(cx);
         self.init_panel_observers(cx);
@@ -135,14 +136,54 @@ impl MainWindow {
         cx.set_service(Arc::new(LspStatusStateRef(lsp_status.downgrade())));
     }
 
-    /// 启动语言服务子进程（失败时优雅降级）。
-    fn init_lsp(&mut self) {
+    /// 启动语言服务子进程（失败时优雅降级）+ 订阅 RA 加载状态。
+    fn init_lsp(&mut self, cx: &mut Context<Self>) {
         if let Ok(workspace_root) = std::env::current_dir() {
             match LanguageClient::unified(&workspace_root) {
-                Ok(client) => self.language_client = Some(Arc::new(client)),
+                Ok(client) => {
+                    let rx = client.status_receiver();
+                    self.language_client = Some(Arc::new(client));
+                    self.spawn_status_listener(rx, cx);
+                }
                 Err(e) => log::warn!("Failed to start language server: {e}"),
             }
         }
+    }
+
+    /// 后台轮询 `rml/serverStatus` 通知，更新 `LspStatusState` Entity。
+    ///
+    /// crossbeam `Receiver::recv()` 阻塞调用，不能在 foreground executor 直接调用。
+    /// 采用 `cx.spawn` + `cx.background_executor().spawn()` 嵌套：foreground 循环
+    /// await background 的单次 recv，既不阻塞 UI 又能持续轮询。
+    fn spawn_status_listener(&self, rx: Receiver<ServerStatus>, cx: &mut Context<Self>) {
+        let Some(lsp_status_ref) = cx.get_service::<LspStatusStateRef>() else {
+            return;
+        };
+        let weak = lsp_status_ref.0.clone();
+
+        cx.spawn(move |_this, cx: &mut gpui::AsyncApp| {
+            let mut cx = cx.clone();
+            async move {
+                loop {
+                    let rx = rx.clone();
+                    let result = cx
+                        .background_executor()
+                        .spawn(async move { rx.recv() })
+                        .await;
+                    match result {
+                        Ok(status) => {
+                            if let Some(entity) = weak.upgrade() {
+                                let _ = entity.update(&mut cx, |this, cx| {
+                                    this.set_server_status(status, cx);
+                                });
+                            }
+                        }
+                        Err(_) => break,
+                    }
+                }
+            }
+        })
+        .detach();
     }
 
     /// 初始化 workbench 状态：注册能力 + 构造 LSP provider + 打开 welcome tab。

@@ -3,7 +3,7 @@ use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
 
-use crate::cases::common::build_api_table;
+use crate::cases::common::{build_api_table, CaseDocPage};
 
 #[contribute(
     host_id = "demo.shell",
@@ -16,9 +16,9 @@ use crate::cases::common::build_api_table;
 #[derive(Default)]
 pub struct LabelCase {
     pub text: String,
-    pub code_tab: usize,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
+    pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
 }
 
 impl IContribution for LabelCase {
@@ -31,11 +31,13 @@ impl IContribution for LabelCase {
 }
 
 impl ILifecycle for LabelCase {
-    fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
+    fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
+        self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         self.text = "用户名".into();
         let (cols, rows) = build_api_table(&[
             ("label", "字符串", "标签文本（构造器参数）"),
             ("文本子节点", "字符串", "通过子节点设置标签内容"),
+            ("text_color / text_size", "样式属性", "来自 Styled trait 的文本样式"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;
@@ -45,42 +47,11 @@ impl ILifecycle for LabelCase {
 impl LabelCase {
     #[computed]
     pub fn rml_sample(&self) -> String {
-        r#"<!-- label_case.rml：声明式 UI，描述结构 + 绑定 + 事件 -->
-<component>
-    <!-- label 属性：构造器参数 -->
-    <Label label="用户名" />
-
-    <!-- 文本子节点：等价于 label 属性 -->
-    <Label>用户名</Label>
-
-    <!-- 动态绑定：model 双向绑定 -->
-    <input model={text} placeholder="输入标签文本" />
-    <Label>{text}</Label>
-</component>"#
-            .to_string()
+        include_str!("label_case.rml").to_string()
     }
 
     #[computed]
     pub fn rust_sample(&self) -> String {
-        r#"// label_case.rml.rs：后端状态 + computed + command handler
-use rml::prelude::*;
-
-#[component]
-#[derive(Default)]
-pub struct LabelCase {
-    pub text: String,
-}
-
-impl ILifecycle for LabelCase {
-    fn on_loaded(&mut self, _w: &mut gpui::Window, _cx: &mut Context<Self>) {
-        self.text = "用户名".into();
-    }
-}"#
-            .to_string()
-    }
-
-    #[command]
-    pub fn on_code_tab_change(&mut self, idx: usize, _cx: &mut Context<Self>) {
-        self.code_tab = idx;
+        include_str!("label_case.rml.rs").to_string()
     }
 }

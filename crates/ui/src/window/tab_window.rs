@@ -11,23 +11,25 @@
 //!   as_visual()?.render() 提供 body）
 
 use std::rc::Rc;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use gpui::{
-    Animation, AnimationExt as _, AnyElement, App, InteractiveElement, IntoElement, MouseButton,
-    ParentElement, RenderOnce, SharedString, StatefulInteractiveElement as _, Styled, Window,
-    WindowControlArea, div, px, prelude::FluentBuilder as _,
+    Animation, AnimationExt as _, AnyElement, App, Entity, InteractiveElement, IntoElement,
+    MouseButton, ParentElement, Pixels, RenderOnce, SharedString,
+    StatefulInteractiveElement as _, Styled, Window, WindowControlArea, div, px,
+    prelude::FluentBuilder as _,
 };
 use gpui_component::{
     ActiveTheme, Icon, IconName, Size, Sizable as _,
     animation::cubic_bezier,
     button::{Button, ButtonRounded, ButtonVariants as _},
     h_flex,
-    resizable::{h_resizable, resizable_panel, v_resizable},
+    resizable::{h_resizable, resizable_panel, v_resizable, ResizableState},
     v_flex, TITLE_BAR_HEIGHT,
 };
 use rml_core::contribution::{ContributionAbilityExt, VisualAbilityExt};
+use rml_core::slot::{ISlotScope, NullSlotScope, SlotRenderer};
 use rml_core::value::IValue;
 use crate::components::tab::{TabItem, TabVariant, Tabs};
 use smallvec::SmallVec;
@@ -38,6 +40,110 @@ type ChromeToggleHandler = Rc<dyn Fn(&mut Window, &mut App) + 'static>;
 /// Slot 尺寸低于此阈值视为折叠：移出 resizable group，改用普通 div 渲染，
 /// 从而隐藏 resize handle 且不污染 ResizableState 的 panel_ix 映射。
 const SLOT_COLLAPSED_THRESHOLD: gpui::Pixels = px(60.);
+
+/// TabWindow 插槽作用域：暴露 left/right/bottom 插槽的 resizable 操控权。
+///
+/// 由 `TabWindowShell::render` 在调用 slot 闭包前构造，捕获：
+/// - resizable state entity（h_resizable / v_resizable 的）
+/// - panel_ix（此 slot 在 group 中的索引）
+/// - 历史 size（持久化到 keyed_state，用于 restore 还原）
+///
+/// 通过 `ISlotScope` trait 暴露给 slot 内容，RML 中 `<template slot="bottom" scope={panel}>`
+/// 接收后即可调用 `panel.maximize(_window, cx)` 等方法。
+pub struct TabWindowSlotScope {
+    slot_name: &'static str,
+    state: Option<Entity<ResizableState>>,
+    panel_ix: Option<usize>,
+    /// restore 用的历史 size（maximize 前记录，restore 后清空）。
+    /// 跨渲染持久化：由调用方经 `use_keyed_state` 创建并传入。
+    prev_size: Option<Entity<Mutex<Option<Pixels>>>>,
+}
+
+impl TabWindowSlotScope {
+    /// 构造一个无 resizable 操控权的 scope（用于折叠状态或无 resizable 的 slot）。
+    pub fn null(slot_name: &'static str) -> Self {
+        Self {
+            slot_name,
+            state: None,
+            panel_ix: None,
+            prev_size: None,
+        }
+    }
+
+    /// 构造带 resizable 操控权的 scope。
+    pub fn new(
+        slot_name: &'static str,
+        state: Entity<ResizableState>,
+        panel_ix: usize,
+        prev_size: Entity<Mutex<Option<Pixels>>>,
+    ) -> Self {
+        Self {
+            slot_name,
+            state: Some(state),
+            panel_ix: Some(panel_ix),
+            prev_size: Some(prev_size),
+        }
+    }
+}
+
+impl ISlotScope for TabWindowSlotScope {
+    fn slot_name(&self) -> &str {
+        self.slot_name
+    }
+
+    fn has_resizable(&self) -> bool {
+        self.state.is_some() && self.panel_ix.is_some()
+    }
+
+    fn maximize(&self, window: &mut Window, cx: &mut App) {
+        let (Some(state), Some(ix), Some(prev)) = (&self.state, self.panel_ix, &self.prev_size)
+        else {
+            return;
+        };
+
+        // 记录当前 size（仅当 prev 为空时，避免连续 maximize 覆盖原值）
+        let current_size = state.read(cx).sizes().get(ix).copied();
+        prev.update(cx, |prev_val, _| {
+            let mut guard = prev_val.lock().unwrap();
+            if guard.is_none() {
+                *guard = current_size;
+            }
+        });
+
+        // 目标尺寸 = 所有 panel 尺寸之和（resize_panel 会按 min_range 约束自动 clamp）
+        let target: Pixels = state.read(cx).sizes().iter().copied().sum();
+        state.update(cx, |s, cx| {
+            s.resize_panel(ix, target, window, cx);
+        });
+    }
+
+    fn restore(&self, window: &mut Window, cx: &mut App) {
+        let (Some(state), Some(ix), Some(prev)) = (&self.state, self.panel_ix, &self.prev_size)
+        else {
+            return;
+        };
+
+        let restored = prev.update(cx, |prev_val, _| {
+            let mut guard = prev_val.lock().unwrap();
+            guard.take()
+        });
+
+        if let Some(size) = restored {
+            state.update(cx, |s, cx| {
+                s.resize_panel(ix, size, window, cx);
+            });
+        }
+    }
+
+    fn close(&self, window: &mut Window, cx: &mut App) {
+        let (Some(state), Some(ix)) = (&self.state, self.panel_ix) else {
+            return;
+        };
+        state.update(cx, |s, cx| {
+            s.resize_panel(ix, px(0.), window, cx);
+        });
+    }
+}
 
 /// 渲染单个窗口控件按钮（最小化/最大化/关闭）。
 fn control_button(
@@ -143,8 +249,8 @@ pub struct TabWindowShell {
     title: Option<SharedString>,
     icon: Option<SharedString>,
     show_chrome: bool,
-    menu_slot: Option<AnyElement>,
-    title_ext_slot: Option<AnyElement>,
+    menu_slot: Option<SlotRenderer>,
+    title_ext_slot: Option<SlotRenderer>,
     /// 业务数据载体（实现 IValue 的任意类型，通常为 IContribution）。
     /// `as_contribution()?.name()` 提供 tab title，`as_visual()?.render()` 提供 tab body。
     /// 简单绑定模式：`tabs={tab_bar_items}`。
@@ -162,10 +268,10 @@ pub struct TabWindowShell {
     /// （透传到 Tabs::on_close_others）。
     on_tab_close_others: Option<TabClickHandler>,
     on_chrome_toggle: Option<ChromeToggleHandler>,
-    slot_left: Option<AnyElement>,
-    slot_right: Option<AnyElement>,
-    slot_bottom: Option<AnyElement>,
-    status_slot: Option<AnyElement>,
+    slot_left: Option<SlotRenderer>,
+    slot_right: Option<SlotRenderer>,
+    slot_bottom: Option<SlotRenderer>,
+    status_slot: Option<SlotRenderer>,
     left_width: gpui::Pixels,
     right_width: gpui::Pixels,
     bottom_height: gpui::Pixels,
@@ -214,13 +320,23 @@ impl TabWindowShell {
         self
     }
 
-    pub fn menu_slot(mut self, element: impl IntoElement) -> Self {
-        self.menu_slot = Some(element.into_any_element());
+    pub fn menu_slot(
+        mut self,
+        renderer: Box<
+            dyn Fn(&dyn ISlotScope, &mut Window, &mut App) -> AnyElement + Send + Sync,
+        >,
+    ) -> Self {
+        self.menu_slot = Some(renderer);
         self
     }
 
-    pub fn title_ext_slot(mut self, element: impl IntoElement) -> Self {
-        self.title_ext_slot = Some(element.into_any_element());
+    pub fn title_ext_slot(
+        mut self,
+        renderer: Box<
+            dyn Fn(&dyn ISlotScope, &mut Window, &mut App) -> AnyElement + Send + Sync,
+        >,
+    ) -> Self {
+        self.title_ext_slot = Some(renderer);
         self
     }
 
@@ -302,23 +418,43 @@ impl TabWindowShell {
         self
     }
 
-    pub fn slot_left(mut self, element: Option<impl IntoElement>) -> Self {
-        self.slot_left = element.map(|e| e.into_any_element());
+    pub fn slot_left(
+        mut self,
+        renderer: Option<
+            Box<dyn Fn(&dyn ISlotScope, &mut Window, &mut App) -> AnyElement + Send + Sync>,
+        >,
+    ) -> Self {
+        self.slot_left = renderer;
         self
     }
 
-    pub fn slot_right(mut self, element: Option<impl IntoElement>) -> Self {
-        self.slot_right = element.map(|e| e.into_any_element());
+    pub fn slot_right(
+        mut self,
+        renderer: Option<
+            Box<dyn Fn(&dyn ISlotScope, &mut Window, &mut App) -> AnyElement + Send + Sync>,
+        >,
+    ) -> Self {
+        self.slot_right = renderer;
         self
     }
 
-    pub fn slot_bottom(mut self, element: Option<impl IntoElement>) -> Self {
-        self.slot_bottom = element.map(|e| e.into_any_element());
+    pub fn slot_bottom(
+        mut self,
+        renderer: Option<
+            Box<dyn Fn(&dyn ISlotScope, &mut Window, &mut App) -> AnyElement + Send + Sync>,
+        >,
+    ) -> Self {
+        self.slot_bottom = renderer;
         self
     }
 
-    pub fn status_slot(mut self, element: Option<impl IntoElement>) -> Self {
-        self.status_slot = element.map(|e| e.into_any_element());
+    pub fn status_slot(
+        mut self,
+        renderer: Option<
+            Box<dyn Fn(&dyn ISlotScope, &mut Window, &mut App) -> AnyElement + Send + Sync>,
+        >,
+    ) -> Self {
+        self.status_slot = renderer;
         self
     }
 
@@ -370,6 +506,100 @@ impl RenderOnce for TabWindowShell {
     fn render(mut self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let show_chrome = self.show_chrome;
 
+        // === 计算折叠标志 + 预创建 resizable state entities ===
+        let left_collapsed = self.left_width <= SLOT_COLLAPSED_THRESHOLD;
+        let right_collapsed = self.right_width <= SLOT_COLLAPSED_THRESHOLD;
+        let bottom_collapsed = self.bottom_height <= SLOT_COLLAPSED_THRESHOLD;
+
+        let has_left = self.slot_left.is_some() && !left_collapsed;
+        let has_right = self.slot_right.is_some() && !right_collapsed;
+        let has_bottom = self.slot_bottom.is_some() && !bottom_collapsed;
+
+        // h_resizable panels: [left?, center_col, right?]
+        // v_resizable panels: [body, bottom?]
+        let left_ix = if has_left { Some(0usize) } else { None };
+        let right_ix = if has_right {
+            Some(if has_left { 2 } else { 1 })
+        } else {
+            None
+        };
+        let bottom_ix = if has_bottom { Some(1usize) } else { None };
+
+        // 持久化 resizable state entities（跨渲染复用，键由调用位置 + 字符串 ID 共同决定）
+        let h_state: Entity<ResizableState> = window.use_keyed_state(
+            "tab-window-h-state",
+            cx,
+            |_, _| ResizableState::default(),
+        );
+        let v_state: Entity<ResizableState> = window.use_keyed_state(
+            "tab-window-v-state",
+            cx,
+            |_, _| ResizableState::default(),
+        );
+
+        // 持久化 prev_size（用于 maximize 记录原 size、restore 还原）
+        let prev_left: Entity<Mutex<Option<Pixels>>> = window.use_keyed_state(
+            "tab-window-prev-left",
+            cx,
+            |_, _| Mutex::new(None),
+        );
+        let prev_right: Entity<Mutex<Option<Pixels>>> = window.use_keyed_state(
+            "tab-window-prev-right",
+            cx,
+            |_, _| Mutex::new(None),
+        );
+        let prev_bottom: Entity<Mutex<Option<Pixels>>> = window.use_keyed_state(
+            "tab-window-prev-bottom",
+            cx,
+            |_, _| Mutex::new(None),
+        );
+
+        // === 构造各 slot 的 ISlotScope ===
+        let menu_scope = NullSlotScope::new("menu");
+        let title_scope = NullSlotScope::new("title");
+        let footer_scope = NullSlotScope::new("footer");
+        let left_scope = match (has_left, left_ix) {
+            (true, Some(ix)) => TabWindowSlotScope::new("left", h_state.clone(), ix, prev_left.clone()),
+            _ => TabWindowSlotScope::null("left"),
+        };
+        let right_scope = match (has_right, right_ix) {
+            (true, Some(ix)) => TabWindowSlotScope::new("right", h_state.clone(), ix, prev_right.clone()),
+            _ => TabWindowSlotScope::null("right"),
+        };
+        let bottom_scope = match (has_bottom, bottom_ix) {
+            (true, Some(ix)) => {
+                TabWindowSlotScope::new("bottom", v_state.clone(), ix, prev_bottom.clone())
+            }
+            _ => TabWindowSlotScope::null("bottom"),
+        };
+
+        // === 调用 slot 闭包生成 AnyElement ===
+        // 闭包从 self 中 take 出来，避免后续借用冲突。
+        let menu_elem = self
+            .menu_slot
+            .take()
+            .map(|f| f(&menu_scope, window, cx));
+        let title_ext_elem = self
+            .title_ext_slot
+            .take()
+            .map(|f| f(&title_scope, window, cx));
+        let left_elem = self
+            .slot_left
+            .take()
+            .map(|f| f(&left_scope, window, cx));
+        let right_elem = self
+            .slot_right
+            .take()
+            .map(|f| f(&right_scope, window, cx));
+        let bottom_elem = self
+            .slot_bottom
+            .take()
+            .map(|f| f(&bottom_scope, window, cx));
+        let footer_elem = self
+            .status_slot
+            .take()
+            .map(|f| f(&footer_scope, window, cx));
+
         let on_chrome_toggle = self.on_chrome_toggle.clone();
         let chevron = if show_chrome {
             IconName::ChevronLeft
@@ -419,7 +649,7 @@ impl RenderOnce for TabWindowShell {
         // 菜单与标题随 show_chrome 展开/收起，并附加左右滑动动画。
         // 始终构建 prefix_parts（不再按 show_chrome 闸门），用动画容器包裹实现滑入/滑出。
         let mut prefix_parts: SmallVec<[AnyElement; 2]> = SmallVec::new();
-        if let Some(menu) = self.menu_slot {
+        if let Some(menu) = menu_elem {
             prefix_parts.push(
                 div()
                     .h_full()
@@ -536,7 +766,7 @@ impl RenderOnce for TabWindowShell {
             }
         }
 
-        if let Some(suffix) = self.title_ext_slot {
+        if let Some(suffix) = title_ext_elem {
             tab_bar = tab_bar.suffix(suffix);
         }
 
@@ -603,14 +833,14 @@ impl RenderOnce for TabWindowShell {
             .flex_1()
             .child(div().flex_1().min_h_0().size_full().children(self.children));
 
-        let bottom_collapsed = self.bottom_height <= SLOT_COLLAPSED_THRESHOLD;
-
         // center_col：v_resizable 始终包含 body；bottom 展开时进 v_resizable，
         // 折叠时移出 v_resizable 放到下方独立 div（无 resize handle）。
         let mut collapsed_bottom: Option<AnyElement> = None;
         let center_col = {
-            let mut col = v_resizable("tab-window-center-col").child(body);
-            if let Some(bottom) = self.slot_bottom {
+            let mut col = v_resizable("tab-window-center-col")
+                .with_state(&v_state)
+                .child(body);
+            if let Some(bottom) = bottom_elem {
                 let panel = div()
                     .flex()
                     .items_center()
@@ -661,13 +891,10 @@ impl RenderOnce for TabWindowShell {
 
         // main_row：折叠的 left/right 移出 h_resizable，避免 resize handle 残留
         // 且不污染 ResizableState 的 panel_ix 映射。
-        let left_collapsed = self.left_width <= SLOT_COLLAPSED_THRESHOLD;
-        let right_collapsed = self.right_width <= SLOT_COLLAPSED_THRESHOLD;
-
         let mut row = h_flex().w_full().h_full().min_h_0();
-        let mut main_h = h_resizable("tab-window-main-row");
+        let mut main_h = h_resizable("tab-window-main-row").with_state(&h_state);
 
-        match self.slot_left {
+        match left_elem {
             Some(left) if left_collapsed => {
                 row = row.child(
                     div()
@@ -692,7 +919,7 @@ impl RenderOnce for TabWindowShell {
         main_h = main_h.child(center_col);
 
         let mut collapsed_right: Option<AnyElement> = None;
-        match self.slot_right {
+        match right_elem {
             Some(right) if right_collapsed => {
                 collapsed_right = Some(right);
             }
@@ -723,6 +950,6 @@ impl RenderOnce for TabWindowShell {
             .size_full()
             .child(title_bar)
             .child(div().flex_1().min_h_0().child(row))
-            .when_some(self.status_slot, |this, slot| this.child(slot))
+            .when_some(footer_elem, |this, slot| this.child(slot))
     }
 }

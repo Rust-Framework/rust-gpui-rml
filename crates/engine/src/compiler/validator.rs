@@ -134,6 +134,61 @@ fn validate_element(
         }
     }
 
+    // 校验 scope 属性：仅可在 <template slot="..."> 上使用，且必须为简单标识符。
+    // scope 用于作用域插槽，向 slot 内容注入 &dyn ISlotScope 变量（如 scope={panel}）。
+    // 复杂表达式（如 scope={foo.bar}）不支持 — codegen 只识别简单标识符。
+    // 在无 resizable 的 shell slot（menu/title/footer/tabs）上写 scope 仅警告（不阻塞）。
+    for child in &elem.children {
+        if let Node::Element(child_elem) = child {
+            if child_elem.tag == "template" {
+                let has_slot = child_elem.slot_name.is_some();
+                let scope_attr = child_elem.attributes.iter().find_map(|a| match a {
+                    Attribute::Bind { name, expr, .. } if name == "scope" => Some(expr.clone()),
+                    _ => None,
+                });
+                if let Some(expr) = scope_attr {
+                    if !has_slot {
+                        return Err(ValidationError {
+                            message: format!(
+                                "scope 属性仅可出现在 `<template slot=\"...\">` 上，得到无 slot 属性的 <template>"
+                            ),
+                        });
+                    }
+                    // scope 表达式必须是简单标识符
+                    let trimmed = expr.trim();
+                    let is_simple_ident = !trimmed.is_empty()
+                        && trimmed
+                            .chars()
+                            .all(|c| c.is_alphanumeric() || c == '_')
+                        && trimmed
+                            .chars()
+                            .next()
+                            .map_or(false, |c| c.is_alphabetic() || c == '_');
+                    if !is_simple_ident {
+                        return Err(ValidationError {
+                            message: format!(
+                                "scope 属性必须是简单标识符，得到 `{}`（示例：scope={{panel}}）",
+                                expr
+                            ),
+                        });
+                    }
+                    // 在无 resizable 的 shell slot 上使用 scope → 警告（不阻塞编译）
+                    if let Some(slot_name) = &child_elem.slot_name {
+                        if matches!(
+                            slot_name.as_str(),
+                            "menu" | "title" | "footer" | "tabs"
+                        ) {
+                            eprintln!(
+                                "[rml warning] <template slot=\"{}\"> 不支持 resizable 操控，scope 变量将仅暴露插槽名",
+                                slot_name
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // 校验未知属性：扩展组件的 bind/event 属性必须在 props_registry 中登记
     validate_unknown_props(elem)?;
 

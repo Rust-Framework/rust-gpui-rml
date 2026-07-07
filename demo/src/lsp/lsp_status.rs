@@ -1,4 +1,4 @@
-﻿//! LSP 状态栏贡献 —— 跨组件通信演示。
+//! LSP 状态栏贡献 —— 跨组件通信演示。
 //!
 //! `LspStatusState` Entity 持有最近一次 LSP 命令摘要，经 IAppContext 注册为单例。
 //! `CodeEditorTab`（producer）经 `get_service::<LspStatusStateRef>()` 写入 →
@@ -8,18 +8,24 @@
 use std::sync::Once;
 
 use gpui::{AnyElement, App, Context, ParentElement, SharedString, Styled, WeakEntity, Window};
+use gpui_component::ActiveTheme as _;
 use rml::prelude::*;
 use rml_core::contribution::register_visual_ability;
 use rml_core::i18n::t_static;
+use rust_rml_client::ServerStatus;
 
-/// LSP 状态栏状态 Entity —— 持有最近一次 LSP 命令的摘要消息。
+/// LSP 状态栏状态 Entity —— 持有 RA 加载状态 + 最近一次 LSP 命令摘要。
 pub struct LspStatusState {
     message: Option<String>,
+    server_status: ServerStatus,
 }
 
 impl LspStatusState {
     pub fn new() -> Self {
-        Self { message: None }
+        Self {
+            message: None,
+            server_status: ServerStatus::Loading,
+        }
     }
 
     pub fn message(&self) -> Option<&str> {
@@ -28,6 +34,15 @@ impl LspStatusState {
 
     pub fn set_message(&mut self, message: String, cx: &mut Context<Self>) {
         self.message = Some(message);
+        cx.notify();
+    }
+
+    pub fn server_status(&self) -> &ServerStatus {
+        &self.server_status
+    }
+
+    pub fn set_server_status(&mut self, status: ServerStatus, cx: &mut Context<Self>) {
+        self.server_status = status;
         cx.notify();
     }
 }
@@ -58,13 +73,37 @@ impl IContribution for LspStatusItem {
 
 impl IVisual for LspStatusItem {
     fn render(&self, _window: &mut Window, cx: &mut App) -> AnyElement {
-        let msg = cx
+        let entity = cx
             .get_service::<LspStatusStateRef>()
-            .and_then(|r| r.0.upgrade())
-            .and_then(|entity| entity.read(cx).message().map(|s| s.to_string()));
-        match msg {
-            Some(m) => gpui::div().text_xs().child(m).into_any_element(),
-            None => gpui::div().into_any_element(),
+            .and_then(|r| r.0.upgrade());
+        let Some(entity) = entity else {
+            return gpui::div().into_any_element();
+        };
+        let state = entity.read(cx);
+
+        // Ready 且有命令摘要时，优先显示摘要（操作结果比 RA 状态更有价值）
+        if matches!(state.server_status(), ServerStatus::Ready) {
+            if let Some(msg) = state.message() {
+                return gpui::div().text_xs().child(msg.to_string()).into_any_element();
+            }
+        }
+
+        match state.server_status() {
+            ServerStatus::Loading => gpui::div()
+                .text_xs()
+                .text_color(cx.theme().muted_foreground)
+                .child("RA: Loading...")
+                .into_any_element(),
+            ServerStatus::Ready => gpui::div()
+                .text_xs()
+                .text_color(cx.theme().success)
+                .child("RA: Ready")
+                .into_any_element(),
+            ServerStatus::Error(_) => gpui::div()
+                .text_xs()
+                .text_color(cx.theme().danger_foreground)
+                .child("RA: Error")
+                .into_any_element(),
         }
     }
 }

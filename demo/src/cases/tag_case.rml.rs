@@ -3,7 +3,7 @@ use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
 
-use crate::cases::common::build_api_table;
+use crate::cases::common::{build_api_table, CaseDocPage};
 
 #[contribute(
     host_id = "demo.shell",
@@ -18,9 +18,9 @@ pub struct TagCase {
     pub tag_text: String,
     pub variant_index: u8,
     pub is_outline: bool,
-    pub code_tab: usize,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
+    pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
 }
 
 impl IContribution for TagCase {
@@ -33,7 +33,8 @@ impl IContribution for TagCase {
 }
 
 impl ILifecycle for TagCase {
-    fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
+    fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
+        self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         self.tag_text = "RML".into();
         let (cols, rows) = build_api_table(&[
             ("primary / secondary / danger / success / warning / info", "布尔标志", "6 种 variant（构造器选择）"),
@@ -68,79 +69,12 @@ impl TagCase {
 
     #[computed]
     pub fn rml_sample(&self) -> String {
-        r#"<!-- tag_case.rml：声明式 UI，描述结构 + 绑定 + 事件 -->
-<component>
-    <!-- 6 种 variant：空属性切换（构造器选择 Tag::primary() 等） -->
-    <Tag>Default</Tag>
-    <Tag primary="">Primary</Tag>
-    <Tag secondary="">Secondary</Tag>
-    <Tag danger="">Danger</Tag>
-    <Tag success="">Success</Tag>
-    <Tag warning="">Warning</Tag>
-    <Tag info="">Info</Tag>
-
-    <!-- outline 描边样式：透明背景 + 彩色边框 -->
-    <Tag primary="" outline="">Primary Outline</Tag>
-    <Tag danger="" outline="">Danger Outline</Tag>
-
-    <!-- 尺寸 size -->
-    <Tag primary="" size="small">Small</Tag>
-    <Tag primary="" size="medium">Medium</Tag>
-
-    <!-- 动态绑定：model 双向绑定 + if 条件渲染 -->
-    <input model={tag_text} placeholder="输入标签文本" />
-    <Tag primary="" if={variant_index == 1}>{tag_text}</Tag>
-    <Tag danger="" if={variant_index == 3}>{tag_text}</Tag>
-</component>"#
-            .to_string()
+        include_str!("tag_case.rml").to_string()
     }
 
     #[computed]
     pub fn rust_sample(&self) -> String {
-        r#"// tag_case.rml.rs：后端状态 + computed + command handler
-use rml::prelude::*;
-
-#[component]
-#[derive(Default)]
-pub struct TagCase {
-    pub tag_text: String,       // model 双向绑定字段
-    pub variant_index: u8,     // variant 循环索引
-    pub is_outline: bool,       // outline 样式切换
-}
-
-impl ILifecycle for TagCase {
-    fn on_loaded(&mut self, _w: &mut gpui::Window, _cx: &mut Context<Self>) {
-        self.tag_text = "RML".into();
-    }
-}
-
-impl TagCase {
-    // #[computed] 标注的方法可在 RML 中以 {method_name} 直接引用
-    #[computed]
-    pub fn variant_label(&self) -> &'static str {
-        match self.variant_index {
-            0 => "default",
-            1 => "primary",
-            2 => "secondary",
-            3 => "danger",
-            4 => "success",
-            5 => "warning",
-            _ => "info",
-        }
-    }
-
-    // #[command] 标注的方法可被 on-click={on_xxx} 调用
-    #[command]
-    pub fn on_cycle_variant(&mut self, _: &ClickEvent, _cx: &mut Context<Self>) {
-        self.variant_index = (self.variant_index + 1) % 7;
-    }
-
-    #[command]
-    pub fn on_toggle_outline(&mut self, _: &ClickEvent, _cx: &mut Context<Self>) {
-        self.is_outline = !self.is_outline;
-    }
-}"#
-            .to_string()
+        include_str!("tag_case.rml.rs").to_string()
     }
 
     #[command]
@@ -151,10 +85,5 @@ impl TagCase {
     #[command]
     pub fn on_toggle_outline(&mut self, _: &ClickEvent, _cx: &mut Context<Self>) {
         self.is_outline = !self.is_outline;
-    }
-
-    #[command]
-    pub fn on_code_tab_change(&mut self, idx: usize, _cx: &mut Context<Self>) {
-        self.code_tab = idx;
     }
 }

@@ -19,6 +19,51 @@ use crate::compiler::expr;
 use crate::compiler::{CodegenCtx, CodegenError};
 use crate::parser::ast::{Attribute, Directive, Element, EventHandler, Node};
 
+/// 将 shell slot 表达式包装为 `Box<dyn Fn(&dyn ISlotScope, &mut Window, &mut App) -> AnyElement + Send + Sync>`。
+///
+/// TabWindowShell 的 slot setter（menu_slot / title_ext_slot / status_slot /
+/// slot_left / slot_right / slot_bottom）期望接收闭包而非预渲染元素，
+/// 以支持每次 render 时即时生成 element（slot 内容可访问最新状态）。
+///
+/// 包装策略：
+/// - 捕获 `cx.weak_entity()` 避免循环引用
+/// - 闭包内 upgrade 后 `entity.update(app, |this, cx| { ... })` 回调到视图方法
+/// - `self.` → `this.` 替换：slot 代码生成时使用 `self.xxx`，在 entity.update
+///   闭包内 self 不可访问，需替换为 `this.xxx`
+/// - `_window` / `cx` 变量名与闭包参数对齐，无需替换
+///
+/// # 作用域变量
+///
+/// `scope_var = Some(name)` 时，闭包内声明 `let name: &dyn ISlotScope = scope;`，
+/// slot 内容可使用 `name.maximize(_window, cx)` 等调用（作用域插槽）。
+/// `scope_var = None` 时忽略 scope 参数（`_scope`）。
+fn wrap_shell_slot(slot_code: &str, scope_var: Option<&str>) -> String {
+    let slot_code_this = slot_code.replace("self.", "this.");
+    let scope_binding = match scope_var {
+        Some(name) => format!(
+            "let {name}: &dyn rml_core::slot::ISlotScope = scope;",
+            name = name
+        ),
+        None => "let _ = scope;".to_string(),
+    };
+    format!(
+        "Box::new({{\n    \
+         let __rml_weak = cx.weak_entity();\n    \
+         move |scope: &dyn rml_core::slot::ISlotScope, _window: &mut gpui::Window, _app: &mut gpui::App| {{\n        \
+         {scope_binding}\n        \
+         if let Some(__rml_entity) = __rml_weak.upgrade() {{\n            \
+         __rml_entity.update(_app, |this, cx| {{\n                \
+         ({slot_code_this}).into_any_element()\n            \
+         }})\n        \
+         }} else {{\n            \
+         gpui::Empty.into_any_element()\n        \
+         }}\n    \
+         }}\n}})",
+        scope_binding = scope_binding,
+        slot_code_this = slot_code_this
+    )
+}
+
 /// 为 `<modern-window>` 根元素生成 ModernWindowShell 包裹代码
 ///
 /// - title 复用 IWindow::title()，不重复定义
@@ -120,14 +165,17 @@ pub(super) fn gen_modern_window_wrapper(
 /// - `tabs`：仅 tab-window，收集所有 `<Tab>` 子节点而非单一 content
 /// - `tabs_each`：仅 tab-window，`<template slot="tabs" each={item in iter}>` 的 each 子句
 /// - `body`：主内容（无 slot 属性的子节点）
+///
+/// 各 slot 字段为 `(Node, Option<String>)`，第二项为 `scope={name}` 提取出的作用域变量名，
+/// 用于 codegen 生成作用域插槽闭包（scoped slot closure）。
 #[derive(Default)]
 pub(super) struct ShellSlots {
-    pub menu: Option<Node>,
-    pub title: Option<Node>,
-    pub footer: Option<Node>,
-    pub left: Option<Node>,
-    pub right: Option<Node>,
-    pub bottom: Option<Node>,
+    pub menu: Option<(Node, Option<String>)>,
+    pub title: Option<(Node, Option<String>)>,
+    pub footer: Option<(Node, Option<String>)>,
+    pub left: Option<(Node, Option<String>)>,
+    pub right: Option<(Node, Option<String>)>,
+    pub bottom: Option<(Node, Option<String>)>,
     pub tabs: Vec<Node>,
     pub tabs_each: Option<crate::parser::ast::EachClause>,
     pub body: Vec<Node>,
@@ -144,6 +192,9 @@ pub(super) struct ShellSlots {
 /// - `<template slot="bottom">` → `ShellSlots::bottom`（仅 tab-window）
 /// - `<template slot="tabs">` → `ShellSlots::tabs`（仅 tab-window，收集所有子节点而非单一 content）
 /// - 其他子节点（含无 slot 属性的 `<template>`）→ `ShellSlots::body` 主内容
+///
+/// 同时提取 `<template slot="x" scope={y}>` 的 `scope` 绑定表达式（`y`），
+/// 用于 codegen 生成作用域插槽闭包。
 pub(super) fn partition_slot_children(children: &[Node]) -> ShellSlots {
     let mut slots = ShellSlots::default();
 
@@ -151,16 +202,20 @@ pub(super) fn partition_slot_children(children: &[Node]) -> ShellSlots {
         if let Node::Element(elem) = child {
             if elem.tag == "template" {
                 if let Some(name) = &elem.slot_name {
+                    let scope = extract_scope(elem);
                     match name.as_str() {
-                        "menu" => slots.menu = template_block_content(elem),
-                        "title" => slots.title = template_block_content(elem),
-                        "footer" => slots.footer = template_block_content(elem),
-                        "left" => slots.left = template_block_content(elem),
-                        "right" => slots.right = template_block_content(elem),
-                        "bottom" => slots.bottom = template_block_content(elem),
+                        "menu" => slots.menu = template_block_content(elem).map(|n| (n, scope)),
+                        "title" => slots.title = template_block_content(elem).map(|n| (n, scope)),
+                        "footer" => {
+                            slots.footer = template_block_content(elem).map(|n| (n, scope))
+                        }
+                        "left" => slots.left = template_block_content(elem).map(|n| (n, scope)),
+                        "right" => slots.right = template_block_content(elem).map(|n| (n, scope)),
+                        "bottom" => slots.bottom = template_block_content(elem).map(|n| (n, scope)),
                         "tabs" => {
                             // tabs slot 收集所有子节点（应为 <Tab> 元素），
                             // 而非取单一 content —— 与其他单 Node slot 不同。
+                            // tabs 不支持 scope（业务数据，非渲染闭包）
                             let tab_kids: Vec<Node> = elem.children.to_vec();
                             if !tab_kids.is_empty() {
                                 slots.tabs = tab_kids;
@@ -187,6 +242,17 @@ pub(super) fn partition_slot_children(children: &[Node]) -> ShellSlots {
     }
 
     slots
+}
+
+/// 从 `<template slot="x" scope={y}>` 提取 `scope` 绑定的变量名 `y`。
+///
+/// `scope` 在 parser 中走默认分支，被解析为 `Attribute::Bind { name: "scope", expr: "y" }`。
+/// 返回 `Some(y)` 或 `None`（未声明 scope 时）。
+fn extract_scope(elem: &Element) -> Option<String> {
+    elem.attributes.iter().find_map(|a| match a {
+        Attribute::Bind { name, expr, .. } if name == "scope" => Some(expr.clone()),
+        _ => None,
+    })
 }
 
 /// 取 `<template slot="...">` 块的内部内容
@@ -224,14 +290,17 @@ pub(super) struct TabsEach {
 /// 字段命名与 `<template slot="name">` 一一对应。`tabs` 为模板定制模式下
 /// 各 `<Tab>` 子节点的 codegen 输出列表，与 `tabs={Vec<TabItem>}` 简单模式互斥。
 /// `tabs_each` 为 `each` 迭代模式（单个 `<Tab>` 模板 + 迭代表达式），与 `tabs` 列表模式互斥。
+///
+/// 各 slot 字段为 `(&str, Option<&str>)`：第一项为 element 代码，第二项为 `scope={name}`
+/// 提取出的作用域变量名（用于作用域插槽闭包生成）。
 #[derive(Default)]
 pub(super) struct TabWindowSlotCodes<'a> {
-    pub menu: Option<&'a str>,
-    pub title: Option<&'a str>,
-    pub footer: Option<&'a str>,
-    pub left: Option<&'a str>,
-    pub right: Option<&'a str>,
-    pub bottom: Option<&'a str>,
+    pub menu: Option<(&'a str, Option<&'a str>)>,
+    pub title: Option<(&'a str, Option<&'a str>)>,
+    pub footer: Option<(&'a str, Option<&'a str>)>,
+    pub left: Option<(&'a str, Option<&'a str>)>,
+    pub right: Option<(&'a str, Option<&'a str>)>,
+    pub bottom: Option<(&'a str, Option<&'a str>)>,
     pub tabs: Option<&'a [String]>,
     pub tabs_each: Option<TabsEach>,
 }
@@ -319,8 +388,8 @@ pub(super) fn gen_tab_window_wrapper(
                 }
                 let rust_expr = shell_bind_expr(expr, &computed, &empty);
                 match name.as_str() {
-                    "menu" => code.push_str(&format!(".menu_slot({})", rust_expr)),
-                    "footer" => code.push_str(&format!(".status_slot(Some({}))", rust_expr)),
+                    "menu" => code.push_str(&format!(".menu_slot({})", wrap_shell_slot(&rust_expr, None))),
+                    "footer" => code.push_str(&format!(".status_slot(Some({}))", wrap_shell_slot(&rust_expr, None))),
                     "tabs" => code.push_str(&format!(".tabs({})", rust_expr)),
                     "selected_index" => code.push_str(&format!(".selected_index({})", rust_expr)),
                     "show_chrome" => code.push_str(&format!(".show_chrome({})", rust_expr)),
@@ -418,23 +487,41 @@ pub(super) fn gen_tab_window_wrapper(
         }
     }
 
-    if let Some(menu) = slots.menu {
-        code.push_str(&format!(".menu_slot({menu})"));
+    if let Some((menu, scope)) = slots.menu {
+        code.push_str(&format!(
+            ".menu_slot({})",
+            wrap_shell_slot(menu, scope)
+        ));
     }
-    if let Some(title) = slots.title {
-        code.push_str(&format!(".title_ext_slot({title})"));
+    if let Some((title, scope)) = slots.title {
+        code.push_str(&format!(
+            ".title_ext_slot({})",
+            wrap_shell_slot(title, scope)
+        ));
     }
-    if let Some(footer) = slots.footer {
-        code.push_str(&format!(".status_slot(Some({footer}))"));
+    if let Some((footer, scope)) = slots.footer {
+        code.push_str(&format!(
+            ".status_slot(Some({}))",
+            wrap_shell_slot(footer, scope)
+        ));
     }
-    if let Some(left) = slots.left {
-        code.push_str(&format!(".slot_left(Some({left}))"));
+    if let Some((left, scope)) = slots.left {
+        code.push_str(&format!(
+            ".slot_left(Some({}))",
+            wrap_shell_slot(left, scope)
+        ));
     }
-    if let Some(right) = slots.right {
-        code.push_str(&format!(".slot_right(Some({right}))"));
+    if let Some((right, scope)) = slots.right {
+        code.push_str(&format!(
+            ".slot_right(Some({}))",
+            wrap_shell_slot(right, scope)
+        ));
     }
-    if let Some(bottom) = slots.bottom {
-        code.push_str(&format!(".slot_bottom(Some({bottom}))"));
+    if let Some((bottom, scope)) = slots.bottom {
+        code.push_str(&format!(
+            ".slot_bottom(Some({}))",
+            wrap_shell_slot(bottom, scope)
+        ));
     }
     if let Some(each) = slots.tabs_each {
         // each 模式：`.tab_children(self.{iterable}.iter().map(|{item}| {body}).collect())`

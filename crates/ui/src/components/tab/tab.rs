@@ -29,6 +29,12 @@ impl Global for TabDblClickState {}
 /// 双击检测时间窗口（ms）。两次点击间隔 ≤ 此值视为双击。
 const DOUBLE_CLICK_WINDOW: Duration = Duration::from_millis(250);
 
+/// 压缩模式下激活 tab 的最小宽度下限。
+///
+/// 确保激活 tab 标题在多 tab 溢出压缩时仍可读（约 6-8 个中文字符或图标+短文本+关闭按钮）。
+/// 非激活 tab 不设下限，可完全压缩以优先保障激活项可见性。
+const COMPRESS_ACTIVE_MIN_W: Pixels = px(120.);
+
 /// 判断是否构成双击。纯函数，便于单测。
 pub(super) fn is_double_click(prev: Option<Instant>, now: Instant) -> bool {
     match prev {
@@ -906,7 +912,11 @@ impl RenderOnce for Tab {
             .flex()
             .flex_wrap()
             .items_center()
-            .when_else(self.compress, |this| this.flex_1().min_w_0(), |this| this.flex_shrink_0())
+            .when_else(self.compress, |this| {
+                this.flex_1()
+                    .when(self.selected, |this| this.min_w(COMPRESS_ACTIVE_MIN_W))
+                    .when(!self.selected, |this| this.min_w_0())
+            }, |this| this.flex_shrink_0())
             .h(height)
             .overflow_hidden()
             .text_color(tab_style.fg)

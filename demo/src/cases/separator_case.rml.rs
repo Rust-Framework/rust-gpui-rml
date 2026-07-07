@@ -3,7 +3,7 @@ use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
 
-use crate::cases::common::build_api_table;
+use crate::cases::common::{build_api_table, CaseDocPage};
 
 #[contribute(
     host_id = "demo.shell",
@@ -17,9 +17,9 @@ use crate::cases::common::build_api_table;
 pub struct SeparatorCase {
     pub is_vertical: bool,
     pub is_dashed: bool,
-    pub code_tab: usize,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
+    pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
 }
 
 impl IContribution for SeparatorCase {
@@ -32,7 +32,8 @@ impl IContribution for SeparatorCase {
 }
 
 impl ILifecycle for SeparatorCase {
-    fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
+    fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
+        self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         let (cols, rows) = build_api_table(&[
             ("vertical", "布尔标志", "垂直方向"),
             ("dashed", "布尔标志", "虚线样式"),
@@ -44,48 +45,23 @@ impl ILifecycle for SeparatorCase {
 
 impl SeparatorCase {
     #[computed]
+    pub fn orientation_label(&self) -> &'static str {
+        if self.is_vertical { "垂直" } else { "水平" }
+    }
+
+    #[computed]
+    pub fn dashed_label(&self) -> &'static str {
+        if self.is_dashed { "虚线" } else { "实线" }
+    }
+
+    #[computed]
     pub fn rml_sample(&self) -> String {
-        r#"<!-- separator_case.rml：声明式 UI，描述结构 + 绑定 + 事件 -->
-<component>
-    <!-- 水平分隔符（默认） -->
-    <Separator />
-
-    <!-- 垂直分隔符：vertical="" 切换方向 -->
-    <Separator vertical="" />
-
-    <!-- 虚线样式：dashed="" -->
-    <Separator dashed="" />
-
-    <!-- 动态绑定：vertical={is_vertical} dashed={is_dashed} -->
-    <Separator vertical={is_vertical} dashed={is_dashed} />
-</component>"#
-            .to_string()
+        include_str!("separator_case.rml").to_string()
     }
 
     #[computed]
     pub fn rust_sample(&self) -> String {
-        r#"// separator_case.rml.rs：后端状态 + computed + command handler
-use rml::prelude::*;
-
-#[component]
-#[derive(Default)]
-pub struct SeparatorCase {
-    pub is_vertical: bool,
-    pub is_dashed: bool,
-}
-
-impl SeparatorCase {
-    #[command]
-    pub fn on_toggle_orientation(&mut self, _: &ClickEvent, _: &mut Context<Self>) {
-        self.is_vertical = !self.is_vertical;
-    }
-
-    #[command]
-    pub fn on_toggle_dashed(&mut self, _: &ClickEvent, _: &mut Context<Self>) {
-        self.is_dashed = !self.is_dashed;
-    }
-}"#
-            .to_string()
+        include_str!("separator_case.rml.rs").to_string()
     }
 
     #[command]
@@ -96,10 +72,5 @@ impl SeparatorCase {
     #[command]
     pub fn on_toggle_dashed(&mut self, _: &ClickEvent, _: &mut Context<Self>) {
         self.is_dashed = !self.is_dashed;
-    }
-
-    #[command]
-    pub fn on_code_tab_change(&mut self, idx: usize, _cx: &mut Context<Self>) {
-        self.code_tab = idx;
     }
 }

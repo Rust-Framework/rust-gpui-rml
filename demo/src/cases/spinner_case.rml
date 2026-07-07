@@ -1,76 +1,72 @@
 <component>
-    <div display="flex" flex-direction="column" class="case-pane doc-pane">
-        <h2>{t("case.spinner.title")}</h2>
-        <p>Spinner 和 Skeleton 是 RML 的加载指示组件。Spinner 为旋转图标动画，Skeleton 为骨架屏占位。两者均为 <code>StatelessNoId</code> 组件（无 ElementId，<code>RenderOnce</code>）。</p>
-
-        <Card title="Spinner 基础">
-            <p>默认 Spinner 使用 <code>Loader</code> 图标，<code>size</code> 控制尺寸。</p>
-            <div display="flex" flex-direction="row" gap="16px" align-items="center">
-                <Spinner />
-                <Spinner size="small" />
-                <Spinner size="medium" />
-                <Spinner size="large" />
-            </div>
-        </Card>
-
-        <Card title="Spinner 自定义图标">
-            <p><code>icon="Bell"</code> 设置自定义图标（值为 <code>rml_ui::IconName</code> 枚举变体名）。</p>
-            <div display="flex" flex-direction="row" gap="16px" align-items="center">
-                <Spinner icon="Loader" />
-                <Spinner icon="Bell" size="large" />
-                <Spinner icon="Settings" size="medium" />
-            </div>
-        </Card>
-
-        <Card title="Skeleton 骨架屏">
-            <p><code>Skeleton</code> 用于内容加载占位。<code>secondary=""</code> 切换为次级颜色。</p>
-            <div display="flex" flex-direction="column" gap="8px" width="full">
-                <Skeleton />
-                <Skeleton secondary="" />
-                <div display="flex" flex-direction="row" gap="8px" width="full">
-                    <Skeleton class="w-1/2" />
-                    <Skeleton class="w-1/2" secondary="" />
-                </div>
-            </div>
-        </Card>
-
-        <Card title="动态加载示例">
-            <p>点击按钮切换加载状态，观察 Spinner 与 Skeleton 的显示效果（演示 if 条件渲染 + 字段绑定）：</p>
-            <p>当前状态：{loading_label}</p>
-            <div class="button-row">
-                <Button label="切换加载" primary="" on-click={on_toggle_loading} />
-            </div>
-            <div display="flex" flex-direction="column" gap="8px">
-                <div if={is_loading} display="flex" flex-direction="row" gap="8px" align-items="center">
+    <CaseDocPage
+        title={t("case.spinner.title")}
+        description="Spinner 和 Skeleton 是 RML 的加载指示组件。Spinner 为旋转图标动画，Skeleton 为骨架屏占位。两者均为 StatelessNoId 组件（无 ElementId，RenderOnce）。Spinner 支持 icon 自定义图标和 size 尺寸控制；Skeleton 支持 secondary 切换次级颜色。常用于异步请求、内容加载等需要即时反馈的场景。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <div class="demo-section">
+                <h3>Spinner 基础</h3>
+                <p>默认 Spinner 使用 Loader 图标，size 控制尺寸。来自 Sizable trait。</p>
+                <div display="flex" flex-direction="row" gap="16px" align-items="center">
+                    <Spinner />
                     <Spinner size="small" />
-                    <span>加载中...</span>
+                    <Spinner size="medium" />
+                    <Spinner size="large" />
                 </div>
-                <div if={!is_loading}>
-                    <p>加载完成！这是内容文本。</p>
-                </div>
-                <Skeleton if={is_loading} />
             </div>
-        </Card>
 
-        <Card title="示例代码">
-            <p>点击下方 Tab 切换 <code>.rml</code> 声明文件与 <code>.rml.rs</code> 后端文件：</p>
-            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
-                <Tab label=".rml">
-                    <CodeEditor ref="rml_editor" value={rml_sample} language="rml" />
-                </Tab>
-                <Tab label=".rml.rs">
-                    <CodeEditor ref="rust_editor" value={rust_sample} language="rust" />
-                </Tab>
-            </TabBar>
-        </Card>
+            <div class="demo-section">
+                <h3>Spinner 自定义图标</h3>
+                <p>icon 属性设置自定义图标（值为 IconName 枚举变体名，如 Loader / LoaderCircle / Bell / Settings）。</p>
+                <div display="flex" flex-direction="row" gap="16px" align-items="center">
+                    <Spinner icon="Loader" />
+                    <Spinner icon="LoaderCircle" size="large" />
+                    <Spinner icon="Bell" size="medium" />
+                    <Spinner icon="Settings" size="small" />
+                </div>
+            </div>
 
-        <Card title="API">
+            <div class="demo-section">
+                <h3>Skeleton 骨架屏</h3>
+                <p>Skeleton 用于内容加载占位。secondary 属性切换为次级颜色，常用于层次化占位。</p>
+                <div display="flex" flex-direction="column" gap="8px" width="full">
+                    <Skeleton />
+                    <Skeleton secondary="" />
+                    <div display="flex" flex-direction="row" gap="8px" width="full">
+                        <Skeleton class="w-1/2" />
+                        <Skeleton class="w-1/2" secondary="" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="demo-section">
+                <h3>动态加载示例</h3>
+                <p>点击按钮切换加载状态，观察 Spinner 与 Skeleton 的显示效果（演示 if 条件渲染 + 字段绑定）。</p>
+                <p>当前状态：{loading_label}</p>
+                <div class="button-row">
+                    <Button label="切换加载" primary="" on-click={on_toggle_loading} />
+                </div>
+                <div display="flex" flex-direction="column" gap="8px">
+                    <div if={is_loading} display="flex" flex-direction="row" gap="8px" align-items="center">
+                        <Spinner size="small" />
+                        <span>加载中...</span>
+                    </div>
+                    <div if={!is_loading}>
+                        <p>加载完成！这是内容文本。</p>
+                    </div>
+                    <Skeleton if={is_loading} />
+                </div>
+            </div>
+        </template>
+
+        <template slot="api">
             <h3>Spinner</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-            <p>另：<code>size</code> 属性来自 Sizable trait。</p>
+            <p>另：size 属性来自 Sizable trait。</p>
 
             <h3>Skeleton</h3>
             <Table columns={api_columns} rows={skeleton_rows} bordered="" stripe="" />
-        </Card>
-    </div>
+        </template>
+    </CaseDocPage>
 </component>

@@ -23,6 +23,17 @@ use serde_json::Value;
 
 use crate::language_profile::LanguageProfile;
 
+/// LSP server 加载状态（由 server 端 `rml/serverStatus` 通知驱动）
+#[derive(Clone, Debug, PartialEq)]
+pub enum ServerStatus {
+    /// 正在加载 workspace
+    Loading,
+    /// 加载完成，可提供完整语义服务
+    Ready,
+    /// 加载失败
+    Error(String),
+}
+
 /// 将文件路径转换为 `lsp_types::Uri`（lsp-types 0.97 用 Uri 替代 Url）。
 pub fn file_path_to_uri(path: &Path) -> Result<Uri> {
     let url = url::Url::from_file_path(path).map_err(|_| anyhow!("invalid file path: {}", path.display()))?;
@@ -36,6 +47,7 @@ pub struct LspClient {
     pending: Arc<Mutex<HashMap<u64, Sender<Result<Value>>>>>,
     doc_version: AtomicU32,
     semantic_tokens_legend: Mutex<Option<lsp_types::SemanticTokensLegend>>,
+    status_rx: Receiver<ServerStatus>,
     _child: Child,
 }
 
@@ -71,6 +83,7 @@ impl LspClient {
         let pending: Arc<Mutex<HashMap<u64, Sender<Result<Value>>>>> =
             Arc::new(Mutex::new(HashMap::new()));
         let pending_for_reader = pending.clone();
+        let (status_tx, status_rx) = unbounded::<ServerStatus>();
 
         // Writer 线程：从 channel 接收 Message → 写入子进程 stdin
         thread::Builder::new()
@@ -110,7 +123,13 @@ impl LspClient {
                             }
                         }
                         Message::Notification(not) => {
-                            log::debug!("LSP notification: {}", not.method);
+                            if not.method == "rml/serverStatus" {
+                                if let Some(status) = parse_server_status(&not.params) {
+                                    let _ = status_tx.send(status);
+                                }
+                            } else {
+                                log::debug!("LSP notification: {}", not.method);
+                            }
                         }
                         Message::Request(req) => {
                             log::debug!("LSP server request: {}", req.method);
@@ -130,6 +149,7 @@ impl LspClient {
             pending,
             doc_version: AtomicU32::new(0),
             semantic_tokens_legend: Mutex::new(None),
+            status_rx,
             _child: child,
         };
 
@@ -313,6 +333,13 @@ impl LspClient {
         self.semantic_tokens_legend.lock().unwrap().clone()
     }
 
+    /// 返回 server 状态接收器（`rml/serverStatus` 通知驱动）
+    ///
+    /// 调用方应在后台 task 中 `recv()` 此 receiver，状态变化时更新 UI。
+    pub fn status_receiver(&self) -> Receiver<ServerStatus> {
+        self.status_rx.clone()
+    }
+
     /// textDocument/semanticTokens/full
     ///
     /// 拉取整个文档的 semantic tokens（delta 编码的 `SemanticTokens`）。
@@ -363,4 +390,54 @@ fn resolve_binary(profile: &LanguageProfile, workspace_root: &Path) -> Result<Pa
     }
     // 3. 回退：依赖 PATH 查找（返回二进制名，由 OS 解析）
     Ok(PathBuf::from(&profile.server_binary))
+}
+
+/// 解析 `rml/serverStatus` 通知参数为 `ServerStatus`
+fn parse_server_status(params: &Value) -> Option<ServerStatus> {
+    let status = params.get("status")?.as_str()?;
+    let message = params.get("message").and_then(|v| v.as_str()).unwrap_or("");
+    match status {
+        "loading" => Some(ServerStatus::Loading),
+        "ready" => Some(ServerStatus::Ready),
+        "error" => Some(ServerStatus::Error(message.to_string())),
+        _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_loading_status() {
+        let params = serde_json::json!({ "status": "loading", "message": "Loading..." });
+        assert_eq!(parse_server_status(&params), Some(ServerStatus::Loading));
+    }
+
+    #[test]
+    fn parse_ready_status() {
+        let params = serde_json::json!({ "status": "ready", "message": "ready" });
+        assert_eq!(parse_server_status(&params), Some(ServerStatus::Ready));
+    }
+
+    #[test]
+    fn parse_error_status() {
+        let params = serde_json::json!({ "status": "error", "message": "load failed" });
+        assert_eq!(
+            parse_server_status(&params),
+            Some(ServerStatus::Error("load failed".to_string()))
+        );
+    }
+
+    #[test]
+    fn parse_unknown_status_returns_none() {
+        let params = serde_json::json!({ "status": "unknown" });
+        assert_eq!(parse_server_status(&params), None);
+    }
+
+    #[test]
+    fn parse_missing_status_field_returns_none() {
+        let params = serde_json::json!({ "message": "no status" });
+        assert_eq!(parse_server_status(&params), None);
+    }
 }

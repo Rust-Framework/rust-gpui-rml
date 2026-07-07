@@ -1,111 +1,107 @@
 <component>
-    <div display="flex" flex-direction="column" class="case-pane doc-pane">
-        <h2>{t("case.badge.title")}</h2>
-        <p>Badge 是 RML 的徽标组件，标签为 PascalCase <code>Badge</code>。无 ElementId 构造（StatelessNoId），容器模式，子节点为被徽标标记的元素。支持三种 variant：<code>Number</code>（默认，显示计数）、<code>Dot</code>（小红点）、<code>Icon</code>（图标徽标）。</p>
-
-        <Card title="Number variant（默认）">
-            <p>默认 variant 为 Number，通过 <code>count</code> 属性设置计数。count=0 时徽标隐藏，count &gt; max 时显示 <code>N+</code>（max 默认 99）。</p>
-            <div class="button-row">
-                <Badge count="5">
-                    <Avatar name="Alice" />
-                </Badge>
-                <Badge count="0">
-                    <Avatar name="Bob" />
-                </Badge>
-                <Badge count="100" max="9">
-                    <Avatar name="Carol" />
-                </Badge>
-                <Badge count="200">
-                    <Avatar name="Dave" />
-                </Badge>
+    <CaseDocPage
+        title={t("case.badge.title")}
+        description="Badge 是 RML 的徽标组件，标签为 PascalCase Badge。无 ElementId 构造（StatelessNoId），容器模式，子节点为被徽标标记的元素。支持三种 variant：Number（默认，显示计数）、Dot（小红点）、Icon（图标徽标）。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <div class="demo-section">
+                <h3>变体 variants</h3>
+                <p>三种 variant 通过属性切换：count 属性设置 Number variant（默认），dot 属性切换为 Dot variant（小红点），icon 属性切换为 Icon variant（图标徽标）。</p>
+                <div class="button-row">
+                    <Badge count="5">
+                        <Avatar name="Alice" />
+                    </Badge>
+                    <Badge count="0">
+                        <Avatar name="Bob" />
+                    </Badge>
+                    <Badge count="100" max="9">
+                        <Avatar name="Carol" />
+                    </Badge>
+                    <Badge count="200">
+                        <Avatar name="Dave" />
+                    </Badge>
+                </div>
+                <p>count=0 时徽标隐藏（Bob）；count=100 max=9 显示 9+（Carol）；count=200 默认 max=99 显示 99+（Dave）。</p>
             </div>
-            <p class="hint">注：count=0 时徽标隐藏（Bob）；count=100 max=9 显示 "9+"（Carol）；count=200 默认 max=99 显示 "99+"（Dave）。</p>
-        </Card>
 
-        <Card title="Dot variant">
-            <p><code>dot=""</code> 切换为 Dot variant，显示一个小红点，常用于"有新内容"提示。</p>
-            <div class="button-row">
-                <Badge dot="">
-                    <Avatar name="Eve" />
-                </Badge>
-                <Badge dot="">
-                    <Avatar name="Frank" />
-                </Badge>
-                <Badge dot="" size="large">
-                    <Avatar name="Grace" />
-                </Badge>
+            <div class="demo-section">
+                <h3>Dot variant</h3>
+                <p>dot 属性切换为 Dot variant，显示一个小红点，常用于有新内容提示。</p>
+                <div class="button-row">
+                    <Badge dot="">
+                        <Avatar name="Eve" />
+                    </Badge>
+                    <Badge dot="">
+                        <Avatar name="Frank" />
+                    </Badge>
+                    <Badge dot="" size="large">
+                        <Avatar name="Grace" />
+                    </Badge>
+                </div>
             </div>
-        </Card>
 
-        <Card title="Icon variant">
-            <p><code>icon="Bell"</code> 切换为 Icon variant，在右下角显示图标徽标。值为 <code>rml_ui::IconName</code> 枚举变体名（如 <code>Bell</code>、<code>Check</code>、<code>Star</code>）。</p>
-            <div class="button-row">
-                <Badge icon="Bell">
-                    <Avatar name="Heidi" />
-                </Badge>
-                <Badge icon="Check" size="large">
-                    <Avatar name="Ivan" />
-                </Badge>
-                <Badge icon="Star">
-                    <Avatar name="Judy" />
-                </Badge>
+            <div class="demo-section">
+                <h3>Icon variant</h3>
+                <p>icon 属性切换为 Icon variant，在右下角显示图标徽标。值为 IconName 枚举变体名（如 Bell、Check、Star）。</p>
+                <div class="button-row">
+                    <Badge icon="Bell">
+                        <Avatar name="Heidi" />
+                    </Badge>
+                    <Badge icon="Check" size="large">
+                        <Avatar name="Ivan" />
+                    </Badge>
+                    <Badge icon="Star">
+                        <Avatar name="Judy" />
+                    </Badge>
+                </div>
             </div>
-        </Card>
 
-        <Card title="尺寸 size">
-            <p>size 属性控制徽标大小：xsmall / small / medium / large。</p>
-            <div class="button-row">
-                <Badge count="5" size="xsmall">
-                    <Avatar name="A" />
-                </Badge>
-                <Badge count="5" size="small">
-                    <Avatar name="B" />
-                </Badge>
-                <Badge count="5" size="medium">
-                    <Avatar name="C" />
-                </Badge>
-                <Badge count="5" size="large">
-                    <Avatar name="D" />
-                </Badge>
+            <div class="demo-section">
+                <h3>尺寸 size</h3>
+                <p>size 属性控制徽标大小：xsmall / small / medium / large。来自 Sizable trait。</p>
+                <div class="button-row">
+                    <Badge count="5" size="xsmall">
+                        <Avatar name="A" />
+                    </Badge>
+                    <Badge count="5" size="small">
+                        <Avatar name="B" />
+                    </Badge>
+                    <Badge count="5" size="medium">
+                        <Avatar name="C" />
+                    </Badge>
+                    <Badge count="5" size="large">
+                        <Avatar name="D" />
+                    </Badge>
+                </div>
+                <p>注：在 gpui-component 底层实现中，Size::Small 与 Size::XSmall 共用同一尺寸分支（10px），视觉等价。Medium（默认，16px）与 Large（24px）有显著差异。</p>
             </div>
-            <p class="hint">注：在 gpui-component 底层实现中，<code>Size::Small</code> 与 <code>Size::XSmall</code> 共用同一尺寸分支（10px），视觉等价。<code>Medium</code>（默认，16px）与 <code>Large</code>（24px）有显著差异。</p>
-        </Card>
 
-        <Card title="动态绑定（#[computed] + if 条件渲染）">
-            <p>点击按钮递增 count，当 count &gt; max_val 时显示 <code>{count_display}</code>（演示 #[computed] 条件逻辑）；切换 variant 演示 if 条件渲染：</p>
-            <div class="button-row">
-                <Badge dot="" if={is_dot}>
-                    <Avatar name="Dynamic" />
-                </Badge>
-                <Badge count={count} if={!is_dot} max={max_val}>
-                    <Avatar name="Dynamic" />
-                </Badge>
+            <div class="demo-section">
+                <h3>动态绑定（computed + if 条件渲染）</h3>
+                <p>点击按钮递增 count，当 count 大于 max_val 时显示 N+（演示 computed 条件逻辑）；切换 variant 演示 if 条件渲染。</p>
+                <div class="button-row">
+                    <Badge dot="" if={is_dot}>
+                        <Avatar name="Dynamic" />
+                    </Badge>
+                    <Badge count={count} if={!is_dot} max={max_val}>
+                        <Avatar name="Dynamic" />
+                    </Badge>
+                </div>
+                <p>当前 variant: {variant_label} | count: {count} | max_val: {max_val} | 显示: {count_display}</p>
+                <div class="button-row">
+                    <Button label="count +1" primary="" on-click={on_increment} />
+                    <Button label="count +10" on-click={on_increment_10} />
+                    <Button label="reset" on-click={on_reset} />
+                    <Button label="切换 Number/Dot" on-click={on_toggle_dot} />
+                </div>
             </div>
-            <p>当前 variant: {variant_label} | count: {count} | max_val: {max_val} | 显示: {count_display}</p>
-            <div class="button-row">
-                <Button label="count +1" primary="" on-click={on_increment} />
-                <Button label="count +10" on-click={on_increment_10} />
-                <Button label="reset" on-click={on_reset} />
-                <Button label="切换 Number/Dot" on-click={on_toggle_dot} />
-            </div>
-        </Card>
+        </template>
 
-        <Card title="示例代码">
-            <p>点击下方 Tab 切换 <code>.rml</code> 声明文件与 <code>.rml.rs</code> 后端文件：</p>
-            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
-                <Tab label=".rml">
-                    <CodeEditor ref="rml_editor" value={rml_sample} language="rml" />
-                </Tab>
-                <Tab label=".rml.rs">
-                    <CodeEditor ref="rust_editor" value={rust_sample} language="rust" />
-                </Tab>
-            </TabBar>
-        </Card>
-
-        <Card title="API">
+        <template slot="api">
             <h3>Badge</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-            <p>另：<code>size</code> 属性来自 Sizable trait，<code>disabled</code> 等通用属性对所有 Stateless 组件生效。</p>
-        </Card>
-    </div>
+            <p>另：size 属性来自 Sizable trait，disabled 等通用属性对所有 Stateless 组件生效。</p>
+        </template>
+    </CaseDocPage>
 </component>

@@ -13,6 +13,7 @@ rust-rml-ui = { workspace = true }
 rust-rml-client = { workspace = true }
 gpui = { workspace = true }
 gpui-component = { workspace = true }
+crossbeam-channel = { workspace = true }
 flume = "0.12"
 lsp-types = "0.97"
 serde = { version = "1", features = ["derive"] }

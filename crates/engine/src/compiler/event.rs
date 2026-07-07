@@ -13,8 +13,17 @@
 //!
 //! 详见文档 §5.4 事件绑定与 §10.6 代码生成。
 
-use crate::compiler::CodegenCtx;
+use crate::compiler::{expr, CodegenCtx};
 use crate::parser::ast::EventHandler;
+
+/// 检测当前是否在 slot 闭包上下文内（self_alias == "__rml_self_ref"）
+///
+/// slot 闭包内 cx 类型为 `&mut gpui::App`（非 `&mut Context<Self>`），
+/// `cx.listener` 不可用，需改用 entity 捕获模式：
+/// `__rml_self_entity.update(cx, |this, cx| { ... })`
+fn in_slot_context() -> bool {
+    expr::current_self_alias() == Some("__rml_self_ref")
+}
 
 /// 事件名 → (GPUI 事件类型, GPUI on_* 方法名, 转换函数路径)
 ///
@@ -95,33 +104,88 @@ pub fn apply_event(name: &str, handler: &EventHandler, _ctx: &CodegenCtx) -> Str
         None => return String::new(),
     };
 
+    let slot = in_slot_context();
+
     match handler {
         EventHandler::Ident(method) | EventHandler::MethodName(method) => {
-            format!(
-                ".{}(cx.listener(move |this, ev: &{}, _window, cx| {{\n                    \
-                 let rml_ev = {};\n                    this.{}(&rml_ev, cx);\n                    \
-                 if rml_ev.is_propagation_stopped() {{ cx.stop_propagation(); }}\n                }}))",
-                on_method, gpui_type, convert_expr, method
-            )
-        }
-        EventHandler::WithArgs(method, args) => {
-            if args.is_empty() {
+            if slot {
+                format!(
+                    ".{on_method}({{\n    \
+                     let __rml_evt_entity = __rml_self_entity.clone();\n    \
+                     move |ev: &{gpui_type}, _window: &mut gpui::Window, cx: &mut gpui::App| {{\n        \
+                     __rml_evt_entity.update(cx, |this, cx| {{\n            \
+                     let rml_ev = {convert_expr};\n            \
+                     this.{method}(&rml_ev, cx);\n            \
+                     if rml_ev.is_propagation_stopped() {{ cx.stop_propagation(); }}\n        \
+                     }});\n    }}\n}})",
+                    on_method = on_method,
+                    gpui_type = gpui_type,
+                    convert_expr = convert_expr,
+                    method = method,
+                )
+            } else {
                 format!(
                     ".{}(cx.listener(move |this, ev: &{}, _window, cx| {{\n                    \
                      let rml_ev = {};\n                    this.{}(&rml_ev, cx);\n                    \
                      if rml_ev.is_propagation_stopped() {{ cx.stop_propagation(); }}\n                }}))",
                     on_method, gpui_type, convert_expr, method
                 )
+            }
+        }
+        EventHandler::WithArgs(method, args) => {
+            if args.is_empty() {
+                if slot {
+                    format!(
+                        ".{on_method}({{\n    \
+                         let __rml_evt_entity = __rml_self_entity.clone();\n    \
+                         move |ev: &{gpui_type}, _window: &mut gpui::Window, cx: &mut gpui::App| {{\n        \
+                         __rml_evt_entity.update(cx, |this, cx| {{\n            \
+                         let rml_ev = {convert_expr};\n            \
+                         this.{method}(&rml_ev, cx);\n            \
+                         if rml_ev.is_propagation_stopped() {{ cx.stop_propagation(); }}\n        \
+                         }});\n    }}\n}})",
+                        on_method = on_method,
+                        gpui_type = gpui_type,
+                        convert_expr = convert_expr,
+                        method = method,
+                    )
+                } else {
+                    format!(
+                        ".{}(cx.listener(move |this, ev: &{}, _window, cx| {{\n                    \
+                         let rml_ev = {};\n                    this.{}(&rml_ev, cx);\n                    \
+                         if rml_ev.is_propagation_stopped() {{ cx.stop_propagation(); }}\n                }}))",
+                        on_method, gpui_type, convert_expr, method
+                    )
+                }
             } else {
                 // Phase B-1 简化：仅支持单参数
                 let arg = &args[0];
-                format!(
-                    ".{}(cx.listener(move |this, ev: &{}, _window, cx| {{\n                    \
-                     let p0 = {}.clone();\n                    let rml_ev = {};\n                    \
-                     this.{}(p0, &rml_ev, cx);\n                    \
-                     if rml_ev.is_propagation_stopped() {{ cx.stop_propagation(); }}\n                }}))",
-                    on_method, gpui_type, arg, convert_expr, method
-                )
+                if slot {
+                    format!(
+                        ".{on_method}({{\n    \
+                         let __rml_evt_entity = __rml_self_entity.clone();\n    \
+                         move |ev: &{gpui_type}, _window: &mut gpui::Window, cx: &mut gpui::App| {{\n        \
+                         __rml_evt_entity.update(cx, |this, cx| {{\n            \
+                         let p0 = {arg}.clone();\n            \
+                         let rml_ev = {convert_expr};\n            \
+                         this.{method}(p0, &rml_ev, cx);\n            \
+                         if rml_ev.is_propagation_stopped() {{ cx.stop_propagation(); }}\n        \
+                         }});\n    }}\n}})",
+                        on_method = on_method,
+                        gpui_type = gpui_type,
+                        arg = arg,
+                        convert_expr = convert_expr,
+                        method = method,
+                    )
+                } else {
+                    format!(
+                        ".{}(cx.listener(move |this, ev: &{}, _window, cx| {{\n                    \
+                         let p0 = {}.clone();\n                    let rml_ev = {};\n                    \
+                         this.{}(p0, &rml_ev, cx);\n                    \
+                         if rml_ev.is_propagation_stopped() {{ cx.stop_propagation(); }}\n                }}))",
+                        on_method, gpui_type, arg, convert_expr, method
+                    )
+                }
             }
         }
     }
@@ -144,6 +208,7 @@ pub fn apply_action_event(handler: &EventHandler) -> String {
         EventHandler::WithArgs(s, _) => s.as_str(),
     };
 
+    let slot = in_slot_context();
     let mut parts = Vec::new();
     for pair in value.split(',') {
         let pair = pair.trim();
@@ -158,10 +223,21 @@ pub fn apply_action_event(handler: &EventHandler) -> String {
         if type_name.is_empty() || method.is_empty() {
             return String::new();
         }
-        parts.push(format!(
-            ".on_action::<{type_name}>(cx.listener(move |this, _action: &{type_name}, _window, cx| {{\n                    \
-             this.{method}(_action, _window, cx);\n                }}))"
-        ));
+        if slot {
+            parts.push(format!(
+                ".on_action::<{type_name}>({{\n    \
+                 let __rml_evt_entity = __rml_self_entity.clone();\n    \
+                 move |_action: &{type_name}, _window: &mut gpui::Window, cx: &mut gpui::App| {{\n        \
+                 __rml_evt_entity.update(cx, |this, cx| {{\n            \
+                 this.{method}(_action, _window, cx);\n        \
+                 }});\n    }}\n}})"
+            ));
+        } else {
+            parts.push(format!(
+                ".on_action::<{type_name}>(cx.listener(move |this, _action: &{type_name}, _window, cx| {{\n                    \
+                 this.{method}(_action, _window, cx);\n                }}))"
+            ));
+        }
     }
     parts.join(" ")
 }
@@ -186,12 +262,30 @@ pub fn apply_hover_event(name: &str, handler: &EventHandler) -> String {
         _ => None,
     };
 
+    let slot = in_slot_context();
+
     let body = if let Some(cond) = condition {
+        if slot {
+            format!(
+                "if {} {{\n            \
+                 let rml_ev = rml_convert::from_gpui_hover(&is_hovering);\n            \
+                 this.{}(&rml_ev, cx);\n        \
+                 }}",
+                cond, method
+            )
+        } else {
+            format!(
+                "if {} {{\n                    \
+                 let rml_ev = rml_convert::from_gpui_hover(&is_hovering);\n                    \
+                 this.{}(&rml_ev, cx);\n                }}",
+                cond, method
+            )
+        }
+    } else if slot {
         format!(
-            "if {} {{\n                    \
-             let rml_ev = rml_convert::from_gpui_hover(&is_hovering);\n                    \
-             this.{}(&rml_ev, cx);\n                }}",
-            cond, method
+            "let rml_ev = rml_convert::from_gpui_hover(&is_hovering);\n            \
+             this.{}(&rml_ev, cx);",
+            method
         )
     } else {
         format!(
@@ -201,11 +295,23 @@ pub fn apply_hover_event(name: &str, handler: &EventHandler) -> String {
         )
     };
 
-    format!(
-        ".on_hover(cx.listener(move |this, is_hovering: &bool, _window, cx| {{\n                    \
-         {}\n                }}))",
-        body
-    )
+    if slot {
+        format!(
+            ".on_hover({{\n    \
+             let __rml_evt_entity = __rml_self_entity.clone();\n    \
+             move |is_hovering: &bool, _window: &mut gpui::Window, cx: &mut gpui::App| {{\n        \
+             __rml_evt_entity.update(cx, |this, cx| {{\n            \
+             {}\n        \
+             }});\n    }}\n}})",
+            body
+        )
+    } else {
+        format!(
+            ".on_hover(cx.listener(move |this, is_hovering: &bool, _window, cx| {{\n                    \
+             {}\n                }}))",
+            body
+        )
+    }
 }
 
 // ──────────────────────────────────────────────────────────────────────────
