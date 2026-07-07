@@ -1,10 +1,15 @@
-//! TabBar 容器 codegen —— 构造 + 属性 + 子节点 `.child(TabItem::new()...)` 注入。
+//! 原生 TabBar 容器 codegen —— 构造 + 属性 + 子节点 `.child(TabItem::new()...)` 注入。
 //!
-//! 将 `<TabBar><Tab label="A" /><Tab label="B"><div>body</div></Tab></TabBar>` 转译为
-//! `rml_ui::TabBar::new(id).selected_index(0).child(rml_ui::TabItem::new().title("A")).child(rml_ui::TabItem::new().title("B").body(closure))`。
+//! 将 `<TabBar><Tab label="A" /><Tab label="B" /></TabBar>` 转译为
+//! `rml_ui::TabBar::new(id).selected_index(0).child(rml_ui::TabItem::new().title("A")).child(rml_ui::TabItem::new().title("B"))`。
 //!
-//! `<tab>` 是 TabBar 唯一支持的子节点标签（`<tab-item>` 已弃用并移除）。
-//! `tab::gen_tab_child` 生成 `TabItem::new()...` 表达式，统一承载 title + body。
+//! `<tab>` 子节点 codegen 复用 `tabs::tab::gen_tab_child`（生成 `TabItem::new()...`），
+//! 因 TabBar 的 `child()` 接受 `impl Into<TabItem>`。
+//!
+//! 与 `tabs::gen_tabs` 的关键差异：
+//! - 构造器为 `rml_ui::TabBar::new`（非 `rml_ui::Tabs::new`）
+//! - 属性走 `tab_bar::setters`（不含 bordered/on_close*/on_promote）
+//! - 子节点生成复用 `tabs::tab::gen_tab_child`（相同逻辑）
 
 use crate::compiler::{CodegenCtx, CodegenError};
 use crate::parser::ast::{Attribute, Element, Node};
@@ -67,12 +72,12 @@ pub fn gen_tab_bar(
     }
 
     // 3. 子节点 → .child(TabItem) 直接构造
-    // <tab> 是 TabBar 唯一支持的子节点标签（<tab-item> 已弃用移除）
+    // <tab> 子节点 codegen 复用 tabs::tab::gen_tab_child（生成 TabItem::new()...）
     for child in &elem.children {
         match child {
             Node::Element(child_elem) if tags::is_item_builder_tag(&child_elem.tag) => {
                 let (tab_code, is_iter) =
-                    super::tab::gen_tab_child(child_elem, ctx, id_counter, loop_vars)?;
+                    super::super::tabs::tab::gen_tab_child(child_elem, ctx, id_counter, loop_vars)?;
                 if is_iter {
                     code.push_str(&format!("\n            .children({})", tab_code));
                 } else {
@@ -210,29 +215,6 @@ mod tests {
     }
 
     #[test]
-    fn gen_tab_bar_with_tab_body_child() {
-        // <TabBar><Tab label="A"><div>body</div></Tab></TabBar>
-        // → .child(rml_ui::TabItem::new().title("A").body(closure))
-        let body_div = make_element("div", vec![], vec![Node::Text("body".into())]);
-        let tab = make_element(
-            "Tab",
-            vec![Attribute::Static {
-                name: "label".into(),
-                value: "A".into(),
-                span: Span::empty(),
-            }],
-            vec![Node::Element(body_div)],
-        );
-        let bar = make_element("TabBar", vec![], vec![Node::Element(tab)]);
-        let mut id = 0;
-        let code = gen_tab_bar(&bar, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
-        assert!(code.contains("rml_ui::TabItem::new()"));
-        assert!(code.contains(".title(\"A\")"));
-        assert!(code.contains(".body("));
-        assert!(code.contains("move |_window"));
-    }
-
-    #[test]
     fn gen_tab_bar_with_tab_icon() {
         // <TabBar><Tab icon="User" label="Account" /></TabBar>
         let tab = make_element(
@@ -260,7 +242,7 @@ mod tests {
 
     #[test]
     fn gen_tab_bar_with_on_click() {
-        // <TabBar on_click={on_tab_select} /> → .on_click(cx.listener(move |this, idx: &usize, ...))
+        // <TabBar on_click={on_tab_select} /> → .on_click(cx.listener(...))
         let elem = make_element(
             "TabBar",
             vec![Attribute::Event {
@@ -381,95 +363,9 @@ mod tests {
         let bar = make_element("TabBar", vec![], vec![Node::Element(tab1), Node::Element(tab2)]);
         let mut id = 0;
         let code = gen_tab_bar(&bar, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
-        // 应有两次 .child(
         let count = code.matches(".child(").count();
         assert_eq!(count, 2);
         assert!(code.contains(".title(\"A\")"));
         assert!(code.contains(".title(\"B\")"));
-    }
-
-    /// 端到端验证：通过 gen_component 入口调用
-    #[test]
-    fn gen_tab_bar_via_gen_component_dispatch() {
-        use crate::compiler::component::gen_component;
-        let elem = make_element("TabBar", vec![], vec![]);
-        let mut id = 0;
-        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
-        assert!(code.contains("rml_ui::TabBar::new"));
-    }
-
-    /// <tab-bar> kebab-case 标签通过 gen_component 入口调度
-    #[test]
-    fn gen_tab_bar_kebab_tag() {
-        use crate::compiler::component::gen_component;
-        let elem = make_element("tab-bar", vec![], vec![]);
-        let mut id = 0;
-        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
-        assert!(code.contains("rml_ui::TabBar::new"));
-    }
-
-    /// <tab> 短标签作为 <tab-bar> 子节点
-    #[test]
-    fn gen_tab_bar_with_tab_short_form() {
-        let tab = make_element(
-            "tab",
-            vec![Attribute::Static {
-                name: "label".into(),
-                value: "Account".into(),
-                span: Span::empty(),
-            }],
-            vec![],
-        );
-        let bar = make_element("tab-bar", vec![], vec![Node::Element(tab)]);
-        let mut id = 0;
-        let code = gen_tab_bar(&bar, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
-        assert!(code.contains(".child("));
-        assert!(code.contains("rml_ui::TabItem::new()"));
-        assert!(code.contains(".title(\"Account\")"));
-    }
-
-    /// <tab each={tab in tabs} label={tab.title} closable={tab.closable}> —— each 循环模式生成 .children(...)
-    #[test]
-    fn gen_tab_bar_with_tab_each() {
-        // <TabBar><Tab each={tab in tabs} label={tab.title} closable={tab.closable} /></TabBar>
-        let tab = make_element_with_directives(
-            "Tab",
-            vec![
-                Attribute::Bind {
-                    name: "label".into(),
-                    expr: "tab.title".into(),
-                    span: Span::empty(),
-                },
-                Attribute::Bind {
-                    name: "closable".into(),
-                    expr: "tab.closable".into(),
-                    span: Span::empty(),
-                },
-            ],
-            vec![Directive::Each {
-                clause: EachClause {
-                    item: "tab".into(),
-                    index: None,
-                    iterable: "tabs".into(),
-                },
-                span: Span::empty(),
-            }],
-            vec![],
-        );
-        let bar = make_element("TabBar", vec![], vec![Node::Element(tab)]);
-        let mut id = 0;
-        let code = gen_tab_bar(&bar, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
-        // each 模式生成 .children(self.tabs.iter().map(...))
-        assert!(code.contains(".children("));
-        assert!(code.contains("self.tabs.iter().map(|tab|"));
-        assert!(code.contains("let tab = tab.clone();"));
-        assert!(code.contains("rml_ui::TabItem::new()"));
-        // 循环变量正确解析为 tab.title（非 self.tab.title）
-        assert!(code.contains(".title(tab.title.clone())"));
-        assert!(code.contains(".closable(tab.closable)"));
-        // 不应出现 self.tab（循环变量不应被误解析为 self 字段）
-        assert!(!code.contains("self.tab."));
-        // 不应出现 .child( （each 用 .children）
-        assert!(!code.contains("\n            .child("));
     }
 }

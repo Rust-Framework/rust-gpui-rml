@@ -87,7 +87,7 @@ pub use components::{
     DialogDescription, DialogFooter, DialogHeader, DialogTitle, FooterTemplate, GroupBox,
     GroupBoxVariants, HeaderTemplate, IActivityAct, IActivityPanel, Link, MenuBar,
     NativeStatusBar, Pagination, RadioGroup, StatusBarAlign, Skeleton, Spinner, Tab,
-    TabBar, TabItem, Table, TableColumn, TableDelegate, TableRow, TabVariant, Tree,
+    TabBar, TabItem, Tabs, Table, TableColumn, TableDelegate, TableRow, TabVariant, Tree,
     VisualActivityPanel, configure_menu_bar_popup, menu_bar_button,
 };
 

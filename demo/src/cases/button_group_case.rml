@@ -1,5 +1,5 @@
 <component>
-    <div v-flex="" class="case-pane doc-pane">
+    <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.button_group.title")}</h2>
         <p>ButtonGroup 是 RML 的按钮组容器组件，标签为 PascalCase <code>ButtonGroup</code>。容器模式，子节点为 <code>Button</code> 组件。用于将多个相关操作按钮分组展示，提供视觉一致性。</p>
 

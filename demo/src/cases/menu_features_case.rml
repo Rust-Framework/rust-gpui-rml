@@ -1,5 +1,5 @@
 <component>
-    <div v-flex="" class="case-pane doc-pane">
+    <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.menu.features.title")}</h2>
 
         <p>Menu Features 案例综合演示 dropdown-menu 的核心特性：禁用项、勾选项、链接项、子菜单、可滚动。通过 scrollable + max-h 实现长菜单滚动。核心概念：disabled 禁用菜单项（点击不触发）；checked 绑定布尔字段显示勾选；href 渲染为外链；menu-item 内嵌形成子菜单；scrollable + max-h 限制高度并启用滚动。</p>

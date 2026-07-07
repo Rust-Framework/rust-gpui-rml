@@ -1,5 +1,5 @@
 <component>
-    <div v-flex="" class="case-pane doc-pane">
+    <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.else.title")}</h2>
 
         <Card title="组件说明">
@@ -8,10 +8,10 @@
 
         <Card title="双分支渲染">
             <p>show_a = {show_a}</p>
-            <div h-flex="" gap-4="">
+            <div display="flex" flex-direction="row" gap="16px">
                 <Button label="切换分支" on-click={on_toggle} />
             </div>
-            <div v-flex="" gap-2="">
+            <div display="flex" flex-direction="column" gap="8px">
                 <Card title="A 分支" if={show_a}>
                     <p>show_a 为 true 时渲染此分支（if 分支）。</p>
                 </Card>

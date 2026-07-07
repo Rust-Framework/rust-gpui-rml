@@ -33,6 +33,7 @@ mod observable;
 mod once;
 mod render;
 mod shell;
+pub(crate) mod style_attr;
 mod text;
 mod window;
 

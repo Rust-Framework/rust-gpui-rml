@@ -112,9 +112,19 @@ pub fn gen_component(
             }
         }
         tags::ComponentKind::StatelessWithItems => {
-            // 闭包式 builder 组件（如 Accordion）或直接 .child() 注入组件（如 TabBar）：
+            // 闭包式 builder 组件（如 Accordion）或直接 .child() 注入组件（如 Tabs/TabBar）：
             // 按 tag 委托到对应专属模块
             let resolved_tag = tags::canonical_tag(tag);
+            if resolved_tag == "Tabs" {
+                return crate::compiler::tabs::gen_tabs(
+                    elem,
+                    ref_name,
+                    id_val,
+                    ctx,
+                    id_counter,
+                    loop_vars,
+                );
+            }
             if resolved_tag == "TabBar" {
                 return crate::compiler::tab_bar::gen_tab_bar(
                     elem,
@@ -386,6 +396,11 @@ pub fn component_static_setter(name: &str, value: &str, tag: &str) -> Option<Str
     if let Some(s) = super::tooltip::static_setter(name, value, tag) {
         return Some(s);
     }
+    // 归一化样式属性：对所有扩展组件生效（gpui-component 实现 Styled trait）
+    // 复用 css::mapper 单一映射源，避免双轨制
+    if let Some(s) = crate::compiler::codegen::style_attr::apply_style_attr(name, value) {
+        return Some(s);
+    }
     match name {
         "label" => Some(format!(".label({:?})", value)),
         "placeholder" => Some(format!(".placeholder({:?})", value)),
@@ -476,14 +491,6 @@ pub fn component_static_setter(name: &str, value: &str, tag: &str) -> Option<Str
         // StyledExt 字体权重（值为空或 "true" 时启用）
         "font_thin" | "font_extralight" | "font_light" | "font_normal" | "font_medium"
         | "font_semibold" | "font_bold" | "font_extrabold" | "font_black" => {
-            if value.is_empty() || value.eq_ignore_ascii_case("true") {
-                Some(format!(".{}()", name))
-            } else {
-                None
-            }
-        }
-        // StyledExt 布局快捷方法
-        "h_flex" | "v_flex" => {
             if value.is_empty() || value.eq_ignore_ascii_case("true") {
                 Some(format!(".{}()", name))
             } else {
@@ -1045,18 +1052,6 @@ mod tests {
     #[test]
     fn static_setter_font_weight_false_returns_none() {
         assert!(component_static_setter("font_bold", "false", "Button").is_none());
-    }
-
-    #[test]
-    fn static_setter_layout_methods() {
-        assert_eq!(
-            component_static_setter("h_flex", "", "div").unwrap(),
-            ".h_flex()"
-        );
-        assert_eq!(
-            component_static_setter("v_flex", "", "div").unwrap(),
-            ".v_flex()"
-        );
     }
 
     #[test]

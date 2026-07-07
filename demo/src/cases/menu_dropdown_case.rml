@@ -1,5 +1,5 @@
 <component>
-    <div v-flex="" class="case-pane doc-pane">
+    <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.menu.dropdown.title")}</h2>
 
         <p>Dropdown Menu 是 RML 的下拉菜单组件，标签为 kebab-case <code>dropdown-menu</code>。第一个子元素作为触发器，点击触发弹出菜单。核心概念：第一个子节点（通常是 Button）作为触发器；anchor 控制弹出位置（TopRight/BottomLeft 等）；menu-item 定义菜单项；menu-separator 分组分隔。</p>

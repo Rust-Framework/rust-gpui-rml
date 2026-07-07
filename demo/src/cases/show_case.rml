@@ -1,5 +1,5 @@
 <component>
-    <div v-flex="" class="case-pane doc-pane">
+    <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.show.title")}</h2>
 
         <Card title="组件说明">
@@ -8,10 +8,10 @@
 
         <Card title="show 演示（保留布局空间）">
             <p>show_card = {show_card}</p>
-            <div h-flex="" gap-4="">
+            <div display="flex" flex-direction="row" gap="16px">
                 <Button label="切换 show" on-click={on_toggle_show} />
             </div>
-            <div v-flex="" gap-2="">
+            <div display="flex" flex-direction="column" gap="8px">
                 <Card title="show 卡片" show={show_card}>
                     <p>show=false 时此卡片不可见，但布局空间仍保留（visibility:hidden）。</p>
                 </Card>
@@ -23,10 +23,10 @@
 
         <Card title="if 演示（不保留布局空间）">
             <p>if_card = {if_card}</p>
-            <div h-flex="" gap-4="">
+            <div display="flex" flex-direction="row" gap="16px">
                 <Button label="切换 if" on-click={on_toggle_if} />
             </div>
-            <div v-flex="" gap-2="">
+            <div display="flex" flex-direction="column" gap="8px">
                 <Card title="if 卡片" if={if_card}>
                     <p>if=false 时此卡片不渲染，不占布局空间（Display::None）。</p>
                 </Card>

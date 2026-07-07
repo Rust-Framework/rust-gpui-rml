@@ -1,5 +1,5 @@
 <component>
-    <div v-flex="" class="case-pane doc-pane">
+    <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.tree.title")}</h2>
 
         <p>Tree 是 RML 的树视图组件。Stateful 模式，需在 on_loaded 中初始化 TreeState Entity 并设置 items。点击叶子节点触发 on-activate 事件，文件夹节点点击仅展开/折叠。</p>

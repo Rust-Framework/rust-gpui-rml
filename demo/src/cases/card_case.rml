@@ -1,5 +1,5 @@
 <component>
-    <div v-flex="" class="case-pane doc-pane">
+    <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.card.title")}</h2>
         <p>Card 是 RML 的卡片容器组件（Ant Design 风格），标签为 PascalCase <code>Card</code>。容器模式，通过 <code>title</code>/<code>extra</code>/<code>cover</code>/<code>footer</code> 属性组合内容。支持 <code>bordered</code>/<code>borderless</code>/<code>hoverable</code> 样式控制。</p>
 

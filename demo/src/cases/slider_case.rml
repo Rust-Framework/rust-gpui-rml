@@ -1,25 +1,25 @@
 <component>
-    <div v-flex="" class="case-pane doc-pane">
+    <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.slider.title")}</h2>
         <p>Slider 是 RML 的滑块组件，标签为 PascalCase <code>Slider</code>。Stateful 模式，需在 <code>on_loaded</code> 中初始化 <code>SliderState</code> Entity 并通过 <code>ref</code> 引用。<code>SliderState</code> 提供 <code>min</code>/<code>max</code>/<code>step</code>/<code>default_value</code> 链式构造器，<code>default_value</code> 接受 <code>f32</code> 单值或 <code>(f32, f32)</code> 元组（范围滑块）。</p>
 
         <Card title="基础用法">
             <p><code>ref="slider_state"</code> 引用 on_loaded 中初始化的 SliderState（min=0, max=100, step=1, default=50）。</p>
-            <div v-flex="" gap-2="">
+            <div display="flex" flex-direction="column" gap="8px">
                 <Slider ref="slider_state" />
             </div>
         </Card>
 
         <Card title="禁用状态 disabled">
             <p><code>disabled=\{true\}</code> 静态禁用滑块交互（disabled 是 Slider 组件方法，需在 RML 标签上设置）。</p>
-            <div v-flex="" gap-2="">
+            <div display="flex" flex-direction="column" gap="8px">
                 <Slider ref="disabled_state" disabled={true} />
             </div>
         </Card>
 
         <Card title="范围滑块 Range">
             <p><code>default_value((20.0, 80.0))</code> 在 on_loaded 中设置元组初始值，step=5。Slider 自动渲染双 thumb 范围滑块。</p>
-            <div v-flex="" gap-2="">
+            <div display="flex" flex-direction="column" gap="8px">
                 <Slider ref="range_state" />
             </div>
         </Card>

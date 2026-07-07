@@ -1,11 +1,11 @@
 <component>
-    <div v-flex="" class="case-pane doc-pane">
+    <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.tag.title")}</h2>
         <p>Tag 是 RML 的标签组件，标签为 PascalCase <code>Tag</code>。无 ElementId 构造（StatelessNoId），容器模式，文本通过子节点设置。支持 6 种 variant + outline 描边样式 + 2 种视觉尺寸。</p>
 
         <Card title="变体 variants">
             <p>6 种 variant 通过同名空属性切换（构造器选择 <code>Tag::primary()</code> 等）。不写 variant 即默认 Default（Secondary 配色）。</p>
-            <div h-flex="" gap-2="" flex-wrap="">
+            <div display="flex" flex-direction="row" gap="8px" flex-wrap="wrap">
                 <Tag>Default</Tag>
                 <Tag primary="">Primary</Tag>
                 <Tag secondary="">Secondary</Tag>
@@ -18,7 +18,7 @@
 
         <Card title="描边样式 outline">
             <p><code>outline=""</code> 切换为描边样式：透明背景 + 彩色边框/文字，常用于次要状态区分。</p>
-            <div h-flex="" gap-2="" flex-wrap="">
+            <div display="flex" flex-direction="row" gap="8px" flex-wrap="wrap">
                 <Tag primary="" outline="">Primary Outline</Tag>
                 <Tag secondary="" outline="">Secondary Outline</Tag>
                 <Tag danger="" outline="">Danger Outline</Tag>
@@ -30,7 +30,7 @@
 
         <Card title="尺寸 size">
             <p>size 属性控制标签大小：xsmall / small / medium / large。</p>
-            <div h-flex="" gap-2="" flex-wrap="">
+            <div display="flex" flex-direction="row" gap="8px" flex-wrap="wrap">
                 <Tag primary="" size="xsmall">XSmall</Tag>
                 <Tag primary="" size="small">Small</Tag>
                 <Tag primary="" size="medium">Medium</Tag>
@@ -47,7 +47,7 @@
                 <Button label="切换变体" primary="" on-click={on_cycle_variant} />
                 <Button label="切换 outline" on-click={on_toggle_outline} />
             </div>
-            <div h-flex="" gap-2="" flex-wrap="">
+            <div display="flex" flex-direction="row" gap="8px" flex-wrap="wrap">
                 <Tag if={variant_index == 0 && !is_outline}>{tag_text}</Tag>
                 <Tag primary="" if={variant_index == 1 && !is_outline}>{tag_text}</Tag>
                 <Tag secondary="" if={variant_index == 2 && !is_outline}>{tag_text}</Tag>

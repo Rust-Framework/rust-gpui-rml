@@ -1,5 +1,5 @@
 <component>
-    <div v-flex="" class="case-pane doc-pane">
+    <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.native_status_bar.title")}</h2>
 
         <p>NativeStatusBar 是 RML 的原生状态栏组件。无 ElementId 构造（StatelessNoId），容器模式。子节点渲染在中央区域。通常用于 modern-window 的底部状态栏组合。</p>

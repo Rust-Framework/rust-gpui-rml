@@ -1,11 +1,11 @@
 <component>
-    <div v-flex="" class="lsp-editor-pane"
+    <div display="flex" flex-direction="column" class="lsp-editor-pane"
          on-action="FormatDocument:on_format_action, RenameSymbol:on_rename_action, FindReferences:on_find_references_action, GoToDefinition:on_goto_definition_action, ShowDocumentSymbols:on_show_document_symbols_action">
-        <div h-flex="" class="lsp-toolbar">
+        <div display="flex" flex-direction="row" class="lsp-toolbar">
             <Breadcrumb items={breadcrumb_items} on-select={on_breadcrumb_select} />
         </div>
         <div class="lsp-editor-area">
-            <CodeEditor h-full="" context-menu="build_editor_menu" />
+            <CodeEditor height="full" context-menu="build_editor_menu" />
         </div>
     </div>
 </component>

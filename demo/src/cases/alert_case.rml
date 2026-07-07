@@ -1,11 +1,11 @@
 <component>
-    <div v-flex="" class="case-pane doc-pane">
+    <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.alert.title")}</h2>
         <p>Alert 是 RML 的警告提示组件，标签为 PascalCase <code>Alert</code>。Stateless 组件，构造器接受 <code>(ElementId, message)</code>。支持 5 种 variant（Default/Info/Success/Warning/Error），通过 variant 关联函数或 <code>variant</code> 属性切换。</p>
 
         <Card title="variant 关联函数（布尔属性）">
             <p>4 种 variant 关联函数通过同名空属性切换：<code>info=""</code> → <code>Alert::info(id, msg)</code>。不写 variant 即默认 Default。</p>
-            <div v-flex="" gap-2="">
+            <div display="flex" flex-direction="column" gap="8px">
                 <Alert message="默认提示：用于一般性信息展示" />
                 <Alert info="" message="Info：用于重要提示信息" />
                 <Alert success="" message="Success：操作成功的反馈" />
@@ -16,7 +16,7 @@
 
         <Card title="variant 属性（builder 方法）">
             <p>使用 <code>variant="info"</code> 属性切换 variant（等价于关联函数，但走 builder 方法 <code>.with_variant(AlertVariant::Info)</code>）。</p>
-            <div v-flex="" gap-2="">
+            <div display="flex" flex-direction="column" gap="8px">
                 <Alert variant="info" message="variant=info 的提示" />
                 <Alert variant="success" message="variant=success 的提示" />
                 <Alert variant="warning" message="variant=warning 的提示" />
@@ -26,7 +26,7 @@
 
         <Card title="title + banner">
             <p><code>title</code> 设置标题，<code>banner=""</code> 切换为顶部横幅模式（无边框，撑满宽度）。</p>
-            <div v-flex="" gap-2="">
+            <div display="flex" flex-direction="column" gap="8px">
                 <Alert info="" title="提示标题" message="带标题的提示信息" />
                 <Alert warning="" banner="" message="顶部横幅警告（无边框）" />
                 <Alert error="" title="错误" banner="" message="带标题的横幅错误" />
@@ -35,7 +35,7 @@
 
         <Card title="message 来源">
             <p>message 优先级：<code>message="..."</code> 静态属性 &gt; <code>message=绑定</code> 绑定属性 &gt; 文本子节点 &gt; 空字符串。</p>
-            <div v-flex="" gap-2="">
+            <div display="flex" flex-direction="column" gap="8px">
                 <Alert info="" message="静态属性 message" />
                 <Alert info="">{message_from_field}</Alert>
                 <Alert success="">文本子节点作为 message</Alert>
@@ -44,7 +44,7 @@
 
         <Card title="icon 自定义">
             <p><code>icon="Bell"</code> 设置自定义图标（值为 <code>rml_ui::IconName</code> 枚举变体名）。</p>
-            <div v-flex="" gap-2="">
+            <div display="flex" flex-direction="column" gap="8px">
                 <Alert info="" icon="Info" message="自定义 Info 图标" />
                 <Alert success="" icon="Check" message="自定义 Check 图标" />
                 <Alert warning="" icon="Bell" message="自定义 Bell 图标" />
@@ -54,7 +54,7 @@
 
         <Card title="on_close 事件 + 动态绑定">
             <p>点击关闭按钮触发 <code>on-close</code> 事件，演示事件回调 + 条件渲染（关闭后隐藏）：</p>
-            <div v-flex="" gap-2="">
+            <div display="flex" flex-direction="column" gap="8px">
                 <Alert info="" title="可关闭提示" message="点击右侧 X 按钮关闭" on-close={on_close} if={is_visible} />
                 <Alert warning="" message="另一个可关闭提示" on-close={on_close} if={is_visible} />
                 <Button label="重置显示" on-click={on_reset} />
@@ -64,7 +64,7 @@
 
         <Card title="尺寸 size">
             <p>size 属性控制提示大小：xsmall / small / medium / large。</p>
-            <div v-flex="" gap-2="">
+            <div display="flex" flex-direction="column" gap="8px">
                 <Alert info="" size="small" message="small 尺寸的提示" />
                 <Alert info="" size="medium" message="medium 尺寸的提示" />
                 <Alert info="" size="large" message="large 尺寸的提示" />

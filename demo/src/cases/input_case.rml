@@ -1,5 +1,5 @@
 <component>
-    <div v-flex="" class="case-pane doc-pane">
+    <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.input.title")}</h2>
         <p>Input 是 RML 的文本输入组件，标签为 PascalCase <code>Input</code>。Stateful 模式，通过 <code>ref</code> 指令惰性创建 <code>InputState</code> Entity，由 <code>__rml_populate_refs</code> 注入到对应的 <code>ElementRef</code> 字段。<code>placeholder</code> 与 <code>default_value</code> 需在 InputState builder 上设置，<code>disabled</code> 通过 Input 组件 RML 属性设置。</p>
 

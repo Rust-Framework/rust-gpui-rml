@@ -1,4 +1,4 @@
-//! TabWindowShell —— TabBar 标题栏 + 可调整插槽的高级窗口壳
+//! TabWindowShell —— Tabs 标题栏 + 可调整插槽的高级窗口壳
 //!
 //! 布局（单行标题栏）：
 //! `[图标切换] [菜单] [标题] [Tab…] [扩展区 suffix] [窗口操作]`
@@ -29,7 +29,7 @@ use gpui_component::{
 };
 use rml_core::contribution::{ContributionAbilityExt, VisualAbilityExt};
 use rml_core::value::IValue;
-use crate::components::tab::{TabBar, TabItem, TabVariant};
+use crate::components::tab::{TabItem, TabVariant, Tabs};
 use smallvec::SmallVec;
 
 type TabClickHandler = Rc<dyn Fn(usize, &mut Window, &mut App) + 'static>;
@@ -156,10 +156,10 @@ pub struct TabWindowShell {
     on_tab_click: Option<TabClickHandler>,
     /// 选项卡关闭按钮触发时调用，参数为被关闭选项卡的索引。
     on_tab_close: Option<TabClickHandler>,
-    /// "关闭全部"右键菜单项触发时调用（透传到 TabBar::on_close_all）。
+    /// "关闭全部"右键菜单项触发时调用（透传到 Tabs::on_close_all）。
     on_tab_close_all: Option<ChromeToggleHandler>,
     /// "关闭其他"右键菜单项触发时调用，参数为保留选项卡的索引
-    /// （透传到 TabBar::on_close_others）。
+    /// （透传到 Tabs::on_close_others）。
     on_tab_close_others: Option<TabClickHandler>,
     on_chrome_toggle: Option<ChromeToggleHandler>,
     slot_left: Option<AnyElement>,
@@ -272,7 +272,7 @@ impl TabWindowShell {
     }
 
     /// Set the handler invoked when the "Close All" context menu item is
-    /// clicked. Forwarded to `TabBar::on_close_all`; the menu item only
+    /// clicked. Forwarded to `Tabs::on_close_all`; the menu item only
     /// renders when this handler is registered.
     pub fn on_tab_close_all(
         mut self,
@@ -284,7 +284,7 @@ impl TabWindowShell {
 
     /// Set the handler invoked when the "Close Others" context menu item is
     /// clicked. The parameter is the index of the tab to keep. Forwarded to
-    /// `TabBar::on_close_others`; the menu item only renders when this
+    /// `Tabs::on_close_others`; the menu item only renders when this
     /// handler is registered.
     pub fn on_tab_close_others(
         mut self,
@@ -402,7 +402,7 @@ impl RenderOnce for TabWindowShell {
                 .into_any_element()
         });
 
-        let mut tab_bar = TabBar::new("tab-window-tabs")
+        let mut tab_bar = Tabs::new("tab-window-tabs")
             .menu(true)
             .flat()
             .with_size(Size::default())
@@ -580,9 +580,9 @@ impl RenderOnce for TabWindowShell {
             );
 
         // 自定义 title bar：不使用 gpui-component 的 TitleBar。
-        // TitleBar 内部 #bar 有 flex_shrink_0 且无 min_w_0，把 TabBar 放进去后
+        // TitleBar 内部 #bar 有 flex_shrink_0 且无 min_w_0，把 Tabs 放进去后
         // tabs 固有宽度成为 #bar 的 min-content，#bar 不收缩，窗口控件被挤出可视范围。
-        // 自定义布局让 TabBar wrapper（flex_1 + min_w_0 + overflow_hidden）能自由收缩，
+        // 自定义布局让 Tabs wrapper（flex_1 + min_w_0 + overflow_hidden）能自由收缩，
         // 窗口控件（flex_shrink_0）始终固定在右侧。
         //
         // window_control_area(Drag) 只设在 title_row 上，与窗口控件和 chrome_toggle

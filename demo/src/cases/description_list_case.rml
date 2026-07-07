@@ -1,5 +1,5 @@
 <component>
-    <div v-flex="" class="case-pane doc-pane">
+    <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.description_list.title")}</h2>
         <p>DescriptionList 是 RML 的描述列表组件，标签为 PascalCase <code>DescriptionList</code> 或小写 <code>descriptions</code>。用于呈现键值对形式的只读信息（如用户详情、产品属性）。核心特性：默认 horizontal 布局，<code>vertical</code> 控制纵向；<code>bordered</code> 边框控制；<code>columns</code> 多列布局；<code>label-width</code> 标签列宽；<code>items</code> 绑定批量数据（<code>Vec&lt;Arc&lt;dyn IValue&gt;&gt;</code>）；<code>description</code> 子项支持 <code>label</code> 必填 + <code>value</code>/<code>span</code> 属性；<code>separator</code> 分隔符；value 支持文本属性、文本子节点、元素子节点三种形式。</p>
 

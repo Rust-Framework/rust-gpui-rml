@@ -32,7 +32,7 @@ pub use alert_dialog::{
 };
 pub use menu::{MenuBar, configure_menu_bar_popup, menu_bar_button};
 pub use status_bar::{NativeStatusBar, StatusBarAlign};
-pub use tab::{Tab, TabBar, TabItem, TabVariant};
+pub use tab::{Tab, TabBar, TabItem, Tabs, TabVariant};
 pub use table::{
     CellTemplate, DefaultTableDelegate, FooterTemplate, HeaderTemplate, Table, TableColumn,
     TableDelegate, TableRow,

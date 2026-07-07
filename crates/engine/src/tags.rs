@@ -507,7 +507,14 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             kind: ComponentKind::Stateless,
             container: true,
         }),
-        // TabBar：标签栏容器，子节点为 <Tab>（直接 .child(Tab::new()...)，非闭包）
+        // Tabs：WPF TabControl 风格标签容器，header + body 切换
+        // PascalCase: <Tabs>，kebab-case: <tabs>
+        "Tabs" | "tabs" => Some(ComponentTag {
+            ctor_path: "rml_ui::Tabs",
+            kind: ComponentKind::StatelessWithItems,
+            container: false,
+        }),
+        // TabBar：原生 gpui-component 形态标签栏（纯 header，无 body）
         // PascalCase: <TabBar>，kebab-case: <tab-bar>
         "TabBar" | "tab-bar" => Some(ComponentTag {
             ctor_path: "rml_ui::TabBar",
@@ -601,8 +608,8 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
 /// 判断标签是否为 `StatelessWithItems` 组件的子项 builder
 ///
 /// Accordion 支持三种形式：`AccordionItem`（PascalCase）、`item`（短标签）、`accordion-item`（kebab-case）。
-/// TabBar 支持两种形式：`Tab`（PascalCase）、`tab`（短标签）。
-/// 仅在 `<accordion>`/`<tab-bar>` 内合法，不在 `component_lookup` 中注册
+/// Tabs/TabBar 共用 `Tab`（PascalCase）、`tab`（短标签）两种子项形式。
+/// 仅在 `<accordion>`/`<tabs>`/`<tab-bar>` 内合法，不在 `component_lookup` 中注册
 /// （避免被误用为顶层扩展组件），在 validator 和 codegen 中通过此函数识别。
 ///
 /// 注：`<tab-item>` 已弃用并移除——RML 架构保持干净整洁，统一用 `<tab>` 即可。
@@ -701,6 +708,22 @@ mod normalize_tests {
         assert!(component_lookup_resolved("accordion").is_some());
         assert!(is_special_lowercase_component("accordion"));
         assert!(is_extension_component("accordion"));
+    }
+
+    #[test]
+    fn component_lookup_tabs() {
+        let tag = component_lookup("Tabs").expect("Tabs should be registered");
+        assert_eq!(tag.ctor_path, "rml_ui::Tabs");
+        assert_eq!(tag.kind, ComponentKind::StatelessWithItems);
+    }
+
+    #[test]
+    fn component_lookup_tabs_kebab() {
+        // kebab-case <tabs> 直接命中 component_lookup
+        let tag = component_lookup("tabs").expect("tabs should be registered");
+        assert_eq!(tag.ctor_path, "rml_ui::Tabs");
+        assert_eq!(tag.kind, ComponentKind::StatelessWithItems);
+        assert!(component_lookup_resolved("tabs").is_some());
     }
 
     #[test]

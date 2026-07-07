@@ -1,18 +1,18 @@
 <component>
-    <div v-flex="" class="case-pane doc-pane">
+    <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.progress_circle.title")}</h2>
         <p>ProgressCircle 是 RML 的圆形进度组件，标签为 PascalCase <code>ProgressCircle</code>。通过 <code>value</code> 属性设置进度值（0-100，自动 clamp），<code>loading</code> 属性切换加载中状态（value 被忽略，显示循环旋转动画）。支持 4 种尺寸 + 容器模式（中心可放图标/文本）。</p>
 
         <Card title="基础用法">
             <p>value 属性设置圆形进度百分比，{status_text}</p>
-            <div h-flex="" gap-4="">
+            <div display="flex" flex-direction="row" gap="16px">
                 <ProgressCircle value={current} />
             </div>
         </Card>
 
         <Card title="尺寸 size">
             <p>size 属性控制圆形直径：xsmall(8px) / small(12px) / medium(16px) / large(20px)。4 档视觉区分明显。</p>
-            <div h-flex="" gap-6="" items-center="">
+            <div display="flex" flex-direction="row" gap="24px" align-items="center">
                 <ProgressCircle value={current} size="xsmall" />
                 <ProgressCircle value={current} size="small" />
                 <ProgressCircle value={current} size="medium" />
@@ -22,14 +22,14 @@
 
         <Card title="加载中状态 loading">
             <p>loading 属性显示循环旋转动画，value 被忽略。支持静态 <code>loading=""</code> 与绑定 <code>loading=\{is_loading\}</code>。</p>
-            <div h-flex="" gap-4="">
+            <div display="flex" flex-direction="row" gap="16px">
                 <ProgressCircle loading="" />
             </div>
         </Card>
 
         <Card title="容器模式（子节点）">
             <p>ProgressCircle 支持容器模式，中心可放图标或文本（常用于"完成"指示）。</p>
-            <div h-flex="" gap-4="">
+            <div display="flex" flex-direction="row" gap="16px">
                 <ProgressCircle value={current} size="large">
                     <Icon name="Check" />
                 </ProgressCircle>
@@ -46,7 +46,7 @@
                 <Button label="增加 10" primary="" on-click={on_increase} />
                 <Button label="切换 loading" on-click={on_toggle_loading} />
             </div>
-            <div h-flex="" gap-4="">
+            <div display="flex" flex-direction="row" gap="16px">
                 <ProgressCircle value={current} if={!loading} />
                 <ProgressCircle loading="" if={loading} />
             </div>

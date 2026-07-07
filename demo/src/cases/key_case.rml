@@ -1,5 +1,5 @@
 <component>
-    <div v-flex="" class="case-pane doc-pane">
+    <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.key.title")}</h2>
 
         <Card title="组件说明">
@@ -8,11 +8,11 @@
 
         <Card title="带 key 的列表">
             <p>共 {item_count} 项，每项含 id 和 label：</p>
-            <div h-flex="" gap-4="">
+            <div display="flex" flex-direction="row" gap="16px">
                 <Button label="头部插入" on-click={on_prepend} />
                 <Button label="清空" on-click={on_clear} />
             </div>
-            <div h-flex="" gap-2="" flex-wrap="">
+            <div display="flex" flex-direction="row" gap="8px" flex-wrap="wrap">
                 <component each={item in items} key={item.id} content={self.render_item(item, _window, cx)} />
             </div>
             <p>注：key=&#123;item.id&#125; 确保头部插入新项时，已有项的 ElementId 保持稳定，避免状态丢失。</p>

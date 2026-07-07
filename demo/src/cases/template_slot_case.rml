@@ -1,5 +1,5 @@
 <component>
-    <div v-flex="" class="case-pane doc-pane">
+    <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.template_slot.title")}</h2>
 
         <Card title="组件说明">
@@ -14,7 +14,7 @@
 
         <Card title="统计卡片模板">
             <p>调用 render_stat_card(label, value) 方法构建带标签 + 数值的卡片：</p>
-            <div h-flex="" gap-4="">
+            <div display="flex" flex-direction="row" gap="16px">
                 <component content={self.render_stat_card("案例数", "32", _window, cx)} />
                 <component content={self.render_stat_card("组件数", "20+", _window, cx)} />
                 <component content={self.render_stat_card("指令数", "8", _window, cx)} />

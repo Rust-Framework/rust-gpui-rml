@@ -1,11 +1,11 @@
 <component>
-    <div v-flex="" class="case-pane doc-pane">
+    <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.spinner.title")}</h2>
         <p>Spinner 和 Skeleton 是 RML 的加载指示组件。Spinner 为旋转图标动画，Skeleton 为骨架屏占位。两者均为 <code>StatelessNoId</code> 组件（无 ElementId，<code>RenderOnce</code>）。</p>
 
         <Card title="Spinner 基础">
             <p>默认 Spinner 使用 <code>Loader</code> 图标，<code>size</code> 控制尺寸。</p>
-            <div h-flex="" gap-4="" items-center="">
+            <div display="flex" flex-direction="row" gap="16px" align-items="center">
                 <Spinner />
                 <Spinner size="small" />
                 <Spinner size="medium" />
@@ -15,7 +15,7 @@
 
         <Card title="Spinner 自定义图标">
             <p><code>icon="Bell"</code> 设置自定义图标（值为 <code>rml_ui::IconName</code> 枚举变体名）。</p>
-            <div h-flex="" gap-4="" items-center="">
+            <div display="flex" flex-direction="row" gap="16px" align-items="center">
                 <Spinner icon="Loader" />
                 <Spinner icon="Bell" size="large" />
                 <Spinner icon="Settings" size="medium" />
@@ -24,10 +24,10 @@
 
         <Card title="Skeleton 骨架屏">
             <p><code>Skeleton</code> 用于内容加载占位。<code>secondary=""</code> 切换为次级颜色。</p>
-            <div v-flex="" gap-2="" w-full="">
+            <div display="flex" flex-direction="column" gap="8px" width="full">
                 <Skeleton />
                 <Skeleton secondary="" />
-                <div h-flex="" gap-2="" w-full="">
+                <div display="flex" flex-direction="row" gap="8px" width="full">
                     <Skeleton class="w-1/2" />
                     <Skeleton class="w-1/2" secondary="" />
                 </div>
@@ -40,8 +40,8 @@
             <div class="button-row">
                 <Button label="切换加载" primary="" on-click={on_toggle_loading} />
             </div>
-            <div v-flex="" gap-2="">
-                <div if={is_loading} h-flex="" gap-2="" items-center="">
+            <div display="flex" flex-direction="column" gap="8px">
+                <div if={is_loading} display="flex" flex-direction="row" gap="8px" align-items="center">
                     <Spinner size="small" />
                     <span>加载中...</span>
                 </div>

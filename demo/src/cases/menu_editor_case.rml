@@ -1,5 +1,5 @@
 <component>
-    <div v-flex="" class="case-pane doc-pane">
+    <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.menu.editor.title")}</h2>
 
         <p>Editor Menu 案例演示 dropdown-menu 的 check-side 属性与勾选状态绑定。check-side="Right" 将勾选标记显示在菜单项右侧，适用于编辑器类菜单场景。核心概念：check-side 控制勾选标记位置；menu-item checked=&#123;bool&#125; 绑定布尔字段实现勾选状态同步；菜单项分组通过 menu-separator 实现；命令回调更新 last_action 状态。</p>

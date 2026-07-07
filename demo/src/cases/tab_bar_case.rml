@@ -1,5 +1,5 @@
 <component>
-    <div v-flex="" class="case-pane doc-pane">
+    <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.tab_bar.title")}</h2>
         <p>TabBar 是 RML 的标签栏组件，标签为 PascalCase <code>TabBar</code> 或 kebab-case <code>tab-bar</code>。子项用 <code>Tab</code> 标签（统一底层为 TabItem），<code>label</code> 属性指定标题，<code>icon</code> 属性添加图标。核心概念：5 种 variant（<code>underline</code>/<code>pill</code>/<code>flat</code>/<code>outline</code>/<code>segmented</code>）通过同名属性切换；尺寸用 <code>size</code> 属性；<code>prefix</code>/<code>suffix</code> 注入首尾元素；<code>menu</code> 模式启用下拉；<code>on-click</code> 事件回调选中索引（签名 <code>fn(index: usize)</code>）。内容面板（body）：Tab 可直接包裹 element 子节点作为选中时渲染的内容（WPF TabControl/TabItem 模式）。header 自定义插槽：通过 <code>&lt;template slot="header"&gt;</code> 在 Tab 内注入任意标题元素。</p>
 

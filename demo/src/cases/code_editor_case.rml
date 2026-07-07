@@ -1,5 +1,5 @@
 <component>
-    <div v-flex="" class="case-pane doc-pane">
+    <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.code_editor.title")}</h2>
 
         <p>CodeEditor 是基于 InputState 的代码编辑器组件，自动应用 mono 字体 + size_full。Stateful 模式，需在 on_loaded 中初始化 InputState Entity 并通过 .code_editor(language).multi_line(true) 配置。</p>

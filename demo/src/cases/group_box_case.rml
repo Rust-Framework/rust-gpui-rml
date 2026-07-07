@@ -1,5 +1,5 @@
 <component>
-    <div v-flex="" class="case-pane doc-pane">
+    <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.group_box.title")}</h2>
         <p>GroupBox 是 RML 的分组容器组件，标签为 PascalCase <code>GroupBox</code>。StatelessNoId 组件（无 ElementId，<code>RenderOnce</code>），实现 <code>ParentElement</code>。提供 <code>title</code> 标题与 3 种 variant（normal/fill/outline），通过 <code>variant</code> 属性或同名空属性切换。</p>
 

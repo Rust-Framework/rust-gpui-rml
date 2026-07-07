@@ -53,7 +53,7 @@ impl PopoverCase {
     <!-- 基础用法：slot="trigger" 标记触发元素，其余子节点为 content -->
     <Popover>
         <Button slot="trigger" label="点击展开" />
-        <div v-flex="" gap-2="" p-3="">
+        <div display="flex" flex-direction="column" gap="8px" padding="12px">
             <p>这是气泡内容。</p>
             <p>可以放置任意元素。</p>
         </div>
@@ -62,13 +62,13 @@ impl PopoverCase {
     <!-- 锚点定位 anchor -->
     <Popover anchor="bottom-left">
         <Button slot="trigger" label="bottom-left" />
-        <div p-2="">左下角锚点</div>
+        <div padding="8px">左下角锚点</div>
     </Popover>
 
     <!-- 默认展开 default-open="true" -->
     <Popover default-open="true">
         <Button slot="trigger" label="已展开" />
-        <div p-2="">初始展开的气泡内容</div>
+        <div padding="8px">初始展开的气泡内容</div>
     </Popover>
 </component>"#
             .to_string()

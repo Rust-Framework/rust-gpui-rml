@@ -1,19 +1,12 @@
-//! TabBar codegen 模块入口。
+//! 原生 TabBar codegen 模块入口（纯 header 标签栏，无 body/无 close）。
 //!
-//! ## 模块结构
+//! - `gen.rs`：TabBar 容器构造 + 属性 + 子节点 `.child(TabItem::new()...)` 注入
+//! - `setters.rs`：TabBar 专用属性 → builder 方法映射（不含 bordered/on_close*）
 //!
-//! - `gen.rs`：TabBar 容器的构造 + 属性处理 + 子节点 `.child(TabItem::new()...)` 注入
-//! - `tab.rs`：单个 `<Tab>` 子节点构造（WPF TabItem 模式：title + body 闭包）
-//! - `setters.rs`：TabBar/Tab 专用属性 → builder 方法映射
-//!
-//! ## 设计
-//!
-//! `<tab>` 标签底层统一编译为 `rml_ui::TabItem`（WPF TabItem 模式）。
-//! `<tab-item>` 标签已弃用并移除——RML 架构保持干净整洁，统一用 `<tab>` 即可。
-//! TabBar 的所有子节点都是 `<tab>`，由 `tab::gen_tab_child` 生成 `TabItem::new()...` 表达式。
+//! `<tab>` 子节点 codegen 复用 `tabs::tab::gen_tab_child`（生成 `TabItem::new()...`），
+//! 因 TabBar 的 `child()` 接受 `impl Into<TabItem>`（通过 `From<Tab> for TabItem` 兼容 Tab）。
 
 pub mod gen;
 pub mod setters;
-pub mod tab;
 
 pub use gen::gen_tab_bar;

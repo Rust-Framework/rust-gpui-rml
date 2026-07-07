@@ -1,5 +1,5 @@
 <component>
-    <div v-flex="" class="case-pane doc-pane">
+    <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.button.title")}</h2>
         <p>Button 是 RML 的按钮组件，标签为 PascalCase <code>Button</code>。支持 9 种 variant、4 种尺寸、disabled/selected/loading 状态、compact 紧凑模式、tooltip 悬浮提示等能力。小写 button 属于内置 HTML 轨，映射为 gpui::div()，不是本组件。</p>
 

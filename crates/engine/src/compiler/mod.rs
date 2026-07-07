@@ -24,6 +24,7 @@ pub mod radio_group;
 pub mod separator;
 pub mod source_map;
 pub mod tab_bar;
+pub mod tabs;
 pub mod tag;
 pub mod table;
 pub mod tooltip;

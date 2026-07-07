@@ -40,11 +40,9 @@ pub const COMMON_STATIC_PROPS: &[&str] = &[
     "size",
     // 状态
     "compact", "loading", "disabled", "selected",
-    // StyledExt 字体权重
+    // StyledExt 字体权重（h_flex/v_flex 已废弃，改用 display="flex" + flex-direction）
     "font_thin", "font_extralight", "font_light", "font_normal", "font_medium",
     "font_semibold", "font_bold", "font_extrabold", "font_black",
-    // StyledExt 布局
-    "h_flex", "v_flex",
 ];
 
 /// 通用绑定属性（来自 `component_bind_setter` 的通用 match 分支）
@@ -57,6 +55,29 @@ pub const COMMON_BIND_PROPS: &[&str] = &[
 /// 声明式 `on-click`（kebab-case），normalize 后内部 `on_click`（snake_case）。
 pub const COMMON_EVENT_PROPS: &[&str] = &[
     "on_click",
+];
+
+/// 归一化样式属性（对所有元素与组件生效，由 `style_attr::apply_style_attr` 处理）
+///
+/// 列表对齐 `css/mapper.rs` 支持的 CSS 子集。
+/// normalize 后为 snake_case 形式（如 `flex-direction` → `flex_direction`）。
+pub const STYLE_ATTR_PROPS: &[&str] = &[
+    // 盒模型
+    "width", "height",
+    "padding", "padding_top", "padding_right", "padding_bottom", "padding_left",
+    "margin", "margin_top", "margin_right", "margin_bottom", "margin_left",
+    "border_radius",
+    "border", "border_color", "border_top", "border_right", "border_bottom", "border_left",
+    // 文本
+    "font_size", "font_weight", "font_family",
+    "text_align", "line_height", "white_space",
+    "color", "background", "background_color",
+    // Flexbox
+    "display", "flex_direction", "flex_wrap",
+    "justify_content", "align_items", "flex", "gap",
+    "min_width", "max_width", "min_height", "max_height",
+    // 视觉效果
+    "opacity", "overflow", "overflow_x", "overflow_y",
 ];
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -191,6 +212,11 @@ pub fn props_for(tag: &str) -> (Vec<&'static str>, Vec<&'static str>, Vec<&'stat
 /// 通过 `canonical_tag()` 规范化标签：kebab-case → PascalCase（如 `menu-bar` → `MenuBar`），
 /// 小写别名 → PascalCase（如 `accordion` → `Accordion`、`item` → `AccordionItem`）。
 pub fn is_prop_registered(tag: &str, attr: &str) -> bool {
+    // 归一化样式属性（对所有元素与组件生效）
+    if STYLE_ATTR_PROPS.contains(&attr) {
+        return true;
+    }
+
     // 通用属性
     if COMMON_STATIC_PROPS.contains(&attr)
         || COMMON_BIND_PROPS.contains(&attr)

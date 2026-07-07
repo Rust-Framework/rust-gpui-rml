@@ -1,12 +1,12 @@
 <component>
-    <div v-flex="" class="case-pane doc-pane">
+    <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.checkbox.title")}</h2>
         <p>Checkbox 是 RML 的复选框组件，标签为 PascalCase <code>Checkbox</code>。Stateless 组件，通过 <code>checked</code> 属性绑定勾选状态（底层通过 Selectable trait 映射到 <code>.checked()</code>）。</p>
 
         <Card title="基础用法">
             <p><code>checked</code> 属性绑定布尔字段，<code>on-click</code> 回调签名 <code>(&amp;bool, &amp;mut Context)</code>。</p>
             <p>{status_text}</p>
-            <div h-flex="" gap-4="">
+            <div display="flex" flex-direction="row" gap="16px">
                 <Checkbox label="同意条款" checked={is_checked} on-click={on_toggle_checked} />
                 <Button label="切换勾选" on-click={on_toggle_checked_button} />
             </div>
@@ -14,7 +14,7 @@
 
         <Card title="禁用状态 disabled">
             <p><code>disabled</code> 属性禁用复选框交互。</p>
-            <div h-flex="" gap-4="">
+            <div display="flex" flex-direction="row" gap="16px">
                 <Checkbox label="禁用项" disabled={is_disabled} />
                 <Button label="切换禁用" on-click={on_toggle_disabled} />
             </div>

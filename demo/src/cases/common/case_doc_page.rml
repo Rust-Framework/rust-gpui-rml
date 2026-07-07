@@ -1,18 +1,18 @@
 <component>
-    <div class="case-pane doc-pane" v-flex="">
+    <div class="case-pane doc-pane" display="flex" flex-direction="column">
         <!-- 标题区 -->
-        <div v-flex="" gap-2="">
+        <div display="flex" flex-direction="column" gap="8px">
             <h2 style="font-size: 22px; font-weight: 600;">{title}</h2>
             <div class="case-desc">{description}</div>
         </div>
 
         <!-- 演示区 + 代码区 -->
         <div class="case-layout">
-            <div class="case-demo-panel" v-flex="" gap-2="">
+            <div class="case-demo-panel" display="flex" flex-direction="column" gap="8px">
                 <div style="font-size: 14px; font-weight: 600;">{t("case.common.demo")}</div>
                 <slot name="demo" />
             </div>
-            <div class="case-code-panel" v-flex="" gap-2="">
+            <div class="case-code-panel" display="flex" flex-direction="column" gap="8px">
                 <div style="font-size: 14px; font-weight: 600;">{t("case.common.code")}</div>
                 <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
                     <Tab label=".rml" />
@@ -25,7 +25,7 @@
         </div>
 
         <!-- API 区 -->
-        <div class="case-api-panel" v-flex="" gap-2="">
+        <div class="case-api-panel" display="flex" flex-direction="column" gap="8px">
             <div style="font-size: 14px; font-weight: 600;">{t("case.common.api")}</div>
             <slot name="api" />
         </div>

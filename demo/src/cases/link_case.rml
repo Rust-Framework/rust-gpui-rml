@@ -1,11 +1,11 @@
 <component>
-    <div v-flex="" class="case-pane doc-pane">
+    <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.link.title")}</h2>
         <p>Link 是 RML 的超链接组件，标签为 PascalCase <code>Link</code>。Stateless 组件，构造器接受 <code>ElementId</code>，实现 <code>ParentElement</code>（可包含子元素）。支持 <code>href</code> 跳转、<code>on-click</code> 事件回调和 <code>disabled</code> 禁用。</p>
 
         <Card title="基础用法">
             <p>文本作为子节点设置链接内容。<code>href</code> 属性指定目标 URL（点击会调用系统打开）。</p>
-            <div v-flex="" gap-2="">
+            <div display="flex" flex-direction="column" gap="8px">
                 <Link href="https://github.com/longbridge/gpui-component">gpui-component 文档</Link>
                 <Link href="https://github.com/longbridge/gpui-component">GitHub 仓库</Link>
                 <Link href="https://crates.io">crates.io</Link>
@@ -14,7 +14,7 @@
 
         <Card title="动态绑定 href">
             <p><code>href=&#123;url_field&#125;</code> 绑定动态 URL 字段，演示字段绑定。</p>
-            <div v-flex="" gap-2="">
+            <div display="flex" flex-direction="column" gap="8px">
                 <Link href={dynamic_url}>{dynamic_label}</Link>
                 <p>当前 URL: {dynamic_url}</p>
                 <div class="button-row">
@@ -25,7 +25,7 @@
 
         <Card title="on-click 事件回调">
             <p><code>on-click</code> 设置点击事件回调，事件类型为 <code>ClickEvent</code>。设置后会同时触发回调与 href 跳转。</p>
-            <div v-flex="" gap-2="">
+            <div display="flex" flex-direction="column" gap="8px">
                 <Link href="https://example.com" on-click={on_link_click}>点击我（计数 + 1）</Link>
                 <p>累计点击次数：{click_count}</p>
             </div>
@@ -33,7 +33,7 @@
 
         <Card title="disabled 禁用">
             <p><code>disabled=&#123;true&#125;</code> 禁用链接交互（视觉变灰，不响应点击）。</p>
-            <div v-flex="" gap-2="">
+            <div display="flex" flex-direction="column" gap="8px">
                 <Link href="https://example.com" disabled={is_disabled}>禁用的链接</Link>
                 <Link href="https://example.com" disabled={!is_disabled}>可用链接</Link>
                 <div class="button-row">
@@ -44,7 +44,7 @@
 
         <Card title="富文本子节点">
             <p>Link 实现了 <code>ParentElement</code>，可包含任意子元素（不仅是文本）。</p>
-            <div h-flex="" gap-2="" items-center="">
+            <div display="flex" flex-direction="row" gap="8px" align-items="center">
                 <Link href="https://example.com">
                     <span>带图标的链接</span>
                 </Link>

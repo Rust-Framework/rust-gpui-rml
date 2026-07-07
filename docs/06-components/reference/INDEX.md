@@ -20,6 +20,7 @@
 | [label.md](./label.md) | `Label` | Stateless |
 | [input.md](./input.md) | `Input` | Stateful（`input_state`） |
 | [text-input.md](./text-input.md) | `TextInput` | Stateful（同 `Input`） |
+| [code-editor.md](./code-editor.md) | `CodeEditor` | Stateful（`editor_state`，基于 Input 多行代码编辑器） |
 | [slider.md](./slider.md) | `Slider` | Stateless |
 | [switch.md](./switch.md) | `Switch` | Stateless |
 | [tag.md](./tag.md) | `Tag` | Stateless |

@@ -1,5 +1,5 @@
 <component>
-    <div v-flex="" class="case-pane doc-pane">
+    <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.avatar_group.title")}</h2>
         <p>AvatarGroup 是 RML 的头像分组容器组件，标签为 PascalCase <code>AvatarGroup</code>。无 ElementId 构造（StatelessNoId），容器模式，子节点为 <code>Avatar</code> 组件。通过 <code>limit</code> 属性限制最大显示数量，<code>ellipsis</code> 属性启用溢出折叠显示 <code>+N</code>。</p>
 

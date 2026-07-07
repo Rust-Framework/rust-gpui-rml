@@ -1,5 +1,5 @@
 <component>
-    <div v-flex="" class="case-pane doc-pane">
+    <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.theme.title")}</h2>
 
         <Card title="组件说明">
@@ -8,7 +8,7 @@
 
         <Card title="主题切换">
             <p>当前主题：{theme_label}</p>
-            <div h-flex="" gap-4="">
+            <div display="flex" flex-direction="row" gap="16px">
                 <Button label="默认" on-click={on_theme_default} />
                 <Button label="主要" on-click={on_theme_primary} />
                 <Button label="危险" on-click={on_theme_danger} />
@@ -17,7 +17,7 @@
 
         <Card title="Badge 主题">
             <p>根据 theme_index 条件渲染不同变体的 Badge：</p>
-            <div h-flex="" gap-4="">
+            <div display="flex" flex-direction="row" gap="16px">
                 <Badge if={theme_index == 0}>Default</Badge>
                 <Badge if={theme_index == 1}>Primary</Badge>
                 <Badge if={theme_index == 2}>Danger</Badge>
@@ -26,7 +26,7 @@
 
         <Card title="Tag 主题">
             <p>根据 theme_index 条件渲染不同变体的 Tag：</p>
-            <div h-flex="" gap-4="">
+            <div display="flex" flex-direction="row" gap="16px">
                 <Tag if={theme_index == 0}>Default Tag</Tag>
                 <Tag primary="" if={theme_index == 1}>Primary Tag</Tag>
                 <Tag danger="" if={theme_index == 2}>Danger Tag</Tag>

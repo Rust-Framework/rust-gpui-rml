@@ -1,11 +1,11 @@
 <component>
-    <div v-flex="" class="case-pane doc-pane">
+    <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.separator.title")}</h2>
         <p>Separator 是 RML 的分隔符组件，标签为 PascalCase <code>Separator</code>。无 <code>new()</code> 构造器，通过 <code>horizontal()</code>/<code>vertical()</code>/<code>dashed()</code> 关联函数构造。RML 中用 <code>vertical</code>/<code>dashed</code> 属性切换。</p>
 
         <Card title="水平分隔符">
             <p>默认水平方向分隔符。</p>
-            <div v-flex="" gap-2="">
+            <div display="flex" flex-direction="column" gap="8px">
                 <p>上方内容</p>
                 <Separator />
                 <p>下方内容</p>
@@ -13,8 +13,8 @@
         </Card>
 
         <Card title="垂直分隔符 vertical">
-            <p><code>vertical=""</code> 切换为垂直方向。需配合 h-flex 容器使用。</p>
-            <div h-flex="" gap-4="">
+            <p><code>vertical=""</code> 切换为垂直方向。需配合 display="flex" flex-direction="row" 容器使用。</p>
+            <div display="flex" flex-direction="row" gap="16px">
                 <p>左侧</p>
                 <Separator vertical="" />
                 <p>右侧</p>
@@ -23,7 +23,7 @@
 
         <Card title="虚线样式 dashed">
             <p><code>dashed=""</code> 使用虚线样式。</p>
-            <div v-flex="" gap-2="">
+            <div display="flex" flex-direction="column" gap="8px">
                 <p>上方内容</p>
                 <Separator dashed="" />
                 <p>下方内容</p>
@@ -32,7 +32,7 @@
 
         <Card title="组合样式 vertical + dashed">
             <p>垂直 + 虚线组合，常用于侧边栏分隔。</p>
-            <div h-flex="" gap-4="">
+            <div display="flex" flex-direction="row" gap="16px">
                 <p>左侧</p>
                 <Separator vertical="" dashed="" />
                 <p>右侧</p>
@@ -46,12 +46,12 @@
                 <Button label="切换方向" on-click={on_toggle_orientation} />
                 <Button label="切换虚线" primary="" on-click={on_toggle_dashed} />
             </div>
-            <div if={is_vertical} h-flex="" gap-4="">
+            <div if={is_vertical} display="flex" flex-direction="row" gap="16px">
                 <p>左侧</p>
                 <Separator vertical={is_vertical} dashed={is_dashed} />
                 <p>右侧</p>
             </div>
-            <div if={!is_vertical} v-flex="" gap-2="">
+            <div if={!is_vertical} display="flex" flex-direction="column" gap="8px">
                 <p>上方内容</p>
                 <Separator vertical={is_vertical} dashed={is_dashed} />
                 <p>下方内容</p>

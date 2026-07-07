@@ -1,5 +1,5 @@
 <component>
-    <div v-flex="" class="case-pane doc-pane">
+    <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.collapsible.title")}</h2>
         <p>Collapsible 是 RML 的折叠容器组件，标签为 PascalCase <code>Collapsible</code>。StatelessNoId 组件（无 ElementId，<code>RenderOnce</code>），实现 <code>ParentElement</code>。<code>open</code> 属性控制展开/折叠状态，<code>content</code> 内容仅在 open=true 时显示。</p>
 
@@ -10,7 +10,7 @@
                 <Button label="切换展开" primary="" on-click={on_toggle} />
             </div>
             <Collapsible open={is_open}>
-                <div v-flex="" gap-2="" class="collapsible-content">
+                <div display="flex" flex-direction="column" gap="8px" class="collapsible-content">
                     <p>这是折叠内容。当 open=true 时显示。</p>
                     <p>可以包含任意子元素。</p>
                 </div>
@@ -20,13 +20,13 @@
         <Card title="静态 open">
             <p><code>open="true"</code> 静态属性设置默认展开：</p>
             <Collapsible open="true">
-                <div v-flex="" gap-2="">
+                <div display="flex" flex-direction="column" gap="8px">
                     <p>这个内容默认展开显示。</p>
                 </div>
             </Collapsible>
             <p><code>open="false"</code> 或不写 open 属性则默认折叠：</p>
             <Collapsible>
-                <div v-flex="" gap-2="">
+                <div display="flex" flex-direction="column" gap="8px">
                     <p>这个内容默认折叠隐藏。</p>
                 </div>
             </Collapsible>
@@ -45,10 +45,10 @@
         <Card title="嵌套折叠">
             <p>Collapsible 可嵌套使用：</p>
             <Collapsible open={is_open}>
-                <div v-flex="" gap-2="">
+                <div display="flex" flex-direction="column" gap="8px">
                     <p>外层内容</p>
                     <Collapsible open={is_open}>
-                        <div v-flex="" gap-2="">
+                        <div display="flex" flex-direction="column" gap="8px">
                             <p>内层内容（与外层联动）</p>
                         </div>
                     </Collapsible>

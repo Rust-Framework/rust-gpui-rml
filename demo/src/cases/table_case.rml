@@ -35,7 +35,7 @@
                     <Column key="age" title="年龄" />
                     <Column key="email" title="邮箱" />
                     <template slot="header">
-                        <div h-flex="" style="color: blue; font-weight: bold; width: 100%;">
+                        <div display="flex" flex-direction="row" style="color: blue; font-weight: bold; width: 100%;">
                             <span style="flex: 1;">姓名</span>
                             <span style="flex: 1; text-align: center;">年龄</span>
                             <span style="flex: 1;">邮箱</span>

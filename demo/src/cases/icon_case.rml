@@ -1,17 +1,17 @@
 <component>
-    <div v-flex="" class="case-pane doc-pane">
+    <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.icon.title")}</h2>
         <p>Icon 是 RML 的矢量图标组件，标签为 PascalCase <code>Icon</code>。RenderOnce 无 ElementId，由专属 <code>compiler/icon</code> 模块处理 <code>name</code>/<code>path</code> 属性提取。<code>name="Settings"</code> 生成 <code>Icon::new(IconName::Settings)</code>，<code>path="icons/foo.svg"</code> 生成 <code>Icon::empty().path(...)</code>。</p>
 
         <Card title="基础用法">
             <p>静态 <code>IconName</code>：</p>
-            <div h-flex="" gap-4="">
+            <div display="flex" flex-direction="row" gap="16px">
                 <Icon name="Settings" />
                 <Icon name="Bell" />
                 <Icon name="User" />
             </div>
             <p>不同尺寸（<code>size</code> 走通用 Sizable setter）：</p>
-            <div h-flex="" gap-4="">
+            <div display="flex" flex-direction="row" gap="16px">
                 <Icon name="Settings" size="xsmall" />
                 <Icon name="Settings" size="small" />
                 <Icon name="Settings" size="medium" />
@@ -21,7 +21,7 @@
 
         <Card title="动态切换">
             <p>当前图标：{current_icon_name}（icon_index = {icon_index}）</p>
-            <div h-flex="" gap-4="">
+            <div display="flex" flex-direction="row" gap="16px">
                 <Icon name={current_icon} size="large" />
                 <Button label="切换图标" on-click={on_rotate_icon} />
             </div>

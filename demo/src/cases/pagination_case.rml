@@ -1,5 +1,5 @@
 <component>
-    <div v-flex="" class="case-pane doc-pane">
+    <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.pagination.title")}</h2>
         <p>Pagination 是 RML 的分页组件，标签为 PascalCase <code>Pagination</code>。Stateless 组件，构造器接受 <code>ElementId</code>。支持 <code>current-page</code>、<code>total-pages</code>、<code>visible-pages</code>、<code>compact</code> 等属性（kebab-case），<code>on-click</code> 事件签名为 <code>Fn(&amp;usize, ...)</code>（页码）。</p>
 
@@ -28,7 +28,7 @@
 
         <Card title="完整分页示例">
             <p>模拟分页场景（共 50 条数据，每页 5 条 = 10 页）：</p>
-            <div v-flex="" gap-2="">
+            <div display="flex" flex-direction="column" gap="8px">
                 <p>第 {current_page} 页 / 共 10 页</p>
                 <Pagination current-page={current_page} total-pages="10" on-click={on_page_change} />
             </div>

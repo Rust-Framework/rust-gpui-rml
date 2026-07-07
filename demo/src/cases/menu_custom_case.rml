@@ -1,5 +1,5 @@
 <component>
-    <div v-flex="" class="case-pane doc-pane">
+    <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.menu.custom.title")}</h2>
 
         <p>Menu Custom 案例演示自定义菜单项的典型场景：分组标题（header）、主题切换（checked 状态）、外链跳转（href）、登出操作。模拟设置类菜单的完整交互。核心概念：menu-item header 作为分组标题不可点击；menu-item on-click 绑定命令更新状态；href 渲染为外链；dark_mode 字段记录主题状态，dark_mode_label computed 提供显示文案。</p>

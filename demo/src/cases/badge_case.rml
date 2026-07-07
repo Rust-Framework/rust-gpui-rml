@@ -1,5 +1,5 @@
 <component>
-    <div v-flex="" class="case-pane doc-pane">
+    <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.badge.title")}</h2>
         <p>Badge 是 RML 的徽标组件，标签为 PascalCase <code>Badge</code>。无 ElementId 构造（StatelessNoId），容器模式，子节点为被徽标标记的元素。支持三种 variant：<code>Number</code>（默认，显示计数）、<code>Dot</code>（小红点）、<code>Icon</code>（图标徽标）。</p>
 

@@ -1,18 +1,18 @@
 <component>
-    <div v-flex="" class="case-pane doc-pane">
+    <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.kbd.title")}</h2>
         <p>Kbd 是 RML 的键盘按键组件，标签为 PascalCase <code>Kbd</code>。构造器接受 <code>Keystroke</code> 类型：<code>key="cmd-a"</code> 生成 <code>Kbd::new(Keystroke::parse("cmd-a").expect(...))</code>。RenderOnce 无 ElementId，由专属 <code>compiler/kbd</code> 模块处理 <code>key</code> 属性提取。平台相关显示：macOS 显示 ⌘A，Windows 显示 Ctrl+A。</p>
 
         <Card title="基础用法">
             <p>修饰键 + 字母：</p>
-            <div h-flex="" gap-2="">
+            <div display="flex" flex-direction="row" gap="8px">
                 <Kbd key="cmd-a" />
                 <Kbd key="ctrl-c" />
                 <Kbd key="ctrl-shift-c" />
                 <Kbd key="alt-tab" />
             </div>
             <p>功能键：</p>
-            <div h-flex="" gap-2="">
+            <div display="flex" flex-direction="row" gap="8px">
                 <Kbd key="enter" />
                 <Kbd key="escape" />
                 <Kbd key="backspace" />
@@ -21,7 +21,7 @@
                 <Kbd key="tab" />
             </div>
             <p>方向键：</p>
-            <div h-flex="" gap-2="">
+            <div display="flex" flex-direction="row" gap="8px">
                 <Kbd key="up" />
                 <Kbd key="down" />
                 <Kbd key="left" />
@@ -31,12 +31,12 @@
 
         <Card title="样式变体">
             <p><code>outline</code> 样式：</p>
-            <div h-flex="" gap-2="">
+            <div display="flex" flex-direction="row" gap="8px">
                 <Kbd key="cmd-a" outline="" />
                 <Kbd key="ctrl-shift-v" outline="" />
             </div>
             <p><code>appearance="false"</code>（仅文本，无背景）：</p>
-            <div h-flex="" gap-2="">
+            <div display="flex" flex-direction="row" gap="8px">
                 <Kbd key="cmd-a" appearance="false" />
                 <Kbd key="ctrl-c" appearance="false" />
             </div>

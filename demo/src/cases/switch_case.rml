@@ -1,12 +1,12 @@
 <component>
-    <div v-flex="" class="case-pane doc-pane">
+    <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.switch.title")}</h2>
         <p>Switch 是 RML 的开关组件，标签为 PascalCase <code>Switch</code>。Stateless 组件，通过 <code>checked</code> 属性绑定开关状态（映射到 <code>.checked()</code> 方法）。</p>
 
         <Card title="基础用法">
             <p><code>checked</code> 属性绑定布尔字段，<code>on-click</code> 回调签名 <code>(&amp;bool, &amp;mut Context)</code>。</p>
             <p>{status_text}</p>
-            <div h-flex="" gap-4="">
+            <div display="flex" flex-direction="row" gap="16px">
                 <Switch label="自动保存" checked={is_on} on-click={on_toggle} />
                 <Button label="切换开关" on-click={on_toggle_button} />
             </div>
@@ -14,7 +14,7 @@
 
         <Card title="禁用状态 disabled">
             <p><code>disabled</code> 属性禁用开关交互。</p>
-            <div h-flex="" gap-4="">
+            <div display="flex" flex-direction="row" gap="16px">
                 <Switch checked={is_disabled} disabled={is_disabled} />
                 <Button label="切换禁用" on-click={on_toggle_disabled} />
             </div>

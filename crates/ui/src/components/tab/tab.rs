@@ -97,7 +97,7 @@ impl TabVariant {
         }
     }
 
-    /// Outer row height of a tab for layout in chrome such as [`super::TabBar`].
+    /// Outer row height of a tab for layout in chrome such as [`super::Tabs`].
     pub fn tab_height(self, size: Size) -> Pixels {
         self.height(size)
     }
@@ -451,7 +451,7 @@ impl Default for TabStyle {
     }
 }
 
-/// A Tab element for the [`super::TabBar`].
+/// A Tab element for the [`super::Tabs`] or [`super::TabBar`].
 #[derive(IntoElement)]
 pub struct Tab {
     pub(super) ix: usize,
@@ -468,7 +468,7 @@ pub struct Tab {
     pub(super) selected: bool,
     pub(super) indicator_active: bool,
     pub(super) indicator_ready: bool,
-    /// Animation epoch of the [`super::TabBar`] indicator; increments on every
+    /// Animation epoch of the [`super::Tabs`] indicator; increments on every
     /// tab switch. Used to key the selected tab's text color fade so it
     /// restarts in sync with the indicator slide.
     pub(super) indicator_epoch: u64,
@@ -478,23 +478,23 @@ pub struct Tab {
     /// `on_close` when set.
     pub(super) closable: bool,
     pub(super) on_close: Option<TabClickHandler>,
-    /// 右键菜单构造器，由 TabBar 透传。闭包接收框架传入的 `PopupMenu`，
+    /// 右键菜单构造器，由 Tabs 透传。闭包接收框架传入的 `PopupMenu`，
     /// 追加标准项（Close/Close All/Close Others）+ 业务扩展项后返回。
     pub(super) context_menu_provider: Option<TabContextMenuProvider>,
     /// When true, render the label in italic (VSCode preview tab style).
     /// Only affects the label branch; icon and custom children are unchanged.
     pub(super) preview: bool,
-    /// 双击 tab 时触发（VSCode preview tab promote）。由 TabBar 透传，
+    /// 双击 tab 时触发（VSCode preview tab promote）。由 Tabs 透传，
     /// 内部在 on_mouse_down 中检测 250ms 时间窗口内的双击。
     pub(super) on_promote: Option<TabPromoteHandler>,
     /// When true, the tab shrinks to share width with siblings (browser-like
     /// compression). Switches from `flex_shrink_0` to `flex_1 + min_w_0` and
-    /// enables label ellipsis truncation. Set by TabBar when overflow detected.
+    /// enables label ellipsis truncation. Set by Tabs when overflow detected.
     pub(super) compress: bool,
     /// When true, render as a measurement-only element: skip all interactions
     /// (hover, group, on_click, on_mouse_down) but keep visual layout — including
     /// the close button's width — for accurate width measurement. Used by
-    /// TabBar's independent measurement layer to avoid the overflow feedback loop.
+    /// Tabs' independent measurement layer to avoid the overflow feedback loop.
     pub(super) measurement: bool,
 }
 

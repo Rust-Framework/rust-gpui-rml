@@ -1,11 +1,11 @@
 <component>
-    <div v-flex="" class="case-pane doc-pane">
+    <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.label.title")}</h2>
         <p>Label 是 RML 的标签组件，标签为 PascalCase <code>Label</code>。构造器接受 label 文本作为参数（非 ElementId），通过 <code>label</code> 属性或文本子节点设置。</p>
 
         <Card title="基础用法">
             <p>通过 <code>label</code> 属性设置标签文本。</p>
-            <div v-flex="" gap-2="">
+            <div display="flex" flex-direction="column" gap="8px">
                 <Label label="用户名" />
                 <Label label="邮箱地址" />
                 <Label label="密码" />

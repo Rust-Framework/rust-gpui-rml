@@ -1,5 +1,5 @@
 <component>
-    <div v-flex="" class="case-pane doc-pane">
+    <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.status_bar.title")}</h2>
 
         <p>StatusBar 案例演示 RML 的状态栏贡献机制。通过 #[contribute(kind = "status")] 将实现 IContribution 的 struct 注册到 shell 状态栏插槽，框架自动渲染到窗口底部。核心概念：kind = "status" 标识状态栏贡献点；host_id 指向宿主 shell；order 控制排序；IContribution 提供 id 与 name（显示文案）。本案例的 StatusReady 已注册到窗口底部状态栏。</p>

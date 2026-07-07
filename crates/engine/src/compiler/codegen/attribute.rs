@@ -24,7 +24,21 @@ pub(super) fn apply_static_attr(name: &str, value: &str) -> String {
         "style" => apply_inline_style(value),
         "src" | "href" => String::new(),
         "type" => String::new(),
+        // 已废弃的 Tailwind 式散落属性：输出 deprecation warning 并丢弃
+        "h_flex" | "v_flex" | "h_full" | "w_full" | "min_w_0" | "min_h_0" => {
+            eprintln!(
+                "[rml deprecation] `{}` is deprecated; use normalized CSS attribute instead \
+                 (e.g. display=\"flex\" flex-direction=\"row\" for h-flex, width=\"full\" for w-full, \
+                 min-width=\"0\" for min-w-0)",
+                name
+            );
+            String::new()
+        }
         _ => {
+            // 归一化样式属性：复用 css::mapper 单一映射源
+            if let Some(s) = super::style_attr::apply_style_attr(name, value) {
+                return s;
+            }
             eprintln!(
                 "[rml warning] unknown static attribute `{}` (value={:?}) on native element; \
                  property will be dropped. Register it in props_registry or add a match arm.",
@@ -120,6 +134,15 @@ pub(super) fn apply_bind_attr(
             format!(".when({}, |el| el)", gen_expr_code(expr, loop_vars, computed))
         }
         _ => {
+            // 归一化样式属性 bind 形式不支持（运行时动态样式应走 class= + 主题切换）
+            if super::style_attr::is_style_attr(name) {
+                eprintln!(
+                    "[rml warning] bind form `{}={{{}}}` is not supported for style attribute; \
+                     use static form `{}=\"...\"` instead. Property will be dropped.",
+                    name, expr, name
+                );
+                return String::new();
+            }
             eprintln!(
                 "[rml warning] unknown bind attribute `{}` (expr={:?}); \
                  property will be dropped. Register it in props_registry or add a match arm.",

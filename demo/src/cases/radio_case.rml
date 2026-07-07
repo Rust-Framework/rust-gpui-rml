@@ -1,5 +1,5 @@
 <component>
-    <div v-flex="" class="case-pane doc-pane">
+    <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.radio.title")}</h2>
         <p>Radio 和 RadioGroup 是 RML 的单选组件，标签为 PascalCase <code>Radio</code> / <code>RadioGroup</code>（或 kebab-case <code>radio-group</code>）。RadioGroup 构造器为 <code>vertical(id)</code>/<code>horizontal(id)</code>（new 私有），<code>RadioGroup</code> 的 <code>on-click</code> 事件签名为 <code>Fn(&amp;usize, ...)</code>（选中索引）。</p>
 

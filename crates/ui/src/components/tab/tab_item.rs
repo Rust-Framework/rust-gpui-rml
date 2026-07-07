@@ -4,7 +4,7 @@
 //! - `Tab` 仅有 header 内容（children 作为 header 渲染），无 body 概念
 //! - `TabItem` 同时承载 title (header) 与 body (选中时渲染的内容)，对应 WPF TabControl/TabItem 模式
 //!
-//! `TabItem` 是纯数据载体，由 [`super::TabBar`] 在 `render` 内部消费：
+//! `TabItem` 是纯数据载体，由 [`super::Tabs`] 在 `render` 内部消费：
 //! - title 部分转换为 `Tab` 进行 header 渲染（保留 6 种 variant 动画/状态）
 //! - body 部分作为闭包模板惰性渲染（仅选中 tab 的 body 被调用）
 //!
@@ -71,7 +71,7 @@ impl TabItem {
 
     /// 设置 body 闭包模板（WPF TabItem.Content 的惰性渲染版）。
     ///
-    /// 仅当选中此 tab 时，TabBar 才调用闭包渲染 body 内容。
+    /// 仅当选中此 tab 时，Tabs 才调用闭包渲染 body 内容。
     /// 闭包签名与 [`crate::components::table::CellTemplate`] 一致（但不传索引/数据，
     /// 索引和数据在闭包外捕获）。
     pub fn body<F>(mut self, body: F) -> Self
@@ -109,13 +109,13 @@ impl TabItem {
         self
     }
 
-    /// 由 TabBar 在 render 时透传索引。
+    /// 由 Tabs 在 render 时透传索引。
     pub(crate) fn ix(mut self, ix: usize) -> Self {
         self.ix = ix;
         self
     }
 
-    /// 由 TabBar 在 render 时透传 prefix 标志。
+    /// 由 Tabs 在 render 时透传 prefix 标志。
     pub(crate) fn tab_bar_prefix(mut self, tab_bar_prefix: bool) -> Self {
         self.tab_bar_prefix = Some(tab_bar_prefix);
         self
@@ -123,7 +123,7 @@ impl TabItem {
 
     /// 把 TabItem 的 title 部分转换为 [`super::Tab`] 进行 header 渲染。
     ///
-    /// variant/size/selected/indicator_* 由 TabBar 在调用方设置。
+    /// variant/size/selected/indicator_* 由 Tabs 在调用方设置。
     pub(super) fn into_header_tab(self) -> super::Tab {
         let mut tab = super::Tab::new()
             .ix(self.ix)
@@ -179,7 +179,7 @@ impl From<gpui_component::IconName> for TabItem {
 
 /// 从 [`super::Tab`] 转换为 [`TabItem`]（body=None），保留 Tab 的所有 header 字段。
 ///
-/// 这使得现有 `TabBar::child(Tab::new()...)` 调用方式仍然有效。
+/// 这使得现有 `Tabs::child(Tab::new()...)` 调用方式仍然有效。
 impl From<super::Tab> for TabItem {
     fn from(tab: super::Tab) -> Self {
         Self {
