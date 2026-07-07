@@ -25,6 +25,10 @@
         <component content={self.render_menu_bar(_window, cx)} />
     </template>
 
+    <template slot="bottom" scope={panel}>
+        <component content={self.render_bottom_panel(panel, _window, cx)} />
+    </template>
+
     <template slot="footer">
         <component content={self.render_status_bar(_window, cx)} />
     </template>

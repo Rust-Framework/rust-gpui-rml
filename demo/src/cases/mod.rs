@@ -85,6 +85,8 @@ pub mod conditional_case;
 pub mod list_case;
 #[path = "template_slot_case.rml.rs"]
 pub mod template_slot_case;
+#[path = "slot_scope_case.rml.rs"]
+pub mod slot_scope_case;
 #[path = "validation_case.rml.rs"]
 pub mod validation_case;
 #[path = "theme_case.rml.rs"]

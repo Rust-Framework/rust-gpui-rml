@@ -214,30 +214,85 @@ RML 通过**单一信源 + 双层校验**确保 codegen 属性映射齐全：
 
 - **slot 内容不应引用父视图 `self` 字段**：slot 内容被包装为 `SlotRenderer` 闭包（`move`），闭包不能捕获父视图 `self` 的引用（render 结束后 `&self` 失效）。需要向 slot 传递父视图数据时，应通过子组件自身的 props（pub 字段 + 绑定）传递，而非在 slot 内容中直接引用 `self.xxx`。`cx.t(...)`、`cx.current_theme()` 等不引用 `self` 的表达式可正常使用。
 - **`<slot>` 不支持默认内容**：未填充的插槽渲染为空，无法在模板内指定 fallback 内容。
+- **作用域插槽的延迟调用受限**：`scope={panel}` 接收的 `panel: &dyn ISlotScope` 是渲染期引用，无法被 `'static` 闭包（如 `on-click`）捕获。`panel.maximize/restore/close` 等操作方法需在渲染期命令式调用（如 `render_bottom_panel` 内）。后续将通过 `to_op_handle()` API 扩展支持延迟调用。
 
-## 6.3.6 规划中特性
+## 6.3.6 作用域插槽（Scoped Slots）
 
-### 作用域插槽
+### 概念
 
-`<slot let-item={item}>` 向父视图暴露数据，与 `each` 列表渲染配合：
+作用域插槽让 `<template slot="...">` 内容能够接收来自插槽宿主（slot host）的上下文参数，用于操控父容器（如 resizable）行为。普通插槽仅能渲染内容，作用域插槽还能"反向操控"宿主。
+
+### 语法
+
+`<template slot="bottom" scope={panel}>...</template>`
+
+- `scope={name}` 中 `name` 为接收 `&dyn ISlotScope` 的变量名
+- `name` 必须为简单标识符（不能是 `foo.bar` / `foo(1)`）
+- 不写 `scope={...}` 时，插槽首参以 `_scope` 忽略，向后兼容
+- `scope` 仅可在 `<template slot="...">` 上使用，普通元素无效
+
+### ISlotScope API
+
+作用域变量类型为 `&dyn rml_core::slot::ISlotScope`，提供以下方法：
+
+| 方法 | 返回 | 说明 |
+|------|------|------|
+| `slot_name()` | `&str` | 插槽名（"left"/"right"/"bottom"/...） |
+| `current_size()` | `Option<Pixels>` | 当前尺寸（left/right 为宽度，bottom 为高度） |
+| `container_size()` | `Option<Pixels>` | 容器总尺寸（用于 maximize 计算） |
+| `has_resizable()` | `bool` | 是否支持 resizable 操控 |
+| `maximize(window, cx)` | `()` | 最大化此面板（记录原尺寸供 restore 还原） |
+| `restore(window, cx)` | `()` | 还原到 maximize 之前的尺寸 |
+| `close(window, cx)` | `()` | 关闭/折叠此面板（尺寸调为 0 或最小阈值） |
+
+### 实现方
+
+- `NullSlotScope`：默认空作用域，所有方法返回 `None` / no-op
+  - 自定义组件的 `<slot>` 占位符默认传此类型
+  - `menu`/`title`/`footer`/`tabs` 等 shell slot 也使用此类型（无 resizable 操控）
+- `TabWindowSlotScope`：TabWindow 的 left/right/bottom 插槽，暴露 resizable 操控权
+  - 在 `TabWindowShell::render` 中通过 `use_keyed_state` 持久化 `prev_size`，跨渲染保存 maximize 前的尺寸
+
+### 使用示例
 
 ```html
-<!-- components/list.rml（规划中） -->
-<ul>
-    <li each={item in items}>
-        <slot let-item={item} let-index={index}></slot>
-    </li>
-</ul>
-```
-
-```html
-<!-- 父视图（规划中） -->
-<List items={my_items}>
-    <template let-item let-index>
-        <span>{index}: {item.name}</span>
+<tab-window title="..." left-size={left_size}>
+    <template slot="bottom" scope={panel}>
+        <component content={self.render_bottom_panel(panel, _window, cx)} />
     </template>
-</List>
+</tab-window>
 ```
+
+```rust
+impl MainWindow {
+    pub fn render_bottom_panel(
+        &self,
+        panel: &dyn rml_core::slot::ISlotScope,
+        _window: &mut gpui::Window,
+        _cx: &mut gpui::Context<Self>,
+    ) -> gpui::AnyElement {
+        let slot_name = panel.slot_name();
+        let current_size = panel.current_size();
+        let has_resizable = panel.has_resizable();
+        // 在此可调用 panel.maximize(_window, _cx) / restore / close
+        // ...
+    }
+}
+```
+
+### Codegen 路径
+
+1. **Parser**：`scope={name}` 走默认分支，解析为 `Attribute::Bind { name: "scope", expr: "name" }`
+2. **Validator**：校验 `scope` 仅在 `<template slot="...">` 上使用，且必须为简单标识符；在无 resizable 的 slot 上写 scope 仅警告
+3. **Codegen (shell.rs)**：`extract_scope` 提取 scope 变量名；`wrap_shell_slot(slot_code, scope_var)` 生成闭包，闭包内 `let {name}: &dyn ISlotScope = scope;`
+4. **Codegen (render.rs)**：`gen_slot_code!` 宏将 scope_var 作为 `loop_vars` 传入 `gen_node`，使 slot 内容表达式可解析 `panel` 标识符
+5. **Runtime (tab_window.rs)**：`TabWindowShell::render` 构造 `TabWindowSlotScope`，通过 `use_keyed_state` 持久化 `prev_size`
+
+### 限制
+
+- `menu`/`title`/`footer`/`tabs` 等 shell slot 不支持 resizable 操控（`has_resizable()` 返回 false）
+- 自定义组件的 `<slot>` 默认传 `NullSlotScope`，不暴露父容器操控权
+- `panel.maximize/restore/close` 为渲染期方法，需在 `render_*` 等命令式方法内调用。在 `on-click` 等 `'static` 闭包中延迟调用需要 `to_op_handle()` API（规划中）
 
 ## 6.3.7 小结
 
@@ -246,9 +301,10 @@ RML 插槽当前支持：
 - **Shell 窗口插槽**：`<template slot="name">` 填充 tab_window / modern_window 的具名位置
 - **自定义组件插槽**：`#[component(slots=[...])]` 契约 + `<slot>` 占位符 + `<template slot>` 填充
 - **属性齐全性**：`props_registry` 单一信源 + validator 编译期 error + codegen warning 双层保障
+- **作用域插槽**：`<template slot="..." scope={name}>` 接收 `&dyn ISlotScope`，支持 resizable 操控（TabWindow 的 left/right/bottom）
 
 规划中：
 
-- 作用域插槽 `<slot let-item={item}>`
+- `to_op_handle()` API：让 `on-click` 等 `'static` 闭包也能延迟调用 `maximize/restore/close`
 
 掌握插槽，你就能构建高复用、可配置的组件与窗口布局。

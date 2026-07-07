@@ -1,62 +1,87 @@
 <component>
-    <div display="flex" flex-direction="column" class="case-pane doc-pane">
-        <h2>{t("case.kbd.title")}</h2>
-        <p>Kbd 是 RML 的键盘按键组件，标签为 PascalCase <code>Kbd</code>。构造器接受 <code>Keystroke</code> 类型：<code>key="cmd-a"</code> 生成 <code>Kbd::new(Keystroke::parse("cmd-a").expect(...))</code>。RenderOnce 无 ElementId，由专属 <code>compiler/kbd</code> 模块处理 <code>key</code> 属性提取。平台相关显示：macOS 显示 ⌘A，Windows 显示 Ctrl+A。</p>
+    <CaseDocPage
+        title={t("case.kbd.title")}
+        description="Kbd 是 RML 的键盘按键展示组件，标签为 PascalCase Kbd。构造器接受 Keystroke 类型，通过 key 属性解析（如 key=\"cmd-a\" 生成 Keystroke::parse）。RenderOnce 无 ElementId，平台自适应显示：macOS 显示 ⌘A 符号，Windows/Linux 显示 Ctrl+A 文本。适合快捷键提示、菜单项右侧键标识。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <div class="demo-section">
+                <h3>修饰键 + 字母</h3>
+                <p>key 属性接受 keystroke 字符串，由 Keystroke::parse 解析。多键组合用连字符分隔。</p>
+                <div class="button-row">
+                    <Kbd key="cmd-a" />
+                    <Kbd key="ctrl-c" />
+                    <Kbd key="ctrl-shift-c" />
+                    <Kbd key="alt-tab" />
+                    <Kbd key="cmd-shift-p" />
+                </div>
+            </div>
 
-        <Card title="基础用法">
-            <p>修饰键 + 字母：</p>
-            <div display="flex" flex-direction="row" gap="8px">
-                <Kbd key="cmd-a" />
-                <Kbd key="ctrl-c" />
-                <Kbd key="ctrl-shift-c" />
-                <Kbd key="alt-tab" />
+            <div class="demo-section">
+                <h3>功能键</h3>
+                <p>单独功能键也可展示，常用于帮助文档或操作提示。</p>
+                <div class="button-row">
+                    <Kbd key="enter" />
+                    <Kbd key="escape" />
+                    <Kbd key="backspace" />
+                    <Kbd key="delete" />
+                    <Kbd key="space" />
+                    <Kbd key="tab" />
+                </div>
             </div>
-            <p>功能键：</p>
-            <div display="flex" flex-direction="row" gap="8px">
-                <Kbd key="enter" />
-                <Kbd key="escape" />
-                <Kbd key="backspace" />
-                <Kbd key="delete" />
-                <Kbd key="space" />
-                <Kbd key="tab" />
-            </div>
-            <p>方向键：</p>
-            <div display="flex" flex-direction="row" gap="8px">
-                <Kbd key="up" />
-                <Kbd key="down" />
-                <Kbd key="left" />
-                <Kbd key="right" />
-            </div>
-        </Card>
 
-        <Card title="样式变体">
-            <p><code>outline</code> 样式：</p>
-            <div display="flex" flex-direction="row" gap="8px">
-                <Kbd key="cmd-a" outline="" />
-                <Kbd key="ctrl-shift-v" outline="" />
+            <div class="demo-section">
+                <h3>方向键</h3>
+                <p>方向键用于导航类操作提示。</p>
+                <div class="button-row">
+                    <Kbd key="up" />
+                    <Kbd key="down" />
+                    <Kbd key="left" />
+                    <Kbd key="right" />
+                </div>
             </div>
-            <p><code>appearance="false"</code>（仅文本，无背景）：</p>
-            <div display="flex" flex-direction="row" gap="8px">
-                <Kbd key="cmd-a" appearance="false" />
-                <Kbd key="ctrl-c" appearance="false" />
+
+            <div class="demo-section">
+                <h3>样式变体</h3>
+                <p>outline 属性切换为描边样式（透明背景 + 彩色边框），appearance 属性控制是否显示默认外观（false 时仅显示文本）。</p>
+                <div class="button-row">
+                    <Kbd key="cmd-a" />
+                    <Kbd key="cmd-a" outline="" />
+                    <Kbd key="cmd-a" appearance="false" />
+                </div>
+                <p>常用于菜单项右侧的快捷键提示：新建文件 cmd-N，保存 cmd-S。</p>
             </div>
-        </Card>
 
-        <Card title="示例代码">
-            <p>点击下方 Tab 切换 <code>.rml</code> 声明文件与 <code>.rml.rs</code> 后端文件：</p>
-            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
-                <Tab label=".rml">
-                    <CodeEditor ref="rml_editor" value={rml_sample} language="rml" />
-                </Tab>
-                <Tab label=".rml.rs">
-                    <CodeEditor ref="rust_editor" value={rust_sample} language="rust" />
-                </Tab>
-            </TabBar>
-        </Card>
+            <div class="demo-section">
+                <h3>组合示例：快捷键面板</h3>
+                <p>Kbd 常与文本组合展示，构成快捷键帮助面板或菜单项。结合 div + flex 实现对齐布局。</p>
+                <div display="flex" flex-direction="column" gap="8px" style="max-width: 360px;">
+                    <div display="flex" flex-direction="row" justify-content="space-between" align-items="center">
+                        <span>新建文件</span>
+                        <div class="button-row">
+                            <Kbd key="cmd-n" />
+                        </div>
+                    </div>
+                    <div display="flex" flex-direction="row" justify-content="space-between" align-items="center">
+                        <span>保存</span>
+                        <div class="button-row">
+                            <Kbd key="cmd-s" />
+                        </div>
+                    </div>
+                    <div display="flex" flex-direction="row" justify-content="space-between" align-items="center">
+                        <span>命令面板</span>
+                        <div class="button-row">
+                            <Kbd key="cmd-shift-p" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </template>
 
-        <Card title="API">
+        <template slot="api">
             <h3>Kbd</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-        </Card>
-    </div>
+            <p>另：outline / appearance 为布尔属性，来自 Kbd 组件自有方法。Kbd 不支持 size 属性，固定使用超小字号。</p>
+        </template>
+    </CaseDocPage>
 </component>

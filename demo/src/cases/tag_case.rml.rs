@@ -86,4 +86,13 @@ impl TagCase {
     pub fn on_toggle_outline(&mut self, _: &ClickEvent, _cx: &mut Context<Self>) {
         self.is_outline = !self.is_outline;
     }
+
+    #[command]
+    pub fn on_cycle_text(&mut self, _: &ClickEvent, _cx: &mut Context<Self>) {
+        self.tag_text = match self.tag_text.as_str() {
+            "RML" => "Rust".into(),
+            "Rust" => "GPUI".into(),
+            _ => "RML".into(),
+        };
+    }
 }

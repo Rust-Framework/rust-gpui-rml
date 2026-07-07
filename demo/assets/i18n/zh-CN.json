@@ -322,6 +322,8 @@
 
   "case.template_slot.title": "模板复用 Template",
 
+  "case.slot_scope.title": "作用域插槽 Slot Scope",
+
   "case.validation.title": "表单验证 Validation",
 
   "case.theme.title": "主题切换 Theme",

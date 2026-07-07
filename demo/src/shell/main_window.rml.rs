@@ -409,6 +409,79 @@ impl MainWindow {
         bar.into_any_element()
     }
 
+    /// 渲染 bottom 插槽内容，演示作用域插槽 `scope={panel}` 的参数传递能力。
+    ///
+    /// `panel: &dyn ISlotScope` 由 TabWindowShell 在调用 slot 闭包时构造，
+    /// 暴露 left/right/bottom 插槽的 resizable 操控权。
+    ///
+    /// 当前实现：在渲染时读取 panel 的元信息（slot_name / current_size / has_resizable）
+    /// 展示为终端面板式的状态条。
+    ///
+    /// 限制：`panel` 是渲染期引用，无法被 'static 闭包（如 on-click）捕获。
+    /// 后续通过 `to_op_handle()` API 扩展可支持延迟调用（maximize/restore/close 按钮）。
+    pub fn render_bottom_panel(
+        &self,
+        panel: &dyn rml_core::slot::ISlotScope,
+        _window: &mut Window,
+        _cx: &mut gpui::Context<Self>,
+    ) -> gpui::AnyElement {
+        use gpui::{IntoElement, ParentElement, Styled, div, px};
+        use rml_ui::ActiveTheme;
+
+        let slot_name = panel.slot_name();
+        let current_size = panel.current_size();
+        let has_resizable = panel.has_resizable();
+
+        let size_text = match current_size {
+            Some(sz) => format!("{}", sz),
+            None => "N/A".to_string(),
+        };
+
+        div()
+            .flex()
+            .flex_col()
+            .size_full()
+            .bg(_cx.theme().background)
+            .child(
+                div()
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .justify_between()
+                    .px(px(12.))
+                    .py(px(6.))
+                    .border_b_1()
+                    .border_color(_cx.theme().border)
+                    .child(
+                        div()
+                            .text_size(px(13.))
+                            .font_weight(gpui::FontWeight::SEMIBOLD)
+                            .child("终端面板"),
+                    )
+                    .child(
+                        div()
+                            .flex()
+                            .flex_row()
+                            .gap(px(12.))
+                            .text_size(px(12.))
+                            .text_color(_cx.theme().muted_foreground)
+                            .child(format!("slot={}", slot_name))
+                            .child(format!("size={}", size_text))
+                            .child(format!("resizable={}", has_resizable)),
+                    ),
+            )
+            .child(
+                div()
+                    .flex_1()
+                    .px(px(12.))
+                    .py(px(8.))
+                    .text_size(px(12.))
+                    .text_color(_cx.theme().muted_foreground)
+                    .child("$ demo terminal — scope variable accessible from slot content"),
+            )
+            .into_any_element()
+    }
+
     /// 当前激活的 Tab 索引（#[computed] 自动缓存，依赖 workbenches + activated 版本）。
     /// workbenches 版本由 ObservableVec::push 内部 fetch_add 自动递增；
     /// activated 版本由命令方法手动 __rml_bump_version("activated") 递增。

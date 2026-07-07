@@ -1,0 +1,39 @@
+<component>
+    <div class="case-pane doc-pane">
+        <h2>{t("case.slot_scope.title")}</h2>
+
+        <Card title="概念">
+            <p>作用域插槽（Scoped Slots）让 &lt;template slot="..."&gt; 内容能够接收来自插槽宿主（slot host）的上下文参数，用于操控父容器（如 resizable）行为。普通插槽仅能渲染内容，作用域插槽还能"反向操控"宿主。</p>
+        </Card>
+
+        <Card title="语法">
+            <p>通过 scope=&#123;name&#125; 在 &lt;template slot="..."&gt; 上声明接收作用域变量。例如：</p>
+            <p class="hint">&lt;tab-window&gt; 内 &lt;template slot="bottom" scope=&#123;panel&#125;&gt; ... &lt;/template&gt; 接收 panel: &amp;dyn ISlotScope</p>
+            <p class="hint">不写 scope=&#123;...&#125; 时，插槽首参以 _scope 忽略，向后兼容。</p>
+        </Card>
+
+        <Card title="ISlotScope API">
+            <p>作用域变量类型为 &amp;dyn rml_core::slot::ISlotScope，提供以下方法：</p>
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+        </Card>
+
+        <Card title="实现方">
+            <p>NullSlotScope：默认空作用域，所有方法返回 None / no-op。用于不支持上下文注入的 slot（自定义组件的 &lt;slot&gt; 占位符默认传此类型）。</p>
+            <p>TabWindowSlotScope：TabWindow 的 left/right/bottom 插槽，暴露 resizable 操控权（maximize/restore/close 等方法实际可用）。</p>
+        </Card>
+
+        <Card title="使用示例">
+            <p>当前 demo 主体窗口（main_window.rml）的 bottom slot 即为作用域插槽的真实演示。</p>
+            <p class="hint">&lt;template slot="bottom" scope=&#123;panel&#125;&gt; &lt;component content=&#123;self.render_bottom_panel(panel, _window, cx)&#125; /&gt; &lt;/template&gt;</p>
+            <p>渲染时调用 panel.slot_name() / panel.current_size() / panel.has_resizable() 等查询方法展示面板元信息。</p>
+            <p class="hint">注：panel.maximize/restore/close 为渲染期方法，需在 render_bottom_panel 等命令式方法内调用。在 on-click 等 'static 闭包中延迟调用需要 to_op_handle() API（规划中）。</p>
+        </Card>
+
+        <Card title="限制">
+            <p>1. menu/title/footer/tabs 等 shell slot 不支持 resizable 操控（has_resizable() 返回 false）。</p>
+            <p>2. 自定义组件的 &lt;slot&gt; 默认传 NullSlotScope，不暴露父容器操控权。</p>
+            <p>3. scope 仅可在 &lt;template slot="..."&gt; 上使用，普通元素无效。</p>
+            <p>4. scope 表达式必须是简单标识符（如 panel），不支持 foo.bar 或 foo(1)。</p>
+        </Card>
+    </div>
+</component>

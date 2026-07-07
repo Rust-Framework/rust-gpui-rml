@@ -33,9 +33,11 @@
             </div>
 
             <div class="demo-section">
-                <h3>动态绑定（model 双向绑定）</h3>
-                <p>输入文本，下方 Label 实时更新（演示 model 双向绑定）。</p>
-                <input model={text} placeholder="输入标签文本" />
+                <h3>动态绑定（字段绑定）</h3>
+                <p>点击按钮切换 text 字段，下方 Label 实时更新（演示字段绑定到文本子节点）。</p>
+                <div class="button-row">
+                    <Button label="切换文本" on-click={on_cycle_text} />
+                </div>
                 <p>当前文本: {text}</p>
                 <Label>{text}</Label>
             </div>

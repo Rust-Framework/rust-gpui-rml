@@ -54,4 +54,14 @@ impl LabelCase {
     pub fn rust_sample(&self) -> String {
         include_str!("label_case.rml.rs").to_string()
     }
+
+    #[command]
+    pub fn on_cycle_text(&mut self, _: &ClickEvent, _cx: &mut Context<Self>) {
+        self.text = match self.text.as_str() {
+            "用户名" => "邮箱地址".into(),
+            "邮箱地址" => "密码".into(),
+            "密码" => "昵称".into(),
+            _ => "用户名".into(),
+        };
+    }
 }
