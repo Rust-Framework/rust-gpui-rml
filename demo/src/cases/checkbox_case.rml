@@ -1,40 +1,65 @@
 <component>
-    <div display="flex" flex-direction="column" class="case-pane doc-pane">
-        <h2>{t("case.checkbox.title")}</h2>
-        <p>Checkbox 是 RML 的复选框组件，标签为 PascalCase <code>Checkbox</code>。Stateless 组件，通过 <code>checked</code> 属性绑定勾选状态（底层通过 Selectable trait 映射到 <code>.checked()</code>）。</p>
-
-        <Card title="基础用法">
-            <p><code>checked</code> 属性绑定布尔字段，<code>on-click</code> 回调签名 <code>(&amp;bool, &amp;mut Context)</code>。</p>
-            <p>{status_text}</p>
-            <div display="flex" flex-direction="row" gap="16px">
-                <Checkbox label="同意条款" checked={is_checked} on-click={on_toggle_checked} />
-                <Button label="切换勾选" on-click={on_toggle_checked_button} />
+    <CaseDocPage
+        title={t("case.checkbox.title")}
+        description="Checkbox 是 RML 的复选框组件，标签为 PascalCase Checkbox。Stateless 组件，通过 checked 属性绑定勾选状态（底层通过 Selectable trait 映射到 .checked()）。on-click 回调签名为 Fn(&bool, ...)（切换后的新状态）。支持 label 标签、disabled 禁用、tooltip 提示。适合二元选择场景：协议同意、选项勾选、批量操作。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <div class="demo-section">
+                <h3>基础用法</h3>
+                <p>checked 属性绑定布尔字段，on-click 回调接收切换后的新状态（&bool）。点击复选框或按钮切换状态。</p>
+                <p>当前状态：{status_text}</p>
+                <div class="button-row">
+                    <Checkbox label="同意条款" checked={is_checked} on-click={on_toggle_checked} />
+                    <Button label="切换勾选" on-click={on_toggle_checked_button} />
+                </div>
             </div>
-        </Card>
 
-        <Card title="禁用状态 disabled">
-            <p><code>disabled</code> 属性禁用复选框交互。</p>
-            <div display="flex" flex-direction="row" gap="16px">
-                <Checkbox label="禁用项" disabled={is_disabled} />
-                <Button label="切换禁用" on-click={on_toggle_disabled} />
+            <div class="demo-section">
+                <h3>禁用状态 disabled</h3>
+                <p>disabled 属性禁用复选框交互，点击按钮切换禁用状态。</p>
+                <div class="button-row">
+                    <Button label="切换禁用" on-click={on_toggle_disabled} />
+                    <Checkbox label="禁用项（未勾选）" disabled={is_disabled} />
+                    <Checkbox label="禁用项（已勾选）" checked={true} disabled={is_disabled} />
+                </div>
             </div>
-        </Card>
 
-        <Card title="示例代码">
-            <p>点击下方 Tab 切换 <code>.rml</code> 声明文件与 <code>.rml.rs</code> 后端文件：</p>
-            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
-                <Tab label=".rml">
-                    <CodeEditor ref="rml_editor" value={rml_sample} language="rml" />
-                </Tab>
-                <Tab label=".rml.rs">
-                    <CodeEditor ref="rust_editor" value={rust_sample} language="rust" />
-                </Tab>
-            </TabBar>
-        </Card>
+            <div class="demo-section">
+                <h3>多选项列表</h3>
+                <p>多个独立 Checkbox 组合使用，每个绑定不同字段。适合偏好设置、功能开关等场景。</p>
+                <div display="flex" flex-direction="column" gap="8px">
+                    <Checkbox label="接收邮件通知" checked={email_notify} on-click={on_toggle_email} />
+                    <Checkbox label="接收短信通知" checked={sms_notify} on-click={on_toggle_sms} />
+                    <Checkbox label="接收推送通知" checked={push_notify} on-click={on_toggle_push} />
+                </div>
+                <p>已选：{notify_summary}</p>
+            </div>
 
-        <Card title="API">
+            <div class="demo-section">
+                <h3>tooltip 提示</h3>
+                <p>Checkbox 支持 tooltip 属性（在白名单中），鼠标悬浮显示补充说明。</p>
+                <Checkbox label="高级模式" tooltip="启用后将显示高级配置选项" />
+            </div>
+
+            <div class="demo-section">
+                <h3>样式定制</h3>
+                <p>Checkbox 继承 Styled trait，可通过 text-size / text-color / font-weight 等样式属性定制外观。</p>
+                <div display="flex" flex-direction="column" gap="8px">
+                    <Checkbox label="小字号" text-size="xs" />
+                    <Checkbox label="正常字号" text-size="sm" />
+                    <Checkbox label="加粗" text-size="sm" font-bold="" />
+                    <Checkbox label="灰色文字" text-size="sm" text-color="--text-muted" />
+                </div>
+            </div>
+        </template>
+
+        <template slot="api">
             <h3>Checkbox</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-        </Card>
-    </div>
+            <p>另：checked 属性为绑定类型（bind），映射到 .checked(bool)。</p>
+            <p>另：text_size / text_color / font_weight 等样式属性来自 Styled trait。</p>
+            <p>另：on-click 回调签名为 Fn(&bool, ...)（切换后的新状态），不同于 Button 的 ClickEvent。</p>
+        </template>
+    </CaseDocPage>
 </component>

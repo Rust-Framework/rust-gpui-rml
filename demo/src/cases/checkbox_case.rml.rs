@@ -3,7 +3,7 @@ use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
 
-use crate::cases::common::build_api_table;
+use crate::cases::common::{build_api_table, CaseDocPage};
 
 #[contribute(
     host_id = "demo.shell",
@@ -17,9 +17,12 @@ use crate::cases::common::build_api_table;
 pub struct CheckboxCase {
     pub is_checked: bool,
     pub is_disabled: bool,
-    pub code_tab: usize,
+    pub email_notify: bool,
+    pub sms_notify: bool,
+    pub push_notify: bool,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
+    pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
 }
 
 impl IContribution for CheckboxCase {
@@ -32,12 +35,16 @@ impl IContribution for CheckboxCase {
 }
 
 impl ILifecycle for CheckboxCase {
-    fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
+    fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
+        self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
+        self.email_notify = true;
         let (cols, rows) = build_api_table(&[
             ("label", "字符串", "标签文本"),
-            ("checked", "布尔", "勾选状态"),
-            ("disabled", "布尔", "禁用"),
-            ("size", "small/medium/large", "尺寸"),
+            ("checked", "布尔/绑定", "勾选状态"),
+            ("disabled", "布尔/绑定", "禁用"),
+            ("tooltip", "字符串", "悬浮提示"),
+            ("text-size / text-color / font-weight", "样式属性", "来自 Styled trait"),
+            ("on-click", "事件", "点击回调（Fn(&bool, ...)）"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;
@@ -48,76 +55,68 @@ impl CheckboxCase {
     #[computed]
     pub fn status_text(&self) -> String {
         if self.is_checked {
-            "当前：已勾选".to_string()
+            "已勾选".to_string()
         } else {
-            "当前：未勾选".to_string()
+            "未勾选".to_string()
+        }
+    }
+
+    #[computed]
+    pub fn notify_summary(&self) -> String {
+        let mut items: Vec<&str> = Vec::new();
+        if self.email_notify {
+            items.push("邮件");
+        }
+        if self.sms_notify {
+            items.push("短信");
+        }
+        if self.push_notify {
+            items.push("推送");
+        }
+        if items.is_empty() {
+            "无".to_string()
+        } else {
+            items.join("、")
         }
     }
 
     #[computed]
     pub fn rml_sample(&self) -> String {
-        r#"<!-- checkbox_case.rml：声明式 UI，描述结构 + 绑定 + 事件 -->
-<component>
-    <!-- 基础用法：checked={is_checked} on-click={on_toggle_checked} -->
-    <Checkbox label="同意条款" checked={is_checked} on-click={on_toggle_checked} />
-
-    <!-- 禁用状态：disabled={is_disabled} -->
-    <Checkbox label="禁用项" disabled={is_disabled} />
-</component>"#
-            .to_string()
+        include_str!("checkbox_case.rml").to_string()
     }
 
     #[computed]
     pub fn rust_sample(&self) -> String {
-        r#"// checkbox_case.rml.rs：后端状态 + computed + command handler
-use rml::prelude::*;
-
-#[component]
-#[derive(Default)]
-pub struct CheckboxCase {
-    pub is_checked: bool,
-    pub is_disabled: bool,
-}
-
-impl CheckboxCase {
-    #[computed]
-    pub fn status_text(&self) -> String {
-        if self.is_checked { "已勾选".into() } else { "未勾选".into() }
-    }
-
-    // on-click 回调签名：(&bool, &mut Context<Self>)
-    #[command]
-    pub fn on_toggle_checked(&mut self, checked: &bool, cx: &mut Context<Self>) {
-        self.is_checked = *checked;
-        cx.notify();
+        include_str!("checkbox_case.rml.rs").to_string()
     }
 
     #[command]
-    pub fn on_toggle_disabled(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
-        self.is_disabled = !self.is_disabled;
-        cx.notify();
-    }
-}"#
-            .to_string()
-    }
-
-    #[command]
-    pub fn on_toggle_checked(&mut self, checked: &bool, cx: &mut Context<Self>) {
+    pub fn on_toggle_checked(&mut self, checked: &bool, _cx: &mut Context<Self>) {
         self.is_checked = *checked;
     }
 
     #[command]
-    pub fn on_toggle_checked_button(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+    pub fn on_toggle_checked_button(&mut self, _: &ClickEvent, _cx: &mut Context<Self>) {
         self.is_checked = !self.is_checked;
     }
 
     #[command]
-    pub fn on_toggle_disabled(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+    pub fn on_toggle_disabled(&mut self, _: &ClickEvent, _cx: &mut Context<Self>) {
         self.is_disabled = !self.is_disabled;
     }
 
     #[command]
-    pub fn on_code_tab_change(&mut self, idx: usize, _cx: &mut Context<Self>) {
-        self.code_tab = idx;
+    pub fn on_toggle_email(&mut self, checked: &bool, _cx: &mut Context<Self>) {
+        self.email_notify = *checked;
+    }
+
+    #[command]
+    pub fn on_toggle_sms(&mut self, checked: &bool, _cx: &mut Context<Self>) {
+        self.sms_notify = *checked;
+    }
+
+    #[command]
+    pub fn on_toggle_push(&mut self, checked: &bool, _cx: &mut Context<Self>) {
+        self.push_notify = *checked;
     }
 }

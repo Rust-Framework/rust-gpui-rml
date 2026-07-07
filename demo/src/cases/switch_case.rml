@@ -1,40 +1,52 @@
 <component>
-    <div display="flex" flex-direction="column" class="case-pane doc-pane">
-        <h2>{t("case.switch.title")}</h2>
-        <p>Switch 是 RML 的开关组件，标签为 PascalCase <code>Switch</code>。Stateless 组件，通过 <code>checked</code> 属性绑定开关状态（映射到 <code>.checked()</code> 方法）。</p>
-
-        <Card title="基础用法">
-            <p><code>checked</code> 属性绑定布尔字段，<code>on-click</code> 回调签名 <code>(&amp;bool, &amp;mut Context)</code>。</p>
-            <p>{status_text}</p>
-            <div display="flex" flex-direction="row" gap="16px">
-                <Switch label="自动保存" checked={is_on} on-click={on_toggle} />
-                <Button label="切换开关" on-click={on_toggle_button} />
+    <CaseDocPage
+        title={t("case.switch.title")}
+        description="Switch 是 RML 的开关组件，标签为 PascalCase Switch。Stateless 组件，通过 checked 属性绑定开关状态（映射到 .checked() 方法）。on-click 回调签名为 Fn(&bool, ...)（切换后的新状态）。支持 label 标签、disabled 禁用、tooltip 提示。适合二元开关场景：自动保存、深色模式、通知开关。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <div class="demo-section">
+                <h3>基础用法</h3>
+                <p>checked 属性绑定布尔字段，on-click 回调接收切换后的新状态（&bool）。点击开关或按钮切换状态。</p>
+                <p>当前状态：{status_text}</p>
+                <div class="button-row">
+                    <Switch label="自动保存" checked={is_on} on-click={on_toggle} />
+                    <Button label="切换开关" on-click={on_toggle_button} />
+                </div>
             </div>
-        </Card>
 
-        <Card title="禁用状态 disabled">
-            <p><code>disabled</code> 属性禁用开关交互。</p>
-            <div display="flex" flex-direction="row" gap="16px">
-                <Switch checked={is_disabled} disabled={is_disabled} />
-                <Button label="切换禁用" on-click={on_toggle_disabled} />
+            <div class="demo-section">
+                <h3>禁用状态 disabled</h3>
+                <p>disabled 属性禁用开关交互，点击按钮切换禁用状态。</p>
+                <div class="button-row">
+                    <Button label="切换禁用" on-click={on_toggle_disabled} />
+                    <Switch checked={is_disabled} disabled={is_disabled} />
+                </div>
             </div>
-        </Card>
 
-        <Card title="示例代码">
-            <p>点击下方 Tab 切换 <code>.rml</code> 声明文件与 <code>.rml.rs</code> 后端文件：</p>
-            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
-                <Tab label=".rml">
-                    <CodeEditor ref="rml_editor" value={rml_sample} language="rml" />
-                </Tab>
-                <Tab label=".rml.rs">
-                    <CodeEditor ref="rust_editor" value={rust_sample} language="rust" />
-                </Tab>
-            </TabBar>
-        </Card>
+            <div class="demo-section">
+                <h3>设置列表</h3>
+                <p>多个独立 Switch 组合使用，适合设置面板场景。每个 Switch 绑定不同字段。</p>
+                <div display="flex" flex-direction="column" gap="8px">
+                    <Switch label="Wi-Fi" checked={wifi_on} on-click={on_toggle_wifi} />
+                    <Switch label="蓝牙" checked={bluetooth_on} on-click={on_toggle_bluetooth} />
+                    <Switch label="深色模式" checked={dark_mode} on-click={on_toggle_dark} />
+                    <Switch label="自动同步" checked={auto_sync} on-click={on_toggle_sync} />
+                </div>
+            </div>
 
-        <Card title="API">
+            <div class="demo-section">
+                <h3>tooltip 提示</h3>
+                <p>Switch 支持 tooltip 属性（在白名单中），鼠标悬浮显示补充说明。</p>
+                <Switch label="省电模式" tooltip="启用后将降低性能以延长电池寿命" />
+            </div>
+        </template>
+
+        <template slot="api">
             <h3>Switch</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-        </Card>
-    </div>
+            <p>另：checked 属性为绑定类型（bind），映射到 .checked(bool)。</p>
+            <p>另：on-click 回调签名为 Fn(&bool, ...)（切换后的新状态），不同于 Button 的 ClickEvent。</p>
+        </template>
+    </CaseDocPage>
 </component>
