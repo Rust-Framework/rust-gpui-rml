@@ -12,9 +12,8 @@ use gpui::{
     App, ElementId, IntoElement, RenderOnce, ScrollHandle, StyleRefinement, Styled, Window,
 };
 use gpui_component::{Sizable, Size};
-use smallvec::SmallVec;
 
-use super::{Tab, TabItem, TabVariant, Tabs};
+use super::{TabItem, TabVariant, Tabs};
 
 /// 原生 gpui-component 形态的 TabBar —— 纯 header 标签栏。
 ///
@@ -94,21 +93,17 @@ impl TabBar {
 
     /// Add children of the TabBar, all children will inherit the variant.
     ///
-    /// `Tab` 自动通过 `From<Tab> for TabItem` 转换为 `TabItem`（body=None）。
-    pub fn children(mut self, children: impl IntoIterator<Item = impl Into<Tab>>) -> Self {
-        let items: SmallVec<[TabItem; 2]> = children
-            .into_iter()
-            .map(|c| TabItem::from(c.into()))
-            .collect();
-        self.inner = self.inner.children(items);
+    /// 接受 `impl Into<TabItem>`，兼容 `Tab`（通过 `From<Tab> for TabItem` 转换）和 `TabItem`。
+    pub fn children(mut self, children: impl IntoIterator<Item = impl Into<TabItem>>) -> Self {
+        self.inner = self.inner.children(children);
         self
     }
 
     /// Add child of the TabBar, tab will inherit the variant.
     ///
-    /// `Tab` 自动通过 `From<Tab> for TabItem` 转换为 `TabItem`（body=None）。
-    pub fn child(mut self, child: impl Into<Tab>) -> Self {
-        self.inner = self.inner.child(TabItem::from(child.into()));
+    /// 接受 `impl Into<TabItem>`，兼容 `Tab`（通过 `From<Tab> for TabItem` 转换）和 `TabItem`。
+    pub fn child(mut self, child: impl Into<TabItem>) -> Self {
+        self.inner = self.inner.child(child);
         self
     }
 

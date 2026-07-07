@@ -4,11 +4,12 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use gpui::{App, Task, Window};
-use gpui_component::{input::DefinitionProvider, RopeExt};
+use gpui_component::input::DefinitionProvider;
 use lsp_types::{Location, LocationLink, Uri};
 use ropey::Rope;
 use serde_json::Value;
 
+use super::position_util::offset_to_position_utf16;
 use crate::lsp_client::LspClient;
 
 pub struct LspDefinitionProvider {
@@ -30,7 +31,7 @@ impl DefinitionProvider for LspDefinitionProvider {
         _window: &mut Window,
         cx: &mut App,
     ) -> Task<Result<Vec<LocationLink>>> {
-        let position = text.offset_to_position(offset);
+        let position = offset_to_position_utf16(text, offset);
         let rx = self.client.definition(&self.uri, position);
         cx.background_executor().spawn(async move {
             let resp = rx.recv()??;

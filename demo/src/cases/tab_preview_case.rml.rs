@@ -25,8 +25,8 @@ pub struct TabPreviewCase {
     pub tabs: Vec<TabData>,
     pub selected_index: usize,
     pub code_tab: usize,
-    pub tab_bar_api_columns: Vec<TableColumn>,
-    pub tab_bar_api_rows: Vec<TableRow>,
+    pub tabs_api_columns: Vec<TableColumn>,
+    pub tabs_api_rows: Vec<TableRow>,
     pub tab_api_columns: Vec<TableColumn>,
     pub tab_api_rows: Vec<TableRow>,
 }
@@ -51,8 +51,8 @@ impl ILifecycle for TabPreviewCase {
             ("on-close-others", "事件", "关闭其他回调，签名 fn(index: usize)"),
             ("on-promote", "事件", "双击 promote 回调，签名 fn(index: usize)"),
         ]);
-        self.tab_bar_api_columns = cols;
-        self.tab_bar_api_rows = rows;
+        self.tabs_api_columns = cols;
+        self.tabs_api_rows = rows;
 
         let (cols, rows) = build_api_table(&[
             ("label", "字符串/绑定", "标签标题"),
@@ -84,8 +84,8 @@ impl TabPreviewCase {
     pub fn rml_sample(&self) -> String {
         r#"<!-- tab_preview_case.rml：声明式 UI，描述结构 + 绑定 + 事件 -->
 <component>
-    <!-- TabBar: selected-index + 5 个事件回调 + each 渲染 Tab -->
-    <TabBar
+    <!-- Tabs: selected-index + 5 个事件回调 + each 渲染 Tab -->
+    <Tabs
         selected-index={selected_index}
         on-click={on_tab_select}
         on-close={on_tab_close}
@@ -97,7 +97,7 @@ impl TabPreviewCase {
             label={tab.title}
             closable={tab.closable}
             preview={tab.preview} />
-    </TabBar>
+    </Tabs>
 </component>"#
             .to_string()
     }

@@ -163,6 +163,7 @@ pub fn canonical_tag(tag: &str) -> String {
         "accordion" => "Accordion".to_string(),
         "item" => "AccordionItem".to_string(),
         "tab" => "Tab".to_string(),
+        "tabs" => "Tabs".to_string(),
         "table" => "Table".to_string(),
         "column" => "Column".to_string(),
         "popover" => "Popover".to_string(),
@@ -757,8 +758,10 @@ mod normalize_tests {
 
     #[test]
     fn canonical_tag_maps_tab_bar_kebab() {
+        assert_eq!(canonical_tag("tabs"), "Tabs");
         assert_eq!(canonical_tag("tab-bar"), "TabBar");
         assert_eq!(canonical_tag("tab"), "Tab");
+        assert_eq!(canonical_tag("Tabs"), "Tabs");
         assert_eq!(canonical_tag("TabBar"), "TabBar");
         assert_eq!(canonical_tag("Tab"), "Tab");
     }

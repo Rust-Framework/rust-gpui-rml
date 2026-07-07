@@ -114,9 +114,17 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
     ("Tag", &["outline"]),
     // Separator 专用（无 new() 构造器，通过 vertical/dashed 选择 horizontal/vertical/dashed 构造）
     ("Separator", &["vertical", "dashed"]),
-    // TabBar 专用（标签栏容器，variant 快捷方法 + menu + selected_index + prefix/suffix + on_click/on_close 等）
-    ("TabBar", &[
+    // Tabs 专用（WPF TabControl：header + body，全量属性含 on_close/bordered）
+    ("Tabs", &[
         "selected_index", "on_click", "on_close", "on_close_all", "on_close_others", "on_promote",
+        "prefix", "suffix", "last_empty_space",
+        "menu", "track_scroll",
+        "bordered",
+        "underline", "pill", "flat", "outline", "segmented",
+    ]),
+    // TabBar 专用（原生形态：纯 header，不含 on_close*/bordered）
+    ("TabBar", &[
+        "selected_index", "on_click",
         "prefix", "suffix", "last_empty_space",
         "menu", "track_scroll",
         "underline", "pill", "flat", "outline", "segmented",
@@ -354,7 +362,30 @@ mod tests {
     }
 
     #[test]
+    fn tabs_props_registered() {
+        // Tabs（WPF TabControl）支持全量属性，含 on_close/bordered
+        assert!(is_prop_registered("Tabs", "selected_index"));
+        assert!(is_prop_registered("Tabs", "on_click"));
+        assert!(is_prop_registered("Tabs", "on_close"));
+        assert!(is_prop_registered("Tabs", "on_close_all"));
+        assert!(is_prop_registered("Tabs", "on_close_others"));
+        assert!(is_prop_registered("Tabs", "on_promote"));
+        assert!(is_prop_registered("Tabs", "prefix"));
+        assert!(is_prop_registered("Tabs", "suffix"));
+        assert!(is_prop_registered("Tabs", "last_empty_space"));
+        assert!(is_prop_registered("Tabs", "menu"));
+        assert!(is_prop_registered("Tabs", "track_scroll"));
+        assert!(is_prop_registered("Tabs", "bordered"));
+        assert!(is_prop_registered("Tabs", "underline"));
+        assert!(is_prop_registered("Tabs", "pill"));
+        assert!(is_prop_registered("Tabs", "flat"));
+        assert!(is_prop_registered("Tabs", "outline"));
+        assert!(is_prop_registered("Tabs", "segmented"));
+    }
+
+    #[test]
     fn tab_bar_props_registered() {
+        // TabBar（原生形态）不含 on_close*/bordered
         assert!(is_prop_registered("TabBar", "selected_index"));
         assert!(is_prop_registered("TabBar", "on_click"));
         assert!(is_prop_registered("TabBar", "prefix"));
@@ -367,6 +398,10 @@ mod tests {
         assert!(is_prop_registered("TabBar", "flat"));
         assert!(is_prop_registered("TabBar", "outline"));
         assert!(is_prop_registered("TabBar", "segmented"));
+        // 不支持 on_close/bordered
+        assert!(!is_prop_registered("TabBar", "on_close"));
+        assert!(!is_prop_registered("TabBar", "on_close_all"));
+        assert!(!is_prop_registered("TabBar", "bordered"));
     }
 
     #[test]
@@ -392,6 +427,14 @@ mod tests {
     }
 
     #[test]
+    fn tabs_kebab_alias_props_registered() {
+        // <tabs> kebab-case 别名也应命中 Tabs 属性
+        assert!(is_prop_registered("tabs", "selected_index"));
+        assert!(is_prop_registered("tabs", "bordered"));
+        assert!(is_prop_registered("tabs", "on_close"));
+    }
+
+    #[test]
     fn tab_short_form_props_registered() {
         // <tab> 短标签也应命中 Tab 属性
         assert!(is_prop_registered("tab", "label"));
@@ -399,11 +442,20 @@ mod tests {
     }
 
     #[test]
-    fn props_for_tab_bar_and_tab() {
+    fn props_for_tabs_tab_bar_and_tab() {
+        // Tabs 支持 on_close/bordered
+        let (_, bind, event) = props_for("Tabs");
+        assert!(bind.contains(&"selected_index"));
+        assert!(bind.contains(&"bordered"));
+        assert!(event.contains(&"on_click"));
+        assert!(event.contains(&"on_close"));
+
+        // TabBar 不支持 on_close/bordered
         let (_, bind, event) = props_for("TabBar");
         assert!(bind.contains(&"selected_index"));
-        assert!(bind.contains(&"prefix"));
+        assert!(!bind.contains(&"bordered"));
         assert!(event.contains(&"on_click"));
+        assert!(!event.contains(&"on_close"));
 
         let (_, bind, event) = props_for("Tab");
         assert!(bind.contains(&"label"));

@@ -17,6 +17,8 @@ use crate::cases::common::build_api_table;
 pub struct TabBarCase {
     pub active_tab: usize,
     pub code_tab: usize,
+    pub tabs_api_columns: Vec<TableColumn>,
+    pub tabs_api_rows: Vec<TableRow>,
     pub tab_bar_api_columns: Vec<TableColumn>,
     pub tab_bar_api_rows: Vec<TableRow>,
     pub tab_api_columns: Vec<TableColumn>,
@@ -34,6 +36,7 @@ impl IContribution for TabBarCase {
 
 impl ILifecycle for TabBarCase {
     fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
+        // Tabs API（WPF TabControl：header + body，全量属性）
         let (cols, rows) = build_api_table(&[
             ("selected-index", "绑定", "当前选中索引"),
             ("on-click", "事件", "点击回调，签名 fn(index: usize)"),
@@ -41,6 +44,20 @@ impl ILifecycle for TabBarCase {
             ("on-close-all", "事件", "关闭全部回调，签名 fn()"),
             ("on-close-others", "事件", "关闭其他回调，签名 fn(index: usize)"),
             ("on-promote", "事件", "双击 promote 回调，签名 fn(index: usize)"),
+            ("bordered", "布尔标志", "1px 边框包裹 header + body 整体（Tabs 专属）"),
+            ("underline/pill/flat/outline/segmented", "布尔标志", "5 种 variant"),
+            ("menu", "布尔", "启用下拉菜单 + 溢出压缩（标签过多时）"),
+            ("prefix/suffix", "绑定", "首尾注入元素"),
+            ("last-empty-space", "绑定", "尾部占位元素"),
+            ("track-scroll", "绑定", "滚动控制（ScrollHandle 引用）"),
+        ]);
+        self.tabs_api_columns = cols;
+        self.tabs_api_rows = rows;
+
+        // TabBar API（原生 header-only，不含 bordered/on_close*/on_promote）
+        let (cols, rows) = build_api_table(&[
+            ("selected-index", "绑定", "当前选中索引"),
+            ("on-click", "事件", "点击回调，签名 fn(index: usize)"),
             ("underline/pill/flat/outline/segmented", "布尔标志", "5 种 variant"),
             ("menu", "布尔", "启用下拉菜单（标签过多时）"),
             ("prefix/suffix", "绑定", "首尾注入元素"),
@@ -133,14 +150,15 @@ impl TabBarCase {
     </TabBar>
 
     <!-- 内容面板 body：Tab 直接包裹 element 子节点（WPF TabControl/TabItem 模式） -->
-    <TabBar selected-index={active_tab} on-click={on_tab_select}>
+    <!-- body 模式用 <Tabs>（非 <TabBar>），bordered 包裹 header + body 整体 -->
+    <Tabs bordered="" selected-index={active_tab} on-click={on_tab_select}>
         <Tab label="Account">
             <div>Account settings panel</div>
         </Tab>
         <Tab label="Profile">
             <div>User profile panel</div>
         </Tab>
-    </TabBar>
+    </Tabs>
 </component>"#
             .to_string()
     }

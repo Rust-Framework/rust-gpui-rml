@@ -4,10 +4,11 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use gpui::{App, Task, Window};
-use gpui_component::{input::HoverProvider, RopeExt};
+use gpui_component::input::HoverProvider;
 use lsp_types::{Hover, Uri};
 use ropey::Rope;
 
+use super::position_util::offset_to_position_utf16;
 use crate::lsp_client::LspClient;
 
 pub struct LspHoverProvider {
@@ -29,7 +30,8 @@ impl HoverProvider for LspHoverProvider {
         _window: &mut Window,
         cx: &mut App,
     ) -> Task<Result<Option<Hover>>> {
-        let position = text.offset_to_position(offset);
+        let position = offset_to_position_utf16(text, offset);
+        log::debug!("[rml-lsp] client hover: offset={}, pos={:?}", offset, position);
         let rx = self.client.hover(&self.uri, position);
         cx.background_executor().spawn(async move {
             let resp = rx.recv()??;

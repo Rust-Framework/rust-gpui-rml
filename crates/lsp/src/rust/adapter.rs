@@ -30,14 +30,19 @@ impl RaAdapter {
 // Url ↔ FileId 转换
 // ──────────────────────────────────────────────────────────────────────────
 
-/// Url → FileId（在 Vfs 中查找匹配路径）
-fn url_to_file_id(host: &RaHost, uri: &Url) -> Option<ra_ap_ide::FileId> {
+/// Url → VfsPath（file scheme 路径转换）
+fn uri_to_vfs_path(uri: &Url) -> Option<ra_ap_vfs::VfsPath> {
     if uri.scheme() != "file" {
         return None;
     }
     let path = uri.to_file_path().ok()?;
     let abs = ra_ap_vfs::AbsPathBuf::assert_utf8(path);
-    let vfs_path = ra_ap_vfs::VfsPath::from(abs);
+    Some(ra_ap_vfs::VfsPath::from(abs))
+}
+
+/// Url → FileId（在 Vfs 中查找匹配路径）
+fn url_to_file_id(host: &RaHost, uri: &Url) -> Option<ra_ap_ide::FileId> {
+    let vfs_path = uri_to_vfs_path(uri)?;
     host.with_vfs(|vfs| vfs.file_id(&vfs_path).map(|(id, _)| id))
         .flatten()
 }
@@ -113,14 +118,18 @@ fn range_to_location(
 // ──────────────────────────────────────────────────────────────────────────
 
 impl RustSemanticQuery for RaAdapter {
-    fn open_document(&mut self, _uri: &Url, _text: &str) {
-        // .rml.rs 文件由 RA 的 ProjectModel 自行加载与监控，
-        // 此处仅用于 future：若用户打开了未在 workspace 中的 .rml.rs，
-        // 需手动注入到 Vfs。当前 MVP 阶段忽略。
+    fn open_document(&mut self, uri: &Url, text: &str) {
+        if let Some(path) = uri_to_vfs_path(uri) {
+            self.host.with_vfs_mut(|vfs| {
+                vfs.set_file_contents(path, Some(text.as_bytes().to_vec()));
+            });
+            self.host.apply_vfs_changes();
+        }
     }
 
-    fn apply_change(&mut self, _uri: &Url, _text: &str) {
-        // TODO: 增量同步到 Vfs + AnalysisHost
+    fn apply_change(&mut self, uri: &Url, text: &str) {
+        // full sync 模式下直接覆盖文件内容
+        self.open_document(uri, text);
     }
 
     fn close_document(&mut self, _uri: &Url) {}
@@ -166,13 +175,20 @@ impl RustSemanticQuery for RaAdapter {
             Some(a) => a,
             None => {
                 // RaHost 未就绪：返回加载提示，避免用户误以为功能损坏
+                log::info!("[rml-lsp] hover: RA not ready, uri={}", uri);
                 return Some(HoverInfo {
                     content: "Loading rust-analyzer workspace...".to_string(),
                     range: None,
                 });
             }
         };
-        let file_id = url_to_file_id(&self.host, uri)?;
+        let file_id = match url_to_file_id(&self.host, uri) {
+            Some(f) => f,
+            None => {
+                log::warn!("[rml-lsp] hover: file not in Vfs, uri={}", uri);
+                return None;
+            }
+        };
         let (_, line_index) = file_text_and_index(&self.host, file_id)?;
         let offset = position_to_offset(&line_index, pos);
         let config = ra_ap_ide::HoverConfig {

@@ -1,7 +1,7 @@
 <component>
     <div display="flex" flex-direction="column" class="case-pane doc-pane">
         <h2>{t("case.tab_bar.title")}</h2>
-        <p>TabBar 是 RML 的标签栏组件，标签为 PascalCase <code>TabBar</code> 或 kebab-case <code>tab-bar</code>。子项用 <code>Tab</code> 标签（统一底层为 TabItem），<code>label</code> 属性指定标题，<code>icon</code> 属性添加图标。核心概念：5 种 variant（<code>underline</code>/<code>pill</code>/<code>flat</code>/<code>outline</code>/<code>segmented</code>）通过同名属性切换；尺寸用 <code>size</code> 属性；<code>prefix</code>/<code>suffix</code> 注入首尾元素；<code>menu</code> 模式启用下拉；<code>on-click</code> 事件回调选中索引（签名 <code>fn(index: usize)</code>）。内容面板（body）：Tab 可直接包裹 element 子节点作为选中时渲染的内容（WPF TabControl/TabItem 模式）。header 自定义插槽：通过 <code>&lt;template slot="header"&gt;</code> 在 Tab 内注入任意标题元素。</p>
+        <p>RML 标签栏组件分为两种：<code>TabBar</code>（原生 header-only 标签栏，纯 header 切换）与 <code>Tabs</code>（WPF TabControl 风格，header + body 一体化切换）。子项统一用 <code>Tab</code> 标签（底层为 TabItem），<code>label</code> 指定标题，<code>icon</code> 添加图标。核心概念：5 种 variant（<code>underline</code>/<code>pill</code>/<code>flat</code>/<code>outline</code>/<code>segmented</code>）通过同名属性切换；尺寸用 <code>size</code> 属性；<code>prefix</code>/<code>suffix</code> 注入首尾元素；<code>menu</code> 模式启用下拉；<code>on-click</code> 事件回调选中索引（签名 <code>fn(index: usize)</code>）。内容面板（body）与 <code>bordered</code> 边框包裹为 <code>Tabs</code> 专属能力：Tab 直接包裹 element 子节点作为选中时渲染的 body，<code>bordered</code> 包裹 header + body 整体。header 自定义插槽：通过 <code>&lt;template slot="header"&gt;</code> 在 Tab 内注入任意标题元素。</p>
 
         <Card title="演示效果">
             <p>{status_text}</p>
@@ -103,9 +103,26 @@
             </div>
 
             <div class="demo-section">
-                <h3>内容面板 body</h3>
-                <p>Tab 直接包裹 element 子节点作为选中时渲染的内容（WPF TabControl/TabItem 模式）：</p>
-                <TabBar selected-index={active_tab} on-click={on_tab_select}>
+                <h3>Tabs bordered（边框包裹 header + body）</h3>
+                <p>WPF TabControl 风格，<code>bordered</code> 属性启用 1px 边框包裹 header + body 整体（<code>Tabs</code> 专属）：</p>
+                <Tabs bordered="" selected-index={active_tab} on-click={on_tab_select}>
+                    <Tab label="Account">
+                        <div class="tab-body">
+                            <p>Account settings panel (bordered)</p>
+                        </div>
+                    </Tab>
+                    <Tab label="Profile">
+                        <div class="tab-body">
+                            <p>User profile panel (bordered)</p>
+                        </div>
+                    </Tab>
+                </Tabs>
+            </div>
+
+            <div class="demo-section">
+                <h3>Tabs 内容面板 body</h3>
+                <p>Tab 直接包裹 element 子节点作为选中时渲染的内容（WPF TabControl/TabItem 模式，<code>Tabs</code> 专属）：</p>
+                <Tabs selected-index={active_tab} on-click={on_tab_select}>
                     <Tab label="Account">
                         <div class="tab-body">
                             <p>Account settings panel</p>
@@ -121,23 +138,25 @@
                             <p>System settings panel</p>
                         </div>
                     </Tab>
-                </TabBar>
+                </Tabs>
             </div>
         </Card>
 
         <Card title="示例代码">
             <p>点击下方 Tab 切换 <code>.rml</code> 声明文件与 <code>.rml.rs</code> 后端文件：</p>
-            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
+            <Tabs selected-index={code_tab} on-click={on_code_tab_change}>
                 <Tab label=".rml">
                     <CodeEditor ref="rml_editor" value={rml_sample} language="rml" />
                 </Tab>
                 <Tab label=".rml.rs">
                     <CodeEditor ref="rust_editor" value={rust_sample} language="rust" />
                 </Tab>
-            </TabBar>
+            </Tabs>
         </Card>
 
         <Card title="API">
+            <h3>Tabs</h3>
+            <Table columns={tabs_api_columns} rows={tabs_api_rows} bordered="" stripe="" />
             <h3>TabBar</h3>
             <Table columns={tab_bar_api_columns} rows={tab_bar_api_rows} bordered="" stripe="" />
             <h3>Tab</h3>

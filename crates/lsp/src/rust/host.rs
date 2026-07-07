@@ -67,6 +67,7 @@ impl RaHost {
         inner.host = Some(host);
         inner.vfs = Some(vfs);
         inner.ready = true;
+        log::info!("[rml-lsp] RA workspace loaded: {:?}", workspace_path);
         Ok(())
     }
 
@@ -88,6 +89,44 @@ impl RaHost {
     pub fn with_vfs<R>(&self, f: impl FnOnce(&Vfs) -> R) -> Option<R> {
         let inner = self.inner.lock().ok()?;
         inner.vfs.as_ref().map(f)
+    }
+
+    /// 可变访问 Vfs（用于注入文件内容）
+    pub fn with_vfs_mut<R>(&self, f: impl FnOnce(&mut Vfs) -> R) -> Option<R> {
+        let mut inner = self.inner.lock().ok()?;
+        inner.vfs.as_mut().map(f)
+    }
+
+    /// 将 Vfs 中累积的变更应用到 AnalysisHost（触发重分析）
+    pub fn apply_vfs_changes(&self) {
+        let mut guard = match self.inner.lock() {
+            Ok(i) => i,
+            Err(_) => return,
+        };
+        let inner = &mut *guard;
+        let host = match inner.host.as_mut() {
+            Some(h) => h,
+            None => return,
+        };
+        let vfs = match inner.vfs.as_mut() {
+            Some(v) => v,
+            None => return,
+        };
+        let changes = vfs.take_changes();
+        if changes.is_empty() {
+            return;
+        }
+        let mut change = ra_ap_hir::ChangeWithProcMacros::default();
+        for (_, file) in changes {
+            let text = match &file.change {
+                ra_ap_vfs::Change::Create(bytes, _) | ra_ap_vfs::Change::Modify(bytes, _) => {
+                    Some(String::from_utf8_lossy(bytes).into_owned())
+                }
+                ra_ap_vfs::Change::Delete => None,
+            };
+            change.change_file(file.file_id, text);
+        }
+        host.apply_change(change);
     }
 
     /// 获取 RootDatabase 引用（用于 file_text / line_index 查询）
