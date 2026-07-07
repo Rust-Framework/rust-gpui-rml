@@ -20,6 +20,7 @@ pub mod label;
 pub mod menu;
 pub mod popover;
 pub mod props_registry;
+pub mod radio_group;
 pub mod separator;
 pub mod source_map;
 pub mod tab_bar;

@@ -346,7 +346,19 @@
 
   "case.popover.title": "气泡卡片 Popover",
 
-  "case.tab_preview.title": "标签页预览 Tab Preview"
+  "case.tab_preview.title": "标签页预览 Tab Preview",
+
+  "case.spinner.title": "加载指示 Spinner & Skeleton",
+
+  "case.link.title": "超链接 Link",
+
+  "case.collapsible.title": "折叠容器 Collapsible",
+
+  "case.group_box.title": "分组容器 GroupBox",
+
+  "case.pagination.title": "分页 Pagination",
+
+  "case.radio.title": "单选 Radio & RadioGroup"
 
 }
 

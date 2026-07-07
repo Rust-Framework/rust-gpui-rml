@@ -542,6 +542,58 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             kind: ComponentKind::StatelessWithItems,
             container: false,
         }),
+        // Phase 1 基础无状态组件
+        // Spinner：RenderOnce 无 ElementId，.icon(impl Into<Icon>)/.color(Hsla)，Sizable
+        "Spinner" => Some(ComponentTag {
+            ctor_path: "rml_ui::Spinner",
+            kind: ComponentKind::StatelessNoId,
+            container: false,
+        }),
+        // Skeleton：RenderOnce 无 ElementId，.secondary()，Styled
+        "Skeleton" => Some(ComponentTag {
+            ctor_path: "rml_ui::Skeleton",
+            kind: ComponentKind::StatelessNoId,
+            container: false,
+        }),
+        // Link：构造器 Link::new(id)，.href()/.disabled()/.on_click()，ParentElement 容器
+        "Link" => Some(ComponentTag {
+            ctor_path: "rml_ui::Link",
+            kind: ComponentKind::Stateless,
+            container: true,
+        }),
+        // Collapsible：RenderOnce 无 ElementId，.open(bool)/.content(element)，ParentElement 容器
+        "Collapsible" => Some(ComponentTag {
+            ctor_path: "rml_ui::Collapsible",
+            kind: ComponentKind::StatelessNoId,
+            container: true,
+        }),
+        // GroupBox：RenderOnce 无 ElementId，.title(element)/variant(.normal/.fill/.outline)，ParentElement 容器
+        "GroupBox" => Some(ComponentTag {
+            ctor_path: "rml_ui::GroupBox",
+            kind: ComponentKind::StatelessNoId,
+            container: true,
+        }),
+        // Pagination：构造器 Pagination::new(id)，.current_page(usize)/.total_pages(usize)/.on_click(&usize)
+        "Pagination" => Some(ComponentTag {
+            ctor_path: "rml_ui::Pagination",
+            kind: ComponentKind::Stateless,
+            container: false,
+        }),
+        // Radio：构造器 Radio::new(id)，.label()/.checked()/.disabled()/.on_click(&bool)，ParentElement 容器
+        "Radio" => Some(ComponentTag {
+            ctor_path: "rml_ui::Radio",
+            kind: ComponentKind::Stateless,
+            container: true,
+        }),
+        // RadioGroup：构造器 RadioGroup::vertical(id)/horizontal(id)（new 为私有），
+        // .selected_index(Option<usize>)/.disabled(bool)/.on_click(&usize)
+        // 子节点为 <Radio>，通过 .child(impl Into<Radio>) 注入
+        // 委托到 compiler/radio_group 专属处理（与 Separator/Tag 模式一致）
+        "RadioGroup" | "radio-group" => Some(ComponentTag {
+            ctor_path: "rml_ui::RadioGroup",
+            kind: ComponentKind::Stateless,
+            container: true,
+        }),
         _ => None,
     }
 }

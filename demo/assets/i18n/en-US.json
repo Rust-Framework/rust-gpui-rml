@@ -345,7 +345,19 @@
 
   "case.popover.title": "Popover",
 
-  "case.tab_preview.title": "Tab Preview"
+  "case.tab_preview.title": "Tab Preview",
+
+  "case.spinner.title": "Spinner & Skeleton",
+
+  "case.link.title": "Link",
+
+  "case.collapsible.title": "Collapsible",
+
+  "case.group_box.title": "GroupBox",
+
+  "case.pagination.title": "Pagination",
+
+  "case.radio.title": "Radio & RadioGroup"
 
 }
 

@@ -89,6 +89,16 @@ pub fn gen_component(
     if tags::canonical_tag(tag) == "Alert" {
         return crate::compiler::alert::gen_alert(elem, ctx, id_counter, loop_vars);
     }
+    // RadioGroup：构造器为 vertical(id)/horizontal(id)（new 为私有），
+    // 委托到 compiler/radio_group 专属处理（与 Separator/Tag 模式一致）
+    if tags::canonical_tag(tag) == "RadioGroup" {
+        return crate::compiler::radio_group::gen_radio_group(
+            elem,
+            ctx,
+            id_counter,
+            loop_vars,
+        );
+    }
 
     let id_val = *id_counter;
     *id_counter += 1;
@@ -379,6 +389,51 @@ pub fn component_static_setter(name: &str, value: &str, tag: &str) -> Option<Str
     match name {
         "label" => Some(format!(".label({:?})", value)),
         "placeholder" => Some(format!(".placeholder({:?})", value)),
+        // ── Phase 1 组件专用 static setter（须在 Button variant 之前，避免无 guard 的多模式臂抢先匹配）──
+        // Skeleton: secondary="" → .secondary()（secondary 也在 Button variant 列表中，需先匹配）
+        "secondary" if tag == "Skeleton" => {
+            if value.is_empty() || value.eq_ignore_ascii_case("true") {
+                Some(".secondary()".to_string())
+            } else {
+                None
+            }
+        }
+        // Link: href="url" → .href("url")
+        "href" if tag == "Link" => Some(format!(".href({:?})", value)),
+        // Spinner: icon="Loader" → .icon(rml_ui::Icon::new(rml_ui::IconName::Loader))
+        "icon" if tag == "Spinner" => {
+            Some(format!(".icon(rml_ui::Icon::new(rml_ui::IconName::{}))", value))
+        }
+        // Collapsible: open="true" → .open(true)
+        "open" if tag == "Collapsible" => Some(format!(".open({})", parse_bool(value))),
+        // GroupBox: title="..." → .title("...")
+        "title" if tag == "GroupBox" => Some(format!(".title({:?})", value)),
+        // GroupBox variant 布尔属性: fill="" → .fill()
+        "normal" | "fill" | "outline" if tag == "GroupBox" => {
+            if value.is_empty() || value.eq_ignore_ascii_case("true") {
+                Some(format!(".{}()", name))
+            } else {
+                None
+            }
+        }
+        // GroupBox variant 字符串属性: variant="fill" → .fill()
+        "variant" if tag == "GroupBox" => match value {
+            "normal" => Some(".normal()".to_string()),
+            "fill" => Some(".fill()".to_string()),
+            "outline" => Some(".outline()".to_string()),
+            _ => None,
+        },
+        // Pagination 数值属性
+        "current_page" | "total_pages" | "visible_pages" if tag == "Pagination" => {
+            Some(format!(".{}({})", name, value))
+        }
+        // RadioGroup: selected_index="2" → .selected_index(Some(2usize))
+        "selected_index" if tag == "RadioGroup" => {
+            Some(format!(".selected_index(Some({}usize))", value))
+        }
+        // Radio tab_index/tab_stop
+        "tab_index" if tag == "Radio" => Some(format!(".tab_index({})", value)),
+        "tab_stop" if tag == "Radio" => Some(format!(".tab_stop({})", parse_bool(value))),
         // Button variant 属性（值为空或 "true" 时启用变体）
         "primary" | "secondary" | "danger" | "success" | "warning" | "info" | "ghost" | "link"
         | "text" => {
@@ -438,7 +493,7 @@ pub fn component_static_setter(name: &str, value: &str, tag: &str) -> Option<Str
         "disabled" => Some(format!(".disabled({})", parse_bool(value))),
         "selected" => Some(format!(".selected({})", parse_bool(value))),
         // 通用样式属性（仅 div 等支持，组件侧通过 Styled trait 也支持部分）
-        "class" | "id" | "style" | "src" | "href" | "type" | "value" => None,
+        "class" | "id" | "style" | "src" | "type" | "value" => None,
         // ref 属性已在构造器中处理（生成稳定 ID），此处跳过
         "ref" => None,
         _ => None,
@@ -573,6 +628,33 @@ pub fn component_bind_setter(
             let rust_expr = component_bind_rust_expr(expr_str, loop_vars, computed);
             Some(format!(".loading({})", rust_expr))
         }
+        // ── Phase 1 组件专用 bind setter ──
+        // Link: href={url} → .href(self.url.clone())
+        "href" if tag == "Link" => {
+            let rust_expr = component_bind_rust_expr(expr_str, loop_vars, computed);
+            Some(format!(".href({}.clone())", rust_expr))
+        }
+        // Collapsible: open={is_open} → .open(self.is_open)
+        "open" if tag == "Collapsible" => {
+            let rust_expr = component_bind_rust_expr(expr_str, loop_vars, computed);
+            Some(format!(".open({})", rust_expr))
+        }
+        // GroupBox: title={title_text} → .title(self.title_text.clone())
+        "title" if tag == "GroupBox" => {
+            let rust_expr = component_bind_rust_expr(expr_str, loop_vars, computed);
+            Some(format!(".title({}.clone())", rust_expr))
+        }
+        // Pagination: current_page/total_pages/visible_pages={usize_field}
+        "current_page" | "total_pages" | "visible_pages" if tag == "Pagination" => {
+            let rust_expr = component_bind_rust_expr(expr_str, loop_vars, computed);
+            Some(format!(".{}({})", name, rust_expr))
+        }
+        // RadioGroup: selected_index={idx} → .selected_index(Some(self.idx))
+        // 字段类型约定为 usize（API 接受 Option<usize>，框架自动包 Some）
+        "selected_index" if tag == "RadioGroup" => {
+            let rust_expr = component_bind_rust_expr(expr_str, loop_vars, computed);
+            Some(format!(".selected_index(Some({}))", rust_expr))
+        }
         _ => None,
     }
 }
@@ -650,6 +732,58 @@ pub fn component_event_setter(name: &str, handler: &EventHandler, tag: &str) -> 
                 EventHandler::Ident(m) | EventHandler::MethodName(m) => m,
                 EventHandler::WithArgs(m, _) => m,
             };
+
+            // Pagination 的 on_click 闭包参数是新的页码（&usize），而非 ClickEvent。
+            // 用户方法签名约定：`fn on_page_change(&mut self, page: &usize, cx: &mut Context<Self>)`
+            if tag == "Pagination" {
+                return match handler {
+                    EventHandler::Ident(_) | EventHandler::MethodName(_) => Some(format!(
+                        ".on_click(cx.listener(move |this, page: &usize, _window, cx| {{\n                    \
+                         this.{}(page, cx);\n                }}))",
+                        method
+                    )),
+                    EventHandler::WithArgs(_, args) if args.is_empty() => Some(format!(
+                        ".on_click(cx.listener(move |this, page: &usize, _window, cx| {{\n                    \
+                         this.{}(page, cx);\n                }}))",
+                        method
+                    )),
+                    EventHandler::WithArgs(_, args) => {
+                        let arg = &args[0];
+                        Some(format!(
+                            ".on_click(cx.listener(move |this, page: &usize, _window, cx| {{\n                    \
+                             let p0 = {}.clone();\n                    \
+                             this.{}(p0, page, cx);\n                }}))",
+                            arg, method
+                        ))
+                    }
+                };
+            }
+
+            // RadioGroup 的 on_click 闭包参数是新的选中索引（&usize），而非 ClickEvent。
+            // 用户方法签名约定：`fn on_radio_change(&mut self, idx: &usize, cx: &mut Context<Self>)`
+            if tag == "RadioGroup" {
+                return match handler {
+                    EventHandler::Ident(_) | EventHandler::MethodName(_) => Some(format!(
+                        ".on_click(cx.listener(move |this, idx: &usize, _window, cx| {{\n                    \
+                         this.{}(idx, cx);\n                }}))",
+                        method
+                    )),
+                    EventHandler::WithArgs(_, args) if args.is_empty() => Some(format!(
+                        ".on_click(cx.listener(move |this, idx: &usize, _window, cx| {{\n                    \
+                         this.{}(idx, cx);\n                }}))",
+                        method
+                    )),
+                    EventHandler::WithArgs(_, args) => {
+                        let arg = &args[0];
+                        Some(format!(
+                            ".on_click(cx.listener(move |this, idx: &usize, _window, cx| {{\n                    \
+                             let p0 = {}.clone();\n                    \
+                             this.{}(p0, idx, cx);\n                }}))",
+                            arg, method
+                        ))
+                    }
+                };
+            }
 
             // Checkbox / Switch / Radio 的 on_click 闭包参数是新的 checked 状态（&bool），
             // 而非 ClickEvent。

@@ -128,6 +128,27 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
     // info/success/warning/error 已在 COMMON_STATIC_PROPS（Button variant 集合复用）
     // on_close 走 event 分类（前缀 "on"）
     ("Alert", &["variant", "message", "title", "banner", "visible", "icon", "on_close"]),
+    // ── Phase 1 基础无状态组件 ──
+    // Spinner：.icon(impl Into<Icon>)，color 暂不支持（Hsla 解析复杂），size 走通用 Sizable
+    ("Spinner", &["icon"]),
+    // Skeleton：.secondary() 布尔切换次级颜色
+    ("Skeleton", &["secondary"]),
+    // Link：.href(impl Into<SharedString>)，disabled/on_click 走通用
+    ("Link", &["href"]),
+    // Collapsible：.open(bool) 控制展开，content slot 待后续支持
+    ("Collapsible", &["open"]),
+    // GroupBox：.title(impl IntoElement)，normal/fill/outline 为 variant 关联方法
+    ("GroupBox", &["title", "normal", "fill", "outline", "variant"]),
+    // Pagination：.current_page(usize)/.total_pages(usize)/.visible_pages(usize)/.compact()
+    // on_click 签名为 Fn(&usize, ...)，走 event 分类但需专属代码生成
+    ("Pagination", &["current_page", "total_pages", "visible_pages", "compact", "on_click"]),
+    // Radio：.label()/.checked()/.disabled() 走通用，tab_index/tab_stop 为 Radio 专属
+    // on_click 签名为 Fn(&bool, ...)，已在 component_event_setter 中处理（is_bool_event）
+    ("Radio", &["tab_index", "tab_stop", "on_click"]),
+    // RadioGroup：.selected_index(Option<usize>)/.disabled(bool)
+    // horizontal/layout 控制 vertical/horizontal 构造器选择
+    // on_click 签名为 Fn(&usize, ...)，需专属代码生成
+    ("RadioGroup", &["selected_index", "horizontal", "vertical", "layout", "on_click"]),
 ];
 
 /// 查询组件的所有已注册属性（通用 + 专用）

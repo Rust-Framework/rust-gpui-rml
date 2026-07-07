@@ -123,3 +123,17 @@ pub mod popover_case;
 // M3'.6：Tab Preview demo（右键菜单 + 预览模式 + 双击 promote）
 #[path = "tab_preview_case.rml.rs"]
 pub mod tab_preview_case;
+
+// Phase 1：8 个基础无状态组件 demo
+#[path = "spinner_case.rml.rs"]
+pub mod spinner_case;
+#[path = "link_case.rml.rs"]
+pub mod link_case;
+#[path = "collapsible_case.rml.rs"]
+pub mod collapsible_case;
+#[path = "group_box_case.rml.rs"]
+pub mod group_box_case;
+#[path = "pagination_case.rml.rs"]
+pub mod pagination_case;
+#[path = "radio_case.rml.rs"]
+pub mod radio_case;
