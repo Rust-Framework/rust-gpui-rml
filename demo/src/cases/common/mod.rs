@@ -4,6 +4,11 @@
 //! 所有案例使用 `<Table columns={api_columns} rows={api_rows} bordered="" stripe="" />`
 //! 渲染 API 文档。
 
+#[path = "case_doc_page.rml.rs"]
+mod case_doc_page;
+
+pub use case_doc_page::CaseDocPage;
+
 use rml_ui::{TableColumn, TableRow};
 
 const COL_PROP_WIDTH: f32 = 220.0;

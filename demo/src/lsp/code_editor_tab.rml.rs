@@ -21,7 +21,7 @@ use lsp_types::{
     DocumentSymbol, DocumentSymbolResponse, Location, Position, Range, TextEdit, Uri, WorkspaceEdit,
 };
 use rml::prelude::*;
-use rml_ui::BreadcrumbItem;
+use rml_ui::{BreadcrumbItem, BreadcrumbSibling};
 use rust_rml_client::{file_path_to_uri, LanguageClient};
 use serde::Deserialize;
 
@@ -305,6 +305,51 @@ impl CodeEditorTab {
         self.do_show_document_symbols(cx);
     }
 
+    /// 面包屑同级选择回调：跳转到目标符号的 range.start
+    ///
+    /// `level` 为面包屑层级（0 = 根级），`index` 为该级 siblings 中的目标索引。
+    /// 跳转后光标移动触发 `observe(editor_state)` → `update_breadcrumb` 自然刷新面包屑。
+    #[command]
+    pub fn on_breadcrumb_select(
+        &mut self,
+        level: usize,
+        index: usize,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(editor_state) = self.editor_state.as_ref() else {
+            return;
+        };
+        // 重新计算当前 path 以获取每级 siblings（与 breadcrumb_items 构造逻辑一致）
+        let position = match self.current_position(cx) {
+            Some(p) => p,
+            None => return,
+        };
+        let path = find_symbol_path(&self.document_symbols, &position);
+
+        // level 0 → 根级 symbols；level N → path[N-1].children
+        let target = if level == 0 {
+            self.document_symbols.get(index)
+        } else {
+            path.get(level - 1)
+                .and_then(|parent| parent.children.as_deref())
+                .and_then(|children| children.get(index))
+        };
+        let Some(target) = target else {
+            return;
+        };
+        let target_position = target.range.start;
+
+        let Some(handle) = cx.active_window() else {
+            log::warn!("breadcrumb select: no active window");
+            return;
+        };
+        let _ = handle.update(&mut **cx, |_view, window, app_cx| {
+            editor_state.update(app_cx, |state, state_cx| {
+                state.set_cursor_position(target_position, window, state_cx);
+            });
+        });
+    }
+
     // ──────────────────────────────────────────────────────────────────────
     //  Action handler 方法：右键菜单 Action 派发入口，委托给 do_*
     // ──────────────────────────────────────────────────────────────────────
@@ -399,28 +444,25 @@ impl CodeEditorTab {
     }
 
     /// 根据当前光标位置和 document_symbols 计算面包屑路径
+    ///
+    /// 每级携带同级符号列表（siblings）和当前选中索引（selected_index），
+    /// 供面包屑下拉选择使用。当光标不在任何符号内但符号树非空时，
+    /// 默认选中根级第一个符号（VSCode 行为：面包屑不应为空）。
     fn update_breadcrumb(&mut self, cx: &mut Context<Self>) {
-        let position = match self.current_position(cx) {
-            Some(p) => p,
-            None => {
-                if !self.breadcrumb_items.is_empty() {
-                    self.breadcrumb_items = Vec::new();
-                    cx.notify();
-                }
-                return;
-            }
+        let position = self.current_position(cx);
+        let path = match position {
+            Some(ref p) => find_symbol_path(&self.document_symbols, p),
+            None => Vec::new(),
         };
-        let path = find_symbol_path(&self.document_symbols, &position);
-        let new_items: Vec<BreadcrumbItem> = path
-            .iter()
-            .map(|s| BreadcrumbItem::new(s.name.clone()))
-            .collect();
-        if new_items.len() != self.breadcrumb_items.len()
+        let new_items = build_breadcrumb_items(&self.document_symbols, &path);
+        let changed = new_items.len() != self.breadcrumb_items.len()
             || new_items
                 .iter()
                 .zip(self.breadcrumb_items.iter())
-                .any(|(n, o)| n.label != o.label)
-        {
+                .any(|(n, o)| {
+                    n.label != o.label || n.selected_index != o.selected_index
+                });
+        if changed {
             self.breadcrumb_items = new_items;
             cx.notify();
         }
@@ -535,4 +577,59 @@ fn range_contains(range: &Range, pos: &Position) -> bool {
     let end_ok = pos.line < range.end.line
         || (pos.line == range.end.line && pos.character <= range.end.character);
     start_ok && end_ok
+}
+
+/// 将 DocumentSymbol 列表转为 BreadcrumbSibling 列表（仅取 name 作为标签）
+fn symbols_to_breadcrumb_siblings(symbols: &[DocumentSymbol]) -> Vec<BreadcrumbSibling> {
+    symbols
+        .iter()
+        .map(|s| BreadcrumbSibling::new(s.name.clone()))
+        .collect()
+}
+
+/// 根据当前符号路径构造面包屑项（每级携带 siblings 和 selected_index）
+///
+/// `path` 为空（光标不在任何符号内）时，若符号树非空，默认选中根级第一个符号。
+/// 这保证面包屑永不为空（除非整个文档无符号），与 VSCode 行为一致。
+fn build_breadcrumb_items(
+    document_symbols: &[DocumentSymbol],
+    path: &[DocumentSymbol],
+) -> Vec<BreadcrumbItem> {
+    let mut items = Vec::new();
+    if path.is_empty() {
+        if let Some(first) = document_symbols.first() {
+            items.push(
+                BreadcrumbItem::new(first.name.clone())
+                    .siblings(symbols_to_breadcrumb_siblings(document_symbols))
+                    .selected_index(0),
+            );
+        }
+        return items;
+    }
+    // level 0：siblings = document_symbols，selected = path[0] 在根级中的位置
+    let level0 = &path[0];
+    let level0_selected = document_symbols
+        .iter()
+        .position(|s| s.range == level0.range)
+        .unwrap_or(0);
+    items.push(
+        BreadcrumbItem::new(level0.name.clone())
+            .siblings(symbols_to_breadcrumb_siblings(document_symbols))
+            .selected_index(level0_selected),
+    );
+    // level N (N >= 1)：siblings = path[N-1].children，selected = path[N] 在父级 children 中的位置
+    for (i, sym) in path.iter().enumerate().skip(1) {
+        let parent = &path[i - 1];
+        let parent_children = parent.children.as_deref().unwrap_or(&[]);
+        let selected = parent_children
+            .iter()
+            .position(|s| s.range == sym.range)
+            .unwrap_or(0);
+        items.push(
+            BreadcrumbItem::new(sym.name.clone())
+                .siblings(symbols_to_breadcrumb_siblings(parent_children))
+                .selected_index(selected),
+        );
+    }
+    items
 }

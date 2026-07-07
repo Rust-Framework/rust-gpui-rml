@@ -10,7 +10,7 @@ use crate::cases::common::build_api_table;
     id = "components.tab_bar",
     kind = "case",
     group = "components",
-    order = 11,
+    order = 12,
 )]
 #[component]
 #[derive(Default)]

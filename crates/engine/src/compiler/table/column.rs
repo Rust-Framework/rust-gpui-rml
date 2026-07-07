@@ -102,6 +102,7 @@ fn extract_required_arg(
     }
     Err(CodegenError {
         message: format!("<Column> 缺少必填属性 `{}`", name),
+        span: Some(elem.span),
     })
 }
 

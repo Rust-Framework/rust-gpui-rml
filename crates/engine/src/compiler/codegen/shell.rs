@@ -268,11 +268,13 @@ pub(super) fn gen_tab_window_wrapper(
     if has_tabs_bind && (has_slot_tabs || has_slot_tabs_each) {
         return Err(CodegenError {
             message: "<tab-window> 不能同时使用 `tabs={...}` 属性和 `<template slot=\"tabs\">` 插槽".into(),
+            span: Some(elem.span),
         });
     }
     if has_slot_tabs && has_slot_tabs_each {
         return Err(CodegenError {
             message: "<tab-window> `<template slot=\"tabs\">` 不能同时使用 `each` 迭代和多个 `<Tab>` 子节点".into(),
+            span: Some(elem.span),
         });
     }
 

@@ -343,6 +343,13 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             kind: ComponentKind::Stateless,
             container: false,
         }),
+        // Alert：variant 关联函数 + message 构造器参数，委托到 compiler/alert 专属处理
+        // PascalCase: <Alert>，小写别名: <alert>（参考 Accordion 模式）
+        "Alert" | "alert" => Some(ComponentTag {
+            ctor_path: "rml_ui::Alert",
+            kind: ComponentKind::Stateless,
+            container: false,
+        }),
         "ButtonGroup" => Some(ComponentTag {
             ctor_path: "rml_ui::ButtonGroup",
             kind: ComponentKind::Stateless,

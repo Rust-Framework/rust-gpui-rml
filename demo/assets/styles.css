@@ -15,13 +15,11 @@
 .case-pane {
     display: flex;
     flex-direction: column;
-    align-items: center;
     justify-content: flex-start;
-    padding: 24px;
+    padding: 16px 24px;
     height: 100%;
     width: 100%;
     box-sizing: border-box;
-    text-align: center;
 }
 
 .case-empty {
@@ -55,9 +53,8 @@
 .button-row {
     display: flex;
     flex-direction: row;
-    gap: 12px;
+    gap: 8px;
     flex-wrap: wrap;
-    justify-content: center;
 }
 
 /* ── 文档格式 case 样式 ── */
@@ -72,7 +69,7 @@
 /* 所有直接子元素统一宽度并居中，避免 h2 标题与 card/code-block 宽度不一致 */
 .doc-pane > * {
     width: 100%;
-    max-width: 960px;
+    max-width: 1200px;
     align-self: center;
 }
 
@@ -91,6 +88,50 @@
     box-sizing: border-box;
 }
 
+/* ── CaseDocPage 案例页布局（工业后台风格） ── */
+
+.case-layout {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    align-items: flex-start;
+}
+
+.case-demo-panel {
+    flex: 1 1 420px;
+    min-width: 320px;
+}
+
+.case-code-panel {
+    flex: 1 1 420px;
+    min-width: 320px;
+}
+
+.case-api-panel {
+    width: 100%;
+}
+
+.case-section {
+    padding: 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 2px;
+    background: var(--surface);
+    margin-bottom: 8px;
+}
+
+.case-desc {
+    color: var(--text-muted);
+    font-size: 14px;
+    max-width: 800px;
+    line-height: 1.6;
+}
+
+.demo-frame {
+    border: 1px dashed var(--border-color);
+    padding: 12px;
+    border-radius: 2px;
+}
+
 .demo-section input,
 .demo-section Input {
     width: 100%;
@@ -102,7 +143,7 @@
     flex-direction: column;
     gap: 8px;
     padding: 12px 0;
-    border-bottom: 1px dashed var(--border-color);
+    border-bottom: 1px solid var(--border-color);
 }
 
 .demo-section h3 {

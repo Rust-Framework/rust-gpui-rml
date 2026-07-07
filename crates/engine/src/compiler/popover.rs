@@ -79,11 +79,13 @@ pub fn gen_popover(
                 if is_iter {
                     return Err(CodegenError {
                         message: "Popover trigger slot cannot be an each iterator".into(),
+                        span: Some(elem.span),
                     });
                 }
                 if trigger_code.is_some() {
                     return Err(CodegenError {
                         message: "Popover requires exactly one trigger slot (multiple found)".into(),
+                        span: Some(elem.span),
                     });
                 }
                 trigger_code = Some(child_code);

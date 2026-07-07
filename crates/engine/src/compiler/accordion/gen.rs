@@ -127,6 +127,7 @@ pub fn gen_accordion(
                         "<accordion> 仅支持 <item> 或 <AccordionItem> 子节点，得到 <{}>",
                         child_elem.tag
                     ),
+                    span: Some(elem.span),
                 });
             }
             _ => {}

@@ -97,6 +97,7 @@ pub(super) fn gen_render_impl_from_children(
                     "<template slot=\"tabs\" each=\"...\"> 需要恰好 1 个 <Tab> 子节点，得到 {} 个",
                     slots.tabs.len()
                 ),
+                span: Some(elem.span),
             });
         }
         let tab_elem = match &slots.tabs[0] {
@@ -107,6 +108,7 @@ pub(super) fn gen_render_impl_from_children(
                         "<template slot=\"tabs\"> 仅支持 <Tab> 子节点，得到 {:?}",
                         other
                     ),
+                    span: Some(elem.span),
                 })
             }
         };
@@ -149,6 +151,7 @@ pub(super) fn gen_render_impl_from_children(
                             "<template slot=\"tabs\"> 仅支持 <Tab> 子节点，得到 {:?}",
                             node
                         ),
+                        span: Some(elem.span),
                     })
                 }
             })

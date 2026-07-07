@@ -5,4 +5,4 @@
 pub use rml_core::prelude::*;
 pub use rml_macros::*;
 
-pub use crate::compiler::{compile, CodegenCtx, CompileError};
+pub use crate::compiler::{compile, CodegenCtx, CompileError, CompileOutput};

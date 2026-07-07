@@ -96,6 +96,7 @@ pub fn gen_table(
                         "<table> 仅支持 <Column> 或 <template slot=\"...\"> 子节点，得到 <{}>",
                         child_elem.tag
                     ),
+                    span: Some(elem.span),
                 });
             }
             _ => {}

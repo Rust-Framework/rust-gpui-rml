@@ -50,6 +50,7 @@ pub fn gen_component(
                     "unknown component: <{}> (not in gpui-component routing table or user component registry)",
                     tag
                 ),
+                span: Some(elem.span),
             });
         }
     };
@@ -82,6 +83,11 @@ pub fn gen_component(
     // 需在构造器选择阶段决定使用 Tag::new() 还是 Tag::primary() 等
     if tags::canonical_tag(tag) == "Tag" {
         return crate::compiler::tag::gen_tag(elem, ctx, id_counter, loop_vars);
+    }
+    // Alert：variant 关联函数（info/success/warning/error）+ message 构造器参数，
+    // 委托到 compiler/alert 专属处理（与 Tag 模式一致）
+    if tags::canonical_tag(tag) == "Alert" {
+        return crate::compiler::alert::gen_alert(elem, ctx, id_counter, loop_vars);
     }
 
     let id_val = *id_counter;
@@ -243,6 +249,7 @@ pub fn gen_component(
                     "EntityRef component <{}> requires `ref=\"field_name\"` directive",
                     tag
                 ),
+                span: Some(elem.span),
             })?;
             return Ok(format!(
                 "self.{}.as_ref().expect(\"init {} in on_loaded\").clone()",
@@ -447,12 +454,13 @@ pub fn component_bind_rust_expr(
     if let Some(code) = crate::compiler::codegen::try_gen_i18n_call(expr_str, loop_vars, computed) {
         return code;
     }
+    let prefix = expr::current_self_alias().unwrap_or("self");
     match expr::parse(expr_str) {
         Ok(expr::Expr::Field(name)) if computed.contains(&name.as_str()) => {
             if loop_vars.iter().any(|v| *v == name) {
                 format!("{}()", name)
             } else {
-                format!("self.{}()", name)
+                format!("{}.{}()", prefix, name)
             }
         }
         Ok(parsed) => expr::to_rust_code_with_ctx(&parsed, loop_vars),
@@ -461,9 +469,9 @@ pub fn component_bind_rust_expr(
             if loop_vars.contains(&trimmed) {
                 trimmed.to_string()
             } else if computed.contains(&trimmed) {
-                format!("self.{}()", trimmed)
+                format!("{}.{}()", prefix, trimmed)
             } else {
-                format!("self.{}", trimmed)
+                format!("{}.{}", prefix, trimmed)
             }
         }
     }
@@ -588,7 +596,10 @@ fn check_missing_mapping(
         tag, kind, name, kind
     );
     if ctx.strict {
-        Err(CodegenError { message: msg })
+        Err(CodegenError {
+            message: msg,
+            span: None,
+        })
     } else {
         eprintln!("[rml warning] {}", msg);
         Ok(())
@@ -611,6 +622,26 @@ pub fn component_event_setter(name: &str, handler: &EventHandler, tag: &str) -> 
     // 此处返回 None 让属性循环跳过 setter 生成，事件由 Stateful 分支收集后统一 subscribe。
     if super::input::is_input_event(name, tag) {
         return None;
+    }
+
+    // Breadcrumb 专用：on_select 同级选择回调
+    // `<Breadcrumb on-select={on_breadcrumb_select} />` →
+    // `.on_select_rc(Rc::new({ let weak = cx.weak_entity(); move |level, index, w, app| { ... } }))`
+    // 用户方法签名约定：`fn on_breadcrumb_select(&mut self, level: usize, index: usize, cx: &mut Context<Self>)`
+    if name == "on_select" && crate::tags::canonical_tag(tag) == "Breadcrumb" {
+        let method = match handler {
+            EventHandler::Ident(m) | EventHandler::MethodName(m) => m,
+            EventHandler::WithArgs(m, _) => m,
+        };
+        return Some(format!(
+            ".on_select_rc(std::rc::Rc::new({{\n                    \
+             let weak = cx.weak_entity();\n                    \
+             move |level: usize, index: usize, _window: &mut gpui::Window, app: &mut gpui::App| {{\n                        \
+             if let Some(entity) = weak.upgrade() {{\n                            \
+             entity.update(app, |this, cx| {{ this.{}(level, index, cx); }});\n                        \
+             }}\n                    }}\n                }}))",
+            method
+        ));
     }
 
     match name {
@@ -730,6 +761,19 @@ mod tests {
             slot_name: None,
             ..Default::default()
         }
+    }
+
+    /// 本地包装 gen_component：清理 sourcemap 标记后再返回，供测试断言使用。
+    /// 遮蔽外部 gen_component，使本模块内所有测试调用自动清理标记。
+    fn gen_component(
+        elem: &Element,
+        ctx: &CodegenCtx,
+        depth: usize,
+        id_counter: &mut usize,
+        loop_vars: &[String],
+    ) -> Result<String, CodegenError> {
+        let code = super::gen_component(elem, ctx, depth, id_counter, loop_vars)?;
+        Ok(crate::compiler::codegen::strip_sourcemap_markers(&code))
     }
 
     // ─── parse_bool ───

@@ -146,20 +146,63 @@ pub fn to_rust_code(expr: &Expr) -> String {
     to_rust_code_with_ctx(expr, &[])
 }
 
+// ──────────────────────────────────────────────────────────────────────────
+//  self_alias 机制（Phase 2：slot 闭包捕获父视图数据）
+//
+//  slot 闭包内不能直接引用父视图的 `self`（生命周期不允许）。
+//  `gen_user_component` 在生成 slot 内容时，通过 `with_self_alias` 设置别名，
+//  `to_rust_code_with_ctx` / `gen_expr_code` 据此把 `self.xxx` 替换为
+//  `__rml_self_ref.xxx`，绕过生命周期限制。
+//
+//  thread-local 避免向 30+ 调用点透传 `self_alias` 参数。
+// ──────────────────────────────────────────────────────────────────────────
+
+thread_local! {
+    static CURRENT_SELF_ALIAS: std::cell::Cell<Option<&'static str>> = std::cell::Cell::new(None);
+}
+
+/// 在闭包执行期间设置 self_alias，返回闭包结果
+///
+/// `gen_user_component` 生成 slot 内容时调用：
+/// ```ignore
+/// let slot_code = with_self_alias("__rml_self_ref", || {
+///     gen_slot_content(slot_nodes, ctx, id_counter, loop_vars)
+/// })?;
+/// ```
+pub fn with_self_alias<F, R>(alias: &'static str, f: F) -> R
+where
+    F: FnOnce() -> R,
+{
+    let old = CURRENT_SELF_ALIAS.with(|c| c.replace(Some(alias)));
+    let result = f();
+    CURRENT_SELF_ALIAS.with(|c| c.set(old));
+    result
+}
+
+/// 获取当前 self_alias（None 表示用默认的 `self`）
+pub fn current_self_alias() -> Option<&'static str> {
+    CURRENT_SELF_ALIAS.with(|c| c.get())
+}
+
 /// 将 AST 转为 Rust 源码表达式（带循环变量上下文）
 ///
 /// `loop_vars` 中的字段名不加 `self.` 前缀（它们是 each 闭包的迭代变量）。
 /// 例如 `each={todo in todos}` 内的 `{todo.text}` 应生成 `todo.text` 而非 `self.todo.text`。
+///
+/// 若 thread-local 中设置了 `self_alias`（slot 闭包内），`self.xxx` 会替换为
+/// `<alias>.xxx`，绕过 slot 闭包的生命周期限制。
 pub fn to_rust_code_with_ctx(expr: &Expr, loop_vars: &[&str]) -> String {
+    let alias = current_self_alias();
+    let prefix = alias.unwrap_or("self");
     match expr {
         Expr::Field(name) => {
             // `self` 是 Rust 关键字，直接输出（不加 self. 前缀）
             if name == "self" {
-                "self".to_string()
+                prefix.to_string()
             } else if loop_vars.iter().any(|v| *v == name) {
                 name.clone()
             } else {
-                format!("self.{}", name)
+                format!("{}.{}", prefix, name)
             }
         }
         Expr::Member(target, name) => {

@@ -54,6 +54,7 @@ pub fn gen_kbd(
     if !key_set {
         return Err(CodegenError {
             message: "<Kbd> requires `key=\"...\"` attribute (e.g. <Kbd key=\"cmd-a\" />)".into(),
+            span: Some(elem.span),
         });
     }
 

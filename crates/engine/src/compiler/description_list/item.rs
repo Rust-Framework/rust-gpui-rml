@@ -126,6 +126,7 @@ fn extract_required_label(
     }
     Err(CodegenError {
         message: "<description> 缺少必填属性 `label`".to_string(),
+        span: Some(elem.span),
     })
 }
 

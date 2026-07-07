@@ -8,6 +8,14 @@
 
   "rml.tab.promote": "Promote",
 
+  "case.common.demo": "Live Demo",
+
+  "case.common.code": "Code Sample",
+
+  "case.common.api": "API",
+
+  "case.common.copy": "Copy",
+
   "login.title": "Sign in to RML Demo",
 
   "login.hint": "Enter any username to open the showcase",
@@ -265,14 +273,6 @@
 
   "case.menu.off": "Off",
 
-  "case.slot.title": "Component slots",
-
-  "case.slot.header": "Header slot",
-
-  "case.slot.body": "Default slot content from parent",
-
-  "case.slot.footer": "Footer slot",
-
   "case.table.title": "Table Component",
 
   "case.description_list.title": "Description List",
@@ -310,6 +310,8 @@
   "case.slider.title": "Slider",
 
   "case.code_editor.title": "CodeEditor",
+
+  "case.alert.title": "Alert",
 
   "case.expression.title": "Expression",
 

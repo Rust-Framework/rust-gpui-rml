@@ -33,8 +33,6 @@ pub mod menu_features_case;
 pub mod menu_custom_case;
 #[path = "status_bar_case.rml.rs"]
 pub mod status_bar_case;
-#[path = "slot_case.rml.rs"]
-pub mod slot_case;
 #[path = "table_case.rml.rs"]
 pub mod table_case;
 #[path = "description_list_case.rml.rs"]
@@ -75,6 +73,8 @@ pub mod tree_case;
 pub mod slider_case;
 #[path = "code_editor_case.rml.rs"]
 pub mod code_editor_case;
+#[path = "alert_case.rml.rs"]
+pub mod alert_case;
 
 // Phase 4：6 个框架能力专项案例
 #[path = "expression_case.rml.rs"]

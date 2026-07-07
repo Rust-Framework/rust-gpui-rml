@@ -40,9 +40,11 @@ pub fn gen_menu_element(
             message: format!(
                 "<{tag}> must be a child of context-menu, dropdown-menu, or menu-bar"
             ),
+            span: Some(elem.span),
         }),
         _ => Err(CodegenError {
             message: format!("unknown menu tag: <{}>", elem.tag),
+            span: Some(elem.span),
         }),
     }
 }

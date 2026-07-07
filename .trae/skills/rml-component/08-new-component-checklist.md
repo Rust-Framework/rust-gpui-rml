@@ -1,6 +1,6 @@
 # 08 新组件开发检查清单
 
-新增组件时，按以下 12 项检查清单逐项确认，确保范式一致性。
+新增组件时，按以下 13 项检查清单逐项确认，确保范式一致性与架构功能完整性。
 
 ## 检查清单
 
@@ -82,6 +82,17 @@
 - [ ] 更新本 Skill 文档（如新增维度）
 - [ ] 更新 `tags.rs` 注释
 
+### 13. Sourcemap 与调试支持
+
+**参考**：[10-sourcemap-and-debug-support.md](10-sourcemap-and-debug-support.md)
+
+- [ ] 组件 codegen 通过 `gen_node`/`gen_node_impl` 递归处理子节点（不绕过，否则子元素无 sourcemap 标记）
+- [ ] codegen 报错路径透传 `elem.span` 到 `CodegenError.span`（不丢失源码位置）
+- [ ] 新增 AST 节点类型时，携带 `span: Span` 字段并在 `gen_node_impl` 添加标记注入分支
+- [ ] `compile()` 返回的 `source_map.entries` 包含新组件对应 AST 节点的 span
+- [ ] 直接调用 `gen_component` 等子函数的单元测试，使用 `strip_sourcemap_markers` 清理 code 后再断言
+- [ ] 生成的 `.rml.rs` 文件不包含 `__rml_sm:` 字符串（标记已被 postprocess_sourcemap 删除）
+
 ## 验证命令
 
 ```bash
@@ -90,6 +101,13 @@ cargo build -p rust-rml-engine
 
 # 测试
 cargo test -p rust-rml-engine
+
+# sourcemap 端到端测试
+cargo test -p rust-rml-engine --test sourcemap_e2e_test
+
+# 验证生成的代码无 sourcemap 标记残留
+cargo build -p rust-rml-demo && grep -rn "__rml_sm:" target/debug/build/ --include="*.rml.rs"
+# 应无结果
 
 # 范式一致性
 grep -rn "tab_window\|modern_window" crates/engine/src/ --include="*.rs"
@@ -169,4 +187,50 @@ if tags::canonical_tag(tag) == "StatusBar" { ... }
 // ✅ 正确
 "vertical" => ...,
 // 不提供 horizontal
+```
+
+### 6. 绕过 gen_node_impl 处理子节点（破坏 sourcemap）
+
+**陷阱**：组件 codegen 函数直接调用 `gen_element` 处理子节点，绕过 `gen_node_impl`
+
+**后果**：子元素无 sourcemap 标记，调试器无法映射到该子元素，破坏 `.rml` 调试能力
+
+**正确**：通过 `gen_node`（公共入口）处理子节点，让标记注入逻辑统一生效
+
+```rust
+// ❌ 错误：绕过 gen_node_impl
+for child in &elem.children {
+    if let Node::Element(child_elem) = child {
+        let (code, _) = gen_element(child_elem, ctx, depth, id_counter, loop_vars, parents)?;
+        // code 无 sourcemap 标记
+    }
+}
+
+// ✅ 正确：通过 gen_node
+for child in &elem.children {
+    let (code, _) = gen_node(child, ctx, depth, id_counter, loop_vars)?;
+    // code 携带 /*__rml_sm:S:E*/ 标记，postprocess_sourcemap 会记录并删除
+}
+```
+
+### 7. CodegenError 丢失 span
+
+**陷阱**：codegen 报错时构造 `CodegenError { message, span: None }`
+
+**后果**：build.rs / LSP 无法定位错误到 `.rml` 具体行号
+
+**正确**：透传 `elem.span`（或 `attr.span` / `directive.span`）
+
+```rust
+// ❌ 错误：丢失 span
+return Err(CodegenError {
+    message: format!("unknown tag: <{}>", tag),
+    span: None,
+});
+
+// ✅ 正确：透传 elem.span
+return Err(CodegenError {
+    message: format!("unknown tag: <{}>", tag),
+    span: Some(elem.span),
+});
 ```

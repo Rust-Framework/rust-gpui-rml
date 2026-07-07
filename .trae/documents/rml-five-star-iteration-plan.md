@@ -27,6 +27,7 @@
 - 不引入新的运行时（继续基于 GPUI）
 - 不改变 `.rml` + `.rml.rs` + `build.rs` 三件套闭环
 - 不追求向后兼容（RML 是新框架，无历史包袱）
+- 不追求完全自动生成 `impl IContribution`（大多数业务场景需要动态 name / 状态化 icon / 派生 description，必须手写；仅纯静态场景可选自动生成，详见 §5.2）
 
 ---
 
@@ -34,8 +35,8 @@
 
 ### 2.1 已达成部分（保持优势）
 
-- **三件套闭环**：[demo/src/main.rs](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/main.rs) 5 行 + [demo/src/app.rs](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/app.rs) 15 行 + [demo/build.rs](file:///e:/GitCode/RF/rust-gpui-rml/demo/build.rs) 12 行，启动链路极简
-- **MVVM + Contribution 解耦**：[demo/src/cases/counter_case.rml.rs](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/cases/counter_case.rml.rs) 73 行完成完整 case
+- **三件套闭环**：[demo/src/main.rs](../../demo/src/main.rs) 5 行 + [demo/src/app.rs](../../demo/src/app.rs) 15 行 + [demo/build.rs](../../demo/build.rs) 12 行，启动链路极简
+- **MVVM + Contribution 解耦**：[demo/src/cases/counter_case.rml.rs](../../demo/src/cases/counter_case.rml.rs) 73 行完成完整 case
 - **声明式绑定能力**：双向绑定 / 列表渲染 / 条件渲染 / 插槽 / 逃生舱全覆盖
 - **响应式数据流**：`ObservableVec` + flume channel + `cx.spawn` + `#[computed]`
 - **Demo 覆盖广度**：41 case 覆盖组件 / 指令 / 绑定 / 菜单 / LSP 真实集成
@@ -45,55 +46,55 @@
 #### 简洁易用 4★ → 5★ 差距
 
 **根因 G1：IContribution impl 是纯样板。** 每个 case 必写 8 行 `impl IContribution for X { fn id() / fn name() }`，仅委托到 `Self::CONTRIBUTION_ID` 与 `t_static(...)`。`#[contribute]` 宏已持有 `label` 信息，理论上可自动生成。
-- 锚点：[demo/src/cases/counter_case.rml.rs](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/cases/counter_case.rml.rs) 中 `impl IContribution for CounterCase` 块
+- 锚点：[demo/src/cases/counter_case.rml.rs](../../demo/src/cases/counter_case.rml.rs) 中 `impl IContribution for CounterCase` 块
 
 **根因 G2：Input/CodeEditor 配置时序缺失。** on_loaded 阶段 `ref_entities` 未填充，`placeholder` / `default_value` 等 InputState builder 属性无法在声明式模板中设置，必须用 `ElementRef.with_mut` 命令式操作。`on_rendered` 钩子尚未实现（M5' 待办）。
-- 锚点：[demo/src/cases/input_case.rml.rs#L42-L44](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/cases/input_case.rml.rs#L42-L44) 注释 "应在首次 render 后通过 ElementRef.with_mut 设置"
-- 锚点：[demo/src/cases/code_editor_case.rml.rs#L21-L23](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/cases/code_editor_case.rml.rs#L21-L23)
+- 锚点：[demo/src/cases/input_case.rml.rs#L42-L44](../../demo/src/cases/input_case.rml.rs#L42-L44) 注释 "应在首次 render 后通过 ElementRef.with_mut 设置"
+- 锚点：[demo/src/cases/code_editor_case.rml.rs#L21-L23](../../demo/src/cases/code_editor_case.rml.rs#L21-L23)
 
 **根因 G3：`<component content={...}>` 逃生舱被频繁使用。** `welcome_case.render_group`、`list_case.render_item`、`key_case.render_item`、`main_window.active_view/render_menu_bar/render_status_bar` 均通过命令式渲染绕过声明式能力。
-- 锚点：[demo/src/shell/main_window.rml.rs](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/shell/main_window.rml.rs) 中 `active_view` / `render_menu_bar` / `render_status_bar` 方法
+- 锚点：[demo/src/shell/main_window.rml.rs](../../demo/src/shell/main_window.rml.rs) 中 `active_view` / `render_menu_bar` / `render_status_bar` 方法
 
 #### 心智负担最低 3★ → 5★ 差距
 
 **根因 G4：`__rml_bump_version` 字段名字符串化。** `Vec<T>` 字段修改后必须手动 `self.__rml_bump_version("items")`，字段名以字符串字面量传递，重命名无编译期检查。`ObservableVec<T>` 自动 bump，但 `Vec<T>` 不自动 —— 不一致。
-- 锚点：[demo/src/cases/welcome_case.rml.rs#L84-L85](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/cases/welcome_case.rml.rs#L84-L85)
-- 锚点：[demo/src/cases/list_case.rml.rs#L79](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/cases/list_case.rml.rs#L79)
-- 锚点：[demo/src/shell/main_window.rml.rs#L411](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/shell/main_window.rml.rs#L411)
+- 锚点：[demo/src/cases/welcome_case.rml.rs#L84-L85](../../demo/src/cases/welcome_case.rml.rs#L84-L85)
+- 锚点：[demo/src/cases/list_case.rml.rs#L79](../../demo/src/cases/list_case.rml.rs#L79)
+- 锚点：[demo/src/shell/main_window.rml.rs#L411](../../demo/src/shell/main_window.rml.rs#L411)
 
 **根因 G5：`cx.notify()` 调用时机不统一。** `counter_case::on_click` 不调用，`expression_case::on_increase_a` 调用，`icon_case::on_rotate_icon` 调用 —— 用户从代码无法推理规则。
-- 锚点：[demo/src/cases/counter_case.rml.rs#L59](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/cases/counter_case.rml.rs#L59)（不调用 cx.notify）
-- 锚点：[demo/src/cases/expression_case.rml.rs#L68](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/cases/expression_case.rml.rs#L68)（调用 cx.notify）
-- 锚点：[demo/src/cases/icon_case.rml.rs#L123](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/cases/icon_case.rml.rs#L123)（调用 cx.notify）
+- 锚点：[demo/src/cases/counter_case.rml.rs#L59](../../demo/src/cases/counter_case.rml.rs#L59)（不调用 cx.notify）
+- 锚点：[demo/src/cases/expression_case.rml.rs#L68](../../demo/src/cases/expression_case.rml.rs#L68)（调用 cx.notify）
+- 锚点：[demo/src/cases/icon_case.rml.rs#L123](../../demo/src/cases/icon_case.rml.rs#L123)（调用 cx.notify）
 
 **根因 G6：ability cast 注册样板。** `StatusReady` / `LspStatusItem` 等仅 `#[contribute]` 无 `#[component]` 的视觉贡献，需手写 `static XXX_REGISTERED: Once = Once::new();` + `ensure_xxx_registered()` + 在 MainWindow::on_loaded 手动调用。源于 Rust trait object 不可 upcast 的限制。
-- 锚点：[demo/src/cases/status_bar_case.rml.rs#L141-L150](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/cases/status_bar_case.rml.rs#L141-L150)
-- 锚点：[demo/src/lsp/lsp_status.rs#L72-L82](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/lsp/lsp_status.rs#L72-L82)
+- 锚点：[demo/src/cases/status_bar_case.rml.rs#L141-L150](../../demo/src/cases/status_bar_case.rml.rs#L141-L150)
+- 锚点：[demo/src/lsp/lsp_status.rs#L72-L82](../../demo/src/lsp/lsp_status.rs#L72-L82)
 
 **根因 G7：re-entrancy 陷阱需用户手动 defer。** `welcome_case` 首次 render 时读取 MainWindow 会触发 re-entrant panic，用户必须知道用 `cx.defer_in` 绕开。这是 GPUI 内部时序复杂性直接泄漏。
-- 锚点：[demo/src/cases/welcome_case.rml.rs#L46-L53](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/cases/welcome_case.rml.rs#L46-L53)
+- 锚点：[demo/src/cases/welcome_case.rml.rs#L46-L53](../../demo/src/cases/welcome_case.rml.rs#L46-L53)
 
 **根因 G8：`__rml_state` 字段必须出现在用户 `Default` impl。** `MainWindow::default` 必须显式 `__rml_state: Default::default()`，宏注入字段未对用户隐藏。
-- 锚点：[demo/src/shell/main_window.rml.rs#L86](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/shell/main_window.rml.rs#L86)
+- 锚点：[demo/src/shell/main_window.rml.rs#L86](../../demo/src/shell/main_window.rml.rs#L86)
 
 #### 稳定 4★ → 5★ 差距
 
 **根因 G9：响应式刷新模型不一致。** G4 + G5 共同导致：相同字段变更可能触发不同刷新行为，用户难以预测。
 
 **根因 G10：LSP 集成中存在 `unwrap()` 路径。** `code_editor_tab.rml.rs` 多处 `.unwrap_or_default()`，部分 `parse().unwrap()` 在异常输入下可能 panic。
-- 锚点：[demo/src/lsp/code_editor_tab.rml.rs](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/lsp/code_editor_tab.rml.rs)（21KB，最大文件）
+- 锚点：[demo/src/lsp/code_editor_tab.rml.rs](../../demo/src/lsp/code_editor_tab.rml.rs)（21KB，最大文件）
 
 **根因 G11：错误处理不统一。** LSP 失败用 `log::warn!`，IO 失败用 `unwrap_or_default()`，配置失败用 `log::warn!` 优雅降级 —— 缺少统一错误传播策略。
 
 #### 架构问题
 
 **根因 G12：MainWindow 逐步变成 God Object。** 570 行，承担 7 个职责：ILifecycle（7 个 init_* 方法）/ IWorkbenchManager / IContributionHost / ViewModel 投影 / 视图构建 / 8 个 #[command] 处理器 / LSP 启动。
-- 锚点：[demo/src/shell/main_window.rml.rs](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/shell/main_window.rml.rs)（570 行）
+- 锚点：[demo/src/shell/main_window.rml.rs](../../demo/src/shell/main_window.rml.rs)（570 行）
 
 **根因 G13：ViewModel 三兄弟重复。** `CaseViewModel` / `MenuViewModel` / `StatusViewModel` 三个文件结构高度相似：`from_contribution` 过滤 slot → 提取元数据 → `build_*_view_models` 排序。
-- 锚点：[demo/src/shell/case_view_model.rs](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/shell/case_view_model.rs)
-- 锚点：[demo/src/shell/menu_view_model.rs](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/shell/menu_view_model.rs)
-- 锚点：[demo/src/shell/status_view_model.rs](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/shell/status_view_model.rs)
+- 锚点：[demo/src/shell/case_view_model.rs](../../demo/src/shell/case_view_model.rs)
+- 锚点：[demo/src/shell/menu_view_model.rs](../../demo/src/shell/menu_view_model.rs)
+- 锚点：[demo/src/shell/status_view_model.rs](../../demo/src/shell/status_view_model.rs)
 
 **根因 G14：命名与风格不一致。** `<Button>` / `<dropdown-menu>` / `<menu-item>` / `<Accordion>` 大小写混用；`primary=""` / `ghost=""` 布尔属性空字符串语法怪异。
 
@@ -242,43 +243,89 @@ impl<'a, T> Drop for NotifyGuard<'a, T> {
 
 #### 影响范围
 
-- [crates/core/](file:///e:/GitCode/RF/rust-gpui-rml/crates/core/) 新增 `NotifyGuard` 类型
-- [crates/macros/](file:///e:/GitCode/RF/rust-gpui-rml/crates/macros/) 修改 `#[command]` 宏
-- [demo/src/cases/](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/cases/) 删除显式 `cx.notify()`
+- [crates/core/](../../crates/core/) 新增 `NotifyGuard` 类型
+- [crates/macros/](../../crates/macros/) 修改 `#[command]` 宏
+- [demo/src/cases/](../../demo/src/cases/) 删除显式 `cx.notify()`
 
 ---
 
-### 5.2 M1-2：`#[contribute]` 宏自动生成 `IContribution` impl
+### 5.2 M1-2：`#[contribute]` 编译期断言强化 + 部分场景自动生成 `impl IContribution`
+
+#### 设计意图
+
+`IContribution` 是贡献点的元数据契约（id / name / description / icon），其实现形态因业务而异：
+
+- **静态场景（少数）**：纯字面量 label，无动态逻辑。例如简单展示型 case，`name` 永远是 `t_static("case.counter.title")`。
+- **动态场景（多数）**：name 需要随状态/语言切换，icon 派生自业务字段，description 含运行时拼接。例如 `StatusReady` 在不同 LSP 状态下显示不同图标。
+
+设计者决策：**编译期强制断言 + 大多数情况手写 + 静态场景可选自动生成**。原计划设想「完全自动生成 impl IContribution」与「大多数情况需根据业务编写贡献逻辑」冲突，故降级为分层方案。
 
 #### 目标
 
-消除每个 case 必写的 `impl IContribution for X { fn id() / fn name() }` 8 行样板。
+1. **编译期安全**：`#[contribute]` 标注的 struct 必须实现 `IContribution`，未实现则编译失败（消除「忘记 impl」的运行时隐患）
+2. **消除 id 重复**：宏自动生成 `pub const CONTRIBUTION_ID: &'static str`，用户代码引用 `Self::CONTRIBUTION_ID` 而非重复字符串
+3. **保留业务表达力**：动态 name / 状态化 icon / 派生 description 通过手写 `impl IContribution` 表达，宏不限制
+4. **静态场景可选自动生成**：纯静态 label 的简单 case 可通过 `static_label` 参数触发宏自动生成 impl，减少样板
 
 #### 软件工程原理
 
-- **DRY（Don't Repeat Yourself）**：`label` 信息已在 `#[contribute(label = "...")]` 中，不应在 impl 中重复。
-- **Convention over Configuration**：默认行为由约定生成，仅在需要 override 时手写。
-- **信息源唯一性**：标签字符串只在一个地方声明。
+- **类型安全优先**：编译期断言优于运行时反射，让「忘记 impl」成为不可能
+- **DRY**：`CONTRIBUTION_ID` 应在一处定义（宏参数 `id = "..."`），通过 const 自动 re-export
+- **Convention over Configuration**：默认手写 impl（覆盖大多数业务场景），仅在 `static_label` 显式声明时走自动生成通道
+- **信息源唯一性**：静态场景下 label 字符串只在 `#[contribute(static_label = "...")]` 一处；动态场景下 name 的来源由用户在 impl 中决定
+- **开闭原则**：框架不限制 `IContribution` 的表达形式，业务可自由扩展（动态 i18n / 状态化 icon / 派生 description）
 
 #### 设计方案
 
-`#[contribute]` 宏读取 `label` 参数，自动生成 `IContribution` impl：
+**层 1（已实施）：编译期断言 + CONTRIBUTION_ID 自动生成**
+
+宏对每个 `#[contribute]` 标注的 struct：
+1. 生成 `pub const CONTRIBUTION_ID: &'static str = #id;`
+2. 编译期断言 `T: IContribution`，未实现则编译失败
+3. 拒绝 `name` / `description` / `icon` 作为宏参数（强制用户在 `impl IContribution` 中表达，支持动态 i18n）
+4. 生成 `__rml_register_*` 函数：调用 `ability::register` 注册能力 cast + 调用 `registry.register`
 
 ```rust
 // 用户书写
+#[contribute(host_id = "demo.shell", id = "binding.counter", kind = "case", group = "binding", order = 1)]
+#[component]
+#[derive(Default)]
+pub struct CounterCase { pub count: i32 }
+
+impl IContribution for CounterCase {
+    fn id(&self) -> &str { Self::CONTRIBUTION_ID }  // 引用宏生成的 const
+    fn name(&self) -> SharedString { t_static("case.counter.title") }
+}
+
+// 宏展开后（隐式生成）
+impl CounterCase {
+    pub const CONTRIBUTION_ID: &'static str = "binding.counter";
+}
+
+// 编译期断言（未实现 IContribution 则编译失败）
+const _: () = {
+    fn assert_contribution<T: rml_core::contribution::IContribution>() {}
+    fn check() { assert_contribution::<CounterCase>(); }
+};
+```
+
+**层 2（待实施，可选优化）：静态场景自动生成**
+
+为纯静态 label 场景提供 `static_label` 参数，触发宏自动生成默认 impl：
+
+```rust
+// 用户书写（静态场景）
 #[contribute(
     host_id = "demo.shell",
     id = "binding.counter",
     kind = "case",
     group = "binding",
     order = 1,
-    label = "case.counter.title"
+    static_label = "case.counter.title"   // 触发自动生成
 )]
 #[component]
 #[derive(Default)]
-pub struct CounterCase {
-    pub count: i32,
-}
+pub struct CounterCase { pub count: i32 }
 // 不再手写 impl IContribution
 
 // 宏展开后自动生成
@@ -288,39 +335,71 @@ impl IContribution for CounterCase {
 }
 ```
 
-**Override 机制**：用户可手写 `impl IContribution` 覆盖默认行为（如动态名称）。宏检测到用户已手写时跳过自动生成。
+**Override 机制**：用户手写 `impl IContribution for X` 时，宏通过 syn 解析检测到已存在，跳过自动生成（手写优先级最高）。
+
+**动态场景仍需手写**（不变）：
+
+```rust
+// 状态化 icon / 动态 name 必须手写
+#[contribute(host_id = "demo.shell", id = "status.ready", kind = "status", order = 0)]
+#[derive(Default)]
+pub struct StatusReady;
+
+impl IContribution for StatusReady {
+    fn id(&self) -> &str { Self::CONTRIBUTION_ID }
+    fn name(&self) -> SharedString { t_static("status.ready") }
+    fn icon(&self) -> IconCode {
+        if self.lsp_ready { IconCode::Check } else { IconCode::Spinner }  // 业务逻辑
+    }
+}
+```
 
 #### 实施步骤
 
-1. 修改 `#[contribute]` 宏：
-   - 解析 `label = "..."` 参数
-   - 生成默认 `IContribution` impl
-   - 检测是否已存在手写 impl（通过 syn 解析 AST）
-2. 处理边缘情况：
-   - `label` 缺失：编译期错误，提示必填
-   - `label` 是字面量 vs 表达式：仅支持字面量字符串
-   - 用户手写 impl：宏跳过自动生成
-3. 删除 demo 所有 case 中的 `impl IContribution` 样板
-4. 验证所有 case 仍正常工作
+**层 1 已实施**（[crates/macros/src/contribute.rs#L339-L347](../../crates/macros/src/contribute.rs)），无需额外动作。
+
+**层 2 待实施**：
+
+1. 在 `ContributeArgs` 增加 `static_label: Option<LitStr>` 字段
+2. 解析 `static_label = "..."` 参数（仅接受字面量字符串，拒绝表达式）
+3. syn 解析检测模块内是否已存在 `impl IContribution for #struct_name`
+4. 分支逻辑：
+   - 已存在手写 impl：跳过自动生成（保留层 1 编译期断言）
+   - 未存在且 `static_label = Some(...)`：生成默认 `impl IContribution`（id 引用 `CONTRIBUTION_ID`，name 用 `t_static(#static_label)`）
+   - 未存在且 `static_label = None`：编译期错误（保留层 1 强制断言，提示「必须手写 impl 或提供 static_label」）
+5. 处理 `description` / `icon` 的静态默认值（可选扩展，初版仅支持 id + name）
 
 #### 验证标准
 
-- `grep -A 5 "impl IContribution for" demo/src/cases/*.rml.rs` 返回 0 行（除非用户主动 override）
-- 每 case 平均减少 8 行样板代码
-- 简单 case `.rml.rs` 行数降至 50 行以内
+- ✅ 编译期断言：未实现 `IContribution` 的 struct 无法通过 `#[contribute]`（已实施）
+- ✅ CONTRIBUTION_ID 自动生成：用户代码无需重复 id 字符串（已实施）
+- ⚠️ 静态场景自动生成：`#[contribute(static_label = "...")]` 即可省略 `impl IContribution`（待实施）
+- ✅ 动态场景保留手写：状态化 icon / 动态 name 通过 `impl IContribution` 表达（已实施）
+- 量化指标：demo 中纯静态 case（counter / button / list）使用 `static_label`，动态 case（status_bar / lsp_status）保留手写
 
 #### 风险与缓解
 
 | 风险 | 概率 | 缓解 |
 |---|---|---|
-| 用户需要动态 name（如带变量的标题） | 中 | 保留 override 机制：手写 impl 优先 |
-| 宏展开冲突（auto impl 与手写 impl 共存） | 低 | syn 解析检测，已存在则跳过 |
-| `label` 字符串与 i18n key 解耦不彻底 | 低 | 保持现状：label 即 i18n key |
+| 用户误用 `static_label` 表达动态 name | 低 | 文档明确：动态 name 必须手写 impl；宏对 `static_label` 仅接受字面量，运行时拼接无路径 |
+| syn 检测 `impl IContribution` 误判（如泛型 impl、跨模块 impl） | 低 | 限定为当前模块内 `impl IContribution for #struct_name` 精确匹配 |
+| 自动生成与手写 impl 共存（重复 impl 错误） | 中 | syn 解析检测，已存在则跳过；层 1 编译期断言保留作为最终防线 |
+| `static_label` 与 i18n key 解耦不彻底 | 低 | 保持现状：`static_label` 即 i18n key（与 `t_static` 调用对齐） |
+| 用户已写部分方法（仅 id 未写 name） | 中 | 不支持部分覆盖：要么完全手写，要么完全自动；文档明确二选一 |
 
 #### 影响范围
 
-- [crates/macros/](file:///e:/GitCode/RF/rust-gpui-rml/crates/macros/) 修改 `#[contribute]` 宏
-- [demo/src/cases/](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/cases/) 删除 `impl IContribution` 样板
+- [crates/macros/src/contribute.rs](../../crates/macros/src/contribute.rs) 层 1 已实施；层 2 增加 `static_label` 解析与自动生成分支
+- [demo/src/cases/](../../demo/src/cases/) 静态场景 case 可选用 `static_label`（待层 2 实施后迁移），动态场景保留手写
+
+#### 与原计划设想的关键差异
+
+| 维度 | 原计划设想 | 实际设计意图 |
+|---|---|---|
+| 核心目标 | 完全消除 `impl IContribution` 样板 | 编译期断言 + 大多数场景手写 + 静态场景可选自动 |
+| `label` 参数 | 必填，宏读它生成 impl | 拒绝（强制手写在 impl 中）；层 2 改用 `static_label` 触发可选自动生成 |
+| 适用范围 | 所有 case | 仅纯静态场景（少数）；动态场景保留手写 |
+| 业务表达力 | 受限（label 必须字面量） | 不受限（动态 name / 状态化 icon 通过手写 impl 表达） |
 
 ---
 
@@ -372,7 +451,7 @@ self.input_state.set(entity);
 
 - `<Input placeholder="姓名" />` 直接显示占位文本，无需任何 .rs 代码
 - `<CodeEditor value={code} language="rust" />` 直接显示代码
-- [demo/src/cases/input_case.rml.rs#L42-L44](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/cases/input_case.rml.rs#L42-L44) 不再出现 "应在首次 render 后通过 ElementRef.with_mut 设置" 注释
+- [demo/src/cases/input_case.rml.rs#L42-L44](../../demo/src/cases/input_case.rml.rs#L42-L44) 不再出现 "应在首次 render 后通过 ElementRef.with_mut 设置" 注释
 
 #### 风险与缓解
 
@@ -384,10 +463,10 @@ self.input_state.set(entity);
 
 #### 影响范围
 
-- [crates/engine/src/compiler/input/](file:///e:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/input/) 识别字符串属性
-- [crates/engine/src/compiler/code_editor/](file:///e:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/code_editor/) 同上
-- [demo/src/cases/input_case.rml.rs](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/cases/input_case.rml.rs) 简化为纯声明式
-- [demo/src/cases/code_editor_case.rml.rs](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/cases/code_editor_case.rml.rs) 简化为纯声明式
+- [crates/engine/src/compiler/input/](../../crates/engine/src/compiler/input/) 识别字符串属性
+- [crates/engine/src/compiler/code_editor/](../../crates/engine/src/compiler/code_editor/) 同上
+- [demo/src/cases/input_case.rml.rs](../../demo/src/cases/input_case.rml.rs) 简化为纯声明式
+- [demo/src/cases/code_editor_case.rml.rs](../../demo/src/cases/code_editor_case.rml.rs) 简化为纯声明式
 
 ---
 
@@ -476,11 +555,11 @@ pub items: VecObservable<SharedString>,
 
 #### 影响范围
 
-- [crates/core/](file:///e:/GitCode/RF/rust-gpui-rml/crates/core/) 新增 `Observable<T>` / `VecObservable<T>` 类型
-- [crates/macros/](file:///e:/GitCode/RF/rust-gpui-rml/crates/macros/) 修改 `#[component]` 宏识别 `#[observable]`
-- [demo/src/cases/welcome_case.rml.rs](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/cases/welcome_case.rml.rs) 删除 `__rml_bump_version` 调用
-- [demo/src/cases/list_case.rml.rs](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/cases/list_case.rml.rs) 同上
-- [demo/src/shell/main_window.rml.rs](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/shell/main_window.rml.rs) 同上
+- [crates/core/](../../crates/core/) 新增 `Observable<T>` / `VecObservable<T>` 类型
+- [crates/macros/](../../crates/macros/) 修改 `#[component]` 宏识别 `#[observable]`
+- [demo/src/cases/welcome_case.rml.rs](../../demo/src/cases/welcome_case.rml.rs) 删除 `__rml_bump_version` 调用
+- [demo/src/cases/list_case.rml.rs](../../demo/src/cases/list_case.rml.rs) 同上
+- [demo/src/shell/main_window.rml.rs](../../demo/src/shell/main_window.rml.rs) 同上
 
 ---
 
@@ -545,11 +624,11 @@ fn _register_status_ready_abilities() {
 
 #### 影响范围
 
-- [crates/macros/](file:///e:/GitCode/RF/rust-gpui-rml/crates/macros/) 修改 `#[contribute]` 宏
-- [demo/src/cases/status_bar_case.rml.rs](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/cases/status_bar_case.rml.rs) 删除 `ensure_status_ready_registered`
-- [demo/src/lsp/lsp_status.rs](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/lsp/lsp_status.rs) 删除 `ensure_lsp_status_item_registered`
-- [demo/src/shell/main_window.rml.rs](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/shell/main_window.rml.rs) 删除 `init_contribution_host` 中手动调用
-- [demo/src/shell/workbench.rs](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/shell/workbench.rs) 删除 `register_workbench_abilities` 函数
+- [crates/macros/](../../crates/macros/) 修改 `#[contribute]` 宏
+- [demo/src/cases/status_bar_case.rml.rs](../../demo/src/cases/status_bar_case.rml.rs) 删除 `ensure_status_ready_registered`
+- [demo/src/lsp/lsp_status.rs](../../demo/src/lsp/lsp_status.rs) 删除 `ensure_lsp_status_item_registered`
+- [demo/src/shell/main_window.rml.rs](../../demo/src/shell/main_window.rml.rs) 删除 `init_contribution_host` 中手动调用
+- [demo/src/shell/workbench.rs](../../demo/src/shell/workbench.rs) 删除 `register_workbench_abilities` 函数
 
 ---
 
@@ -615,9 +694,9 @@ fn __rml_invoke_lifecycle(this: &mut Self, window: &mut Window, cx: &mut Context
 
 #### 影响范围
 
-- [crates/core/](file:///e:/GitCode/RF/rust-gpui-rml/crates/core/) `ILifecycle` trait 增加 `on_loaded_deferred`
-- [crates/macros/](file:///e:/GitCode/RF/rust-gpui-rml/crates/macros/) `#[component]` 宏生成生命周期分发
-- [demo/src/cases/welcome_case.rml.rs](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/cases/welcome_case.rml.rs) 迁移到 `on_loaded_deferred`
+- [crates/core/](../../crates/core/) `ILifecycle` trait 增加 `on_loaded_deferred`
+- [crates/macros/](../../crates/macros/) `#[component]` 宏生成生命周期分发
+- [demo/src/cases/welcome_case.rml.rs](../../demo/src/cases/welcome_case.rml.rs) 迁移到 `on_loaded_deferred`
 
 ---
 
@@ -651,7 +730,7 @@ MainWindow 仅持有这三个组件的引用，自身只实现 ILifecycle（协�
 
 #### 验证标准
 
-- [demo/src/shell/main_window.rml.rs](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/shell/main_window.rml.rs) 行数 ≤ 200 行
+- [demo/src/shell/main_window.rml.rs](../../demo/src/shell/main_window.rml.rs) 行数 ≤ 200 行
 - 每个抽取类型行数 ≤ 150 行
 - 每个类型单一职责（用一句话描述功能）
 
@@ -776,9 +855,9 @@ impl Slot for CaseSlot { const KIND: &'static str = "case"; }
 
 #### 影响范围
 
-- [demo/src/shell/case_view_model.rs](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/shell/case_view_model.rs)
-- [demo/src/shell/menu_view_model.rs](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/shell/menu_view_model.rs)
-- [demo/src/shell/status_view_model.rs](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/shell/status_view_model.rs)
+- [demo/src/shell/case_view_model.rs](../../demo/src/shell/case_view_model.rs)
+- [demo/src/shell/menu_view_model.rs](../../demo/src/shell/menu_view_model.rs)
+- [demo/src/shell/status_view_model.rs](../../demo/src/shell/status_view_model.rs)
 
 ---
 
@@ -821,7 +900,7 @@ impl Slot for CaseSlot { const KIND: &'static str = "case"; }
 
 #### 影响范围
 
-- [demo/src/lsp/code_editor_tab.rml.rs](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/lsp/code_editor_tab.rml.rs) 替换 unwrap 路径
+- [demo/src/lsp/code_editor_tab.rml.rs](../../demo/src/lsp/code_editor_tab.rml.rs) 替换 unwrap 路径
 
 ---
 
@@ -856,7 +935,8 @@ Write-Host "Average case lines: $caseLines (target: <= 80)"
 | 改进项 | 验证 case | 验证方法 |
 |---|---|---|
 | M1-1 | counter_case | 删除 cx.notify() 后仍刷新 |
-| M1-2 | counter_case | 删除 impl IContribution 后仍注册 |
+| M1-2 层 1（已实施） | counter_case + StatusReady | 未实现 `IContribution` 时编译失败；`Self::CONTRIBUTION_ID` 自动可用 |
+| M1-2 层 2（待实施） | counter_case | `static_label = "..."` 触发宏自动生成 impl，省略手写样板 |
 | M1-3 | input_case | placeholder 直接显示 |
 | M2-1 | list_case | 删除 __rml_bump_version 后仍刷新 |
 | M2-2 | status_bar_case | 删除 ensure_*_registered 后仍渲染 |
@@ -894,18 +974,18 @@ fn observable_fields_type_checked() {
 | 里程碑 | 周期 | 退出标准 | 阶段产出 |
 |---|---|---|---|
 | **M0** | Week 0 | 评估基线建立 | 完成现状审计报告 |
-| **M1** | Week 1-3 | M1-1 + M1-2 完成 | case 平均行数 ≤ 50 |
+| **M1** | Week 1-3 | M1-1 + M1-3 完成；M1-2 层 1 已完成（层 2 可选） | case 平均行数 ≤ 50；编译期断言强制 `IContribution` 实现 |
 | **M2** | Week 4-6 | M1-3 完成 | input/code_editor 声明式 |
 | **M3** | Week 7-10 | M2-1 + M2-2 完成 | __rml_* 零出现 |
 | **M4** | Week 11-14 | M2-3 + M3-1 完成 | re-entrancy 零手动 defer |
 | **M5** | Week 15-20 | M3-2 + M3-3 + M3-4 完成 | MainWindow ≤ 200 行 |
-| **M6+** | 持续 | M4+ 持续改进 | 稳定性指标达成 |
+| **M6+** | 持续 | M4+ 持续改进；M1-2 层 2 视静态场景需求择机实施 | 稳定性指标达成 |
 
 ### 10.2 关键路径
 
 M1-1 → M2-1（响应式模型统一）→ M3-1（架构拆分）是关键路径，决定整体进度。
 
-M1-2、M1-3、M2-2、M2-3 可并行。
+M1-2 层 2、M1-3、M2-2、M2-3 可并行（M1-2 层 1 已实施，无需进入并行调度）。
 
 ### 10.3 退出标准
 
@@ -923,8 +1003,8 @@ M1-2、M1-3、M2-2、M2-3 可并行。
 
 | 原理 | 应用改进项 |
 |---|---|
-| **DRY** | M1-2（IContribution 自动生成） |
-| **Convention over Configuration** | M1-2、M2-2 |
+| **DRY** | M1-2 层 1（CONTRIBUTION_ID 自动生成）、层 2（static_label 自动生成 impl） |
+| **Convention over Configuration** | M1-2 层 2（默认手写，`static_label` 触发自动）、M2-2 |
 | **封装不变式** | M1-1（notify guard）、M2-1（Observable） |
 | **迪米特法则** | M1-1、M2-2、M2-3 |
 | **响应式自动失效传播** | M1-1、M2-1 |

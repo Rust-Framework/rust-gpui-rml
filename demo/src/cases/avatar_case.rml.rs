@@ -10,7 +10,7 @@ use crate::cases::common::build_api_table;
     id = "components.avatar",
     kind = "case",
     group = "components",
-    order = 12,
+    order = 13,
 )]
 #[component]
 #[derive(Default)]

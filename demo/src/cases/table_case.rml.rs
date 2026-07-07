@@ -3,6 +3,8 @@ use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
 
+use crate::cases::common::CaseDocPage;
+
 #[contribute(
     host_id = "demo.shell",
     id = "components.table",
@@ -17,7 +19,7 @@ pub struct TableCase {
     pub api_rows: Vec<TableRow>,
     pub user_rows: Vec<TableRow>,
     pub merged_rows: Vec<TableRow>,
-    pub code_tab: usize,
+    pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
 }
 
 impl IContribution for TableCase {
@@ -30,7 +32,10 @@ impl IContribution for TableCase {
 }
 
 impl ILifecycle for TableCase {
-    fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut gpui::Context<Self>) {
+    fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut gpui::Context<Self>) {
+        // 初始化 CaseDocPage 实体（供 <CaseDocPage> 组件嵌入使用）
+        self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
+
         // API 文档表格数据
         self.api_columns = vec![
             TableColumn::new("prop", "属性"),
@@ -195,10 +200,5 @@ impl ILifecycle for TableCase {
     }
 }"#
             .to_string()
-    }
-
-    #[command]
-    pub fn on_code_tab_change(&mut self, idx: usize, _cx: &mut Context<Self>) {
-        self.code_tab = idx;
     }
 }

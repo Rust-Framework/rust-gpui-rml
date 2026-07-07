@@ -18,6 +18,7 @@ pub fn gen_dropdown_menu(
     if triggers.is_empty() {
         return Err(CodegenError {
             message: "DropdownMenu requires a trigger child (e.g. Button)".to_string(),
+            span: Some(elem.span),
         });
     }
     let trigger_code = gen_trigger_children(&triggers, ctx, depth, id_counter, loop_vars)?;

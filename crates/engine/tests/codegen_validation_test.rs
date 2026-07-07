@@ -59,7 +59,7 @@ const RML_SOURCE_WITH_AGE: &str = r#"
 #[test]
 fn range_validation_generates_bounds_check() {
     let ctx = make_ctx_with_range_validation();
-    let code = compile(RML_SOURCE_WITH_AGE, &ctx).expect("compile failed");
+    let code = compile(RML_SOURCE_WITH_AGE, &ctx).expect("compile failed").code;
 
     // 应生成 range 校验条件：!(0..=150).contains(&v)（失败条件）
     assert!(
@@ -79,7 +79,7 @@ fn range_validation_generates_bounds_check() {
 fn range_validation_uses_custom_message() {
     let mut ctx = make_ctx_with_range_validation();
     ctx.field_validations.get_mut("age").unwrap().custom_message = Some("年龄不合法".to_string());
-    let code = compile(RML_SOURCE_WITH_AGE, &ctx).expect("compile failed");
+    let code = compile(RML_SOURCE_WITH_AGE, &ctx).expect("compile failed").code;
 
     // 应使用自定义消息
     assert!(
@@ -136,7 +136,7 @@ fn length_validation_generates_len_check() {
     <input model={name} placeholder="姓名" />
 </component>
 "#;
-    let code = compile(source, &ctx).expect("compile failed");
+    let code = compile(source, &ctx).expect("compile failed").code;
 
     // 应生成 length 校验条件：__rml_value.len() < 3 || __rml_value.len() > 20
     assert!(
@@ -190,7 +190,7 @@ fn required_validation_generates_empty_check() {
     <input model={name} placeholder="姓名" />
 </component>
 "#;
-    let code = compile(source, &ctx).expect("compile failed");
+    let code = compile(source, &ctx).expect("compile failed").code;
 
     // 应生成 required 校验：__rml_value.is_empty()
     assert!(
@@ -246,7 +246,7 @@ fn regex_validation_generates_pattern_match() {
     <input model={email} placeholder="邮箱" />
 </component>
 "#;
-    let code = compile(source, &ctx).expect("compile failed");
+    let code = compile(source, &ctx).expect("compile failed").code;
 
     // 应生成 regex 编译 + is_match 调用
     assert!(
@@ -305,7 +305,7 @@ fn custom_validation_generates_function_call() {
     <input model={phone} placeholder="手机号" />
 </component>
 "#;
-    let code = compile(source, &ctx).expect("compile failed");
+    let code = compile(source, &ctx).expect("compile failed").code;
 
     // 应生成 Self::validate_phone 调用
     assert!(
@@ -365,7 +365,7 @@ fn multiple_rules_executed_in_order() {
     <input model={name} placeholder="姓名" />
 </component>
 "#;
-    let code = compile(source, &ctx).expect("compile failed");
+    let code = compile(source, &ctx).expect("compile failed").code;
 
     // 应同时生成 required 和 length 校验
     assert!(
@@ -394,7 +394,7 @@ fn multiple_rules_executed_in_order() {
 #[test]
 fn validation_failure_skips_bump_version() {
     let ctx = make_ctx_with_range_validation();
-    let code = compile(RML_SOURCE_WITH_AGE, &ctx).expect("compile failed");
+    let code = compile(RML_SOURCE_WITH_AGE, &ctx).expect("compile failed").code;
 
     // 提取 range 校验失败分支（if !(0..=150).contains(&v) { ... }）
     let fail_section = code.split("if !(0..=150).contains(&v)").nth(1).unwrap_or("");
@@ -417,7 +417,7 @@ fn validation_failure_skips_bump_version() {
 #[test]
 fn validation_success_clears_error() {
     let ctx = make_ctx_with_range_validation();
-    let code = compile(RML_SOURCE_WITH_AGE, &ctx).expect("compile failed");
+    let code = compile(RML_SOURCE_WITH_AGE, &ctx).expect("compile failed").code;
 
     // 成功分支（最后的 else 块）应包含赋值 + 清除错误 + bump_version
     let success_section = code.split("} else {").last().unwrap_or("");
@@ -461,7 +461,7 @@ fn no_validation_falls_back_to_default() {
         is_contributehost: false,
         ..Default::default()
     };
-    let code = compile(RML_SOURCE_WITH_AGE, &ctx).expect("compile failed");
+    let code = compile(RML_SOURCE_WITH_AGE, &ctx).expect("compile failed").code;
 
     // 应生成默认的 match parse 逻辑（无 range 校验）
     assert!(

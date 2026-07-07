@@ -13,7 +13,7 @@ use crate::cases::common::build_api_table;
     id = "components.status_bar",
     kind = "case",
     group = "components",
-    order = 12,
+    order = 14,
 )]
 #[component]
 #[derive(Default)]

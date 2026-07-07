@@ -1,12 +1,12 @@
 ---
 name: rml-component
-description: RML 声明式 UI 框架组件支持规范。统一组件命名、注册、属性分类、数据绑定、插槽、CSS 定制、尺寸布局的开发范式，确保新组件开发遵循一致的架构约定。
-when_to_apply: 在 RML 框架内新增组件、修改组件属性、调整数据绑定、扩展插槽、修改 CSS 选择器、或审查组件范式一致性时使用。
+description: RML 声明式 UI 框架组件支持规范。统一组件命名、注册、属性分类、数据绑定、插槽、CSS 定制、尺寸布局、sourcemap 调试支持的开发范式，确保新组件开发遵循一致的架构约定与功能完整性。
+when_to_apply: 在 RML 框架内新增组件、修改组件属性、调整数据绑定、扩展插槽、修改 CSS 选择器、修改 codegen 逻辑、调整 sourcemap 透传、或审查组件范式一致性时使用。
 ---
 
 # RML 组件支持规范
 
-本 Skill 是 RML 框架组件开发的权威规范，覆盖 8 个维度：
+本 Skill 是 RML 框架组件开发的权威规范，覆盖 9 个维度：
 1. 命名规范（声明式 kebab-case / 内部 snake_case 双层模型）
 2. 组件注册（三处同步协议）
 3. 属性分类（static / bind / event 三类，组件专用 / 通用 / 警告丢弃 三级）
@@ -15,6 +15,7 @@ when_to_apply: 在 RML 框架内新增组件、修改组件属性、调整数据
 6. CSS 定制（选择器父链匹配 / 主题变量）
 7. 尺寸布局（size=medium / vertical=true / variant 快捷方法）
 8. 图标处理（IconSpec：Named / Path / Url 三 variant + 嵌入资源集成）
+9. **Sourcemap 与调试支持**（codegen 标记透传 / CodegenError span / .rml.map 持久化 / dap 消费）
 
 ## 核心设计原则
 
@@ -24,6 +25,7 @@ when_to_apply: 在 RML 框架内新增组件、修改组件属性、调整数据
 - **不保留兼容性设计**：框架全新开发，拒绝补丁式代码，无法容忍双形式并存
 - **medium 不用 middle**：`size=medium` 表示中等大小，使用 `medium` 名称
 - **vertical 不重复 horizontal**：`vertical=true` 表示纵向，默认横向，不提供 `horizontal` 属性
+- **架构功能完整性**：组件开发/迭代必须兼顾所有环节（命名/注册/属性/绑定/插槽/CSS/尺寸/图标/sourcemap），新增组件不能只实现 codegen 而忽略 sourcemap 透传，否则破坏调试能力
 - **最佳实践优先**：站在设计者和架构师视角，遵循 Rust idiomatic 风格
 
 ## Quick Reference
@@ -38,6 +40,7 @@ when_to_apply: 在 RML 框架内新增组件、修改组件属性、调整数据
 | CSS | Class/Id/Tag/Universal/Compound/Descendant/Child 选择器 | [06-css-customization.md](06-css-customization.md) |
 | 尺寸 | size=xsmall\|small\|medium\|large，vertical=true | [07-size-layout-conventions.md](07-size-layout-conventions.md) |
 | 图标 | `IContribution::icon() -> Option<IconSpec>`；Named/Path/Url；Path 经 CompositeAssets 透明支持嵌入资源 | [09-icon-handling.md](09-icon-handling.md) |
+| **Sourcemap** | **codegen 标记透传 / CodegenError span / .rml.map 持久化 / dap 消费** | **[10-sourcemap-and-debug-support.md](10-sourcemap-and-debug-support.md)** |
 
 ## 支持的组件清单
 

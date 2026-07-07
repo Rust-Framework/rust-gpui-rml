@@ -186,6 +186,7 @@ impl Builder {
 
         // 收集用户自定义组件注册表（所有 #[component] 标注的 struct）
         // 供 codegen 在 component_lookup 未命中时生成 self.<field>.as_ref().expect(...).clone()
+        // 同时携带 field_types + computed_methods，供 gen_user_component 处理属性传参
         let user_components: std::collections::HashMap<String, UserComponentInfo> = struct_metas
             .iter()
             .filter(|(_, m)| m.is_component)
@@ -196,6 +197,8 @@ impl Builder {
                         struct_name: name.clone(),
                         entity_field: to_snake_case(name),
                         slots: meta.slots.clone(),
+                        field_types: meta.field_types.clone(),
+                        computed_methods: meta.computed_methods.clone(),
                     },
                 )
             })
@@ -301,14 +304,34 @@ impl Builder {
                 lifecycle_hooks: struct_meta.lifecycle_hooks.clone(),
                 has_manual_lifecycle_impl: struct_meta.has_manual_lifecycle_impl,
                 strict: self.strict,
+                self_alias: None,
+                source_map: std::cell::RefCell::new(crate::compiler::source_map::SourceMap::new()),
             };
 
             match compile(&source, &ctx) {
-                Ok(code) => {
-                    if let Err(e) = fs::write(&out_file, code) {
+                Ok(output) => {
+                    if let Err(e) = fs::write(&out_file, &output.code) {
                         let msg = format!("write {}: {}", out_file.display(), e);
                         println!("cargo:warning=RML error in {}: {}", rml_path.display(), msg);
                         return Err(BuildError { message: msg });
+                    }
+                    // 写出 sourcemap 到同目录 .rml.map 文件
+                    let map_file = out_file.with_extension("rml.map");
+                    match output.source_map.to_json() {
+                        Ok(json) => {
+                            if let Err(e) = fs::write(&map_file, json) {
+                                println!(
+                                    "cargo:warning=RML: failed to write sourcemap {}: {}",
+                                    map_file.display(), e
+                                );
+                            }
+                        }
+                        Err(e) => {
+                            println!(
+                                "cargo:warning=RML: failed to serialize sourcemap for {}: {}",
+                                rml_path.display(), e
+                            );
+                        }
                     }
                     cache.entries.insert(key.clone(), hash);
                     if let Some(h) = current_cb_hash {

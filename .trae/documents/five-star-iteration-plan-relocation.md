@@ -14,11 +14,11 @@
 
 上一轮对话在 `docs/iteration-plans/` 下创建了两个文件：
 
-- [docs/iteration-plans/five-star-roadmap.md](file:///e:/GitCode/RF/rust-gpui-rml/docs/iteration-plans/five-star-roadmap.md)（约 1040 行）
-- [docs/iteration-plans/INDEX.md](file:///e:/GitCode/RF/rust-gpui-rml/docs/iteration-plans/INDEX.md)（35 行）
+- [docs/iteration-plans/five-star-roadmap.md](../../docs/iteration-plans/five-star-roadmap.md)（约 1040 行）
+- [docs/iteration-plans/INDEX.md](../../docs/iteration-plans/INDEX.md)（35 行）
 
 这两个文件：
-- 不属于 [docs/INDEX.md](file:///e:/GitCode/RF/rust-gpui-rml/docs/INDEX.md) 中规划的 11 章结构
+- 不属于 [docs/INDEX.md](../../docs/INDEX.md) 中规划的 11 章结构
 - 与 docs 树"面向用户技术指导"的定位冲突
 - INDEX.md 文件在 docs/ 下也是冗余（docs 已有顶层 INDEX.md 总目录，不缺子目录索引）
 
@@ -31,7 +31,7 @@
 | 文件名 | kebab-case，常带 `rml-` 前缀，描述性名称，可带版本后缀（如 `-v2`） |
 | 标题 | `# RML 框架...计划` 或 `# RML 框架...分析` |
 | 头部元信息 | `> 视角：...` / `> 主题：...` / `> 基线：...` 三行块（见 `rml-iteration-architecture-analysis.md`） |
-| 代码引用 | 全部使用 `file:///` 绝对路径可点击链接，附行号 `#Lxx-Lyy` |
+| 代码引用 | 全部使用相对路径可点击链接（相对于文档自身位置），附行号 `#Lxx-Lyy` |
 | 里程碑命名 | M1/M2/M3...（主流）或 P0/P1/P2（少量使用，两者皆可） |
 | 段落结构 | Summary / Current State Analysis / Proposed Changes / Verification（见 `rml-production-grade-iteration-plan.md`） |
 | 任务表 | `| 任务 | 涉及文件 | 说明 |` 三列格式 |
@@ -47,9 +47,9 @@
 
 **操作**：删除以下两个文件 + 空目录：
 
-- `e:\GitCode\RF\rust-gpui-rml\docs\iteration-plans\five-star-roadmap.md`
-- `e:\GitCode\RF\rust-gpui-rml\docs\iteration-plans\INDEX.md`
-- `e:\GitCode\RF\rust-gpui-rml\docs\iteration-plans\`（空目录）
+- `docs\iteration-plans\five-star-roadmap.md`
+- `docs\iteration-plans\INDEX.md`
+- `docs\iteration-plans\`（空目录）
 
 **原因**：
 - docs/ 是面向用户的章节式技术文档树，不接受内部迭代计划
@@ -60,7 +60,7 @@
 
 ### 变更 2：在 .trae/documents/ 下重写五星迭代计划
 
-**新文件路径**：`e:\GitCode\RF\rust-gpui-rml\.trae\documents\rml-five-star-iteration-plan.md`
+**新文件路径**：`.trae\documents\rml-five-star-iteration-plan.md`
 
 **命名依据**：
 - `rml-` 前缀：与 `rml-iteration-plan-v2.md`、`rml-production-grade-iteration-plan.md` 等保持一致
@@ -82,7 +82,7 @@
 ## 二、Current State Analysis（现状分析）
 ### 2.1 四维度当前基线
 ### 2.2 11 个根因（G1-G11）定位
-[每个根因附 file:/// 链接指向具体代码位置]
+[每个根因附相对路径链接指向具体代码位置]
 
 ## 三、五星目标定义（可验证标准）
 ### 3.1 简洁易用 5★
@@ -138,7 +138,7 @@
 | 头部 | 文档定位块 | `> 视角/主题/基线` 三行块 |
 | 段落标题 | 一/二/三... + Summary 等 | 沿用 `Summary / Current State Analysis / Proposed Changes / Verification` |
 | 里程碑命名 | P0/P1/P2/P3 | M1/M2/M3/M4+（沿用主流约定） |
-| 代码引用 | 部分文本引用 | 全部 `file:///` 可点击链接，附行号 |
+| 代码引用 | 部分文本引用 | 全部相对路径可点击链接，附行号 |
 | 根因锚点 | 文字描述 | 每个根因附具体文件行号链接 |
 
 ### 变更 3：内容锚点强化
@@ -147,15 +147,15 @@
 
 | 根因 / 改进项 | 代码锚点 |
 |---|---|
-| G4 `__rml_bump_version` | [demo/src/cases/welcome_case.rml.rs#L84-L85](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/cases/welcome_case.rml.rs#L84-L85)、[demo/src/cases/list_case.rml.rs#L79](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/cases/list_case.rml.rs#L79)、[demo/src/shell/main_window.rml.rs#L411](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/shell/main_window.rml.rs#L411) |
-| G5 `cx.notify()` 不一致 | [demo/src/cases/counter_case.rml.rs#L59](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/cases/counter_case.rml.rs#L59)、[demo/src/cases/expression_case.rml.rs#L68](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/cases/expression_case.rml.rs#L68) |
-| G6 ability cast 注册 | [demo/src/cases/status_bar_case.rml.rs#L141-L150](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/cases/status_bar_case.rml.rs#L141-L150)、[demo/src/lsp/lsp_status.rs#L72-L82](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/lsp/lsp_status.rs#L72-L82) |
-| G7 re-entrancy 手动 defer | [demo/src/cases/welcome_case.rml.rs#L46-L53](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/cases/welcome_case.rml.rs#L46-L53) |
-| G2 Input placeholder 缺口 | [demo/src/cases/input_case.rml.rs#L42-L44](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/cases/input_case.rml.rs#L42-L44) |
-| G1 IContribution 样板 | [demo/src/cases/counter_case.rml.rs](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/cases/counter_case.rml.rs)（impl IContribution 块） |
-| MainWindow God Object | [demo/src/shell/main_window.rml.rs](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/shell/main_window.rml.rs)（570 行） |
+| G4 `__rml_bump_version` | [demo/src/cases/welcome_case.rml.rs#L84-L85](../../demo/src/cases/welcome_case.rml.rs#L84-L85)、[demo/src/cases/list_case.rml.rs#L79](../../demo/src/cases/list_case.rml.rs#L79)、[demo/src/shell/main_window.rml.rs#L411](../../demo/src/shell/main_window.rml.rs#L411) |
+| G5 `cx.notify()` 不一致 | [demo/src/cases/counter_case.rml.rs#L59](../../demo/src/cases/counter_case.rml.rs#L59)、[demo/src/cases/expression_case.rml.rs#L68](../../demo/src/cases/expression_case.rml.rs#L68) |
+| G6 ability cast 注册 | [demo/src/cases/status_bar_case.rml.rs#L141-L150](../../demo/src/cases/status_bar_case.rml.rs#L141-L150)、[demo/src/lsp/lsp_status.rs#L72-L82](../../demo/src/lsp/lsp_status.rs#L72-L82) |
+| G7 re-entrancy 手动 defer | [demo/src/cases/welcome_case.rml.rs#L46-L53](../../demo/src/cases/welcome_case.rml.rs#L46-L53) |
+| G2 Input placeholder 缺口 | [demo/src/cases/input_case.rml.rs#L42-L44](../../demo/src/cases/input_case.rml.rs#L42-L44) |
+| G1 IContribution 样板 | [demo/src/cases/counter_case.rml.rs](../../demo/src/cases/counter_case.rml.rs)（impl IContribution 块） |
+| MainWindow God Object | [demo/src/shell/main_window.rml.rs](../../demo/src/shell/main_window.rml.rs)（570 行） |
 
-这些锚点必须在新文档中作为 `file:///` 链接出现，使计划「grounded in actual code」而非抽象描述。
+这些锚点必须在新文档中作为相对路径链接出现，使计划「grounded in actual code」而非抽象描述。
 
 ---
 
@@ -186,14 +186,14 @@
 ### 步骤 1：确认错误内容已清理
 
 ```powershell
-Test-Path 'e:\GitCode\RF\rust-gpui-rml\docs\iteration-plans'
+Test-Path 'docs\iteration-plans'
 # 期望：False（目录已删除）
 ```
 
 ### 步骤 2：确认新文档已创建
 
 ```powershell
-Test-Path 'e:\GitCode\RF\rust-gpui-rml\.trae\documents\rml-five-star-iteration-plan.md'
+Test-Path '.trae\documents\rml-five-star-iteration-plan.md'
 # 期望：True
 ```
 
@@ -202,7 +202,7 @@ Test-Path 'e:\GitCode\RF\rust-gpui-rml\.trae\documents\rml-five-star-iteration-p
 - 标题以 `# RML 框架...` 开头
 - 头部含 `> 视角：` / `> 主题：` / `> 基线：` 三行块
 - 包含 Summary / Current State Analysis / Proposed Changes / Verification 四大段
-- 代码引用全部使用 `file:///` 可点击链接
+- 代码引用全部使用相对路径可点击链接
 - 里程碑使用 M1/M2/M3 命名
 
 ### 步骤 4：确认实质内容完整
@@ -218,7 +218,7 @@ Test-Path 'e:\GitCode\RF\rust-gpui-rml\.trae\documents\rml-five-star-iteration-p
 ### 步骤 5：确认 docs/ 树未受污染
 
 ```powershell
-Get-ChildItem 'e:\GitCode\RF\rust-gpui-rml\docs' -Directory | Select-Object Name
+Get-ChildItem 'docs' -Directory | Select-Object Name
 # 期望：仅 01-overview 至 11-cookbook 共 11 个章节目录，无 iteration-plans
 ```
 

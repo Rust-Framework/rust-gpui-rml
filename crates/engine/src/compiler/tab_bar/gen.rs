@@ -91,6 +91,7 @@ pub fn gen_tab_bar(
                         "<TabBar> 仅支持 <Tab> 子节点，得到 <{}>",
                         child_elem.tag
                     ),
+                    span: Some(elem.span),
                 });
             }
             _ => {}

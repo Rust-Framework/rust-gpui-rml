@@ -88,6 +88,7 @@ pub(crate) fn gen_menu_item_stmt(
     if canonical != "MenuItem" {
         return Err(CodegenError {
             message: format!("expected menu-item, got <{}>", elem.tag),
+            span: Some(elem.span),
         });
     }
 

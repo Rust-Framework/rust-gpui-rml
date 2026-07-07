@@ -61,6 +61,7 @@ pub fn gen_template(
 ) -> Result<String, CodegenError> {
     let slot_name = elem.slot_name.as_deref().ok_or_else(|| CodegenError {
         message: "<template> 缺少 slot 属性".to_string(),
+        span: Some(elem.span),
     })?;
 
     // 将闭包参数注入 loop_vars，使模板内容可引用（如 {row_data.id}）
@@ -91,6 +92,7 @@ pub fn gen_template(
                 "未知 slot 名称 `{}`：<Table> 仅支持 slot=\"header\" / slot=\"cell\" / slot=\"footer\"",
                 slot_name
             ),
+            span: Some(elem.span),
         }),
     }
 }
@@ -108,6 +110,7 @@ fn extract_field_attr(elem: &Element) -> Result<String, CodegenError> {
     }
     Err(CodegenError {
         message: "<template slot=\"cell\"> 缺少必填属性 `field`".to_string(),
+        span: Some(elem.span),
     })
 }
 

@@ -41,7 +41,7 @@ const RML_SOURCE: &str = r#"
 
 #[test]
 fn generates_bump_version_method() {
-    let code = compile(RML_SOURCE, &make_ctx()).expect("compile failed");
+    let code = compile(RML_SOURCE, &make_ctx()).expect("compile failed").code;
     assert!(
         code.contains("fn __rml_bump_version"),
         "missing __rml_bump_version method\n{}",
@@ -51,7 +51,7 @@ fn generates_bump_version_method() {
 
 #[test]
 fn generates_get_version_method() {
-    let code = compile(RML_SOURCE, &make_ctx()).expect("compile failed");
+    let code = compile(RML_SOURCE, &make_ctx()).expect("compile failed").code;
     assert!(
         code.contains("fn __rml_get_version"),
         "missing __rml_get_version method\n{}",
@@ -61,7 +61,7 @@ fn generates_get_version_method() {
 
 #[test]
 fn generates_computed_deps_version_method() {
-    let code = compile(RML_SOURCE, &make_ctx()).expect("compile failed");
+    let code = compile(RML_SOURCE, &make_ctx()).expect("compile failed").code;
     assert!(
         code.contains("fn __rml_computed_deps_version"),
         "missing __rml_computed_deps_version method\n{}",
@@ -71,7 +71,7 @@ fn generates_computed_deps_version_method() {
 
 #[test]
 fn bump_version_delegates_to_rml_state() {
-    let code = compile(RML_SOURCE, &make_ctx()).expect("compile failed");
+    let code = compile(RML_SOURCE, &make_ctx()).expect("compile failed").code;
     assert!(
         code.contains("fn __rml_bump_version(&mut self, field: &str)"),
         "missing bump_version method with &mut self signature\n{}",
@@ -86,7 +86,7 @@ fn bump_version_delegates_to_rml_state() {
 
 #[test]
 fn computed_deps_sums_count_version() {
-    let code = compile(RML_SOURCE, &make_ctx()).expect("compile failed");
+    let code = compile(RML_SOURCE, &make_ctx()).expect("compile failed").code;
     assert!(
         code.contains("self.__rml_get_version(\"count\")"),
         "missing computed deps sum expression\n{}",
@@ -96,7 +96,7 @@ fn computed_deps_sums_count_version() {
 
 #[test]
 fn generates_computed_wrapper_for_doubled() {
-    let code = compile(RML_SOURCE, &make_ctx()).expect("compile failed");
+    let code = compile(RML_SOURCE, &make_ctx()).expect("compile failed").code;
     assert!(
         code.contains("pub fn doubled(&self) -> i32"),
         "missing doubled wrapper method\n{}",
@@ -119,7 +119,7 @@ fn empty_observable_fields_still_generates_match() {
     // 即使无 observable 字段，也应生成空 match（带 _ => {} 兜底）
     let mut ctx = make_ctx();
     ctx.observable_fields.clear();
-    let code = compile(RML_SOURCE, &ctx).expect("compile failed");
+    let code = compile(RML_SOURCE, &ctx).expect("compile failed").code;
     assert!(
         code.contains("fn __rml_bump_version"),
         "missing __rml_bump_version even with empty fields\n{}",
@@ -141,7 +141,7 @@ fn observable_vec_fields_route_to_self_version() {
     );
     // 非 ObservableVec 字段不应路由
     ctx.field_types.insert("count".to_string(), "i32".to_string());
-    let code = compile(RML_SOURCE, &ctx).expect("compile failed");
+    let code = compile(RML_SOURCE, &ctx).expect("compile failed").code;
     assert!(
         code.contains(r#""workbenches" => self.workbenches.version()"#),
         "missing ObservableVec version route for workbenches\n{}",

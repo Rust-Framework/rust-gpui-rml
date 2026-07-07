@@ -30,16 +30,20 @@ pub(super) fn gen_mixed_text(
 }
 
 /// 把插值表达式字符串编译为 Rust 表达式字符串
+///
+/// 若 thread-local 中设置了 `self_alias`（Phase 2：slot 闭包内），
+/// `self.xxx` 会替换为 `<alias>.xxx`。
 pub(crate) fn gen_expr_code(expr_str: &str, loop_vars: &[&str], computed: &[&str]) -> String {
     if let Some(code) = try_gen_i18n_call(expr_str, loop_vars, computed) {
         return code;
     }
+    let prefix = expr::current_self_alias().unwrap_or("self");
     match expr::parse(expr_str) {
         Ok(expr::Expr::Field(name)) if computed.contains(&name.as_str()) => {
             if loop_vars.iter().any(|v| *v == name) {
                 format!("{}()", name)
             } else {
-                format!("self.{}()", name)
+                format!("{}.{}()", prefix, name)
             }
         }
         Ok(parsed) => expr::to_rust_code_with_ctx(&parsed, loop_vars),
@@ -48,9 +52,9 @@ pub(crate) fn gen_expr_code(expr_str: &str, loop_vars: &[&str], computed: &[&str
             if loop_vars.contains(&trimmed) {
                 trimmed.to_string()
             } else if computed.contains(&trimmed) {
-                format!("self.{}()", trimmed)
+                format!("{}.{}()", prefix, trimmed)
             } else {
-                format!("self.{}", trimmed)
+                format!("{}.{}", prefix, trimmed)
             }
         }
     }

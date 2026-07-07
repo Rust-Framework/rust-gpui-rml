@@ -26,6 +26,7 @@ pub fn gen_code_editor(
         _ => {
             return Err(CodegenError {
                 message: "<CodeEditor> component kind mismatch".into(),
+                span: Some(elem.span),
             })
         }
     };

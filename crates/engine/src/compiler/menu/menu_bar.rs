@@ -360,6 +360,7 @@ fn gen_menu_bar_with_children_bind(
     let children_code = bind_expr_code(template_item, "children", ctx, &child_loop_vars)
         .ok_or_else(|| CodegenError {
             message: "children={expr} 绑定缺失——此路径要求 children 属性".to_string(),
+            span: Some(template_item.span),
         })?;
     let cmd_expr = template_item.attributes.iter().find_map(|a| match a {
         Attribute::Bind { name, expr, .. } if name == "command" => Some(expr.clone()),

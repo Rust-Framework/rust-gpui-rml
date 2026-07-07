@@ -147,7 +147,7 @@ fn gen_validator_numeric_field_generates_valid_with_view_call() {
     <input model={age} placeholder="年龄" />
 </component>
 "#;
-    let code = compile(source, &ctx).expect("compile failed");
+    let code = compile(source, &ctx).expect("compile failed").code;
 
     // 应构造 validator 实例
     assert!(
@@ -183,7 +183,7 @@ fn gen_validator_string_field_generates_valid_with_view_call() {
     <input model={email} placeholder="邮箱" />
 </component>
 "#;
-    let code = compile(source, &ctx).expect("compile failed");
+    let code = compile(source, &ctx).expect("compile failed").code;
 
     // 应构造 validator 实例
     assert!(
@@ -220,7 +220,7 @@ fn gen_validator_calls_message_and_handles_pass() {
     <input model={age} placeholder="年龄" />
 </component>
 "#;
-    let code = compile(source, &ctx).expect("compile failed");
+    let code = compile(source, &ctx).expect("compile failed").code;
 
     // 提取 validator 的 if-let-Some 块（精确匹配 validator 调用后的 if let）
     let validator_section = code
@@ -256,7 +256,7 @@ fn gen_validator_calls_message_and_handles_fail() {
     <input model={age} placeholder="年龄" />
 </component>
 "#;
-    let code = compile(source, &ctx).expect("compile failed");
+    let code = compile(source, &ctx).expect("compile failed").code;
 
     // 精确提取 validator 的 if-let-Some 块
     let validator_section = code
@@ -295,7 +295,7 @@ fn gen_validator_for_bool_falls_back_to_default() {
     <input model={enabled} placeholder="启用" />
 </component>
 "#;
-    let code = compile(source, &ctx).expect("compile failed");
+    let code = compile(source, &ctx).expect("compile failed").code;
 
     // 不应生成 validator 调用
     assert!(

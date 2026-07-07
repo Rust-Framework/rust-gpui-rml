@@ -3,6 +3,7 @@
 //! 串起 parse → validate → codegen，输出 Rust 源码字符串。
 
 pub mod accordion;
+pub mod alert;
 pub mod avatar;
 pub mod badge;
 pub mod card;
@@ -20,6 +21,7 @@ pub mod menu;
 pub mod popover;
 pub mod props_registry;
 pub mod separator;
+pub mod source_map;
 pub mod tab_bar;
 pub mod tag;
 pub mod table;
@@ -30,6 +32,9 @@ pub mod validator;
 
 use crate::css::StyleSheet;
 use crate::parser;
+use crate::parser::Span;
+use crate::compiler::source_map::SourceMap;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
 
@@ -99,6 +104,17 @@ pub struct UserComponentInfo {
     /// 父视图 codegen 据此分离 `<template slot="x">` 子节点并注入到对应 slot setter。
     /// 空 Vec 表示组件不接受任何插槽。
     pub slots: Vec<String>,
+    /// 所有 pub 字段名 → 类型字符串（如 `"title" → "SharedString"`、`"count" → "i32"`）
+    ///
+    /// 由 build.rs 从 `StructMetadata.field_types` 拷贝。codegen 在 `gen_user_component` 中
+    /// 处理 `<CaseDocPage title={...}>` 等属性绑定时，据此生成类型转换代码
+    /// （`String`/`SharedString` → `.into()`/`.clone()`，`i32` → `parse()`，`Vec<_>` → `.clone()`）。
+    pub field_types: HashMap<String, String>,
+    /// 所有 `#[computed]` 方法名列表
+    ///
+    /// 由 build.rs 从 `StructMetadata.computed_methods` 拷贝。codegen 在处理绑定属性时
+    /// 据此区分 `self.rml_sample()`（方法调用）与 `self.title`（字段访问）。
+    pub computed_methods: Vec<String>,
 }
 
 /// 代码生成上下文
@@ -186,6 +202,22 @@ pub struct CodegenCtx {
     /// 由 build.rs 的 `Builder.strict(true)` 设置（默认 true）。
     /// 单元测试中默认 false，便于隔离测试单条 setter 路径而不触发其他路径的 error。
     pub strict: bool,
+    /// slot 闭包内引用父视图数据时的 self 别名（Phase 2：slot 闭包捕获父视图数据）
+    ///
+    /// 由 `gen_user_component` 在生成 slot 内容前 clone ctx 并设置为
+    /// `Some("__rml_self_ref".to_string())`。表达式生成函数据此把 `self.xxx`
+    /// 替换为 `__rml_self_ref.xxx`，绕过 slot 闭包的生命周期限制。
+    /// 默认 `None`，行为不变（生成 `self.xxx`）。
+    pub self_alias: Option<String>,
+    /// sourcemap 收集器（codegen 透传 AST span → 生成代码位置）
+    ///
+    /// 由 `compile()` 在调用 codegen 前创建空实例并传入；codegen 在生成关键代码片段
+    /// （元素构造、属性 setter、事件绑定等）时调用 `ctx.source_map.borrow_mut().record(...)`。
+    /// build.rs 将其序列化为 `.rml.map` 文件供 dap crate 消费。
+    ///
+    /// 使用 `RefCell` 包裹以保持 `&CodegenCtx` 不可变借用在 codegen 全链路传播，
+    /// 同时允许 sourcemap 在生成过程中增量记录。
+    pub source_map: RefCell<SourceMap>,
 }
 
 /// 代码生成错误
@@ -194,11 +226,35 @@ pub struct CodegenCtx {
 #[derive(Debug, Clone)]
 pub struct CodegenError {
     pub message: String,
+    /// 错误对应的 `.rml` 源码区间（可选）
+    ///
+    /// 由 codegen 报错路径透传 AST 节点的 `span`，便于上层（build.rs / LSP）
+    /// 定位到具体源码位置。`None` 表示无法定位（如合成节点或代码逻辑错误）。
+    pub span: Option<Span>,
+}
+
+impl CodegenError {
+    pub fn new(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            span: None,
+        }
+    }
+
+    /// 附带源码区间
+    pub fn with_span(mut self, span: Span) -> Self {
+        self.span = Some(span);
+        self
+    }
 }
 
 impl fmt::Display for CodegenError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Codegen error: {}", self.message)
+        write!(f, "Codegen error: {}", self.message)?;
+        if let Some(span) = self.span {
+            write!(f, " (span {}..{})", span.start, span.end)?;
+        }
+        Ok(())
     }
 }
 
@@ -240,15 +296,16 @@ impl From<CodegenError> for CompileError {
     }
 }
 
-/// 编译 `.rml` 源码为 Rust 源码字符串
+/// 编译 `.rml` 源码为 Rust 源码字符串 + sourcemap
 ///
 /// # 参数
 /// - `source`: `.rml` 文件内容
 /// - `ctx`: 代码生成上下文（含视图结构名）
 ///
 /// # 返回
-/// 生成的 `impl Render for <View>` 代码块字符串
-pub fn compile(source: &str, ctx: &CodegenCtx) -> Result<String, CompileError> {
+/// `CompileOutput`，包含生成的 `impl Render for <View>` 代码块字符串与 sourcemap。
+/// sourcemap 由 codegen 在生成过程中透传 AST span 收集，可持久化为 `.rml.map`。
+pub fn compile(source: &str, ctx: &CodegenCtx) -> Result<CompileOutput, CompileError> {
     let root = parser::parse(source)?;
     validator::validate(&root, &ctx.user_components)?;
     let mut ctx = ctx.clone();
@@ -256,6 +313,20 @@ pub fn compile(source: &str, ctx: &CodegenCtx) -> Result<String, CompileError> {
     ctx.model_converters = codegen::collect_model_converters(&root);
     ctx.model_input_handlers = codegen::collect_model_input_handlers(&root);
     let code = codegen::codegen(&root, &ctx)?;
-    Ok(code)
+    Ok(CompileOutput {
+        code,
+        source_map: ctx.source_map.into_inner(),
+    })
+}
+
+/// 编译输出
+///
+/// 由 `compile()` 返回，包含生成的 Rust 代码与源映射。
+#[derive(Debug, Clone)]
+pub struct CompileOutput {
+    /// 生成的 `impl Render for <View>` 代码块字符串
+    pub code: String,
+    /// `.rml` 字节区间 → 生成代码 (line, col) 的源映射
+    pub source_map: crate::compiler::source_map::SourceMap,
 }
 

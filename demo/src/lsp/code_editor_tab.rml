@@ -2,13 +2,7 @@
     <div v-flex="" class="lsp-editor-pane"
          on-action="FormatDocument:on_format_action, RenameSymbol:on_rename_action, FindReferences:on_find_references_action, GoToDefinition:on_goto_definition_action, ShowDocumentSymbols:on_show_document_symbols_action">
         <div h-flex="" class="lsp-toolbar">
-            <Breadcrumb items={breadcrumb_items} />
-            <ButtonGroup>
-                <Button label="Format" ghost="" size="small" on-click="on_format_document" />
-                <Button label="Rename" ghost="" size="small" on-click="on_rename_symbol" />
-                <Button label="References" ghost="" size="small" on-click="on_find_references" />
-                <Button label="Symbols" ghost="" size="small" on-click="on_show_document_symbols" />
-            </ButtonGroup>
+            <Breadcrumb items={breadcrumb_items} on-select={on_breadcrumb_select} />
         </div>
         <div class="lsp-editor-area">
             <CodeEditor h-full="" context-menu="build_editor_menu" />

@@ -21,6 +21,7 @@ pub fn gen_tree(
         _ => {
             return Err(CodegenError {
                 message: "<Tree> component kind mismatch".into(),
+                span: Some(elem.span),
             })
         }
     };

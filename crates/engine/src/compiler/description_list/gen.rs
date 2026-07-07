@@ -95,6 +95,7 @@ pub fn gen_description_list(
                                 "<descriptions> 仅支持 <description> 或 <separator> 子节点，得到 <{}>",
                                 child_elem.tag
                             ),
+                            span: Some(elem.span),
                         });
                     }
                 }

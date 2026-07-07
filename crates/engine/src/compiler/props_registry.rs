@@ -122,8 +122,12 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
     ("Icon", &["name", "path"]),
     // Kbd 专用（RenderOnce 无 ElementId，key 为构造器参数，outline/appearance 为 setter）
     ("Kbd", &["key", "outline", "appearance"]),
-    // Breadcrumb 专用（RenderOnce 无 ElementId，items 为唯一数据绑定属性）
-    ("Breadcrumb", &["items"]),
+    // Breadcrumb 专用（RenderOnce 无 ElementId，items 数据绑定 + on_select 同级选择回调）
+    ("Breadcrumb", &["items", "on_select"]),
+    // Alert 专用（variant 关联函数 + message 构造器参数）
+    // info/success/warning/error 已在 COMMON_STATIC_PROPS（Button variant 集合复用）
+    // on_close 走 event 分类（前缀 "on"）
+    ("Alert", &["variant", "message", "title", "banner", "visible", "icon", "on_close"]),
 ];
 
 /// 查询组件的所有已注册属性（通用 + 专用）

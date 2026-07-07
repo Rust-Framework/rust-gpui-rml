@@ -8,6 +8,14 @@
 
   "rml.tab.promote": "固定标签页",
 
+  "case.common.demo": "演示效果",
+
+  "case.common.code": "示例代码",
+
+  "case.common.api": "API",
+
+  "case.common.copy": "复制",
+
   "login.title": "登录 RML Demo",
 
   "login.hint": "输入任意用户名进入案例库",
@@ -266,14 +274,6 @@
 
   "case.menu.off": "关",
 
-  "case.slot.title": "组件插槽",
-
-  "case.slot.header": "页眉插槽",
-
-  "case.slot.body": "来自父视图的默认插槽内容",
-
-  "case.slot.footer": "页脚插槽",
-
   "case.table.title": "表格组件",
 
   "case.description_list.title": "描述列表",
@@ -311,6 +311,8 @@
   "case.slider.title": "滑块 Slider",
 
   "case.code_editor.title": "代码编辑器 CodeEditor",
+
+  "case.alert.title": "警告提示 Alert",
 
   "case.expression.title": "表达式 Expression",
 

@@ -158,10 +158,11 @@ mapper.register_pair(
     Url::parse("file:///src/login.rml.rs").unwrap(),
 );
 
-// 用户在 .rml 第 10 行设断点 → 翻译为 .rml.rs 位置
-let (rust_uri, line) = mapper.rml_to_rust(
+// 用户在 .rml 第 10 行第 3 列设断点 → 翻译为 .rml.rs 位置
+let (rust_uri, line, column) = mapper.rml_to_rust(
     &Url::parse("file:///src/login.rml").unwrap(),
     10,
+    3,
 ).unwrap();
 
 let bp = Breakpoint {

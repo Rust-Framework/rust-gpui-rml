@@ -41,15 +41,21 @@ fn gen_node_impl(
     let lv: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
     let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
     match node {
-        Node::Element(elem) => gen_element(elem, ctx, depth, id_counter, loop_vars, parents),
+        Node::Element(elem) => {
+            let (code, is_iter) = gen_element(elem, ctx, depth, id_counter, loop_vars, parents)?;
+            // 注入 sourcemap 行内标记：后处理扫描时记录 (elem.span, rust_line, rust_col)
+            // 标记格式 /*__rml_sm:S:E*/，S/E 为 AST span 字节偏移
+            let marked = format!("/*__rml_sm:{}:{}*/{}", elem.span.start, elem.span.end, code);
+            Ok((marked, is_iter))
+        }
         Node::Text(text) => Ok((format!("{:?}", text), false)),
-        Node::Interpolation { expr, .. } => {
-            Ok((
-                format!("format!(\"{{}}\", {})", gen_expr_code(expr, &lv, &computed)),
-                false,
-            ))
+        Node::Interpolation { expr, span } => {
+            let code = format!("format!(\"{{}}\", {})", gen_expr_code(expr, &lv, &computed));
+            let marked = format!("/*__rml_sm:{}:{}*/{}", span.start, span.end, code);
+            Ok((marked, false))
         }
         Node::MixedText(segments) => {
+            // MixedText 无整体 span（segments 各自带 span），此处不加标记
             Ok((gen_mixed_text(segments, &lv, &computed), false))
         }
     }
@@ -234,6 +240,7 @@ pub(crate) fn gen_element(
         }
         return Err(CodegenError {
             message: "<component> 标签必须提供 content={expr} 属性".to_string(),
+            span: Some(elem.span),
         });
     }
 
@@ -302,6 +309,7 @@ pub(crate) fn gen_element(
 
     let builtin = tags::lookup(tag).ok_or_else(|| CodegenError {
         message: format!("unknown tag: <{}>", tag),
+        span: Some(elem.span),
     })?;
 
     let each_clause = elem.directives.iter().find_map(|d| match d {
@@ -402,6 +410,7 @@ pub(crate) fn gen_element(
             if has_else && !has_if {
                 return Err(CodegenError {
                     message: "`else` 指令必须紧跟在 `if` 指令之后".to_string(),
+                    span: Some(elem.span),
                 });
             }
         }
@@ -458,6 +467,7 @@ pub(crate) fn gen_element(
                     return Err(CodegenError {
                         message: "`if`/`else` 配对不支持 `each` 指令，请将列表渲染与条件渲染分离"
                             .to_string(),
+                        span: Some(elem.span),
                     });
                 }
 
