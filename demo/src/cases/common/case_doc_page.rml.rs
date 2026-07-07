@@ -22,16 +22,16 @@ pub struct CaseDocPage {
 }
 
 impl CaseDocPage {
-    /// 当前 Tab 对应的代码字符串
-    ///
-    /// RML 表达式不支持内联 if，用 computed 方法桥接。
+    /// .rml 源码（computed 桥接，避免 String 字段在绑定中 move 出 &self）
     #[computed]
-    pub fn current_code(&self) -> String {
-        if self.code_tab == 0 {
-            self.code_rml.clone()
-        } else {
-            self.code_rust.clone()
-        }
+    pub fn rml_code(&self) -> String {
+        self.code_rml.clone()
+    }
+
+    /// .rml.rs 源码
+    #[computed]
+    pub fn rust_code(&self) -> String {
+        self.code_rust.clone()
     }
 
     /// 切换代码 Tab

@@ -191,7 +191,7 @@ impl TabVariant {
                 ..Default::default()
             },
             TabVariant::Pill => TabStyle {
-                fg: cx.theme().foreground,
+                fg: cx.theme().tab_foreground,
                 bg: cx.theme().transparent.into(),
                 ..Default::default()
             },
@@ -236,7 +236,7 @@ impl TabVariant {
                 fg: cx.theme().secondary_foreground,
                 bg: cx.theme().tokens.secondary_hover.into(),
                 borders: Edges::all(px(1.)),
-                border_color: cx.theme().border,
+                border_color: cx.theme().primary,
                 ..Default::default()
             },
             TabVariant::Pill => TabStyle {
@@ -322,7 +322,11 @@ impl TabVariant {
         match self {
             TabVariant::Tab => TabStyle {
                 fg: cx.theme().muted_foreground,
-                bg: cx.theme().transparent.into(),
+                bg: if selected {
+                    cx.theme().tokens.tab_active.into()
+                } else {
+                    cx.theme().transparent.into()
+                },
                 border_color: if selected {
                     cx.theme().border
                 } else {
@@ -348,11 +352,7 @@ impl TabVariant {
                 fg: cx.theme().muted_foreground,
                 bg: cx.theme().transparent.into(),
                 borders: Edges::all(px(1.)),
-                border_color: if selected {
-                    cx.theme().primary
-                } else {
-                    cx.theme().border
-                },
+                border_color: cx.theme().border,
                 ..Default::default()
             },
             TabVariant::Pill => TabStyle {
@@ -370,7 +370,7 @@ impl TabVariant {
             },
             TabVariant::Segmented => TabStyle {
                 fg: cx.theme().muted_foreground,
-                bg: cx.theme().tokens.tab_bar.into(),
+                bg: cx.theme().transparent.into(),
                 inner_bg: if selected {
                     cx.theme().tokens.background.into()
                 } else {
@@ -774,12 +774,10 @@ impl RenderOnce for Tab {
             tab_style = self.variant.disabled(self.selected, cx);
             hover_style = self.variant.disabled(self.selected, cx);
         }
-        let tab_bar_prefix = self.tab_bar_prefix.unwrap_or_default();
-        if !tab_bar_prefix
-            && self.ix == 0 && self.variant == TabVariant::Tab {
-                tab_style.borders.left = px(0.);
-                hover_style.borders.left = px(0.);
-            }
+        if self.ix == 0 && self.variant == TabVariant::Tab {
+            tab_style.borders.left = px(0.);
+            hover_style.borders.left = px(0.);
+        }
         let corner_radii = self
             .variant
             .corner_radii(self.size, self.selected, self.disabled, cx);
@@ -807,14 +805,16 @@ impl RenderOnce for Tab {
         };
         let inner_shadow = tab_style.shadow && !segmented_indicator_active;
 
-        // When a sliding indicator is active and ready, it alone represents the
-        // selected state. Suppress the selected tab's own active background/border
-        // so the two don't overlap during the switch animation (Segmented already
-        // does this for its `inner_bg` above). Skip disabled tabs so a
+        // When a sliding indicator is active, it alone represents the selected
+        // state. Suppress the selected tab's own active background/border so the
+        // two don't overlap (Segmented already does this for its `inner_bg`
+        // above). Suppress regardless of indicator_ready to avoid first-frame
+        // flash: the selected tab shows normal styling until the indicator
+        // appears, then the indicator takes over. Skip disabled tabs so a
         // disabled-selected tab keeps its dimmed styling instead of the
         // full-strength indicator color.
         let suppress_active_visual =
-            self.selected && !self.disabled && self.indicator_active && self.indicator_ready;
+            self.selected && !self.disabled && self.indicator_active;
         // Pill paints its active state via the outer `bg`.
         let outer_bg = if suppress_active_visual && self.variant == TabVariant::Pill {
             cx.theme().transparent.into()
@@ -983,7 +983,7 @@ impl RenderOnce for Tab {
                         .flex()
                         .items_center()
                         .justify_center()
-                        .mr(px(2.))
+                        .mr(px(4.))
                         .child(Icon::new(IconName::Close).small())
                         .into_any_element()
                 } else {
@@ -996,7 +996,7 @@ impl RenderOnce for Tab {
                         .items_center()
                         .justify_center()
                         .rounded(px(4.))
-                        .mr(px(2.))
+                        .mr(px(4.))
                         .cursor_pointer()
                         .when(!self.selected, |this| {
                             this.opacity(0.)

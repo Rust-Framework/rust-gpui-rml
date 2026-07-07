@@ -22,6 +22,55 @@ use crate::compiler::codegen::gen_node;
 use crate::compiler::{CodegenCtx, CodegenError};
 use crate::parser::ast::{Attribute, Directive, Element, Node};
 
+/// 提取 body_code 中的 `&mut self` 方法调用到 prelude。
+///
+/// 用于 slot 闭包和 tab body 闭包：这些闭包是 `Fn`，不能捕获 `&mut self`，
+/// 但某些方法（如 `get_or_init_ref`、`__rml_get_or_init_input_state`）需要 `&mut self`。
+/// 通过将调用提取到闭包外的 prelude（render 作用域，`self` 是 `&mut Self`），
+/// 闭包 `move` 捕获返回值（Entity<T> 是 Send + Sync + Clone）。
+///
+/// 当前提取的模式：
+/// - `self.__rml_state.get_or_init_ref(...)` → ref-based 组件 lazy init
+/// - `self.__rml_get_or_init_input_state(...)` → `<input model={field}>` 双向绑定 InputState 初始化
+///
+/// - `var_prefix`：提取的变量名前缀（如 `__rml_entity_` 或 `__rml_slot_demo_entity_``），
+///   避免多 slot 场景变量名冲突
+/// - 返回 `(prelude, replaced_body)`：prelude 是 `let <var> = <call>;` 语句序列，
+///   replaced_body 中原调用被替换为变量名
+pub fn extract_state_refs(body_code: &str, var_prefix: &str) -> (String, String) {
+    let mut prelude = String::new();
+    let mut working = body_code.to_string();
+    let mut entity_counter: usize = 0;
+    let needles = [
+        "self.__rml_state.get_or_init_ref(",
+        "self.__rml_get_or_init_input_state(",
+    ];
+
+    loop {
+        // 在 working 中查找最早出现的 needle
+        let earliest = needles
+            .iter()
+            .filter_map(|n| working.find(n).map(|i| (i, *n)))
+            .min_by_key(|(i, _)| *i);
+        let (start, needle) = match earliest {
+            Some(x) => x,
+            None => break,
+        };
+        let paren_open = start + needle.len() - 1;
+        let paren_close = match find_matching_paren(&working, paren_open) {
+            Some(i) => i,
+            None => break,
+        };
+        let full_call = &working[start..=paren_close];
+        let var_name = format!("{}{}", var_prefix, entity_counter);
+        entity_counter += 1;
+        prelude.push_str(&format!("let {} = {};\n            ", var_name, full_call));
+        working.replace_range(start..=paren_close, &var_name);
+    }
+
+    (prelude, working)
+}
+
 /// 扫描 body 代码中的 self/cx 引用，在闭包外预提取为 owned 变量，
 /// 闭包内替换为该变量，使 body 闭包满足 `Send + Sync + 'static` 约束
 /// （`TabItem::body` 闭包签名不接收 `Context`，无法访问 self/cx）。
@@ -76,28 +125,10 @@ fn extract_body_deps(
     working = let_re.replace_all(&working, "").to_string();
 
     // ── 步骤 1：提取 self.__rml_state.get_or_init_ref(...) 到 prelude ──
-    // 用括号匹配找到完整调用（参数含嵌套闭包 move |w, c| ...）
-    let mut entity_counter: usize = 0;
-    loop {
-        let needle = "self.__rml_state.get_or_init_ref(";
-        let start = match working.find(needle) {
-            Some(i) => i,
-            None => break,
-        };
-        // 从 needle 末尾的 '(' 开始括号匹配
-        let paren_open = start + needle.len() - 1;
-        let paren_close = match find_matching_paren(&working, paren_open) {
-            Some(i) => i,
-            None => break,
-        };
-        // 完整调用：working[start..=paren_close]
-        let full_call = &working[start..=paren_close];
-        let var_name = format!("__rml_entity_{}", entity_counter);
-        entity_counter += 1;
-        prelude.push_str(&format!("let {} = {};\n            ", var_name, full_call));
-        // 替换 body 中的完整调用为变量名
-        working.replace_range(start..=paren_close, &var_name);
-    }
+    // 委托给 extract_state_refs（公共函数，slot 闭包也复用）
+    let (state_prelude, state_working) = extract_state_refs(&working, "__rml_entity_");
+    prelude.push_str(&state_prelude);
+    working = state_working;
 
     // ── 步骤 2 & 3：提取 self.xxx / self.xxx() 到 prelude ──
     // 匹配 self.xxx 或 self.xxx() 的简单字段访问（不匹配链式调用如 self.tabs.iter()）

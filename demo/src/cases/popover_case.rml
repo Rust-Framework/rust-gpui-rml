@@ -1,60 +1,106 @@
 <component>
-    <div display="flex" flex-direction="column" class="case-pane doc-pane">
-        <h2>{t("case.popover.title")}</h2>
-        <p>Popover 是 RML 的浮动气泡容器组件，标签为 PascalCase <code>Popover</code>。子节点通过 <code>slot="trigger"</code> 路由到 <code>.trigger()</code>，其余子节点作为 content 注入 <code>.child()</code>。<code>anchor</code> 属性控制气泡定位锚点，<code>default-open</code> 控制初始展开状态。</p>
-
-        <Card title="基础用法">
-            <p>点击按钮展开气泡内容：</p>
-            <Popover>
-                <Button slot="trigger" label="点击展开" />
-                <div display="flex" flex-direction="column" gap="8px" padding="12px">
-                    <p>这是气泡内容。</p>
-                    <p>可以放置任意元素。</p>
-                </div>
-            </Popover>
-        </Card>
-
-        <Card title="锚点定位 anchor">
-            <p><code>anchor</code> 属性控制气泡相对于 trigger 的定位：</p>
-            <div display="flex" flex-direction="row" gap="16px">
-                <Popover anchor="bottom-left">
-                    <Button slot="trigger" label="bottom-left" />
-                    <div padding="8px">左下角锚点</div>
-                </Popover>
-                <Popover anchor="bottom-center">
-                    <Button slot="trigger" label="bottom-center" />
-                    <div padding="8px">中下角锚点</div>
-                </Popover>
-                <Popover anchor="bottom-right">
-                    <Button slot="trigger" label="bottom-right" />
-                    <div padding="8px">右下角锚点</div>
+    <CaseDocPage
+        title={t("case.popover.title")}
+        description="Popover 是 RML 的浮动气泡容器组件，标签为 PascalCase Popover 或小写 popover（均合法）。Stateless 容器组件，子节点通过 slot=&quot;trigger&quot; 路由到 .trigger()，其余子节点作为 content 注入 .child()。anchor 属性控制气泡定位锚点（8 个方向），default-open 控制初始展开状态，overlay-closable 控制点击外部是否关闭，appearance 控制是否应用默认样式。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <div class="demo-section">
+                <h3>基础用法</h3>
+                <p>Popover 包裹一个 trigger 元素（通过 slot="trigger" 标记）和若干 content 子节点。点击 trigger 展开气泡，显示 content 内容。trigger 需实现 Selectable + IntoElement（如 Button）。</p>
+                <Popover>
+                    <Button slot="trigger" label="点击展开" />
+                    <div class="popover-content">
+                        <p>这是气泡内容，可以放置任意元素。</p>
+                        <p>支持文本、按钮、表单等所有 GPUI 元素。</p>
+                    </div>
                 </Popover>
             </div>
-        </Card>
 
-        <Card title="默认展开 default-open">
-            <p><code>default-open="true"</code> 让气泡初始处于展开状态：</p>
-            <Popover default-open="true">
-                <Button slot="trigger" label="已展开" />
-                <div padding="8px">初始展开的气泡内容</div>
-            </Popover>
-        </Card>
+            <div class="demo-section">
+                <h3>锚点定位 anchor</h3>
+                <p>anchor 属性控制气泡相对于 trigger 的定位方向，支持 8 个锚点：top-left / top-center / top-right / bottom-left / bottom-center / bottom-right / left-center / right-center。下方演示三种常用的 bottom 锚点。</p>
+                <div class="popover-row">
+                    <Popover anchor="bottom-left">
+                        <Button slot="trigger" label="bottom-left" />
+                        <div class="popover-tip">左下角锚点</div>
+                    </Popover>
+                    <Popover anchor="bottom-center">
+                        <Button slot="trigger" label="bottom-center" />
+                        <div class="popover-tip">中下角锚点</div>
+                    </Popover>
+                    <Popover anchor="bottom-right">
+                        <Button slot="trigger" label="bottom-right" />
+                        <div class="popover-tip">右下角锚点</div>
+                    </Popover>
+                </div>
+            </div>
 
-        <Card title="示例代码">
-            <p>点击下方 Tab 切换 <code>.rml</code> 声明文件与 <code>.rml.rs</code> 后端文件：</p>
-            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
-                <Tab label=".rml">
-                    <CodeEditor ref="rml_editor" value={rml_sample} language="rml" />
-                </Tab>
-                <Tab label=".rml.rs">
-                    <CodeEditor ref="rust_editor" value={rust_sample} language="rust" />
-                </Tab>
-            </TabBar>
-        </Card>
+            <div class="demo-section">
+                <h3>顶部锚点对比</h3>
+                <p>top-left / top-center / top-right 锚点让气泡显示在 trigger 上方，适用于 trigger 位于页面底部的场景。</p>
+                <div class="popover-row">
+                    <Popover anchor="top-left">
+                        <Button slot="trigger" label="top-left" />
+                        <div class="popover-tip">左上角锚点</div>
+                    </Popover>
+                    <Popover anchor="top-center">
+                        <Button slot="trigger" label="top-center" />
+                        <div class="popover-tip">中上角锚点</div>
+                    </Popover>
+                    <Popover anchor="top-right">
+                        <Button slot="trigger" label="top-right" />
+                        <div class="popover-tip">右上角锚点</div>
+                    </Popover>
+                </div>
+            </div>
 
-        <Card title="API">
+            <div class="demo-section">
+                <h3>默认展开 default-open</h3>
+                <p>default-open="true" 让气泡初始处于展开状态，适用于页面加载时就需要显示提示的场景。</p>
+                <Popover default-open="true">
+                    <Button slot="trigger" label="已展开" />
+                    <div class="popover-tip">初始展开的气泡内容，页面加载即显示</div>
+                </Popover>
+            </div>
+
+            <div class="demo-section">
+                <h3>样式与交互控制</h3>
+                <p>appearance="false" 关闭默认样式（背景/边框/阴影），适用于完全自定义气泡样式的场景。overlay-closable="false" 禁用点击外部关闭，适用于强制用户在气泡内操作的场景。</p>
+                <div class="popover-row">
+                    <Popover appearance="false">
+                        <Button slot="trigger" label="无默认样式" />
+                        <div class="popover-tip" style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 8px;">appearance=false：自定义黄色背景，无默认边框/阴影</div>
+                    </Popover>
+                    <Popover overlay-closable="false">
+                        <Button slot="trigger" label="禁用外部关闭" />
+                        <div class="popover-tip">overlay-closable=false：点击外部不关闭，需点击 trigger 再次切换</div>
+                    </Popover>
+                </div>
+            </div>
+
+            <div class="demo-section">
+                <h3>富内容 Rich Content</h3>
+                <p>气泡内容支持任意 GPUI 元素，包括表单、按钮、列表等。下方演示一个含标题、输入框和操作按钮的富内容气泡。</p>
+                <Popover>
+                    <Button slot="trigger" label="打开设置面板" primary="" />
+                    <div class="popover-panel">
+                        <h4>用户设置</h4>
+                        <p class="hint">在此面板中放置表单或操作按钮。</p>
+                        <div class="popover-row">
+                            <Button label="保存" primary="" size="small" />
+                            <Button label="取消" size="small" />
+                        </div>
+                    </div>
+                </Popover>
+            </div>
+        </template>
+
+        <template slot="api">
             <h3>Popover</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-        </Card>
-    </div>
+            <p>另：popover 与 Popover 标签等价（normalize_component_tag 统一为 Popover）。</p>
+            <p>另：slot="trigger" 是 RML 的 slot 机制，将子元素路由到 .trigger() 方法；其余子节点作为 content 通过 .child() 注入。</p>
+        </template>
+    </CaseDocPage>
 </component>

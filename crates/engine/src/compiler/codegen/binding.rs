@@ -62,10 +62,11 @@ pub(super) fn gen_model_input(
     }
 
     let wrapper_id = format!("rml_input_err:{}", field);
+    let self_prefix = crate::compiler::expr::current_self_alias().unwrap_or("self");
     let code = format!(
         r#"{{
             let __rml_input = {input_code};
-            let __rml_err: Option<gpui::SharedString> = self.__rml_state.field_errors.get({field:?}).and_then(|e| e.clone());
+            let __rml_err: Option<gpui::SharedString> = {self_prefix}.__rml_state.field_errors.get({field:?}).and_then(|e| e.clone());
             if let Some(__rml_err_msg) = __rml_err {{
                 let __rml_input = __rml_input.border_color(gpui::rgb(0xff0000));
                 gpui::div()
@@ -78,6 +79,7 @@ pub(super) fn gen_model_input(
             }}
         }}"#,
         input_code = input_code,
+        self_prefix = self_prefix,
         field = field,
         wrapper_id = wrapper_id
     );

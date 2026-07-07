@@ -49,7 +49,7 @@
 
             <div class="demo-section">
                 <h3>5. 单元格模板（Scoped Slot 参数访问）</h3>
-                <p>通过 <code>&lt;template slot="cell" field="name"&gt;</code> 自定义 name 列渲染，模板内可直接引用闭包参数 <code>row_idx</code>。</p>
+                <p>通过 template slot="cell" field="name" 自定义 name 列渲染，模板内可直接引用闭包参数 row_idx。</p>
                 <Table rows={user_rows} bordered="">
                     <Column key="name" title="姓名" width="160" />
                     <Column key="age" title="年龄" align="center" />
@@ -71,7 +71,14 @@
         </template>
 
         <template slot="api">
-            <Table columns={api_columns} rows={api_rows} bordered="" />
+            <h3>Table</h3>
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+            <h3>Column（子标签）</h3>
+            <Table columns={column_api_columns} rows={column_api_rows} bordered="" stripe="" />
+            <h3>Slots（模板插槽）</h3>
+            <Table columns={slot_api_columns} rows={slot_api_rows} bordered="" stripe="" />
+            <p>另：table 与 Table 标签等价（normalize_component_tag 统一为 Table），column 与 Column 同理。</p>
+            <p>另：TableRow::row_span(key, n) 在 Rust 端设置行合并，无需在 RML 声明中配置。</p>
         </template>
     </CaseDocPage>
 </component>

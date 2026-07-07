@@ -3,7 +3,7 @@ use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
 
-use crate::cases::common::CaseDocPage;
+use crate::cases::common::{build_api_table, CaseDocPage};
 
 #[contribute(
     host_id = "demo.shell",
@@ -17,6 +17,10 @@ use crate::cases::common::CaseDocPage;
 pub struct TableCase {
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
+    pub column_api_columns: Vec<TableColumn>,
+    pub column_api_rows: Vec<TableRow>,
+    pub slot_api_columns: Vec<TableColumn>,
+    pub slot_api_rows: Vec<TableRow>,
     pub user_rows: Vec<TableRow>,
     pub merged_rows: Vec<TableRow>,
     pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
@@ -33,39 +37,35 @@ impl IContribution for TableCase {
 
 impl ILifecycle for TableCase {
     fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut gpui::Context<Self>) {
-        // 初始化 CaseDocPage 实体（供 <CaseDocPage> 组件嵌入使用）
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
 
-        // API 文档表格数据
-        self.api_columns = vec![
-            TableColumn::new("prop", "属性"),
-            TableColumn::new("type", "类型"),
-            TableColumn::new("desc", "说明"),
-        ];
-        self.api_rows = vec![
-            TableRow::new()
-                .cell("prop", "columns")
-                .cell("type", "Vec<TableColumn>")
-                .cell("desc", "数据绑定式列定义"),
-            TableRow::new()
-                .cell("prop", "rows")
-                .cell("type", "Vec<TableRow>")
-                .cell("desc", "行数据绑定"),
-            TableRow::new()
-                .cell("prop", "bordered")
-                .cell("type", "布尔标志")
-                .cell("desc", "显示边框"),
-            TableRow::new()
-                .cell("prop", "stripe")
-                .cell("type", "布尔标志")
-                .cell("desc", "斑马纹样式"),
-            TableRow::new()
-                .cell("prop", "delegate")
-                .cell("type", "Rc<dyn TableDelegate>")
-                .cell("desc", "模板委托（自定义渲染）"),
-        ];
+        let (cols, rows) = build_api_table(&[
+            ("columns", "Vec<TableColumn> 绑定", "数据绑定式列定义（与 Column 子标签二选一）"),
+            ("rows", "Vec<TableRow> 绑定", "行数据绑定"),
+            ("bordered", "布尔标志", "显示边框"),
+            ("stripe", "布尔标志", "斑马纹样式"),
+            ("delegate", "Rc<dyn TableDelegate>", "模板委托（自定义渲染，高级用法）"),
+        ]);
+        self.api_columns = cols;
+        self.api_rows = rows;
 
-        // 用户数据表格
+        let (cols, rows) = build_api_table(&[
+            ("key", "字符串", "列字段标识（对应 TableRow::cell(key, value) 的 key）"),
+            ("title", "字符串", "列标题（显示在列头）"),
+            ("width", "数字字符串", "列宽（像素，如 width=\"120\"）"),
+            ("align", "left/center/right", "列对齐方式（默认 left）"),
+        ]);
+        self.column_api_columns = cols;
+        self.column_api_rows = rows;
+
+        let (cols, rows) = build_api_table(&[
+            ("template slot=\"header\"", "slot", "自定义列头模板（替换默认列头渲染）"),
+            ("template slot=\"footer\"", "slot", "表格底部插槽（如统计信息、分页等）"),
+            ("template slot=\"cell\" field=\"name\"", "scoped slot", "单元格模板（field 指定列，模板内可引用 row_idx 闭包参数）"),
+        ]);
+        self.slot_api_columns = cols;
+        self.slot_api_rows = rows;
+
         self.user_rows = vec![
             TableRow::new()
                 .cell("name", "张三")
@@ -81,7 +81,6 @@ impl ILifecycle for TableCase {
                 .cell("email", "wangwu@example.com"),
         ];
 
-        // 合并列示例：category 列跨 2 行
         self.merged_rows = vec![
             TableRow::new()
                 .cell("category", "水果")
@@ -106,99 +105,11 @@ impl ILifecycle for TableCase {
 impl TableCase {
     #[computed]
     pub fn rml_sample(&self) -> String {
-        r#"<!-- table_case.rml：声明式 UI，描述结构 + 绑定 + 事件 -->
-<component>
-    <!-- 1. 数据绑定式（columns + rows 双绑定） -->
-    <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-
-    <!-- 2. 声明式 Column 子标签 -->
-    <Table rows={user_rows} bordered="">
-        <Column key="name" title="姓名" width="120" />
-        <Column key="age" title="年龄" align="center" />
-        <Column key="email" title="邮箱" />
-    </Table>
-
-    <!-- 3. 小写标签形式 -->
-    <table rows={user_rows} bordered="" stripe="">
-        <column key="name" title="姓名" />
-        <column key="age" title="年龄" align="center" />
-        <column key="email" title="邮箱" />
-    </table>
-
-    <!-- 4. 插槽模板（header + footer） -->
-    <Table rows={user_rows} bordered="">
-        <Column key="name" title="姓名" />
-        <Column key="age" title="年龄" />
-        <template slot="header">
-            <span style="color: blue;">自定义列头</span>
-        </template>
-        <template slot="footer">
-            <span>共 3 条记录</span>
-        </template>
-    </Table>
-
-    <!-- 5. 单元格模板（Scoped Slot：field="name" 指定列） -->
-    <Table rows={user_rows} bordered="">
-        <Column key="name" title="姓名" />
-        <Column key="age" title="年龄" />
-        <template slot="cell" field="name">
-            <span style="color: blue;">第 {row_idx} 行</span>
-        </template>
-    </Table>
-
-    <!-- 6. 合并列（row_span 在 TableRow 上设置） -->
-    <Table rows={merged_rows} bordered="">
-        <Column key="category" title="分类" width="120" />
-        <Column key="name" title="名称" />
-        <Column key="value" title="值" align="center" />
-    </Table>
-</component>"#
-            .to_string()
+        include_str!("table_case.rml").to_string()
     }
 
     #[computed]
     pub fn rust_sample(&self) -> String {
-        r#"// table_case.rml.rs：后端状态 + computed + command handler
-use rml::prelude::*;
-use rml_ui::{TableColumn, TableRow};
-
-#[component]
-#[derive(Default)]
-pub struct TableCase {
-    pub api_columns: Vec<TableColumn>,
-    pub api_rows: Vec<TableRow>,
-    pub user_rows: Vec<TableRow>,
-    pub merged_rows: Vec<TableRow>,
-}
-
-impl ILifecycle for TableCase {
-    fn on_loaded(&mut self, _w: &mut gpui::Window, _cx: &mut Context<Self>) {
-        // 列定义
-        self.api_columns = vec![
-            TableColumn::new("prop", "属性"),
-            TableColumn::new("type", "类型"),
-            TableColumn::new("desc", "说明"),
-        ];
-        // 行数据
-        self.user_rows = vec![
-            TableRow::new()
-                .cell("name", "张三")
-                .cell("age", "28")
-                .cell("email", "zhangsan@example.com"),
-        ];
-        // 合并列：row_span 跨 2 行
-        self.merged_rows = vec![
-            TableRow::new()
-                .cell("category", "水果")
-                .cell("name", "苹果")
-                .cell("value", "5")
-                .row_span("category", 2),
-            TableRow::new()
-                .cell("name", "香蕉")
-                .cell("value", "3"),
-        ];
-    }
-}"#
-            .to_string()
+        include_str!("table_case.rml.rs").to_string()
     }
 }

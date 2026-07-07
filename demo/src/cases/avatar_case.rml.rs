@@ -3,7 +3,7 @@ use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
 
-use crate::cases::common::build_api_table;
+use crate::cases::common::{build_api_table, CaseDocPage};
 
 #[contribute(
     host_id = "demo.shell",
@@ -15,11 +15,15 @@ use crate::cases::common::build_api_table;
 #[component]
 #[derive(Default)]
 pub struct AvatarCase {
+    /// model 双向绑定的姓名字段，配合 input + Avatar name={name} 实时联动
     pub name: String,
+    /// 尺寸循环索引（0/1/2 → small/medium/large），配合 if 指令演示条件渲染
     pub size_index: u8,
-    pub code_tab: usize,
-    pub api_columns: Vec<TableColumn>,
-    pub api_rows: Vec<TableRow>,
+    pub avatar_api_columns: Vec<TableColumn>,
+    pub avatar_api_rows: Vec<TableRow>,
+    pub group_api_columns: Vec<TableColumn>,
+    pub group_api_rows: Vec<TableRow>,
+    pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
 }
 
 impl IContribution for AvatarCase {
@@ -32,21 +36,31 @@ impl IContribution for AvatarCase {
 }
 
 impl ILifecycle for AvatarCase {
-    fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
+    fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
+        self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         self.name = "Jason Lee".into();
+
         let (cols, rows) = build_api_table(&[
-            ("src", "URL 字符串/绑定", "图片地址"),
-            ("name", "字符串/绑定", "取首字母显示"),
-            ("placeholder", "IconName 枚举名", "占位图标"),
-            ("size", "xsmall/small/medium/large", "尺寸"),
+            ("src", "URL 字符串/绑定", "图片地址（最高优先级，加载失败回退到 name/placeholder）"),
+            ("name", "字符串/绑定", "取首字母显示（如 Jason Lee → JL）"),
+            ("placeholder", "IconName 枚举名", "占位图标（无 src/name 时使用）"),
+            ("size", "xsmall/small/medium/large", "尺寸（Sizable trait）"),
             ("on-click", "事件", "点击回调"),
         ]);
-        self.api_columns = cols;
-        self.api_rows = rows;
+        self.avatar_api_columns = cols;
+        self.avatar_api_rows = rows;
+
+        let (cols, rows) = build_api_table(&[
+            ("limit", "数字/绑定", "限制显示的 Avatar 数量"),
+            ("ellipsis", "布尔标志", "溢出折叠（显示 +N 提示）"),
+        ]);
+        self.group_api_columns = cols;
+        self.group_api_rows = rows;
     }
 }
 
 impl AvatarCase {
+    /// 根据 size_index % 3 返回当前尺寸标签，配合 if 指令演示条件渲染
     #[computed]
     pub fn size_label(&self) -> &'static str {
         match self.size_index % 3 {
@@ -58,78 +72,18 @@ impl AvatarCase {
 
     #[computed]
     pub fn rml_sample(&self) -> String {
-        r#"<!-- avatar_case.rml：声明式 UI，三种内容模式 + 尺寸 + 动态绑定 -->
-<component>
-    <!-- src 图片源 -->
-    <Avatar src="https://..." size="large" />
-
-    <!-- name 首字母（"Jason Lee" → "JL"） -->
-    <Avatar name="Jason Lee" />
-
-    <!-- placeholder 占位图标（IconName 枚举名） -->
-    <Avatar placeholder="UserCircle" />
-
-    <!-- 4 种尺寸 -->
-    <Avatar name="XS" size="xsmall" />
-    <Avatar name="M" size="medium" />
-
-    <!-- 绑定：name={field} -->
-    <Avatar name={user_name} size="large" />
-
-    <!-- AvatarGroup 分组 -->
-    <AvatarGroup limit="3" ellipsis="">
-        <Avatar name="Alice" />
-        <Avatar name="Bob" />
-    </AvatarGroup>
-</component>"#
-            .to_string()
+        include_str!("avatar_case.rml").to_string()
     }
 
     #[computed]
     pub fn rust_sample(&self) -> String {
-        r#"// avatar_case.rml.rs：后端状态 + computed + command handler
-use rml::prelude::*;
-
-#[component]
-#[derive(Default)]
-pub struct AvatarCase {
-    pub name: String,           // model 双向绑定的字段
-    pub size_index: u8,         // 状态字段
-}
-
-impl ILifecycle for AvatarCase {
-    fn on_loaded(&mut self, _w: &mut gpui::Window, _cx: &mut Context<Self>) {
-        self.name = "Jason Lee".into();   // 初始化默认值
-    }
-}
-
-impl AvatarCase {
-    // #[computed] 标注的方法可在 RML 中以 {method_name} 引用
-    #[computed]
-    pub fn size_label(&self) -> &'static str {
-        match self.size_index % 3 {
-            0 => "small",
-            1 => "medium",
-            _ => "large",
-        }
+        include_str!("avatar_case.rml.rs").to_string()
     }
 
-    // #[command] 标注的方法可被 on-click={on_cycle_size} 调用
+    /// 循环切换尺寸索引：0 → 1 → 2 → 0 ...
+    /// wrapping_add 避免 u8 溢出，配合 size_index % 3 实现循环
     #[command]
     pub fn on_cycle_size(&mut self, _: &ClickEvent, _cx: &mut Context<Self>) {
         self.size_index = self.size_index.wrapping_add(1);
-    }
-}"#
-            .to_string()
-    }
-
-    #[command]
-    pub fn on_cycle_size(&mut self, _: &ClickEvent, _cx: &mut Context<Self>) {
-        self.size_index = self.size_index.wrapping_add(1);
-    }
-
-    #[command]
-    pub fn on_code_tab_change(&mut self, idx: usize, _cx: &mut Context<Self>) {
-        self.code_tab = idx;
     }
 }

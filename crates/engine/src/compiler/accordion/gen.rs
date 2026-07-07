@@ -136,10 +136,13 @@ pub fn gen_accordion(
 
     // 4. 受控模式：生成 on-toggle-click 回调，同步 open-ixs 字段并可选调用用户回调
     if let Some(ref expr) = open_ixs_expr {
+        // expr 可能是 "self.field" 或 "__rml_self_ref.field"（slot 闭包内），
+        // 反向同步在 cx.listener 闭包内，应使用 "this.field"，需剥离前缀只保留字段名。
         let field_name = expr
             .strip_prefix("self.")
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| expr.clone());
+            .or_else(|| expr.strip_prefix("__rml_self_ref."))
+            .unwrap_or(expr)
+            .to_string();
         let callback = match user_on_toggle {
             Some(ref handler) => {
                 let method = match handler {

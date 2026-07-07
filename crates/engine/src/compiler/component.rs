@@ -226,13 +226,20 @@ pub fn gen_component(
                 // subscription 句柄用 detach() 让其随 entity 生命周期自动销毁
                 // （Subscription 非 Sync，不能存入 RmlState）
                 // ref_key 作为 subscribe 标识键：ref name 优先，回退到 state_field
+                //
+                // 注意：`self.__rml_state.get_or_init_ref(...)` 必须保持 `self.` 前缀，
+                // 以便 `extract_state_refs` 在 slot 闭包场景能将其提取到 prelude
+                // （prelude 在 render 作用域，`self` 是 `&mut Self`，可满足 `&mut self.__rml_state`）。
+                // no-ref 路径的 `self.{state_field}` 走 `current_self_alias` 替换为
+                // `__rml_self_ref.{state_field}`（slot 闭包内 `__rml_self_ref: &Self` 可读取字段）。
+                let self_prefix = expr::current_self_alias().unwrap_or("self");
                 let entity_expr = if let Some(name) = ref_name {
                     format!(
                         "self.__rml_state.get_or_init_ref(\"{}\", _window, &mut *cx, {})",
                         name, state_ctor
                     )
                 } else {
-                    format!("self.{}.clone()", state_field)
+                    format!("{}.{}.clone()", self_prefix, state_field)
                 };
                 let ref_key = ref_name.unwrap_or(state_field);
                 let subscribe_code: String = input_event_handlers
@@ -255,9 +262,13 @@ pub fn gen_component(
             } else {
                 // no-ref 路径（无 Input 事件）：字段类型为 Option<Entity<T>>，
                 // 需 as_ref().expect 取出（ref 模式优先，仅 legacy/手动管理场景使用此路径）
+                //
+                // 走 `current_self_alias` 替换前缀：slot 闭包内 `__rml_self_ref: &Self`
+                // 可读取字段；普通 render 作用域仍是 `self`（`&mut Self` 也能读取字段）。
+                let self_prefix = expr::current_self_alias().unwrap_or("self");
                 format!(
-                    "{}::new(self.{}.as_ref().expect(\"init {} in on_loaded\"))",
-                    component.ctor_path, state_field, state_field
+                    "{}::new({}.{}.as_ref().expect(\"init {} in on_loaded\"))",
+                    component.ctor_path, self_prefix, state_field, state_field
                 )
             }
         }
