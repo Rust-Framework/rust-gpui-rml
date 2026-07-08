@@ -37,7 +37,7 @@ impl IRmlTranslator for StatelessComponentTranslator {
         matches!(
             tags::component_lookup_resolved(&elem.tag).map(|c| c.kind),
             Some(tags::ComponentKind::Stateless | tags::ComponentKind::StatelessNoId)
-        ) && !crate::compiler::menu::is_menu_container(&elem.tag)
+        ) && !tags::is_menu_container(&elem.tag)
     }
 
     fn to_rust(

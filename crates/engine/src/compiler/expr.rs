@@ -150,7 +150,7 @@ pub fn to_rust_code(expr: &Expr) -> String {
 //  self_alias 机制（Phase 2：slot 闭包捕获父视图数据）
 //
 //  slot 闭包内不能直接引用父视图的 `self`（生命周期不允许）。
-//  `gen_user_component` 在生成 slot 内容时，通过 `with_self_alias` 设置别名，
+//  `UserComponentTranslator` 在生成 slot 内容时，通过 `with_self_alias` 设置别名，
 //  `to_rust_code_with_ctx` / `gen_expr_code` 据此把 `self.xxx` 替换为
 //  `__rml_self_ref.xxx`，绕过生命周期限制。
 //
@@ -163,7 +163,7 @@ thread_local! {
 
 /// 在闭包执行期间设置 self_alias，返回闭包结果
 ///
-/// `gen_user_component` 生成 slot 内容时调用：
+/// `UserComponentTranslator` 生成 slot 内容时调用：
 /// ```ignore
 /// let slot_code = with_self_alias("__rml_self_ref", || {
 ///     gen_slot_content(slot_nodes, ctx, id_counter, loop_vars)

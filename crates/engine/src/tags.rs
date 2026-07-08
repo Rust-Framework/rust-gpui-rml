@@ -505,6 +505,14 @@ pub fn is_item_builder_tag(tag: &str) -> bool {
         || normalize_component_tag(tag) == "DescriptionSeparator"
 }
 
+/// 判断标签是否为菜单容器（ContextMenu / DropdownMenu / MenuBar / AppMenuBar / menu）
+pub fn is_menu_container(tag: &str) -> bool {
+    matches!(
+        normalize_component_tag(tag).as_str(),
+        "ContextMenu" | "DropdownMenu" | "MenuBar" | "AppMenuBar" | "menu"
+    )
+}
+
 #[cfg(test)]
 mod normalize_tests {
     use super::*;
@@ -539,7 +547,7 @@ mod normalize_tests {
             component_lookup_resolved("MenuBar").unwrap().ctor_path,
             "rml_ui::MenuBar"
         );
-        // gen_element 仍优先走 is_menu_container → compiler/menu/（处理 menu-item 子节点）
+        // MenuBar 由 MenuBarTranslator 处理（matches 优先于 StatelessComponentTranslator）
     }
 
     #[test]

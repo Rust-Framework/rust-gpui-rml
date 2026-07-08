@@ -186,7 +186,7 @@ impl Builder {
 
         // 收集用户自定义组件注册表（所有 #[component] 标注的 struct）
         // 供 codegen 在 component_lookup 未命中时生成 self.<field>.as_ref().expect(...).clone()
-        // 同时携带 field_types + computed_methods，供 gen_user_component 处理属性传参
+        // 同时携带 field_types + computed_methods，供 UserComponentTranslator 处理属性传参
         let user_components: std::collections::HashMap<String, UserComponentInfo> = struct_metas
             .iter()
             .filter(|(_, m)| m.is_component)
