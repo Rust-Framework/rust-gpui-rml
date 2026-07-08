@@ -3,7 +3,7 @@ use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
 
-use crate::cases::common::build_api_table;
+use crate::cases::common::{build_api_table, CaseDocPage};
 
 #[contribute(
     host_id = "demo.shell",
@@ -19,6 +19,7 @@ pub struct CounterCase {
     pub step: i32,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
+    pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
 }
 
 impl IContribution for CounterCase {
@@ -31,7 +32,9 @@ impl IContribution for CounterCase {
 }
 
 impl ILifecycle for CounterCase {
-    fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
+    fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
+        self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
+
         let (cols, rows) = build_api_table(&[
             ("pub 字段", "i32/String/bool", "observable 状态"),
             ("#[computed]", "方法", "缓存计算属性"),
@@ -50,9 +53,13 @@ impl CounterCase {
     }
 
     #[computed]
-    pub fn code_sample(&self) -> String {
-        r#"<Button label="点击 +1" on-click={on_click} />
-<p>{counter_text}</p>"#.to_string()
+    pub fn rml_sample(&self) -> String {
+        include_str!("counter_case.rml").to_string()
+    }
+
+    #[computed]
+    pub fn rust_sample(&self) -> String {
+        include_str!("counter_case.rml.rs").to_string()
     }
 
     #[command]

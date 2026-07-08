@@ -1,60 +1,51 @@
 <component>
-    <div display="flex" flex-direction="column" class="case-pane doc-pane">
-        <h2>{t("case.menu.custom.title")}</h2>
+    <CaseDocPage
+        title={t("case.menu.custom.title")}
+        description="Menu Custom 案例演示自定义菜单项的典型场景：分组标题（header）、主题切换（checked 状态）、外链跳转（href）、登出操作。模拟设置类菜单的完整交互。核心概念：menu-item header 作为分组标题不可点击；menu-item on-click 绑定命令更新状态；href 渲染为外链；dark_mode 字段记录主题状态，dark_mode_label computed 提供显示文案。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <Card title="演示效果">
+                <p>{custom_status}</p>
 
-        <p>Menu Custom 案例演示自定义菜单项的典型场景：分组标题（header）、主题切换（checked 状态）、外链跳转（href）、登出操作。模拟设置类菜单的完整交互。核心概念：menu-item header 作为分组标题不可点击；menu-item on-click 绑定命令更新状态；href 渲染为外链；dark_mode 字段记录主题状态，dark_mode_label computed 提供显示文案。</p>
+                <div class="demo-section">
+                    <h3>自定义菜单项</h3>
+                    <p>header="" 作为分组标题，menu-separator 分隔不同功能区：</p>
+                    <dropdown-menu>
+                        <Button label="Settings" ghost="" />
+                        <menu-item header="" label="Display" />
+                        <menu-item label="Dark Mode" on-click={on_toggle_dark} />
+                        <menu-separator />
+                        <menu-item label="Help Center" href="https://rml.dev/help/" icon="Info" />
+                        <menu-item label="Sign Out" on-click={on_sign_out} />
+                    </dropdown-menu>
+                </div>
 
-        <Card title="演示效果">
-            <p>{custom_status}</p>
+                <div class="demo-section">
+                    <h3>主题切换</h3>
+                    <p>点击 Dark Mode 切换 dark_mode 字段，当前状态：{dark_mode_label}</p>
+                    <dropdown-menu>
+                        <Button label="Theme" ghost="" />
+                        <menu-item label="Dark Mode" checked={dark_mode} on-click={on_toggle_dark} />
+                    </dropdown-menu>
+                </div>
 
-            <div class="demo-section">
-                <h3>自定义菜单项</h3>
-                <p>header="" 作为分组标题，menu-separator 分隔不同功能区：</p>
-                <dropdown-menu>
-                    <Button label="Settings" ghost="" />
-                    <menu-item header="" label="Display" />
-                    <menu-item label="Dark Mode" on-click={on_toggle_dark} />
-                    <menu-separator />
-                    <menu-item label="Help Center" href="https://rml.dev/help/" icon="Info" />
-                    <menu-item label="Sign Out" on-click={on_sign_out} />
-                </dropdown-menu>
-            </div>
+                <div class="demo-section">
+                    <h3>链接项与登出</h3>
+                    <p>Help Center 为外链，Sign Out 触发命令更新状态：</p>
+                    <dropdown-menu>
+                        <Button label="Account" ghost="" />
+                        <menu-item label="Help Center" href="https://rml.dev/help/" icon="Info" />
+                        <menu-separator />
+                        <menu-item label="Sign Out" icon="ExternalLink" on-click={on_sign_out} />
+                    </dropdown-menu>
+                </div>
+            </Card>
+        </template>
 
-            <div class="demo-section">
-                <h3>主题切换</h3>
-                <p>点击 Dark Mode 切换 dark_mode 字段，当前状态：{dark_mode_label}</p>
-                <dropdown-menu>
-                    <Button label="Theme" ghost="" />
-                    <menu-item label="Dark Mode" checked={dark_mode} on-click={on_toggle_dark} />
-                </dropdown-menu>
-            </div>
-
-            <div class="demo-section">
-                <h3>链接项与登出</h3>
-                <p>Help Center 为外链，Sign Out 触发命令更新状态：</p>
-                <dropdown-menu>
-                    <Button label="Account" ghost="" />
-                    <menu-item label="Help Center" href="https://rml.dev/help/" icon="Info" />
-                    <menu-separator />
-                    <menu-item label="Sign Out" icon="ExternalLink" on-click={on_sign_out} />
-                </dropdown-menu>
-            </div>
-        </Card>
-
-        <Card title="代码示例">
-            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
-                <Tab label=".rml">
-                    <CodeEditor ref="rml_editor" value={rml_sample} language="rml" />
-                </Tab>
-                <Tab label=".rml.rs">
-                    <CodeEditor ref="rust_editor" value={rust_sample} language="rust" />
-                </Tab>
-            </TabBar>
-        </Card>
-
-        <h3>Menu Custom</h3>
-        <Card title="API">
+        <template slot="api">
+            <h3>Menu Custom</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-        </Card>
-    </div>
+        </template>
+    </CaseDocPage>
 </component>

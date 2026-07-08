@@ -3,7 +3,7 @@ use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
 
-use crate::cases::common::build_api_table;
+use crate::cases::common::{build_api_table, CaseDocPage};
 
 #[contribute(
     host_id = "demo.shell",
@@ -17,6 +17,7 @@ use crate::cases::common::build_api_table;
 pub struct SlotScopeCase {
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
+    pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
 }
 
 impl IContribution for SlotScopeCase {
@@ -29,7 +30,8 @@ impl IContribution for SlotScopeCase {
 }
 
 impl ILifecycle for SlotScopeCase {
-    fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
+    fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
+        self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         let (cols, rows) = build_api_table(&[
             ("scope={name}", "声明", "<template slot=\"x\" scope={name}> 接收 &dyn ISlotScope"),
             ("panel.slot_name()", "查询", "返回当前插槽名（\"left\"/\"right\"/\"bottom\"）"),
@@ -42,5 +44,17 @@ impl ILifecycle for SlotScopeCase {
         ]);
         self.api_columns = cols;
         self.api_rows = rows;
+    }
+}
+
+impl SlotScopeCase {
+    #[computed]
+    pub fn rml_sample(&self) -> String {
+        include_str!("slot_scope_case.rml").to_string()
+    }
+
+    #[computed]
+    pub fn rust_sample(&self) -> String {
+        include_str!("slot_scope_case.rml.rs").to_string()
     }
 }

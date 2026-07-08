@@ -469,13 +469,15 @@ pub fn component_static_setter(name: &str, value: &str, tag: &str) -> Option<Str
                 None
             }
         }
-        // Sizable 尺寸：size="small" / size="large" / size="xsmall" / size="medium"
+        // Sizable 尺寸：size="xsmall" / size="small" / size="medium" / size="large" / size="default"
         // 替代旧 small/xsmall/large 布尔标志，统一通过 with_size(impl Into<Size>) 设置
+        // 不写 size 属性 = 使用组件默认（Size::Medium，由 #[default] 指定）
+        // "default" 为 "medium" 的语义别名，均生成 .with_size(Size::Medium)
         "size" => {
             let size = match value {
                 "xsmall" => "rml_ui::Size::XSmall",
                 "small" => "rml_ui::Size::Small",
-                "medium" => "rml_ui::Size::Medium",
+                "medium" | "default" => "rml_ui::Size::Medium",
                 "large" => "rml_ui::Size::Large",
                 _ => return None,
             };
@@ -1022,8 +1024,8 @@ mod tests {
 
     #[test]
     fn static_setter_size_attribute() {
-        // size="small" / size="large" / size="xsmall" / size="medium"
-        // 替代旧 small/xsmall/large 布尔标志，统一通过 .with_size(Size::*)
+        // size="xsmall" / size="small" / size="medium" / size="large" / size="default"
+        // 统一通过 .with_size(Size::*) 设置，不写 size = 组件默认（Medium）
         assert_eq!(
             component_static_setter("size", "xsmall", "Button").unwrap(),
             ".with_size(rml_ui::Size::XSmall)"
@@ -1034,6 +1036,11 @@ mod tests {
         );
         assert_eq!(
             component_static_setter("size", "medium", "Button").unwrap(),
+            ".with_size(rml_ui::Size::Medium)"
+        );
+        // "default" 为 "medium" 的语义别名
+        assert_eq!(
+            component_static_setter("size", "default", "Button").unwrap(),
             ".with_size(rml_ui::Size::Medium)"
         );
         assert_eq!(

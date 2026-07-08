@@ -1,0 +1,5 @@
+<component>
+    <div class="bottom-tab-body">
+        <span>$ demo terminal — scope variable accessible from slot content</span>
+    </div>
+</component>

@@ -6,7 +6,7 @@ use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
 
-use crate::cases::common::build_api_table;
+use crate::cases::common::{build_api_table, CaseDocPage};
 
 /// DescriptionList items 绑定的演示数据项。
 /// name() → label，id() → value（通过 as_contribution() 能力查询提取）。
@@ -48,11 +48,11 @@ pub struct DescriptionListCase {
     pub width: gpui::Pixels,
     pub is_vertical: bool,
     pub desitems: Vec<Arc<dyn IValue>>,
-    pub code_tab: usize,
     pub list_api_columns: Vec<TableColumn>,
     pub list_api_rows: Vec<TableRow>,
     pub item_api_columns: Vec<TableColumn>,
     pub item_api_rows: Vec<TableRow>,
+    pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
 }
 
 impl IContribution for DescriptionListCase {
@@ -65,7 +65,8 @@ impl IContribution for DescriptionListCase {
 }
 
 impl ILifecycle for DescriptionListCase {
-    fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut gpui::Context<Self>) {
+    fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut gpui::Context<Self>) {
+        self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         ensure_desc_entry_registered();
         self.user_name = "alice".into();
         self.user_email = "alice@example.com".into();
@@ -102,96 +103,11 @@ impl ILifecycle for DescriptionListCase {
 impl DescriptionListCase {
     #[computed]
     pub fn rml_sample(&self) -> String {
-        r#"<!-- description_list_case.rml：声明式 UI，描述结构 + 绑定 + 事件 -->
-<component>
-    <!-- 1. 水平布局 + bordered + columns + label-width -->
-    <DescriptionList bordered="" columns="3" label-width="120">
-        <DescriptionItem label="用户名" value="alice" />
-        <DescriptionItem label="邮箱" value="alice@example.com" />
-        <DescriptionItem label="状态" value="活跃" span="2" />
-    </DescriptionList>
-
-    <!-- 2. 垂直布局：vertical="" -->
-    <DescriptionList vertical="" bordered="">
-        <DescriptionItem label="姓名" value="张三" />
-        <DescriptionItem label="年龄" value="28" />
-    </DescriptionList>
-
-    <!-- 3. 小写标签形式 + separator -->
-    <descriptions bordered="" columns="2">
-        <description label="产品" value="RML 框架" />
-        <separator />
-        <description label="版本" value="1.0.0" />
-    </descriptions>
-
-    <!-- 4. bind 绑定（动态数据） -->
-    <descriptions bordered="" columns="2" label-width={width}>
-        <description label="用户名" value={user_name} />
-        <description label="角色" value={role} span="2" />
-    </descriptions>
-
-    <!-- 5. 元素子节点作为 value -->
-    <descriptions bordered="" columns="2">
-        <description label="角色">
-            <Badge primary="">{role}</Badge>
-        </description>
-    </descriptions>
-
-    <!-- 6. items 绑定（批量数据） -->
-    <descriptions items={desitems} bordered="" columns="2" label-width="100" />
-
-    <!-- 7. vertical 绑定（动态方向） -->
-    <descriptions vertical={is_vertical} bordered="" columns="2" label-width="100">
-        <description label="字段 A" value="值 A" />
-        <description label="字段 B" value="值 B" />
-    </descriptions>
-</component>"#
-            .to_string()
+        include_str!("description_list_case.rml").to_string()
     }
 
     #[computed]
     pub fn rust_sample(&self) -> String {
-        r#"// description_list_case.rml.rs：后端状态 + computed + command handler
-use std::sync::Arc;
-use rml::prelude::*;
-
-#[component]
-#[derive(Default)]
-pub struct DescriptionListCase {
-    pub user_name: String,
-    pub user_email: String,
-    pub role: String,
-    pub width: gpui::Pixels,
-    pub is_vertical: bool,
-    pub desitems: Vec<Arc<dyn IValue>>,
-}
-
-impl ILifecycle for DescriptionListCase {
-    fn on_loaded(&mut self, _w: &mut gpui::Window, _cx: &mut Context<Self>) {
-        self.user_name = "alice".into();
-        self.user_email = "alice@example.com".into();
-        self.role = "管理员".into();
-        self.width = gpui::px(120.0);
-        self.is_vertical = true;
-        // items 绑定：Vec<Arc<dyn IValue>>
-        self.desitems = vec![
-            Arc::new(DescEntry { name: "产品名称".into(), id: "RML 框架".into() }),
-            Arc::new(DescEntry { name: "版本".into(), id: "1.0.0".into() }),
-        ];
-    }
-}
-
-impl DescriptionListCase {
-    #[command]
-    pub fn on_code_tab_change(&mut self, idx: usize, _cx: &mut Context<Self>) {
-        self.code_tab = idx;
-    }
-}"#
-            .to_string()
-    }
-
-    #[command]
-    pub fn on_code_tab_change(&mut self, idx: usize, _cx: &mut Context<Self>) {
-        self.code_tab = idx;
+        include_str!("description_list_case.rml.rs").to_string()
     }
 }

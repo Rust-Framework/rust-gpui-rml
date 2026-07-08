@@ -3,7 +3,7 @@ use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
 
-use crate::cases::common::build_api_table;
+use crate::cases::common::{build_api_table, CaseDocPage};
 
 #[contribute(
     host_id = "demo.shell",
@@ -19,6 +19,7 @@ pub struct ExpressionCase {
     pub b: i32,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
+    pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
 }
 
 impl IContribution for ExpressionCase {
@@ -31,7 +32,8 @@ impl IContribution for ExpressionCase {
 }
 
 impl ILifecycle for ExpressionCase {
-    fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
+    fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
+        self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         self.a = 12;
         self.b = 8;
         let (cols, rows) = build_api_table(&[
@@ -62,6 +64,16 @@ impl ExpressionCase {
         } else {
             format!("{:.2}", self.a as f64 / self.b as f64)
         }
+    }
+
+    #[computed]
+    pub fn rml_sample(&self) -> String {
+        include_str!("expression_case.rml").to_string()
+    }
+
+    #[computed]
+    pub fn rust_sample(&self) -> String {
+        include_str!("expression_case.rml.rs").to_string()
     }
 
     #[command]

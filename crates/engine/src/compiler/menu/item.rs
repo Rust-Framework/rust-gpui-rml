@@ -58,7 +58,7 @@ pub fn gen_popup_menu_body(
             {
                 clause.iterable.clone()
             } else {
-                format!("self.{}", clause.iterable)
+                format!("{}.{}", crate::compiler::expr::current_self_alias().unwrap_or("self"), clause.iterable)
             };
             lines.push(format!(
                 "for {} in {}.iter() {{\n                {}\n            }}",

@@ -3,7 +3,7 @@ use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{InputState, TableColumn, TableRow};
 
-use crate::cases::common::build_api_table;
+use crate::cases::common::{build_api_table, CaseDocPage};
 
 #[contribute(
     host_id = "demo.shell",
@@ -22,9 +22,9 @@ pub struct CodeEditorCase {
     /// 而 on_loaded 阶段 ref_entities 尚未填充，故这些配置应在首次 render 后通过
     /// ElementRef.with_mut 设置，或后续通过其他生命周期钩子（如 on_rendered，待 M5' 实现）。
     pub editor_state: ElementRef<InputState>,
-    pub code_tab: usize,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
+    pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
 }
 
 impl IContribution for CodeEditorCase {
@@ -38,7 +38,7 @@ impl IContribution for CodeEditorCase {
 
 impl ILifecycle for CodeEditorCase {
     fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
-        let _ = (_window, cx);
+        self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         let (cols, rows) = build_api_table(&[
             ("InputState::code_editor", "语言字符串", "启用代码编辑器模式"),
             ("InputState::multi_line", "布尔", "多行编辑"),
@@ -52,39 +52,11 @@ impl ILifecycle for CodeEditorCase {
 impl CodeEditorCase {
     #[computed]
     pub fn rml_sample(&self) -> String {
-        r#"<!-- code_editor_case.rml：声明式 UI，描述结构 + 绑定 + 事件 -->
-<component>
-    <!-- ref="editor_state" 通过 ElementRef 延迟获取 InputState Entity -->
-    <CodeEditor ref="editor_state" />
-</component>"#
-            .to_string()
+        include_str!("code_editor_case.rml").to_string()
     }
 
     #[computed]
     pub fn rust_sample(&self) -> String {
-        r#"// code_editor_case.rml.rs：后端状态 + computed + command handler
-use gpui::SharedString;
-use rml::prelude::*;
-use rml_ui::InputState;
-
-#[component]
-#[derive(Default)]
-pub struct CodeEditorCase {
-    // ElementRef<InputState> 通过 ref="editor_state" 关联
-    pub editor_state: ElementRef<InputState>,
-}
-
-impl ILifecycle for CodeEditorCase {
-    fn on_loaded(&mut self, _w: &mut gpui::Window, _cx: &mut Context<Self>) {
-        // on_loaded 阶段 ref_entities 尚未填充，
-        // builder 配置应在首次 render 后通过 ElementRef.with_mut 设置
-    }
-}"#
-            .to_string()
-    }
-
-    #[command]
-    pub fn on_code_tab_change(&mut self, idx: usize, _cx: &mut Context<Self>) {
-        self.code_tab = idx;
+        include_str!("code_editor_case.rml.rs").to_string()
     }
 }

@@ -1,83 +1,74 @@
 <component>
-    <div display="flex" flex-direction="column" class="case-pane doc-pane">
-        <h2>{t("case.menu.features.title")}</h2>
+    <CaseDocPage
+        title={t("case.menu.features.title")}
+        description="Menu Features 案例综合演示 dropdown-menu 的核心特性：禁用项、勾选项、链接项、子菜单、可滚动。通过 scrollable + max-h 实现长菜单滚动。核心概念：disabled 禁用菜单项（点击不触发）；checked 绑定布尔字段显示勾选；href 渲染为外链；menu-item 内嵌形成子菜单；scrollable + max-h 限制高度并启用滚动。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <Card title="演示效果">
+                <p>{features_status}</p>
 
-        <p>Menu Features 案例综合演示 dropdown-menu 的核心特性：禁用项、勾选项、链接项、子菜单、可滚动。通过 scrollable + max-h 实现长菜单滚动。核心概念：disabled 禁用菜单项（点击不触发）；checked 绑定布尔字段显示勾选；href 渲染为外链；menu-item 内嵌形成子菜单；scrollable + max-h 限制高度并启用滚动。</p>
+                <div class="demo-section">
+                    <h3>可用项与禁用项</h3>
+                    <p>Available 可点击，Disabled 灰显且点击不触发回调：</p>
+                    <dropdown-menu>
+                        <Button label="可用/禁用" ghost="" />
+                        <menu-item label="Available" on-click={on_available} />
+                        <menu-item label="Disabled" disabled="" on-click={on_disabled} />
+                    </dropdown-menu>
+                </div>
 
-        <Card title="演示效果">
-            <p>{features_status}</p>
+                <div class="demo-section">
+                    <h3>声明式命令绑定（B-1）</h3>
+                    <p><code>command=&#123;save_command&#125;</code> 绑定 <code>Arc&lt;dyn ICommand&gt;</code> 字段，点击经 <code>ICommand::execute</code> 调度：</p>
+                    <dropdown-menu>
+                        <Button label="Command" ghost="" />
+                        <menu-item label="Save (Command)" command={save_command} />
+                    </dropdown-menu>
+                </div>
 
-            <div class="demo-section">
-                <h3>可用项与禁用项</h3>
-                <p>Available 可点击，Disabled 灰显且点击不触发回调：</p>
-                <dropdown-menu>
-                    <Button label="可用/禁用" ghost="" />
-                    <menu-item label="Available" on-click={on_available} />
-                    <menu-item label="Disabled" disabled="" on-click={on_disabled} />
-                </dropdown-menu>
-            </div>
+                <div class="demo-section">
+                    <h3>勾选项</h3>
+                    <p>checked={is_checked} 绑定字段，点击切换勾选状态：</p>
+                    <dropdown-menu>
+                        <Button label="勾选项" ghost="" />
+                        <menu-item label="Checkable" checked={is_checked} on-click={on_toggle_check} />
+                    </dropdown-menu>
+                </div>
 
-            <div class="demo-section">
-                <h3>声明式命令绑定（B-1）</h3>
-                <p><code>command=&#123;save_command&#125;</code> 绑定 <code>Arc&lt;dyn ICommand&gt;</code> 字段，点击经 <code>ICommand::execute</code> 调度：</p>
-                <dropdown-menu>
-                    <Button label="Command" ghost="" />
-                    <menu-item label="Save (Command)" command={save_command} />
-                </dropdown-menu>
-            </div>
+                <div class="demo-section">
+                    <h3>链接项</h3>
+                    <p>href 渲染为外链，icon 添加图标：</p>
+                    <dropdown-menu>
+                        <Button label="链接项" ghost="" />
+                        <menu-item label="Documentation" href="https://rml.dev/docs/" icon="Info" />
+                    </dropdown-menu>
+                </div>
 
-            <div class="demo-section">
-                <h3>勾选项</h3>
-                <p>checked={is_checked} 绑定字段，点击切换勾选状态：</p>
-                <dropdown-menu>
-                    <Button label="勾选项" ghost="" />
-                    <menu-item label="Checkable" checked={is_checked} on-click={on_toggle_check} />
-                </dropdown-menu>
-            </div>
+                <div class="demo-section">
+                    <h3>子菜单与可滚动</h3>
+                    <p>scrollable + max-h="280" 限制高度，menu-item 内嵌形成子菜单：</p>
+                    <dropdown-menu scrollable="" max-h="280">
+                        <Button label="Features" ghost="" />
+                        <menu-item header="" label="Actions" />
+                        <menu-item label="Available" on-click={on_available} />
+                        <menu-item label="Disabled" disabled="" on-click={on_disabled} />
+                        <menu-item label="Checkable" checked={is_checked} on-click={on_toggle_check} />
+                        <menu-separator />
+                        <menu-item label="Documentation" href="https://rml.dev/docs/" icon="Info" />
+                        <menu-separator />
+                        <menu-item label="Submenu">
+                            <menu-item label="Item A" on-click={on_nested_a} />
+                            <menu-item label="Item B" on-click={on_nested_b} />
+                        </menu-item>
+                    </dropdown-menu>
+                </div>
+            </Card>
+        </template>
 
-            <div class="demo-section">
-                <h3>链接项</h3>
-                <p>href 渲染为外链，icon 添加图标：</p>
-                <dropdown-menu>
-                    <Button label="链接项" ghost="" />
-                    <menu-item label="Documentation" href="https://rml.dev/docs/" icon="Info" />
-                </dropdown-menu>
-            </div>
-
-            <div class="demo-section">
-                <h3>子菜单与可滚动</h3>
-                <p>scrollable + max-h="280" 限制高度，menu-item 内嵌形成子菜单：</p>
-                <dropdown-menu scrollable="" max-h="280">
-                    <Button label="Features" ghost="" />
-                    <menu-item header="" label="Actions" />
-                    <menu-item label="Available" on-click={on_available} />
-                    <menu-item label="Disabled" disabled="" on-click={on_disabled} />
-                    <menu-item label="Checkable" checked={is_checked} on-click={on_toggle_check} />
-                    <menu-separator />
-                    <menu-item label="Documentation" href="https://rml.dev/docs/" icon="Info" />
-                    <menu-separator />
-                    <menu-item label="Submenu">
-                        <menu-item label="Item A" on-click={on_nested_a} />
-                        <menu-item label="Item B" on-click={on_nested_b} />
-                    </menu-item>
-                </dropdown-menu>
-            </div>
-        </Card>
-
-        <Card title="代码示例">
-            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
-                <Tab label=".rml">
-                    <CodeEditor ref="rml_editor" value={rml_sample} language="rml" />
-                </Tab>
-                <Tab label=".rml.rs">
-                    <CodeEditor ref="rust_editor" value={rust_sample} language="rust" />
-                </Tab>
-            </TabBar>
-        </Card>
-
-        <h3>Menu Features</h3>
-        <Card title="API">
+        <template slot="api">
+            <h3>Menu Features</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-        </Card>
-    </div>
+        </template>
+    </CaseDocPage>
 </component>

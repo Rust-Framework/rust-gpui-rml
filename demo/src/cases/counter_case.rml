@@ -1,36 +1,26 @@
 <component>
-    <div display="flex" flex-direction="column" class="case-pane doc-pane">
-        <h2>{t("case.counter.title")}</h2>
-
-        <Card title="组件说明">
-            <p>计数器案例演示 RML 的命令绑定与状态更新。通过 #[command] 方法处理点击事件，修改 pub 字段后框架自动触发重渲。</p>
-            <p>核心概念：pub 字段是 observable，#[computed] 方法缓存计算结果，#[command] 方法处理事件并更新字段。</p>
-        </Card>
-
-        <Card title="API">
-            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-        </Card>
-
-        <Card title="示例代码">
-            <CodeEditor value={code_sample} />
-        </Card>
-
-        <Card title="演示效果">
-            <div class="demo-section">
-                <h3>基础计数</h3>
+    <CaseDocPage
+        title={t("case.counter.title")}
+        description="计数器案例演示 RML 的命令绑定与状态更新。通过 #[command] 方法处理点击事件，修改 pub 字段后框架自动触发重渲。核心概念：pub 字段是 observable，#[computed] 方法缓存计算结果，#[command] 方法处理事件并更新字段。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <Card title="基础计数">
                 <p>{counter_text}</p>
                 <div class="button-row">
                     <Button label="点击 +1" primary="" on-click={on_click} />
                     <Button label="重置" ghost="" on-click={on_reset} />
                 </div>
-            </div>
-            <div class="demo-section">
-                <h3>步长控制</h3>
+            </Card>
+            <Card title="步长控制">
                 <p>当前步长：{step}（每次点击 +步长）</p>
                 <div class="button-row">
                     <Button label="步长 +1" on-click={on_inc_step} />
                 </div>
-            </div>
-        </Card>
-    </div>
+            </Card>
+        </template>
+        <template slot="api">
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+        </template>
+    </CaseDocPage>
 </component>

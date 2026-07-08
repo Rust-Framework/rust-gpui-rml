@@ -1,28 +1,28 @@
 <component>
-    <div display="flex" flex-direction="column" class="case-pane doc-pane">
-        <h2>{t("case.template_slot.title")}</h2>
+    <CaseDocPage
+        title={t("case.template_slot.title")}
+        description="模板复用案例演示 RML 的 component content 透明容器模式。通过 render 方法封装可复用的 UI 块，用 component content=&#123;expr&#125; 注入到模板中，实现 Vue slot 的类似效果。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <Card title="信息卡片模板">
+                <p>调用 render_info_card(title, body) 方法构建带标题 + 内容的卡片：</p>
+                <component content={self.render_info_card("项目概况", "RML 是基于 GPUI 的声明式 UI 框架，支持数据绑定、条件渲染、列表迭代等特性。", _window, cx)} />
+                <component content={self.render_info_card("设计理念", "采用 MVVM 模式，ViewModel 通过 #[contribute] 注册，View 通过 .rml 模板声明，双向数据绑定实现 UI 与状态同步。", _window, cx)} />
+            </Card>
 
-        <Card title="组件说明">
-            <p>模板复用案例演示 RML 的 component content 透明容器模式。通过 render 方法封装可复用的 UI 块，用 component content=&#123;expr&#125; 注入到模板中，实现 Vue slot 的类似效果。</p>
-        </Card>
+            <Card title="统计卡片模板">
+                <p>调用 render_stat_card(label, value) 方法构建带标签 + 数值的卡片：</p>
+                <div display="flex" flex-direction="row" gap="16px">
+                    <component content={self.render_stat_card("案例数", "32", _window, cx)} />
+                    <component content={self.render_stat_card("组件数", "20+", _window, cx)} />
+                    <component content={self.render_stat_card("指令数", "8", _window, cx)} />
+                </div>
+            </Card>
+        </template>
 
-        <Card title="信息卡片模板">
-            <p>调用 render_info_card(title, body) 方法构建带标题 + 内容的卡片：</p>
-            <component content={self.render_info_card("项目概况", "RML 是基于 GPUI 的声明式 UI 框架，支持数据绑定、条件渲染、列表迭代等特性。", _window, cx)} />
-            <component content={self.render_info_card("设计理念", "采用 MVVM 模式，ViewModel 通过 #[contribute] 注册，View 通过 .rml 模板声明，双向数据绑定实现 UI 与状态同步。", _window, cx)} />
-        </Card>
-
-        <Card title="统计卡片模板">
-            <p>调用 render_stat_card(label, value) 方法构建带标签 + 数值的卡片：</p>
-            <div display="flex" flex-direction="row" gap="16px">
-                <component content={self.render_stat_card("案例数", "32", _window, cx)} />
-                <component content={self.render_stat_card("组件数", "20+", _window, cx)} />
-                <component content={self.render_stat_card("指令数", "8", _window, cx)} />
-            </div>
-        </Card>
-
-        <Card title="API">
+        <template slot="api">
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-        </Card>
-    </div>
+        </template>
+    </CaseDocPage>
 </component>

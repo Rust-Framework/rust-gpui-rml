@@ -3,7 +3,7 @@ use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
 
-use crate::cases::common::build_api_table;
+use crate::cases::common::{build_api_table, CaseDocPage};
 
 #[contribute(
     host_id = "demo.shell",
@@ -16,9 +16,9 @@ use crate::cases::common::build_api_table;
 #[derive(Default)]
 pub struct MenuDropdownCase {
     pub last_action: String,
-    pub code_tab: usize,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
+    pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
 }
 
 impl IContribution for MenuDropdownCase {
@@ -31,7 +31,8 @@ impl IContribution for MenuDropdownCase {
 }
 
 impl ILifecycle for MenuDropdownCase {
-    fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
+    fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
+        self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         let (cols, rows) = build_api_table(&[
             ("anchor", "枚举", "弹出锚点位置"),
             ("第一个子节点", "组件", "触发器（通常 Button）"),
@@ -57,50 +58,12 @@ impl MenuDropdownCase {
 
     #[computed]
     pub fn rml_sample(&self) -> String {
-        r#"<!-- menu_dropdown_case.rml：声明式 UI，描述结构 + 绑定 + 事件 -->
-<component>
-    <!-- dropdown-menu 第一个子元素为触发器（Button） -->
-    <dropdown-menu anchor="TopRight">
-        <Button label="Options" ghost="" />
-        <menu-item label="Custom Action" icon="Star" on-click={on_custom} />
-        <menu-separator />
-        <menu-item label="Standard Action" icon="Check" on-click={on_standard} />
-        <menu-separator />
-        <menu-item label="Exit" icon="Close" on-click={on_exit} />
-    </dropdown-menu>
-</component>"#
-            .to_string()
+        include_str!("menu_dropdown_case.rml").to_string()
     }
 
     #[computed]
     pub fn rust_sample(&self) -> String {
-        r#"// menu_dropdown_case.rml.rs：后端状态 + computed + command handler
-use gpui::SharedString;
-use rml::prelude::*;
-
-#[component]
-#[derive(Default)]
-pub struct MenuDropdownCase {
-    pub last_action: String,
-}
-
-impl MenuDropdownCase {
-    #[computed]
-    pub fn dropdown_status(&self) -> String {
-        if self.last_action.is_empty() { "空闲".into() } else { self.last_action.clone() }
-    }
-
-    #[command]
-    pub fn on_custom(&mut self, _: &ClickEvent, _: &mut Context<Self>) {
-        self.last_action = "Custom Action".to_string();
-    }
-
-    #[command]
-    pub fn on_exit(&mut self, _: &ClickEvent, _: &mut Context<Self>) {
-        self.last_action = "Exit".to_string();
-    }
-}"#
-            .to_string()
+        include_str!("menu_dropdown_case.rml.rs").to_string()
     }
 
     #[command]
@@ -116,10 +79,5 @@ impl MenuDropdownCase {
     #[command]
     pub fn on_exit(&mut self, _: &ClickEvent, _: &mut Context<Self>) {
         self.last_action = "Exit".to_string();
-    }
-
-    #[command]
-    pub fn on_code_tab_change(&mut self, idx: usize, _cx: &mut Context<Self>) {
-        self.code_tab = idx;
     }
 }

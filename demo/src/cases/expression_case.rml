@@ -1,35 +1,35 @@
 <component>
-    <div display="flex" flex-direction="column" class="case-pane doc-pane">
-        <h2>{t("case.expression.title")}</h2>
+    <CaseDocPage
+        title={t("case.expression.title")}
+        description="表达式案例演示 RML 的表达式绑定与 #[computed] 计算属性。文本插值支持任意 Rust 表达式，#[computed] 方法在依赖字段变化时自动重算。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <Card title="表达式插值">
+                <p>a = {a}, b = {b}</p>
+                <p>和 (a + b) = {a + b}</p>
+                <p>积 (a * b) = {a * b}</p>
+                <p>差 (a - b) = {a - b}</p>
+            </Card>
 
-        <Card title="组件说明">
-            <p>表达式案例演示 RML 的表达式绑定与 #[computed] 计算属性。文本插值支持任意 Rust 表达式，#[computed] 方法在依赖字段变化时自动重算。</p>
-        </Card>
+            <Card title="计算属性 #[computed]">
+                <p>#[computed] 方法在依赖字段变化时自动重算：</p>
+                <p>sum() = {sum}</p>
+                <p>product() = {product}</p>
+                <p>quotient() = {quotient}</p>
+            </Card>
 
-        <Card title="表达式插值">
-            <p>a = {a}, b = {b}</p>
-            <p>和 (a + b) = {a + b}</p>
-            <p>积 (a * b) = {a * b}</p>
-            <p>差 (a - b) = {a - b}</p>
-        </Card>
+            <Card title="交互演示">
+                <p>点击按钮修改 a/b 字段，观察上方表达式和计算属性实时更新：</p>
+                <div display="flex" flex-direction="row" gap="16px">
+                    <Button label="a + 1" on-click={on_increase_a} />
+                    <Button label="b + 1" on-click={on_increase_b} />
+                </div>
+            </Card>
+        </template>
 
-        <Card title="计算属性 #[computed]">
-            <p>#[computed] 方法在依赖字段变化时自动重算：</p>
-            <p>sum() = {sum}</p>
-            <p>product() = {product}</p>
-            <p>quotient() = {quotient}</p>
-        </Card>
-
-        <Card title="交互演示">
-            <p>点击按钮修改 a/b 字段，观察上方表达式和计算属性实时更新：</p>
-            <div display="flex" flex-direction="row" gap="16px">
-                <Button label="a + 1" on-click={on_increase_a} />
-                <Button label="b + 1" on-click={on_increase_b} />
-            </div>
-        </Card>
-
-        <Card title="API">
+        <template slot="api">
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-        </Card>
-    </div>
+        </template>
+    </CaseDocPage>
 </component>

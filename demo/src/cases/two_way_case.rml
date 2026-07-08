@@ -1,50 +1,45 @@
 <component>
-    <div display="flex" flex-direction="column" class="case-pane doc-pane">
-        <h2>{t("case.two_way.title")}</h2>
+    <CaseDocPage
+        title={t("case.two_way.title")}
+        description="双向绑定案例演示 RML 的 model 属性。通过 model=&#123;field&#125; 将 input 与 pub 字段绑定，输入变化自动回写字段，字段变化自动触发 computed 重算与重渲。核心概念：input model=&#123;field&#125; 实现双向绑定；#[validate(range(min,max))] 标注数值验证规则；验证失败时框架自动显示红框 + tooltip。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <Card title="演示效果">
+                <div class="demo-section">
+                    <h3>文本双向绑定</h3>
+                    <p>输入姓名，下方文案实时更新：</p>
+                    <input model={name} placeholder={t("demo.name_placeholder")} on-input={on_name_input} />
+                    <p>当前姓名：{name}</p>
+                </div>
+                <div class="demo-section">
+                    <h3>数值双向绑定</h3>
+                    <p>输入年龄（0-150），下方文案实时更新：</p>
+                    <input model={age} placeholder={t("demo.age_placeholder")} on-change={on_age_change} />
+                    <p>当前年龄：{age}</p>
+                </div>
+                <div class="demo-section">
+                    <h3>验证失败场景</h3>
+                    <p>输入超范围值（如 200 或 -5），观察输入框红框 + tooltip：</p>
+                    <input model={age} placeholder="输入 200 测试验证" />
+                    <p>{profile_summary}</p>
+                </div>
+                <div class="demo-section">
+                    <h3>转换器双向绑定（B-2）</h3>
+                    <p><code>model=&#123;price | Currency&#125;</code> 正向经 <code>Currency.convert</code> 显示 <code>¥1500.00</code>，反向经 <code>convert_back</code> 解析回 <code>f64</code>：</p>
+                    <input model={price | Currency} placeholder="输入 ¥1500.00 测试转换" />
+                    <p>{price_raw}</p>
+                </div>
+                <div class="demo-section">
+                    <h3>输入事件（B-3）</h3>
+                    <p><code>oninput</code> 逐键触发，<code>onchange</code> 失焦/回车触发。在姓名框输入观察 oninput 计数，在年龄框失焦观察 onchange 计数：</p>
+                    <p>oninput 触发次数：{input_event_count} | onchange 触发次数：{change_event_count}</p>
+                </div>
+            </Card>
+        </template>
 
-        <Card title="组件说明">
-            <p>双向绑定案例演示 RML 的 model 属性。通过 model=&#123;field&#125; 将 input 与 pub 字段绑定，输入变化自动回写字段，字段变化自动触发 computed 重算与重渲。</p>
-            <p>核心概念：input model=&#123;field&#125; 实现双向绑定；#[validate(range(min,max))] 标注数值验证规则；验证失败时框架自动显示红框 + tooltip。</p>
-        </Card>
-
-        <Card title="API">
+        <template slot="api">
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-        </Card>
-
-        <Card title="示例代码">
-            <CodeEditor value={code_sample} />
-        </Card>
-
-        <Card title="演示效果">
-            <div class="demo-section">
-                <h3>文本双向绑定</h3>
-                <p>输入姓名，下方文案实时更新：</p>
-                <input model={name} placeholder={t("demo.name_placeholder")} on-input={on_name_input} />
-                <p>当前姓名：{name}</p>
-            </div>
-            <div class="demo-section">
-                <h3>数值双向绑定</h3>
-                <p>输入年龄（0-150），下方文案实时更新：</p>
-                <input model={age} placeholder={t("demo.age_placeholder")} on-change={on_age_change} />
-                <p>当前年龄：{age}</p>
-            </div>
-            <div class="demo-section">
-                <h3>验证失败场景</h3>
-                <p>输入超范围值（如 200 或 -5），观察输入框红框 + tooltip：</p>
-                <input model={age} placeholder="输入 200 测试验证" />
-                <p>{profile_summary}</p>
-            </div>
-            <div class="demo-section">
-                <h3>转换器双向绑定（B-2）</h3>
-                <p><code>model=&#123;price | Currency&#125;</code> 正向经 <code>Currency.convert</code> 显示 <code>¥1500.00</code>，反向经 <code>convert_back</code> 解析回 <code>f64</code>：</p>
-                <input model={price | Currency} placeholder="输入 ¥1500.00 测试转换" />
-                <p>{price_raw}</p>
-            </div>
-            <div class="demo-section">
-                <h3>输入事件（B-3）</h3>
-                <p><code>oninput</code> 逐键触发，<code>onchange</code> 失焦/回车触发。在姓名框输入观察 oninput 计数，在年龄框失焦观察 onchange 计数：</p>
-                <p>oninput 触发次数：{input_event_count} | onchange 触发次数：{change_event_count}</p>
-            </div>
-        </Card>
-    </div>
+        </template>
+    </CaseDocPage>
 </component>

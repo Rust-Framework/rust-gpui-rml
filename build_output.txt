@@ -1,0 +1,294 @@
+﻿cargo : [1m[93mwarning[0m[1m[97m: linker stdout: 正在创建库 D:\GitCode\RF\rust-gpui-rml\target\debug\deps\rust_rml_macr
+os-09d17576e7e9453a.dll.lib 和对象 D:\GitCode\RF\rust-gpui-rml\target\debug\deps\rust_rml_macros-09d17576e7e9453a.dll.exp
+[0m
+At line:15 char:4374
++ ... dules\@vscode\ripgrep\bin'; cargo build -p rust-rml-demo 2>&1 | Tee-O ...
++                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([1m[93mwarnin...53a.dll.exp[0m:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  [1m[96m|[0m
+  [1m[96m= [0m[1m[97mnote[0m: `#[warn(linker_messages)]` on by default
+
+[1m[93mwarning[0m: `rust-rml-macros` (lib) generated 1 warning
+[1m[93mwarning[0m[1m[97m: function `strip_sourcemap_markers` is never used[0m
+   [1m[96m--> [0mcrates\engine\src\compiler\codegen\mod.rs:179:15
+    [1m[96m|[0m
+[1m[96m179[0m [1m[96m|[0m pub(crate) fn strip_sourcemap_markers(code: &str) -> String {
+    [1m[96m|[0m               [1m[93m^^^^^^^^^^^^^^^^^^^^^^^[0m
+    [1m[96m|[0m
+    [1m[96m= [0m[1m[97mnote[0m: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+[1m[93mwarning[0m: `rust-rml-engine` (lib) generated 1 warning
+[1m[92m   Compiling[0m rust-rml-demo v0.1.0 (D:\GitCode\RF\rust-gpui-rml\demo)
+[1m[93mwarning[0m: `rust-rml-engine` (lib) generated 1 warning (1 duplicate)
+[1m[91merror[E0433][0m[1m[97m: cannot find `bottom_tabs` in `shell`[0m
+  [1m[96m--> [0mD:\GitCode\RF\rust-gpui-rml\target\debug\build\rust-rml-demo-7f8e8ba54d5c5006\out/rml_generated/rml_
+contributions.rs:71:27
+   [1m[96m|[0m
+[1m[96m71[0m [1m[96m|[0m             crate::shell::bottom_tabs::output_tab::__rml_register_outputtab(cx);
+   [1m[96m|[0m                           [1m[91m^^^^^^^^^^^[0m [1m[91mcould not find `bottom_tabs` in `shell`[
+0m
+
+[1m[91merror[E0433][0m[1m[97m: cannot find `bottom_tabs` in `shell`[0m
+  [1m[96m--> [0mD:\GitCode\RF\rust-gpui-rml\target\debug\build\rust-rml-demo-7f8e8ba54d5c5006\out/rml_generated/rml_
+contributions.rs:72:27
+   [1m[96m|[0m
+[1m[96m72[0m [1m[96m|[0m             crate::shell::bottom_tabs::problems_tab::__rml_register_problemstab(cx);
+   [1m[96m|[0m                           [1m[91m^^^^^^^^^^^[0m [1m[91mcould not find `bottom_tabs` in `shell`[
+0m
+
+[1m[91merror[E0433][0m[1m[97m: cannot find `bottom_tabs` in `shell`[0m
+  [1m[96m--> [0mD:\GitCode\RF\rust-gpui-rml\target\debug\build\rust-rml-demo-7f8e8ba54d5c5006\out/rml_generated/rml_
+contributions.rs:73:27
+   [1m[96m|[0m
+[1m[96m73[0m [1m[96m|[0m             crate::shell::bottom_tabs::terminal_tab::__rml_register_terminaltab(cx);
+   [1m[96m|[0m                           [1m[91m^^^^^^^^^^^[0m [1m[91mcould not find `bottom_tabs` in `shell`[
+0m
+
+[1m[93mwarning[0m[1m[97m: unnecessary parentheses around method argument[0m
+  [1m[96m--> [0mD:\GitCode\RF\rust-gpui-rml\target\debug\build\rust-rml-demo-7f8e8ba54d5c5006\out/rml_generated/link
+_case.rs:72:95
+   [1m[96m|[0m
+[1m[96m72[0m [1m[96m|[0m             .child(rml_ui::Link::new(("rml_el", 8usize)).href("https://example.com").dis
+abled((!__rml_self_ref.is_disabled))
+   [1m[96m|[0m                                                                                               [1m[9
+3m^[0m                           [1m[93m^[0m
+   [1m[96m|[0m
+   [1m[96m= [0m[1m[97mnote[0m: `#[warn(unused_parens)]` (part of `#[warn(unused)]`) on by default
+[1m[96mhelp[0m: remove these parentheses
+   [1m[96m|[0m
+[1m[96m72[0m [91m- [0m            .child(rml_ui::Link::new(("rml_el", 8usize)).href("https://example.com").disable
+d([91m([0m!__rml_self_ref.is_disabled[91m)[0m)
+[1m[96m72[0m [92m+ [0m            .child(rml_ui::Link::new(("rml_el", 8usize)).href("https://example.com").disable
+d(!__rml_self_ref.is_disabled)
+   [1m[96m|[0m
+
+[1m[91merror[E0521][0m[1m[97m: borrowed data escapes outside of closure[0m
+   [1m[96m--> [0mD:\GitCode\RF\rust-gpui-rml\target\debug\build\rust-rml-demo-7f8e8ba54d5c5006\out/rml_generated/men
+u_editor_case.rs:117:13
+    [1m[96m|[0m
+[1m[96m 27[0m [1m[96m|[0m       let __rml_slot_demo_value: rml_core::slot::SlotRenderer = Box::new({ let __rml_se
+lf_entity = __rml_self_entity.clone(); move |_scope: &dyn rml_core::slot::ISlotScope, _window: &mut gpui::Window, _app:
+ &mut gpui::App| -> gpui::AnyElement { __rml_self_entity.update(_app, |this, c[1m[96m...[0m
+    [1m[96m|[0m                                                                                                     
+                                                                                                                       
+                                                          [1m[96m----[0m
+    [1m[96m|[0m                                                                                                     
+                                                                                                                       
+                                                          [1m[96m|[0m
+    [1m[96m|[0m                                                                                                     
+                                                                                                                       
+                                                          [1m[96m`this` is a reference that is only valid in the clos
+ure body[0m
+    [1m[96m|[0m                                                                                                     
+                                                                                                                       
+                                                          [1m[96mhas type `&'1 mut MenuEditorCase`[0m
+[1m[96m...[0m
+[1m[96m117[0m [1m[96m|[0m [1m[91m/[0m             rml_ui::Button::new(("rml_el", 3usize)).label("View").ghost(
+).dropdown_menu_with_anchor(gpui::Anchor::TopLeft, move |menu, window, cx| {
+[1m[96m118[0m [1m[96m|[0m [1m[91m|[0m             let mut menu = menu;
+[1m[96m119[0m [1m[96m|[0m [1m[91m|[0m                 menu = menu.check_side(Side::Right);
+[1m[96m120[0m [1m[96m|[0m [1m[91m|[0m                 menu = menu.item(
+[1m[96m...[0m   [1m[91m|[0m
+[1m[96m136[0m [1m[96m|[0m [1m[91m|[0m                 menu
+[1m[96m137[0m [1m[96m|[0m [1m[91m|[0m         })
+    [1m[96m|[0m [1m[91m|[0m          [1m[91m^[0m
+    [1m[96m|[0m [1m[91m|[0m          [1m[91m|[0m
+    [1m[96m|[0m [1m[91m|__________`this` escapes the closure body here[0m
+    [1m[96m|[0m            [1m[91margument requires that `'1` must outlive `'static`[0m
+
+[1m[91merror[E0521][0m[1m[97m: borrowed data escapes outside of closure[0m
+   [1m[96m--> [0mD:\GitCode\RF\rust-gpui-rml\target\debug\build\rust-rml-demo-7f8e8ba54d5c5006\out/rml_generated/men
+u_features_case.rs:122:13
+    [1m[96m|[0m
+[1m[96m 24[0m [1m[96m|[0m       let __rml_slot_demo_value: rml_core::slot::SlotRenderer = Box::new({ let __rml_se
+lf_entity = __rml_self_entity.clone(); move |_scope: &dyn rml_core::slot::ISlotScope, _window: &mut gpui::Window, _app:
+ &mut gpui::App| -> gpui::AnyElement { __rml_self_entity.update(_app, |this, c[1m[96m...[0m
+    [1m[96m|[0m                                                                                                     
+                                                                                                                       
+                                                          [1m[96m----[0m
+    [1m[96m|[0m                                                                                                     
+                                                                                                                       
+                                                          [1m[96m|[0m
+    [1m[96m|[0m                                                                                                     
+                                                                                                                       
+                                                          [1m[96m`this` is a reference that is only valid in the clos
+ure body[0m
+    [1m[96m|[0m                                                                                                     
+                                                                                                                       
+                                                          [1m[96mhas type `&'1 mut MenuFeaturesCase`[0m
+[1m[96m...[0m
+[1m[96m122[0m [1m[96m|[0m [1m[91m/[0m             rml_ui::Button::new(("rml_el", 3usize)).label("勾选项").ghost()
+.dropdown_menu_with_anchor(gpui::Anchor::TopLeft, move |menu, window, cx| {
+[1m[96m123[0m [1m[96m|[0m [1m[91m|[0m             let mut menu = menu;
+[1m[96m124[0m [1m[96m|[0m [1m[91m|[0m                 
+[1m[96m125[0m [1m[96m|[0m [1m[91m|[0m                 menu = menu.item(
+[1m[96m...[0m   [1m[91m|[0m
+[1m[96m141[0m [1m[96m|[0m [1m[91m|[0m                 menu
+[1m[96m142[0m [1m[96m|[0m [1m[91m|[0m         })
+    [1m[96m|[0m [1m[91m|[0m          [1m[91m^[0m
+    [1m[96m|[0m [1m[91m|[0m          [1m[91m|[0m
+    [1m[96m|[0m [1m[91m|__________`this` escapes the closure body here[0m
+    [1m[96m|[0m            [1m[91margument requires that `'1` must outlive `'static`[0m
+
+[1m[91merror[E0521][0m[1m[97m: borrowed data escapes outside of closure[0m
+   [1m[96m--> [0mD:\GitCode\RF\rust-gpui-rml\target\debug\build\rust-rml-demo-7f8e8ba54d5c5006\out/rml_generated/men
+u_custom_case.rs:87:13
+    [1m[96m|[0m
+[1m[96m 27[0m [1m[96m|[0m       let __rml_slot_demo_value: rml_core::slot::SlotRenderer = Box::new({ let __rml_se
+lf_entity = __rml_self_entity.clone(); move |_scope: &dyn rml_core::slot::ISlotScope, _window: &mut gpui::Window, _app:
+ &mut gpui::App| -> gpui::AnyElement { __rml_self_entity.update(_app, |this, c[1m[96m...[0m
+    [1m[96m|[0m                                                                                                     
+                                                                                                                       
+                                                          [1m[96m----[0m
+    [1m[96m|[0m                                                                                                     
+                                                                                                                       
+                                                          [1m[96m|[0m
+    [1m[96m|[0m                                                                                                     
+                                                                                                                       
+                                                          [1m[96m`this` is a reference that is only valid in the clos
+ure body[0m
+    [1m[96m|[0m                                                                                                     
+                                                                                                                       
+                                                          [1m[96mhas type `&'1 mut MenuCustomCase`[0m
+[1m[96m...[0m
+[1m[96m 87[0m [1m[96m|[0m [1m[91m/[0m             rml_ui::Button::new(("rml_el", 3usize)).label("Theme").ghost
+().dropdown_menu_with_anchor(gpui::Anchor::TopLeft, move |menu, window, cx| {
+[1m[96m 88[0m [1m[96m|[0m [1m[91m|[0m             let mut menu = menu;
+[1m[96m 89[0m [1m[96m|[0m [1m[91m|[0m                 
+[1m[96m 90[0m [1m[96m|[0m [1m[91m|[0m                 menu = menu.item(
+[1m[96m...[0m   [1m[91m|[0m
+[1m[96m106[0m [1m[96m|[0m [1m[91m|[0m                 menu
+[1m[96m107[0m [1m[96m|[0m [1m[91m|[0m         })
+    [1m[96m|[0m [1m[91m|[0m          [1m[91m^[0m
+    [1m[96m|[0m [1m[91m|[0m          [1m[91m|[0m
+    [1m[96m|[0m [1m[91m|__________`this` escapes the closure body here[0m
+    [1m[96m|[0m            [1m[91margument requires that `'1` must outlive `'static`[0m
+
+[1m[91merror[E0609][0m[1m[97m: no field `item_list` on type `&mut ListCase`[0m
+  [1m[96m--> [0mD:\GitCode\RF\rust-gpui-rml\target\debug\build\rust-rml-demo-7f8e8ba54d5c5006\out/rml_generated/list
+_case.rs:30:28
+   [1m[96m|[0m
+[1m[96m30[0m [1m[96m|[0m [1m[96m...[0m   .children(self.item_list.iter().map(|item| __rml_self_ref.render_item
+(item, _window, cx))))).child(rml_ui::Card::new(("rml_el"[1m[96m...[0m
+   [1m[96m|[0m                      [1m[91m^^^^^^^^^[0m [1m[91munknown field[0m
+   [1m[96m|[0m
+   [1m[96m= [0m[1m[97mnote[0m: available fields are: `items`, `api_columns`, `api_rows`, `case_doc_page`, `__rml_
+state`
+
+[1m[91merror[E0596][0m[1m[97m: cannot borrow `self.__rml_state` as mutable, as `Fn` closures cannot mutate their c
+aptured variables[0m
+  [1m[96m--> [0mD:\GitCode\RF\rust-gpui-rml\target\debug\build\rust-rml-demo-7f8e8ba54d5c5006\out/rml_generated/once
+_case.rs:24:275
+   [1m[96m|[0m
+[1m[96m24[0m [1m[96m|[0m [1m[96m...[0ml_core::slot::SlotRenderer = Box::new({ let __rml_self_entity = __rml_se
+lf_entity.clone(); move |_scope: &dyn rml_core::slot::ISlotScope, _window: &mut gpui::Window, _app: &mut gpui::App| -> 
+gpui::AnyElement { __rml_self_entity.update(_app, |this, cx| { [1m[96m...[0m
+   [1m[96m|[0m                                                                                               [1m[9
+6m--------------------------------------------------------------------------------------------------------------------
+[0m [1m[96min this closure[0m                  [1m[91m^^^^^^^^^^[0m [1m[91mcannot borrow as mutable[0m
+[1m[96m...[0m
+[1m[96m37[0m [1m[96m|[0m [1m[96m...[0m = self.__rml_state.once_get_or_init("once_3", || {
+   [1m[96m|[0m       [1m[96m----------------[0m [1m[96mmutable borrow occurs due to use of `self.__rml_state` i
+n closure[0m
+
+[1m[91merror[0m[1m[97m: lifetime may not live long enough[0m
+  [1m[96m--> [0mD:\GitCode\RF\rust-gpui-rml\target\debug\build\rust-rml-demo-7f8e8ba54d5c5006\out/rml_generated/once
+_case.rs:24:32
+   [1m[96m|[0m
+[1m[96m 6[0m [1m[96m|[0m     fn render(&mut self, _window: &mut gpui::Window, cx: &mut gpui::Context<Self>) -> im
+pl gpui::IntoElement {
+   [1m[96m|[0m               [1m[96m-[0m [1m[96mlet's call the lifetime of this reference `'1`[0m
+[1m[96m...[0m
+[1m[96m24[0m [1m[96m|[0m     let __rml_slot_demo_value: rml_core::slot::SlotRenderer = Box::new({ let __rml_self_
+entity = __rml_self_entity.clone(); move |_s[1m[96m...[0m
+   [1m[96m|[0m                                [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mtype annotation req
+uires that `'1` must outlive `'static`[0m
+   [1m[96m|[0m
+   [1m[96m= [0m[1m[97mnote[0m: requirement occurs because of a mutable reference to `rml_core::Window`
+   [1m[96m= [0m[1m[97mnote[0m: mutable references are invariant over their type parameter
+   [1m[96m= [0m[1m[97mhelp[0m: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about 
+variance
+[1m[96mhelp[0m: to declare that `impl rml_core::IntoElement` captures data from argument `self`, you can introduce a
+ named lifetime parameter `'a`
+   [1m[96m|[0m
+[1m[96m 6[0m [1m[96m| [0m    fn render[92m<'a>[0m(&[92m'a [0mmut self, _window: &[92m'a [0mmut gpui::Window
+, cx: &[92m'a [0mmut gpui::Context<[92m'a, [0mSelf>) -> impl gpui::IntoElement[92m + 'a [0m {
+   [1m[96m|[0m              [92m++++[0m  [92m++[0m                     [92m++[0m                        [92m+
++[0m                   [92m+++[0m                                  [92m++++[0m
+
+[1m[91merror[E0382][0m[1m[97m: borrow of moved value: `self`[0m
+  [1m[96m--> [0mD:\GitCode\RF\rust-gpui-rml\target\debug\build\rust-rml-demo-7f8e8ba54d5c5006\out/rml_generated/once
+_case.rs:49:13
+   [1m[96m|[0m
+[1m[96m 6[0m [1m[96m|[0m [1m[96m...[0mnder(&mut self, _window: &mut gpui::Window, cx: &mut gpui::Context<Self>
+) -> impl gpui::IntoElement {
+   [1m[96m|[0m         [1m[96m---------[0m [1m[96mmove occurs because `self` has type `&mut OnceCase`, which do
+es not implement the `Copy` trait[0m
+[1m[96m...[0m
+[1m[96m24[0m [1m[96m|[0m [1m[96m...[0m_rml_slot_demo_value: rml_core::slot::SlotRenderer = Box::new({ let __rm
+l_self_entity = __rml_self_entity.clone(); move |_scope: &dyn rml_core::slot::ISlotScope, _window: &mut gpui::Window, _
+app: &mut gpui::App| -> gpui::AnyElement { [1m[96m...[0m
+   [1m[96m|[0m                                                                                                      
+                 [1m[96m---------------------------------------------------------------------------------------------
+-----------------------[0m [1m[96mvalue moved into closure here[0m
+[1m[96m...[0m
+[1m[96m38[0m [1m[96m|[0m [1m[96m...[0m           (self.counter.clone(),)
+   [1m[96m|[0m                [1m[96m------------[0m [1m[96mvariable moved due to use in closure[0m
+[1m[96m...[0m
+[1m[96m49[0m [1m[96m|[0m [1m[96m...[0m   self.__rml_populate_refs();
+   [1m[96m|[0m       [1m[91m^^^^[0m [1m[91mvalue borrowed here after move[0m
+
+[1m[91merror[0m[1m[97m: lifetime may not live long enough[0m
+  [1m[96m--> [0mD:\GitCode\RF\rust-gpui-rml\target\debug\build\rust-rml-demo-7f8e8ba54d5c5006\out/rml_generated/tab_
+preview_case.rs:29:32
+   [1m[96m|[0m
+[1m[96m 6[0m [1m[96m|[0m     fn render(&mut self, _window: &mut gpui::Window, cx: &mut gpui::Context<Self>) -> im
+pl gpui::IntoElement {
+   [1m[96m|[0m               [1m[96m-[0m [1m[96mlet's call the lifetime of this reference `'1`[0m
+[1m[96m...[0m
+[1m[96m29[0m [1m[96m|[0m     let __rml_slot_demo_value: rml_core::slot::SlotRenderer = Box::new({ let __rml_self_
+entity = __rml_self_entity.clone(); move |_s[1m[96m...[0m
+   [1m[96m|[0m                                [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mtype annotation req
+uires that `'1` must outlive `'static`[0m
+   [1m[96m|[0m
+   [1m[96m= [0m[1m[97mnote[0m: requirement occurs because of a mutable reference to `rml_core::Window`
+   [1m[96m= [0m[1m[97mnote[0m: mutable references are invariant over their type parameter
+   [1m[96m= [0m[1m[97mhelp[0m: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about 
+variance
+[1m[96mhelp[0m: to declare that `impl rml_core::IntoElement` captures data from argument `self`, you can introduce a
+ named lifetime parameter `'a`
+   [1m[96m|[0m
+[1m[96m 6[0m [1m[96m| [0m    fn render[92m<'a>[0m(&[92m'a [0mmut self, _window: &[92m'a [0mmut gpui::Window
+, cx: &[92m'a [0mmut gpui::Context<[92m'a, [0mSelf>) -> impl gpui::IntoElement[92m + 'a [0m {
+   [1m[96m|[0m              [92m++++[0m  [92m++[0m                     [92m++[0m                        [92m+
++[0m                   [92m+++[0m                                  [92m++++[0m
+
+[1m[91merror[E0382][0m[1m[97m: borrow of moved value: `self`[0m
+  [1m[96m--> [0mD:\GitCode\RF\rust-gpui-rml\target\debug\build\rust-rml-demo-7f8e8ba54d5c5006\out/rml_generated/tab_
+preview_case.rs:61:13
+   [1m[96m|[0m
+[1m[96m 6[0m [1m[96m|[0m [1m[96m...[0mnder(&mut self, _window: &mut gpui::Window, cx: &mut gpui::Context<Self>
+) -> impl gpui::IntoElement {
+   [1m[96m|[0m         [1m[96m---------[0m [1m[96mmove occurs because `self` has type `&mut TabPreviewCase`, wh
+ich does not implement the `Copy` trait[0m
+[1m[96m...[0m
+[1m[96m29[0m [1m[96m|[0m [1m[96m...[0m_rml_slot_demo_value: rml_core::slot::SlotRenderer = Box::new({ let __rm
+l_self_entity = __rml_self_entity.clone(); move |_scope: &dyn rml_core::slot::ISlotScope, _window: &mut gpui::Window, _
+app: &mut gpui::App| -> gpui::AnyElement { [1m[96m...[0m
+   [1m[96m|[0m                                                                                                      
+                 [1m[96m---------------------------------------------------------------------------------------------
+-----------------------[0m [1m[96mvalue moved into closure here[0m
+[1m[96m...[0m
+[1m[96m54[0m [1m[96m|[0m [1m[96m...[0m   .children(self.tabs.iter().map(|tab| {
+   [1m[96m|[0m                 [1m[96m---------[0m [1m[96mvariable moved due to use in closure[0m
+[1m[96m...[0m
+[1m[96m61[0m [1m[96m|[0m [1m[96m...[0m   self.__rml_populate_refs();
+   [1m[96m|[0m       [1m[91m^^^^[0m [1m[91mvalue borrowed here after move[0m
+
+[1m[97mSome errors have detailed explanations: E0382, E0433, E0521, E0596, E0609.[0m
+[1m[97mFor more information about an error, try `rustc --explain E0382`.[0m
+[1m[93mwarning[0m: `rust-rml-demo` (bin "rust-rml-demo") generated 1 warning
+[1m[91merror[0m: could not compile `rust-rml-demo` (bin "rust-rml-demo") due to 12 previous errors; 1 warning emitte
+d

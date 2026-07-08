@@ -37,6 +37,9 @@ pub const COMMON_STATIC_PROPS: &[&str] = &[
     // Button variant
     "primary", "secondary", "danger", "success", "warning", "info", "ghost", "link", "text",
     // Sizable 尺寸（替代旧 small/xsmall/large 布尔标志）
+    // 接受值：xsmall / small / medium / large / default（default 为 medium 别名）
+    // 不写 size 属性 = 组件默认（Size::Medium）
+    // 对所有实现 Sizable trait 的组件生效
     "size",
     // 状态
     "compact", "loading", "disabled", "selected",

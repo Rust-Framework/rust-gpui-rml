@@ -1,0 +1,5 @@
+<component>
+    <div class="bottom-tab-body">
+        <span>Build output will appear here.</span>
+    </div>
+</component>

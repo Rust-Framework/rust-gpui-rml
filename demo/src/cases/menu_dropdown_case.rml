@@ -1,53 +1,44 @@
 <component>
-    <div display="flex" flex-direction="column" class="case-pane doc-pane">
-        <h2>{t("case.menu.dropdown.title")}</h2>
+    <CaseDocPage
+        title={t("case.menu.dropdown.title")}
+        description="Dropdown Menu 是 RML 的下拉菜单组件，标签为 kebab-case dropdown-menu。第一个子元素作为触发器，点击触发弹出菜单。核心概念：第一个子节点（通常是 Button）作为触发器；anchor 控制弹出位置（TopRight/BottomLeft 等）；menu-item 定义菜单项；menu-separator 分组分隔。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <Card title="演示效果">
+                <p>{dropdown_status}</p>
 
-        <p>Dropdown Menu 是 RML 的下拉菜单组件，标签为 kebab-case <code>dropdown-menu</code>。第一个子元素作为触发器，点击触发弹出菜单。核心概念：第一个子节点（通常是 Button）作为触发器；anchor 控制弹出位置（TopRight/BottomLeft 等）；menu-item 定义菜单项；menu-separator 分组分隔。</p>
+                <div class="demo-section">
+                    <h3>基础下拉</h3>
+                    <p>anchor="TopRight" 锚定右上角弹出，点击 Button 触发：</p>
+                    <dropdown-menu anchor="TopRight">
+                        <Button label="Options" ghost="" />
+                        <menu-item label="Custom Action" icon="Star" on-click={on_custom} />
+                        <menu-separator />
+                        <menu-item label="Standard Action" on-click={on_standard} />
+                        <menu-separator />
+                        <menu-item label="Exit" on-click={on_exit} />
+                    </dropdown-menu>
+                </div>
 
-        <Card title="演示效果">
-            <p>{dropdown_status}</p>
+                <div class="demo-section">
+                    <h3>分隔符与图标</h3>
+                    <p>menu-separator 分组，icon 添加图标，观察菜单项视觉分组：</p>
+                    <dropdown-menu anchor="TopRight">
+                        <Button label="带图标的菜单" ghost="" />
+                        <menu-item label="Custom Action" icon="Star" on-click={on_custom} />
+                        <menu-separator />
+                        <menu-item label="Standard Action" icon="Check" on-click={on_standard} />
+                        <menu-separator />
+                        <menu-item label="Exit" icon="Close" on-click={on_exit} />
+                    </dropdown-menu>
+                </div>
+            </Card>
+        </template>
 
-            <div class="demo-section">
-                <h3>基础下拉</h3>
-                <p>anchor="TopRight" 锚定右上角弹出，点击 Button 触发：</p>
-                <dropdown-menu anchor="TopRight">
-                    <Button label="Options" ghost="" />
-                    <menu-item label="Custom Action" icon="Star" on-click={on_custom} />
-                    <menu-separator />
-                    <menu-item label="Standard Action" on-click={on_standard} />
-                    <menu-separator />
-                    <menu-item label="Exit" on-click={on_exit} />
-                </dropdown-menu>
-            </div>
-
-            <div class="demo-section">
-                <h3>分隔符与图标</h3>
-                <p>menu-separator 分组，icon 添加图标，观察菜单项视觉分组：</p>
-                <dropdown-menu anchor="TopRight">
-                    <Button label="带图标的菜单" ghost="" />
-                    <menu-item label="Custom Action" icon="Star" on-click={on_custom} />
-                    <menu-separator />
-                    <menu-item label="Standard Action" icon="Check" on-click={on_standard} />
-                    <menu-separator />
-                    <menu-item label="Exit" icon="Close" on-click={on_exit} />
-                </dropdown-menu>
-            </div>
-        </Card>
-
-        <Card title="代码示例">
-            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
-                <Tab label=".rml">
-                    <CodeEditor ref="rml_editor" value={rml_sample} language="rml" />
-                </Tab>
-                <Tab label=".rml.rs">
-                    <CodeEditor ref="rust_editor" value={rust_sample} language="rust" />
-                </Tab>
-            </TabBar>
-        </Card>
-
-        <h3>Dropdown Menu</h3>
-        <Card title="API">
+        <template slot="api">
+            <h3>Dropdown Menu</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-        </Card>
-    </div>
+        </template>
+    </CaseDocPage>
 </component>

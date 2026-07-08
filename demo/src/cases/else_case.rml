@@ -1,28 +1,28 @@
 <component>
-    <div display="flex" flex-direction="column" class="case-pane doc-pane">
-        <h2>{t("case.else.title")}</h2>
+    <CaseDocPage
+        title={t("case.else.title")}
+        description="else 指令演示 if/else 双分支条件渲染。if=&#123;cond&#125; 与同父的 else 配对使用，cond 为真渲染 if 分支，为假渲染 else 分支。比双 if 取反写法更直观，且语义上互斥。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <Card title="双分支渲染">
+                <p>show_a = {show_a}</p>
+                <div display="flex" flex-direction="row" gap="16px">
+                    <Button label="切换分支" on-click={on_toggle} />
+                </div>
+                <div display="flex" flex-direction="column" gap="8px">
+                    <Card title="A 分支" if={show_a}>
+                        <p>show_a 为 true 时渲染此分支（if 分支）。</p>
+                    </Card>
+                    <Card title="B 分支" else="">
+                        <p>show_a 为 false 时渲染此分支（else 分支，与同父 if 配对）。</p>
+                    </Card>
+                </div>
+            </Card>
+        </template>
 
-        <Card title="组件说明">
-            <p>else 指令演示 if/else 双分支条件渲染。if=&#123;cond&#125; 与同父的 else 配对使用，cond 为真渲染 if 分支，为假渲染 else 分支。比双 if 取反写法更直观，且语义上互斥。</p>
-        </Card>
-
-        <Card title="双分支渲染">
-            <p>show_a = {show_a}</p>
-            <div display="flex" flex-direction="row" gap="16px">
-                <Button label="切换分支" on-click={on_toggle} />
-            </div>
-            <div display="flex" flex-direction="column" gap="8px">
-                <Card title="A 分支" if={show_a}>
-                    <p>show_a 为 true 时渲染此分支（if 分支）。</p>
-                </Card>
-                <Card title="B 分支" else="">
-                    <p>show_a 为 false 时渲染此分支（else 分支，与同父 if 配对）。</p>
-                </Card>
-            </div>
-        </Card>
-
-        <Card title="API">
+        <template slot="api">
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-        </Card>
-    </div>
+        </template>
+    </CaseDocPage>
 </component>

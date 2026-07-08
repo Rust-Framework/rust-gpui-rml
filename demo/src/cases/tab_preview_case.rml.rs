@@ -3,7 +3,7 @@ use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
 
-use crate::cases::common::build_api_table;
+use crate::cases::common::{build_api_table, CaseDocPage};
 
 #[derive(Clone, Default)]
 pub struct TabData {
@@ -24,11 +24,11 @@ pub struct TabData {
 pub struct TabPreviewCase {
     pub tabs: Vec<TabData>,
     pub selected_index: usize,
-    pub code_tab: usize,
     pub tabs_api_columns: Vec<TableColumn>,
     pub tabs_api_rows: Vec<TableRow>,
     pub tab_api_columns: Vec<TableColumn>,
     pub tab_api_rows: Vec<TableRow>,
+    pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
 }
 
 impl IContribution for TabPreviewCase {
@@ -41,7 +41,8 @@ impl IContribution for TabPreviewCase {
 }
 
 impl ILifecycle for TabPreviewCase {
-    fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
+    fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
+        self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         self.reset_tabs();
         let (cols, rows) = build_api_table(&[
             ("selected-index", "绑定", "当前选中索引"),
@@ -82,81 +83,12 @@ impl TabPreviewCase {
 
     #[computed]
     pub fn rml_sample(&self) -> String {
-        r#"<!-- tab_preview_case.rml：声明式 UI，描述结构 + 绑定 + 事件 -->
-<component>
-    <!-- Tabs: selected-index + 5 个事件回调 + each 渲染 Tab -->
-    <Tabs
-        selected-index={selected_index}
-        on-click={on_tab_select}
-        on-close={on_tab_close}
-        on-close-all={on_tab_close_all}
-        on-close-others={on_tab_close_others}
-        on-promote={on_tab_promote}>
-        <!-- each={tab in tabs} 自动遍历，preview italic 标题 -->
-        <Tab each={tab in tabs}
-            label={tab.title}
-            closable={tab.closable}
-            preview={tab.preview} />
-    </Tabs>
-</component>"#
-            .to_string()
+        include_str!("tab_preview_case.rml").to_string()
     }
 
     #[computed]
     pub fn rust_sample(&self) -> String {
-        r#"// tab_preview_case.rml.rs：后端状态 + computed + command handler
-use gpui::SharedString;
-use rml::prelude::*;
-
-#[derive(Clone, Default)]
-pub struct TabData {
-    pub title: SharedString,
-    pub closable: bool,
-    pub preview: bool,
-}
-
-#[component]
-#[derive(Default)]
-pub struct TabPreviewCase {
-    pub tabs: Vec<TabData>,
-    pub selected_index: usize,
-}
-
-impl ILifecycle for TabPreviewCase {
-    fn on_loaded(&mut self, _w: &mut gpui::Window, _cx: &mut Context<Self>) {
-        // 初始化 tabs 数据
-        self.tabs = vec![
-            TabData { title: "main.rs".into(), closable: false, preview: false },
-            TabData { title: "preview.rs".into(), closable: true, preview: true },
-        ];
-        self.selected_index = 0;
-    }
-}
-
-impl TabPreviewCase {
-    // on-click 签名 fn(index: usize, &mut Context<Self>)
-    #[command]
-    pub fn on_tab_select(&mut self, index: usize, cx: &mut Context<Self>) {
-        if index < self.tabs.len() {
-            self.selected_index = index;
-            cx.notify();
-        }
-    }
-
-    // on-close 签名 fn(index: usize, &mut Context<Self>)
-    // 关闭后自动激活 N-1 索引
-    #[command]
-    pub fn on_tab_close(&mut self, index: usize, cx: &mut Context<Self>) {
-        if index >= self.tabs.len() || !self.tabs[index].closable { return; }
-        self.tabs.remove(index);
-        if self.selected_index >= self.tabs.len() && !self.tabs.is_empty() {
-            self.selected_index = self.tabs.len() - 1;
-        }
-        cx.notify();
-    }
-    // ... on_close_all / on_close_others / on_promote
-}"#
-            .to_string()
+        include_str!("tab_preview_case.rml.rs").to_string()
     }
 
     fn reset_tabs(&mut self) {
@@ -266,10 +198,5 @@ impl TabPreviewCase {
         if index < self.tabs.len() {
             self.tabs[index].preview = false;
         }
-    }
-
-    #[command]
-    pub fn on_code_tab_change(&mut self, idx: usize, _cx: &mut Context<Self>) {
-        self.code_tab = idx;
     }
 }

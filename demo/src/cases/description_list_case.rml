@@ -1,96 +1,87 @@
 <component>
-    <div display="flex" flex-direction="column" class="case-pane doc-pane">
-        <h2>{t("case.description_list.title")}</h2>
-        <p>DescriptionList 是 RML 的描述列表组件，标签为 PascalCase <code>DescriptionList</code> 或小写 <code>descriptions</code>。用于呈现键值对形式的只读信息（如用户详情、产品属性）。核心特性：默认 horizontal 布局，<code>vertical</code> 控制纵向；<code>bordered</code> 边框控制；<code>columns</code> 多列布局；<code>label-width</code> 标签列宽；<code>items</code> 绑定批量数据（<code>Vec&lt;Arc&lt;dyn IValue&gt;&gt;</code>）；<code>description</code> 子项支持 <code>label</code> 必填 + <code>value</code>/<code>span</code> 属性；<code>separator</code> 分隔符；value 支持文本属性、文本子节点、元素子节点三种形式。</p>
+    <CaseDocPage
+        title={t("case.description_list.title")}
+        description="DescriptionList 是 RML 的描述列表组件，标签为 PascalCase DescriptionList 或小写 descriptions。用于呈现键值对形式的只读信息（如用户详情、产品属性）。核心特性：默认 horizontal 布局，vertical 控制纵向；bordered 边框控制；columns 多列布局；label-width 标签列宽；items 绑定批量数据（Vec&lt;Arc&lt;dyn IValue&gt;&gt;）；description 子项支持 label 必填 + value/span 属性；separator 分隔符；value 支持文本属性、文本子节点、元素子节点三种形式。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <Card title="演示效果">
+                <div class="demo-section">
+                    <h3>1. 水平布局 + bordered + columns={3}</h3>
+                    <DescriptionList bordered="" columns="3" label-width="120">
+                        <DescriptionItem label="用户名" value="alice" />
+                        <DescriptionItem label="邮箱" value="alice@example.com" />
+                        <DescriptionItem label="手机号" value="13800138000" />
+                        <DescriptionItem label="角色" value="管理员" />
+                        <DescriptionItem label="状态" value="活跃" span="2" />
+                    </DescriptionList>
+                </div>
 
-        <Card title="演示效果">
-            <div class="demo-section">
-                <h3>1. 水平布局 + bordered + columns={3}</h3>
-                <DescriptionList bordered="" columns="3" label-width="120">
-                    <DescriptionItem label="用户名" value="alice" />
-                    <DescriptionItem label="邮箱" value="alice@example.com" />
-                    <DescriptionItem label="手机号" value="13800138000" />
-                    <DescriptionItem label="角色" value="管理员" />
-                    <DescriptionItem label="状态" value="活跃" span="2" />
-                </DescriptionList>
-            </div>
+                <div class="demo-section">
+                    <h3>2. 垂直布局</h3>
+                    <DescriptionList vertical="" bordered="">
+                        <DescriptionItem label="姓名" value="张三" />
+                        <DescriptionItem label="年龄" value="28" />
+                        <DescriptionItem label="邮箱" value="zhangsan@example.com" />
+                    </DescriptionList>
+                </div>
 
-            <div class="demo-section">
-                <h3>2. 垂直布局</h3>
-                <DescriptionList vertical="" bordered="">
-                    <DescriptionItem label="姓名" value="张三" />
-                    <DescriptionItem label="年龄" value="28" />
-                    <DescriptionItem label="邮箱" value="zhangsan@example.com" />
-                </DescriptionList>
-            </div>
+                <div class="demo-section">
+                    <h3>3. 小写标签形式 + separator</h3>
+                    <descriptions bordered="" columns="2">
+                        <description label="产品名称" value="RML 框架" />
+                        <description label="版本" value="1.0.0" />
+                        <separator />
+                        <description label="作者" value="Rust 社区" />
+                        <description label="许可证" value="MIT" />
+                    </descriptions>
+                </div>
 
-            <div class="demo-section">
-                <h3>3. 小写标签形式 + separator</h3>
-                <descriptions bordered="" columns="2">
-                    <description label="产品名称" value="RML 框架" />
-                    <description label="版本" value="1.0.0" />
-                    <separator />
-                    <description label="作者" value="Rust 社区" />
-                    <description label="许可证" value="MIT" />
-                </descriptions>
-            </div>
+                <div class="demo-section">
+                    <h3>4. bind 绑定（动态数据）</h3>
+                    <DescriptionList bordered="" columns="2" label-width={width}>
+                        <DescriptionItem label="用户名" value={user_name} />
+                        <DescriptionItem label="邮箱" value={user_email} />
+                        <DescriptionItem label="角色" value={role} span="2" />
+                    </DescriptionList>
+                </div>
 
-            <div class="demo-section">
-                <h3>4. bind 绑定（动态数据）</h3>
-                <DescriptionList bordered="" columns="2" label-width={width}>
-                    <DescriptionItem label="用户名" value={user_name} />
-                    <DescriptionItem label="邮箱" value={user_email} />
-                    <DescriptionItem label="角色" value={role} span="2" />
-                </DescriptionList>
-            </div>
+                <div class="demo-section">
+                    <h3>5. 元素子节点作为 value</h3>
+                    <DescriptionList bordered="" columns="2">
+                        <DescriptionItem label="角色">
+                            {role}
+                        </DescriptionItem>
+                        <DescriptionItem label="状态">
+                            活跃
+                        </DescriptionItem>
+                    </DescriptionList>
+                </div>
 
-            <div class="demo-section">
-                <h3>5. 元素子节点作为 value</h3>
-                <DescriptionList bordered="" columns="2">
-                    <DescriptionItem label="角色">
-                        {role}
-                    </DescriptionItem>
-                    <DescriptionItem label="状态">
-                        活跃
-                    </DescriptionItem>
-                </DescriptionList>
-            </div>
+                <div class="demo-section">
+                    <h3>6. items 绑定（批量数据）</h3>
+                    <p><code>items=\&#123;desitems&#125;</code> 从 ViewModel 绑定 <code>Vec&lt;Arc&lt;dyn IValue&gt;&gt;</code>，通过 <code>as_contribution()</code> 提取 <code>name()</code>/<code>id()</code> 构造 DescriptionItem：</p>
+                    <descriptions items={desitems} bordered="" columns="2" label-width="100" />
+                </div>
 
-            <div class="demo-section">
-                <h3>6. items 绑定（批量数据）</h3>
-                <p><code>items=\&#123;desitems&#125;</code> 从 ViewModel 绑定 <code>Vec&lt;Arc&lt;dyn IValue&gt;&gt;</code>，通过 <code>as_contribution()</code> 提取 <code>name()</code>/<code>id()</code> 构造 DescriptionItem：</p>
-                <descriptions items={desitems} bordered="" columns="2" label-width="100" />
-            </div>
+                <div class="demo-section">
+                    <h3>7. vertical 绑定（动态方向）</h3>
+                    <p><code>vertical=\&#123;is_vertical&#125;</code> 通过 ViewModel 布尔字段控制布局方向：</p>
+                    <DescriptionList vertical={is_vertical} bordered="" columns="2" label-width="100">
+                        <DescriptionItem label="字段 A" value="值 A" />
+                        <DescriptionItem label="字段 B" value="值 B" />
+                        <DescriptionItem label="字段 C" value="值 C" />
+                    </DescriptionList>
+                </div>
+            </Card>
+        </template>
 
-            <div class="demo-section">
-                <h3>7. vertical 绑定（动态方向）</h3>
-                <p><code>vertical=\&#123;is_vertical&#125;</code> 通过 ViewModel 布尔字段控制布局方向：</p>
-                <DescriptionList vertical={is_vertical} bordered="" columns="2" label-width="100">
-                    <DescriptionItem label="字段 A" value="值 A" />
-                    <DescriptionItem label="字段 B" value="值 B" />
-                    <DescriptionItem label="字段 C" value="值 C" />
-                </DescriptionList>
-            </div>
-        </Card>
-
-        <Card title="示例代码">
-            <p>点击下方 Tab 切换 <code>.rml</code> 声明文件与 <code>.rml.rs</code> 后端文件：</p>
-            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
-                <Tab label=".rml">
-                    <CodeEditor ref="rml_editor" value={rml_sample} language="rml" />
-                </Tab>
-                <Tab label=".rml.rs">
-                    <CodeEditor ref="rust_editor" value={rust_sample} language="rust" />
-                </Tab>
-            </TabBar>
-        </Card>
-
-        <Card title="API">
+        <template slot="api">
             <h3>DescriptionList</h3>
             <Table columns={list_api_columns} rows={list_api_rows} bordered="" stripe="" />
             <h3>DescriptionItem（description）</h3>
             <Table columns={item_api_columns} rows={item_api_rows} bordered="" stripe="" />
             <p>另：<code>separator</code> 子标签无属性，作为分隔符插入子项之间。</p>
-        </Card>
-    </div>
+        </template>
+    </CaseDocPage>
 </component>

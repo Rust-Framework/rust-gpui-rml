@@ -1,83 +1,74 @@
 <component>
-    <div display="flex" flex-direction="column" class="case-pane doc-pane">
-        <h2>{t("case.radio.title")}</h2>
-        <p>Radio 和 RadioGroup 是 RML 的单选组件，标签为 PascalCase <code>Radio</code> / <code>RadioGroup</code>（或 kebab-case <code>radio-group</code>）。RadioGroup 构造器为 <code>vertical(id)</code>/<code>horizontal(id)</code>（new 私有），<code>RadioGroup</code> 的 <code>on-click</code> 事件签名为 <code>Fn(&amp;usize, ...)</code>（选中索引）。</p>
+    <CaseDocPage
+        title={t("case.radio.title")}
+        description="Radio 和 RadioGroup 是 RML 的单选组件，标签为 PascalCase Radio / RadioGroup（或 kebab-case radio-group）。RadioGroup 构造器为 vertical(id)/horizontal(id)（new 私有），RadioGroup 的 on-click 事件签名为 Fn(&amp;usize, ...)（选中索引）。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <Card title="RadioGroup 基础（垂直）">
+                <p>默认垂直布局，<code>selected-index</code> 设置选中索引，<code>on-click</code> 处理选中切换：</p>
+                <RadioGroup selected-index={selected_index} on-click={on_select}>
+                    <Radio label="选项 1" />
+                    <Radio label="选项 2" />
+                    <Radio label="选项 3" />
+                </RadioGroup>
+                <p>当前选中索引：{selected_index}</p>
+            </Card>
 
-        <Card title="RadioGroup 基础（垂直）">
-            <p>默认垂直布局，<code>selected-index</code> 设置选中索引，<code>on-click</code> 处理选中切换：</p>
-            <RadioGroup selected-index={selected_index} on-click={on_select}>
-                <Radio label="选项 1" />
-                <Radio label="选项 2" />
-                <Radio label="选项 3" />
-            </RadioGroup>
-            <p>当前选中索引：{selected_index}</p>
-        </Card>
+            <Card title="RadioGroup 水平布局">
+                <p><code>horizontal=""</code> 或 <code>layout="horizontal"</code> 切换为水平布局：</p>
+                <RadioGroup horizontal="" selected-index={selected_index} on-click={on_select}>
+                    <Radio label="A" />
+                    <Radio label="B" />
+                    <Radio label="C" />
+                    <Radio label="D" />
+                </RadioGroup>
+            </Card>
 
-        <Card title="RadioGroup 水平布局">
-            <p><code>horizontal=""</code> 或 <code>layout="horizontal"</code> 切换为水平布局：</p>
-            <RadioGroup horizontal="" selected-index={selected_index} on-click={on_select}>
-                <Radio label="A" />
-                <Radio label="B" />
-                <Radio label="C" />
-                <Radio label="D" />
-            </RadioGroup>
-        </Card>
+            <Card title="layout 属性">
+                <p><code>layout="horizontal"</code> 与 <code>horizontal=""</code> 等价：</p>
+                <RadioGroup layout="horizontal" selected-index={selected_index} on-click={on_select}>
+                    <Radio label="X" />
+                    <Radio label="Y" />
+                    <Radio label="Z" />
+                </RadioGroup>
+            </Card>
 
-        <Card title="layout 属性">
-            <p><code>layout="horizontal"</code> 与 <code>horizontal=""</code> 等价：</p>
-            <RadioGroup layout="horizontal" selected-index={selected_index} on-click={on_select}>
-                <Radio label="X" />
-                <Radio label="Y" />
-                <Radio label="Z" />
-            </RadioGroup>
-        </Card>
+            <Card title="静态 selected-index">
+                <p>使用静态数值属性（无绑定，不会自动更新）：</p>
+                <RadioGroup selected-index="1">
+                    <Radio label="选项 A" />
+                    <Radio label="选项 B" />
+                    <Radio label="选项 C" />
+                </RadioGroup>
+            </Card>
 
-        <Card title="静态 selected-index">
-            <p>使用静态数值属性（无绑定，不会自动更新）：</p>
-            <RadioGroup selected-index="1">
-                <Radio label="选项 A" />
-                <Radio label="选项 B" />
-                <Radio label="选项 C" />
-            </RadioGroup>
-        </Card>
+            <Card title="Radio tab-index / tab-stop">
+                <p><code>tab-index</code> 设置 Tab 顺序，<code>tab-stop</code> 控制是否参与 Tab 导航：</p>
+                <RadioGroup selected-index={selected_index} on-click={on_select}>
+                    <Radio label="tab-index=0" tab-index="0" />
+                    <Radio label="tab-index=1" tab-index="1" />
+                    <Radio label="tab-stop=false" tab-stop="false" tab-index="2" />
+                </RadioGroup>
+            </Card>
 
-        <Card title="Radio tab-index / tab-stop">
-            <p><code>tab-index</code> 设置 Tab 顺序，<code>tab-stop</code> 控制是否参与 Tab 导航：</p>
-            <RadioGroup selected-index={selected_index} on-click={on_select}>
-                <Radio label="tab-index=0" tab-index="0" />
-                <Radio label="tab-index=1" tab-index="1" />
-                <Radio label="tab-stop=false" tab-stop="false" tab-index="2" />
-            </RadioGroup>
-        </Card>
+            <Card title="文本子节点作为 Radio">
+                <p>RadioGroup 的子节点支持纯文本（自动转换为 Radio，<code>From&lt;&amp;str&gt; for Radio</code>）：</p>
+                <RadioGroup selected-index={selected_index} on-click={on_select}>
+                    文本选项 1
+                    文本选项 2
+                    文本选项 3
+                </RadioGroup>
+            </Card>
+        </template>
 
-        <Card title="文本子节点作为 Radio">
-            <p>RadioGroup 的子节点支持纯文本（自动转换为 Radio，<code>From&lt;&amp;str&gt; for Radio</code>）：</p>
-            <RadioGroup selected-index={selected_index} on-click={on_select}>
-                文本选项 1
-                文本选项 2
-                文本选项 3
-            </RadioGroup>
-        </Card>
-
-        <Card title="示例代码">
-            <p>点击下方 Tab 切换 <code>.rml</code> 声明文件与 <code>.rml.rs</code> 后端文件：</p>
-            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
-                <Tab label=".rml">
-                    <CodeEditor ref="rml_editor" value={rml_sample} language="rml" />
-                </Tab>
-                <Tab label=".rml.rs">
-                    <CodeEditor ref="rust_editor" value={rust_sample} language="rust" />
-                </Tab>
-            </TabBar>
-        </Card>
-
-        <Card title="API">
+        <template slot="api">
             <h3>Radio</h3>
             <Table columns={api_columns} rows={radio_rows} bordered="" stripe="" />
 
             <h3>RadioGroup</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
             <p>另：RadioGroup 的 <code>on-click</code> 事件签名为 <code>Fn(&amp;usize, ...)</code>（选中索引），不是 ClickEvent。</p>
-        </Card>
-    </div>
+        </template>
+    </CaseDocPage>
 </component>

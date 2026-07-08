@@ -3,7 +3,7 @@ use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{SliderState, TableColumn, TableRow};
 
-use crate::cases::common::build_api_table;
+use crate::cases::common::{build_api_table, CaseDocPage};
 
 #[contribute(
     host_id = "demo.shell",
@@ -18,9 +18,9 @@ pub struct SliderCase {
     pub slider_state: Option<gpui::Entity<SliderState>>,
     pub disabled_state: Option<gpui::Entity<SliderState>>,
     pub range_state: Option<gpui::Entity<SliderState>>,
-    pub code_tab: usize,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
+    pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
 }
 
 impl IContribution for SliderCase {
@@ -34,6 +34,8 @@ impl IContribution for SliderCase {
 
 impl ILifecycle for SliderCase {
     fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
+        self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
+
         self.slider_state = Some(cx.new(|_cx| {
             SliderState::new()
                 .min(0.0)
@@ -69,63 +71,11 @@ impl ILifecycle for SliderCase {
 impl SliderCase {
     #[computed]
     pub fn rml_sample(&self) -> String {
-        r#"<!-- slider_case.rml：声明式 UI，描述结构 + 绑定 + 事件 -->
-<component>
-    <!-- 基础滑块：ref 引用 on_loaded 中初始化的 SliderState -->
-    <Slider ref="slider_state" />
-
-    <!-- 禁用滑块：disabled={true} -->
-    <Slider ref="disabled_state" disabled={true} />
-
-    <!-- 范围滑块：default_value((20.0, 80.0)) 在 on_loaded 中设置 -->
-    <Slider ref="range_state" />
-</component>"#
-            .to_string()
+        include_str!("slider_case.rml").to_string()
     }
 
     #[computed]
     pub fn rust_sample(&self) -> String {
-        r#"// slider_case.rml.rs：后端状态 + computed + command handler
-use rml::prelude::*;
-use rml_ui::SliderState;
-
-#[component]
-#[derive(Default)]
-pub struct SliderCase {
-    pub slider_state: Option<gpui::Entity<SliderState>>,
-    pub disabled_state: Option<gpui::Entity<SliderState>>,
-    pub range_state: Option<gpui::Entity<SliderState>>,
-}
-
-impl ILifecycle for SliderCase {
-    fn on_loaded(&mut self, _w: &mut gpui::Window, cx: &mut Context<Self>) {
-        // 基础滑块：min/max/step/default_value
-        self.slider_state = Some(cx.new(|_cx| {
-            SliderState::new()
-                .min(0.0).max(100.0).step(1.0)
-                .default_value(50.0)
-        }));
-
-        // 禁用滑块
-        self.disabled_state = Some(cx.new(|_cx| {
-            SliderState::new()
-                .min(0.0).max(100.0)
-                .default_value(30.0)
-        }));
-
-        // 范围滑块：default_value 接受 (f32, f32) 元组
-        self.range_state = Some(cx.new(|_cx| {
-            SliderState::new()
-                .min(0.0).max(100.0).step(5.0)
-                .default_value((20.0, 80.0))
-        }));
-    }
-}"#
-            .to_string()
-    }
-
-    #[command]
-    pub fn on_code_tab_change(&mut self, idx: usize, _cx: &mut Context<Self>) {
-        self.code_tab = idx;
+        include_str!("slider_case.rml.rs").to_string()
     }
 }

@@ -1,74 +1,65 @@
 <component>
-    <div display="flex" flex-direction="column" class="case-pane doc-pane">
-        <h2>{t("case.group_box.title")}</h2>
-        <p>GroupBox 是 RML 的分组容器组件，标签为 PascalCase <code>GroupBox</code>。StatelessNoId 组件（无 ElementId，<code>RenderOnce</code>），实现 <code>ParentElement</code>。提供 <code>title</code> 标题与 3 种 variant（normal/fill/outline），通过 <code>variant</code> 属性或同名空属性切换。</p>
+    <CaseDocPage
+        title={t("case.group_box.title")}
+        description="GroupBox 是 RML 的分组容器组件，标签为 PascalCase GroupBox。StatelessNoId 组件（无 ElementId，RenderOnce），实现 ParentElement。提供 title 标题与 3 种 variant（normal/fill/outline），通过 variant 属性或同名空属性切换。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <Card title="基础用法 normal">
+                <p>默认 normal variant，无边框无背景，仅分组语义。</p>
+                <GroupBox title="用户信息">
+                    <p>用户名：admin</p>
+                    <p>邮箱：admin@example.com</p>
+                </GroupBox>
+            </Card>
 
-        <Card title="基础用法 normal">
-            <p>默认 normal variant，无边框无背景，仅分组语义。</p>
-            <GroupBox title="用户信息">
-                <p>用户名：admin</p>
-                <p>邮箱：admin@example.com</p>
-            </GroupBox>
-        </Card>
+            <Card title="fill 填充背景">
+                <p><code>fill=""</code> 或 <code>variant="fill"</code> 切换为填充背景样式。</p>
+                <GroupBox title="设置面板" fill="">
+                    <p>主题：暗色</p>
+                    <p>语言：简体中文</p>
+                </GroupBox>
+            </Card>
 
-        <Card title="fill 填充背景">
-            <p><code>fill=""</code> 或 <code>variant="fill"</code> 切换为填充背景样式。</p>
-            <GroupBox title="设置面板" fill="">
-                <p>主题：暗色</p>
-                <p>语言：简体中文</p>
-            </GroupBox>
-        </Card>
+            <Card title="outline 描边">
+                <p><code>outline=""</code> 或 <code>variant="outline"</code> 切换为描边样式。</p>
+                <GroupBox title="高级选项" outline="">
+                    <p>启用通知：是</p>
+                    <p>自动更新：否</p>
+                </GroupBox>
+            </Card>
 
-        <Card title="outline 描边">
-            <p><code>outline=""</code> 或 <code>variant="outline"</code> 切换为描边样式。</p>
-            <GroupBox title="高级选项" outline="">
-                <p>启用通知：是</p>
-                <p>自动更新：否</p>
-            </GroupBox>
-        </Card>
+            <Card title="variant 属性">
+                <p>使用 <code>variant="fill"</code> 字符串属性切换 variant（等价于 <code>fill=""</code> 关联函数）。</p>
+                <GroupBox title="示例" variant="fill">
+                    <p>通过 variant 属性设置</p>
+                </GroupBox>
+                <GroupBox title="示例" variant="outline">
+                    <p>通过 variant 属性设置</p>
+                </GroupBox>
+            </Card>
 
-        <Card title="variant 属性">
-            <p>使用 <code>variant="fill"</code> 字符串属性切换 variant（等价于 <code>fill=""</code> 关联函数）。</p>
-            <GroupBox title="示例" variant="fill">
-                <p>通过 variant 属性设置</p>
-            </GroupBox>
-            <GroupBox title="示例" variant="outline">
-                <p>通过 variant 属性设置</p>
-            </GroupBox>
-        </Card>
+            <Card title="title 动态绑定">
+                <p><code>title=&#123;dynamic_title&#125;</code> 绑定动态标题字段：</p>
+                <GroupBox title={dynamic_title} fill="">
+                    <p>当前标题：{dynamic_title}</p>
+                    <div class="button-row">
+                        <Button label="切换标题" on-click={on_cycle_title} />
+                    </div>
+                </GroupBox>
+            </Card>
 
-        <Card title="title 动态绑定">
-            <p><code>title=&#123;dynamic_title&#125;</code> 绑定动态标题字段：</p>
-            <GroupBox title={dynamic_title} fill="">
-                <p>当前标题：{dynamic_title}</p>
-                <div class="button-row">
-                    <Button label="切换标题" on-click={on_cycle_title} />
-                </div>
-            </GroupBox>
-        </Card>
+            <Card title="无标题">
+                <p>不写 <code>title</code> 属性则无标题，仅作为分组容器：</p>
+                <GroupBox fill="">
+                    <p>无标题的分组内容</p>
+                </GroupBox>
+            </Card>
+        </template>
 
-        <Card title="无标题">
-            <p>不写 <code>title</code> 属性则无标题，仅作为分组容器：</p>
-            <GroupBox fill="">
-                <p>无标题的分组内容</p>
-            </GroupBox>
-        </Card>
-
-        <Card title="示例代码">
-            <p>点击下方 Tab 切换 <code>.rml</code> 声明文件与 <code>.rml.rs</code> 后端文件：</p>
-            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
-                <Tab label=".rml">
-                    <CodeEditor ref="rml_editor" value={rml_sample} language="rml" />
-                </Tab>
-                <Tab label=".rml.rs">
-                    <CodeEditor ref="rust_editor" value={rust_sample} language="rust" />
-                </Tab>
-            </TabBar>
-        </Card>
-
-        <Card title="API">
+        <template slot="api">
             <h3>GroupBox</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-        </Card>
-    </div>
+        </template>
+    </CaseDocPage>
 </component>

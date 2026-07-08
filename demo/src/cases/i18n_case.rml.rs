@@ -4,7 +4,7 @@ use rml_core::i18n::{t_static, I18nState};
 use rml_core::theme::ThemeExt;
 use rml_ui::{TableColumn, TableRow};
 
-use crate::cases::common::build_api_table;
+use crate::cases::common::{build_api_table, CaseDocPage};
 
 #[contribute(
     host_id = "demo.shell",
@@ -19,6 +19,7 @@ pub struct I18nCase {
     pub switch_count: i32,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
+    pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
 }
 
 impl IContribution for I18nCase {
@@ -32,6 +33,7 @@ impl IContribution for I18nCase {
 
 impl ILifecycle for I18nCase {
     fn on_loaded(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
+        self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         let (cols, rows) = build_api_table(&[
             ("t(\"key\")", "模板函数", "引用 i18n 资源"),
             ("cx.set_i18n", "方法", "切换 locale"),
@@ -55,11 +57,13 @@ impl I18nCase {
     }
 
     #[computed]
-    pub fn code_sample(&self) -> String {
-        r#"<p>{t("demo.hello")}</p>
-<Button label={t("menu.lang_en")} on-click={on_switch_en} />
-<Button label={t("menu.theme_toggle")} on-click={on_toggle_theme} />"#
-            .to_string()
+    pub fn rml_sample(&self) -> String {
+        include_str!("i18n_case.rml").to_string()
+    }
+
+    #[computed]
+    pub fn rust_sample(&self) -> String {
+        include_str!("i18n_case.rml.rs").to_string()
     }
 
     #[command]

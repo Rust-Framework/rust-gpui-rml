@@ -1,10 +1,25 @@
 //! 菜单闭包 `move` 捕获前，将 `self.*` 表达式提升为局部变量（满足 `'static`）
+//!
+//! slot 闭包内 `self` 被替换为 `__rml_self_ref`（via `with_self_alias`），
+//! 因此 `register` / `gen_let_stmt` / `is_copy_hoist` 均需识别当前 self 前缀。
 
 use std::collections::HashMap;
 
 use crate::compiler::codegen::{gen_expr_code, try_gen_i18n_call};
+use crate::compiler::expr;
 use crate::compiler::{CodegenCtx, CodegenError};
 use crate::parser::ast::{Attribute, Element, Node, TextSegment};
+
+/// 返回当前 self 前缀（slot 内为 `__rml_self_ref`，否则 `self`）
+fn self_prefix() -> &'static str {
+    expr::current_self_alias().unwrap_or("self")
+}
+
+/// 判断表达式是否以当前 self 前缀开头（如 `self.field` 或 `__rml_self_ref.field`）
+fn starts_with_self_prefix(expr: &str) -> Option<&str> {
+    let prefix = self_prefix();
+    expr.strip_prefix(&format!("{}.", prefix))
+}
 
 /// 收集菜单树中需在闭包外求值的 `self.*` 表达式
 #[derive(Default)]
@@ -119,7 +134,7 @@ impl MenuHoist {
     }
 
     fn register(&mut self, expr: &str) {
-        if !expr.contains("self.") {
+        if starts_with_self_prefix(expr).is_none() {
             return;
         }
         if self.index.contains_key(expr) {
@@ -160,7 +175,7 @@ fn gen_let_stmt(expr: &str, var: &str, ctx: &CodegenCtx) -> String {
     if expr.ends_with("()") || expr.contains("cx.t(") {
         return format!("let {var} = {expr};");
     }
-    if let Some(field) = expr.strip_prefix("self.") {
+    if let Some(field) = starts_with_self_prefix(expr) {
         let ty = ctx.field_types.get(field).map(|s| s.as_str()).unwrap_or("");
         if matches!(
             ty,
@@ -177,7 +192,7 @@ pub(crate) fn is_copy_hoist(expr: &str, ctx: &CodegenCtx) -> bool {
     if expr.ends_with("()") || expr.contains("cx.t(") {
         return false;
     }
-    if let Some(field) = expr.strip_prefix("self.") {
+    if let Some(field) = starts_with_self_prefix(expr) {
         let ty = ctx.field_types.get(field).map(|s| s.as_str()).unwrap_or("");
         return matches!(
             ty,

@@ -1,71 +1,62 @@
 <component>
-    <div display="flex" flex-direction="column" class="case-pane doc-pane">
-        <h2>{t("case.avatar_group.title")}</h2>
-        <p>AvatarGroup 是 RML 的头像分组容器组件，标签为 PascalCase <code>AvatarGroup</code>。无 ElementId 构造（StatelessNoId），容器模式，子节点为 <code>Avatar</code> 组件。通过 <code>limit</code> 属性限制最大显示数量，<code>ellipsis</code> 属性启用溢出折叠显示 <code>+N</code>。</p>
+    <CaseDocPage
+        title={t("case.avatar_group.title")}
+        description="AvatarGroup 是 RML 的头像分组容器组件，标签为 PascalCase AvatarGroup。无 ElementId 构造（StatelessNoId），容器模式，子节点为 Avatar 组件。通过 limit 属性限制最大显示数量，ellipsis 属性启用溢出折叠显示 +N。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <Card title="基础用法">
+                <p>包裹多个 <code>Avatar</code> 子节点，水平排列展示。</p>
+                <AvatarGroup>
+                    <Avatar name="Alice" />
+                    <Avatar name="Bob" />
+                    <Avatar name="Charlie" />
+                </AvatarGroup>
+            </Card>
 
-        <Card title="基础用法">
-            <p>包裹多个 <code>Avatar</code> 子节点，水平排列展示。</p>
-            <AvatarGroup>
-                <Avatar name="Alice" />
-                <Avatar name="Bob" />
-                <Avatar name="Charlie" />
-            </AvatarGroup>
-        </Card>
+            <Card title="数量限制 limit">
+                <p><code>limit="3"</code> 限制最大显示数量，超出部分隐藏。</p>
+                <AvatarGroup limit="3">
+                    <Avatar name="Alice" />
+                    <Avatar name="Bob" />
+                    <Avatar name="Charlie" />
+                    <Avatar name="Dave" />
+                    <Avatar name="Eve" />
+                </AvatarGroup>
+            </Card>
 
-        <Card title="数量限制 limit">
-            <p><code>limit="3"</code> 限制最大显示数量，超出部分隐藏。</p>
-            <AvatarGroup limit="3">
-                <Avatar name="Alice" />
-                <Avatar name="Bob" />
-                <Avatar name="Charlie" />
-                <Avatar name="Dave" />
-                <Avatar name="Eve" />
-            </AvatarGroup>
-        </Card>
+            <Card title="溢出折叠 ellipsis">
+                <p><code>ellipsis=""</code> 在超出 limit 时显示 <code>+N</code> 提示。</p>
+                <AvatarGroup limit="2" ellipsis="">
+                    <Avatar name="Alice" />
+                    <Avatar name="Bob" />
+                    <Avatar name="Charlie" />
+                    <Avatar name="Dave" />
+                </AvatarGroup>
+            </Card>
 
-        <Card title="溢出折叠 ellipsis">
-            <p><code>ellipsis=""</code> 在超出 limit 时显示 <code>+N</code> 提示。</p>
-            <AvatarGroup limit="2" ellipsis="">
-                <Avatar name="Alice" />
-                <Avatar name="Bob" />
-                <Avatar name="Charlie" />
-                <Avatar name="Dave" />
-            </AvatarGroup>
-        </Card>
+            <Card title="动态头像(if 条件渲染)">
+                <p>点击按钮增减头像数量，观察 AvatarGroup 实时变化（演示 if 条件渲染）：</p>
+                <p>当前头像数: {avatar_count}</p>
+                <div class="button-row">
+                    <Button label="添加头像" primary="" on-click={on_add_avatar} />
+                    <Button label="移除头像" on-click={on_remove_avatar} />
+                </div>
+                <AvatarGroup limit="5" ellipsis="">
+                    <Avatar name="Alice" if={avatar_count >= 1} />
+                    <Avatar name="Bob" if={avatar_count >= 2} />
+                    <Avatar name="Charlie" if={avatar_count >= 3} />
+                    <Avatar name="Dave" if={avatar_count >= 4} />
+                    <Avatar name="Eve" if={avatar_count >= 5} />
+                </AvatarGroup>
+            </Card>
+        </template>
 
-        <Card title="动态头像(if 条件渲染)">
-            <p>点击按钮增减头像数量，观察 AvatarGroup 实时变化（演示 if 条件渲染）：</p>
-            <p>当前头像数: {avatar_count}</p>
-            <div class="button-row">
-                <Button label="添加头像" primary="" on-click={on_add_avatar} />
-                <Button label="移除头像" on-click={on_remove_avatar} />
-            </div>
-            <AvatarGroup limit="5" ellipsis="">
-                <Avatar name="Alice" if={avatar_count >= 1} />
-                <Avatar name="Bob" if={avatar_count >= 2} />
-                <Avatar name="Charlie" if={avatar_count >= 3} />
-                <Avatar name="Dave" if={avatar_count >= 4} />
-                <Avatar name="Eve" if={avatar_count >= 5} />
-            </AvatarGroup>
-        </Card>
-
-        <Card title="示例代码">
-            <p>点击下方 Tab 切换 <code>.rml</code> 声明文件与 <code>.rml.rs</code> 后端文件：</p>
-            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
-                <Tab label=".rml">
-                    <CodeEditor ref="rml_editor" value={rml_sample} language="rml" />
-                </Tab>
-                <Tab label=".rml.rs">
-                    <CodeEditor ref="rust_editor" value={rust_sample} language="rust" />
-                </Tab>
-            </TabBar>
-        </Card>
-
-        <Card title="API">
+        <template slot="api">
             <h3>AvatarGroup</h3>
             <Table columns={group_api_columns} rows={group_api_rows} bordered="" stripe="" />
             <h3>Avatar</h3>
             <Table columns={avatar_api_columns} rows={avatar_api_rows} bordered="" stripe="" />
-        </Card>
-    </div>
+        </template>
+    </CaseDocPage>
 </component>

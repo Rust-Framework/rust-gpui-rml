@@ -3,7 +3,7 @@ use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
 
-use crate::cases::common::build_api_table;
+use crate::cases::common::{build_api_table, CaseDocPage};
 
 #[contribute(
     host_id = "demo.shell",
@@ -16,9 +16,9 @@ use crate::cases::common::build_api_table;
 #[derive(Default)]
 pub struct NativeStatusBarCase {
     pub status_text: String,
-    pub code_tab: usize,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
+    pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
 }
 
 impl IContribution for NativeStatusBarCase {
@@ -31,7 +31,8 @@ impl IContribution for NativeStatusBarCase {
 }
 
 impl ILifecycle for NativeStatusBarCase {
-    fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
+    fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
+        self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         self.status_text = "就绪".into();
         let (cols, rows) = build_api_table(&[
             ("子节点", "元素[]", "中央区域内容"),
@@ -44,61 +45,12 @@ impl ILifecycle for NativeStatusBarCase {
 impl NativeStatusBarCase {
     #[computed]
     pub fn rml_sample(&self) -> String {
-        r#"<!-- native_status_bar_case.rml：声明式 UI，描述结构 + 绑定 + 事件 -->
-<component>
-    <!-- 基础用法：NativeStatusBar 包裹子元素 -->
-    <NativeStatusBar>
-        <span>就绪</span>
-    </NativeStatusBar>
-
-    <!-- 动态状态：on-click 切换 status_text -->
-    <Button label="就绪" primary="" on-click={on_show_ready} />
-    <Button label="警告" warning="" on-click={on_show_warning} />
-    <Button label="错误" danger="" on-click={on_show_error} />
-    <p>当前状态: {status_text}</p>
-    <NativeStatusBar>
-        <span>{status_text}</span>
-    </NativeStatusBar>
-</component>"#
-            .to_string()
+        include_str!("native_status_bar_case.rml").to_string()
     }
 
     #[computed]
     pub fn rust_sample(&self) -> String {
-        r#"// native_status_bar_case.rml.rs：后端状态 + computed + command handler
-use gpui::SharedString;
-use rml::prelude::*;
-
-#[component]
-#[derive(Default)]
-pub struct NativeStatusBarCase {
-    pub status_text: String,
-}
-
-impl ILifecycle for NativeStatusBarCase {
-    fn on_loaded(&mut self, _w: &mut gpui::Window, _cx: &mut Context<Self>) {
-        self.status_text = "就绪".into();
-    }
-}
-
-impl NativeStatusBarCase {
-    // 三个 #[command] handler 分别切换状态文本
-    #[command]
-    pub fn on_show_ready(&mut self, _: &ClickEvent, _: &mut Context<Self>) {
-        self.status_text = "就绪".into();
-    }
-
-    #[command]
-    pub fn on_show_warning(&mut self, _: &ClickEvent, _: &mut Context<Self>) {
-        self.status_text = "警告:请检查配置".into();
-    }
-
-    #[command]
-    pub fn on_show_error(&mut self, _: &ClickEvent, _: &mut Context<Self>) {
-        self.status_text = "错误:连接失败".into();
-    }
-}"#
-            .to_string()
+        include_str!("native_status_bar_case.rml.rs").to_string()
     }
 
     #[command]
@@ -114,10 +66,5 @@ impl NativeStatusBarCase {
     #[command]
     pub fn on_show_error(&mut self, _: &ClickEvent, _: &mut Context<Self>) {
         self.status_text = "错误:连接失败".into();
-    }
-
-    #[command]
-    pub fn on_code_tab_change(&mut self, idx: usize, _cx: &mut Context<Self>) {
-        self.code_tab = idx;
     }
 }

@@ -3,7 +3,7 @@ use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
 
-use crate::cases::common::build_api_table;
+use crate::cases::common::{build_api_table, CaseDocPage};
 
 #[contribute(
     host_id = "demo.shell",
@@ -17,9 +17,9 @@ use crate::cases::common::build_api_table;
 pub struct MenuEditorCase {
     pub word_wrap: bool,
     pub last_action: String,
-    pub code_tab: usize,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
+    pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
 }
 
 impl IContribution for MenuEditorCase {
@@ -32,7 +32,8 @@ impl IContribution for MenuEditorCase {
 }
 
 impl ILifecycle for MenuEditorCase {
-    fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
+    fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
+        self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         let (cols, rows) = build_api_table(&[
             ("check-side", "枚举", "勾选标记位置（Right/Left）"),
             ("menu-item checked", "布尔", "勾选状态绑定"),
@@ -61,62 +62,12 @@ impl MenuEditorCase {
 
     #[computed]
     pub fn rml_sample(&self) -> String {
-        r#"<!-- menu_editor_case.rml：声明式 UI，描述结构 + 绑定 + 事件 -->
-<component>
-    <!-- check-side="Right" 勾选标记显示在右侧 -->
-    <dropdown-menu check-side="Right">
-        <Button label="Edit" ghost="" />
-        <menu-item label="Save" on-click={on_save} />
-        <menu-item label="Save As" on-click={on_save_as} />
-        <!-- menu-separator 分组 -->
-        <menu-separator />
-        <menu-item label="Find" icon="Search" on-click={on_find} />
-        <menu-item label="Replace" icon="Replace" on-click={on_replace} />
-        <menu-separator />
-        <!-- checked={word_wrap} 绑定布尔字段 -->
-        <menu-item label="Word Wrap" checked={word_wrap} on-click={on_toggle_wrap} />
-    </dropdown-menu>
-</component>"#
-            .to_string()
+        include_str!("menu_editor_case.rml").to_string()
     }
 
     #[computed]
     pub fn rust_sample(&self) -> String {
-        r#"// menu_editor_case.rml.rs：后端状态 + computed + command handler
-use gpui::SharedString;
-use rml::prelude::*;
-
-#[component]
-#[derive(Default)]
-pub struct MenuEditorCase {
-    pub word_wrap: bool,
-    pub last_action: String,
-}
-
-impl MenuEditorCase {
-    // computed 显示当前状态（含 word_wrap 字段）
-    #[computed]
-    pub fn editor_status(&self) -> String {
-        if self.last_action.is_empty() {
-            format!("Word Wrap: {}", if self.word_wrap { "on" } else { "off" })
-        } else {
-            self.last_action.clone()
-        }
-    }
-
-    #[command]
-    pub fn on_save(&mut self, _: &ClickEvent, _: &mut Context<Self>) {
-        self.last_action = "Save".to_string();
-    }
-
-    #[command]
-    pub fn on_toggle_wrap(&mut self, _: &ClickEvent, _: &mut Context<Self>) {
-        self.word_wrap = !self.word_wrap;
-        self.last_action = format!("Word Wrap: {}", self.word_wrap);
-    }
-    // ... on_save_as / on_find / on_replace
-}"#
-            .to_string()
+        include_str!("menu_editor_case.rml.rs").to_string()
     }
 
     #[command]
@@ -143,10 +94,5 @@ impl MenuEditorCase {
     pub fn on_toggle_wrap(&mut self, _: &ClickEvent, _: &mut Context<Self>) {
         self.word_wrap = !self.word_wrap;
         self.last_action = format!("Word Wrap: {}", self.word_wrap);
-    }
-
-    #[command]
-    pub fn on_code_tab_change(&mut self, idx: usize, _cx: &mut Context<Self>) {
-        self.code_tab = idx;
     }
 }

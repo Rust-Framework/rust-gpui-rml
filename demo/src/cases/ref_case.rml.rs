@@ -3,7 +3,7 @@ use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{InputState, TableColumn, TableRow};
 
-use crate::cases::common::build_api_table;
+use crate::cases::common::{build_api_table, CaseDocPage};
 
 #[contribute(
     host_id = "demo.shell",
@@ -29,6 +29,7 @@ pub struct RefCase {
     pub input_state: ElementRef<InputState>,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
+    pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
 }
 
 impl IContribution for RefCase {
@@ -41,8 +42,8 @@ impl IContribution for RefCase {
 }
 
 impl ILifecycle for RefCase {
-    fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
-        let _ = (_window, _cx);
+    fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
+        self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         let (cols, rows) = build_api_table(&[
             ("ref=\"name\"", "指令", "声明元素引用名，关联到 ElementRef<T> 字段"),
             ("ElementRef<T>", "字段类型", "命令式访问句柄（focus/scroll/measure 等）"),
@@ -51,5 +52,17 @@ impl ILifecycle for RefCase {
         ]);
         self.api_columns = cols;
         self.api_rows = rows;
+    }
+}
+
+impl RefCase {
+    #[computed]
+    pub fn rml_sample(&self) -> String {
+        include_str!("ref_case.rml").to_string()
+    }
+
+    #[computed]
+    pub fn rust_sample(&self) -> String {
+        include_str!("ref_case.rml.rs").to_string()
     }
 }

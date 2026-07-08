@@ -1,61 +1,52 @@
 <component>
-    <div display="flex" flex-direction="column" class="case-pane doc-pane">
-        <h2>{t("case.progress.title")}</h2>
-        <p>Progress 是 RML 的线性进度条组件，标签为 PascalCase <code>Progress</code>。通过 <code>value</code> 属性设置进度值（0-100，自动 clamp），<code>loading</code> 属性切换加载中状态（value 被忽略，显示无限滑动动画）。支持 4 种尺寸。</p>
+    <CaseDocPage
+        title={t("case.progress.title")}
+        description="Progress 是 RML 的线性进度条组件，标签为 PascalCase Progress。通过 value 属性设置进度值（0-100，自动 clamp），loading 属性切换加载中状态（value 被忽略，显示无限滑动动画）。支持 4 种尺寸。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <Card title="基础用法">
+                <p>value 属性设置进度百分比，{status_text}</p>
+                <div display="flex" flex-direction="column" gap="8px">
+                    <Progress value={current} />
+                </div>
+            </Card>
 
-        <Card title="基础用法">
-            <p>value 属性设置进度百分比，{status_text}</p>
-            <div display="flex" flex-direction="column" gap="8px">
-                <Progress value={current} />
-            </div>
-        </Card>
+            <Card title="尺寸 size">
+                <p>size 属性控制进度条高度：xsmall(4px) / small(6px) / medium(8px) / large(10px)。4 档视觉区分明显。</p>
+                <div display="flex" flex-direction="column" gap="12px">
+                    <Progress value={current} size="xsmall" />
+                    <Progress value={current} size="small" />
+                    <Progress value={current} size="medium" />
+                    <Progress value={current} size="large" />
+                </div>
+            </Card>
 
-        <Card title="尺寸 size">
-            <p>size 属性控制进度条高度：xsmall(4px) / small(6px) / medium(8px) / large(10px)。4 档视觉区分明显。</p>
-            <div display="flex" flex-direction="column" gap="12px">
-                <Progress value={current} size="xsmall" />
-                <Progress value={current} size="small" />
-                <Progress value={current} size="medium" />
-                <Progress value={current} size="large" />
-            </div>
-        </Card>
+            <Card title="加载中状态 loading">
+                <p>loading 属性显示无限滑动动画，value 被忽略。支持静态 <code>loading=""</code> 与绑定 <code>loading=\{is_loading\}</code>。</p>
+                <div display="flex" flex-direction="column" gap="8px">
+                    <Progress loading="" />
+                </div>
+            </Card>
 
-        <Card title="加载中状态 loading">
-            <p>loading 属性显示无限滑动动画，value 被忽略。支持静态 <code>loading=""</code> 与绑定 <code>loading=\{is_loading\}</code>。</p>
-            <div display="flex" flex-direction="column" gap="8px">
-                <Progress loading="" />
-            </div>
-        </Card>
+            <Card title="交互演示（if 条件渲染）">
+                <p>通过命令修改 current 字段，实时反映到 value 绑定；切换 loading 状态用 if 条件渲染不同 Progress。</p>
+                <div class="button-row">
+                    <Button label="减少 10" on-click={on_decrease} />
+                    <Button label="增加 10" primary="" on-click={on_increase} />
+                    <Button label="切换 loading" on-click={on_toggle_loading} />
+                </div>
+                <div display="flex" flex-direction="column" gap="8px">
+                    <Progress value={current} if={!loading} />
+                    <Progress loading="" if={loading} />
+                </div>
+            </Card>
+        </template>
 
-        <Card title="交互演示（if 条件渲染）">
-            <p>通过命令修改 current 字段，实时反映到 value 绑定；切换 loading 状态用 if 条件渲染不同 Progress。</p>
-            <div class="button-row">
-                <Button label="减少 10" on-click={on_decrease} />
-                <Button label="增加 10" primary="" on-click={on_increase} />
-                <Button label="切换 loading" on-click={on_toggle_loading} />
-            </div>
-            <div display="flex" flex-direction="column" gap="8px">
-                <Progress value={current} if={!loading} />
-                <Progress loading="" if={loading} />
-            </div>
-        </Card>
-
-        <Card title="示例代码">
-            <p>点击下方 Tab 切换 <code>.rml</code> 声明文件与 <code>.rml.rs</code> 后端文件：</p>
-            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
-                <Tab label=".rml">
-                    <CodeEditor ref="rml_editor" value={rml_sample} language="rml" />
-                </Tab>
-                <Tab label=".rml.rs">
-                    <CodeEditor ref="rust_editor" value={rust_sample} language="rust" />
-                </Tab>
-            </TabBar>
-        </Card>
-
-        <Card title="API">
+        <template slot="api">
             <h3>Progress</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
             <p>另：<code>size</code> 属性来自 Sizable trait。</p>
-        </Card>
-    </div>
+        </template>
+    </CaseDocPage>
 </component>

@@ -3,7 +3,7 @@ use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
 
-use crate::cases::common::build_api_table;
+use crate::cases::common::{build_api_table, CaseDocPage};
 
 #[derive(Clone, Default)]
 pub struct KeyItem {
@@ -24,6 +24,7 @@ pub struct KeyCase {
     pub items: Vec<KeyItem>,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
+    pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
 }
 
 impl IContribution for KeyCase {
@@ -36,7 +37,8 @@ impl IContribution for KeyCase {
 }
 
 impl ILifecycle for KeyCase {
-    fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
+    fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
+        self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         self.items = vec![
             KeyItem {
                 id: "i1".into(),
@@ -67,6 +69,16 @@ impl KeyCase {
         self.items.len()
     }
 
+    #[computed]
+    pub fn rml_sample(&self) -> String {
+        include_str!("key_case.rml").to_string()
+    }
+
+    #[computed]
+    pub fn rust_sample(&self) -> String {
+        include_str!("key_case.rml.rs").to_string()
+    }
+
     /// 命令式构建单个列表项的渲染树。
     /// 由模板 `<component each={item in items} key={item.id} content={...} />` 调用。
     /// key={item.id} 提供稳定 ElementId，列表重排时 GPUI 能正确识别移动项，
@@ -85,6 +97,35 @@ impl KeyCase {
             .py(px(4.))
             .child(Tag::new().child(item.id.clone()))
             .child(Tag::new().child(item.label.clone()))
+            .into_any_element()
+    }
+
+    /// 命令式构建带 key 的列表渲染树。
+    /// 由模板 `<component content={self.render_items(_window, cx)} />` 调用。
+    /// 每项通过 .id(("rml_key", from_key(&item.id))) 提供稳定 ElementId，
+    /// 列表重排时 GPUI 能正确识别移动项，保留元素状态。
+    pub fn render_items(
+        &self,
+        _window: &mut gpui::Window,
+        _cx: &mut Context<Self>,
+    ) -> gpui::AnyElement {
+        use gpui::{div, px, IntoElement, InteractiveElement, ParentElement, Styled};
+        use rml_core::element_id;
+        use rml_ui::Tag;
+
+        div()
+            .flex()
+            .flex_row()
+            .gap(px(8.))
+            .flex_wrap()
+            .children(self.items.iter().map(|item| {
+                div()
+                    .id(("rml_key", element_id::from_key(&item.id)))
+                    .px(px(8.))
+                    .py(px(4.))
+                    .child(Tag::new().child(item.id.clone()))
+                    .child(Tag::new().child(item.label.clone()))
+            }))
             .into_any_element()
     }
 

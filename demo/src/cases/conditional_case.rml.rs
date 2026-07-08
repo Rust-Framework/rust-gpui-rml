@@ -3,7 +3,7 @@ use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
 
-use crate::cases::common::build_api_table;
+use crate::cases::common::{build_api_table, CaseDocPage};
 
 #[contribute(
     host_id = "demo.shell",
@@ -19,6 +19,7 @@ pub struct ConditionalCase {
     pub show_detail: bool,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
+    pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
 }
 
 impl IContribution for ConditionalCase {
@@ -31,7 +32,8 @@ impl IContribution for ConditionalCase {
 }
 
 impl ILifecycle for ConditionalCase {
-    fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
+    fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
+        self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         self.tab_index = 0;
         self.show_detail = true;
         let (cols, rows) = build_api_table(&[
@@ -52,6 +54,16 @@ impl ConditionalCase {
             1 => "详情",
             _ => "设置",
         }
+    }
+
+    #[computed]
+    pub fn rml_sample(&self) -> String {
+        include_str!("conditional_case.rml").to_string()
+    }
+
+    #[computed]
+    pub fn rust_sample(&self) -> String {
+        include_str!("conditional_case.rml.rs").to_string()
     }
 
     #[command]

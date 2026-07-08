@@ -3,7 +3,7 @@ use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
 
-use crate::cases::common::build_api_table;
+use crate::cases::common::{build_api_table, CaseDocPage};
 
 #[contribute(
     host_id = "demo.shell",
@@ -18,6 +18,7 @@ pub struct ListCase {
     pub items: Vec<SharedString>,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
+    pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
 }
 
 impl IContribution for ListCase {
@@ -30,7 +31,8 @@ impl IContribution for ListCase {
 }
 
 impl ILifecycle for ListCase {
-    fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
+    fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
+        self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         self.items = vec![
             "Rust".into(),
             "GPUI".into(),
@@ -54,8 +56,17 @@ impl ListCase {
         self.items.len()
     }
 
+    #[computed]
+    pub fn rml_sample(&self) -> String {
+        include_str!("list_case.rml").to_string()
+    }
+
+    #[computed]
+    pub fn rust_sample(&self) -> String {
+        include_str!("list_case.rml.rs").to_string()
+    }
+
     /// 命令式构建单个 Tag 项的渲染树。
-    /// 由模板 `<component each={item in items} content={self.render_item(item, _window, cx)} />` 调用。
     pub fn render_item(
         &self,
         item: &SharedString,
@@ -70,6 +81,21 @@ impl ListCase {
             .py(px(4.))
             .child(Tag::new().child(item.clone()))
             .into_any_element()
+    }
+
+    /// 命令式构建整个列表的渲染树（绕过 slot 内 each 指令的 codegen 限制）。
+    /// 由模板 `<component content={self.render_item_list(_window, cx)} />` 调用。
+    pub fn render_item_list(
+        &self,
+        _window: &mut gpui::Window,
+        _cx: &mut Context<Self>,
+    ) -> gpui::AnyElement {
+        use gpui::{div, IntoElement, ParentElement, Styled};
+        let mut container = div().flex().flex_row().gap(gpui::px(8.0)).flex_wrap();
+        for item in &self.items {
+            container = container.child(self.render_item(item, _window, _cx));
+        }
+        container.into_any_element()
     }
 
     #[command]

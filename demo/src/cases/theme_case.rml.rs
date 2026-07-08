@@ -3,7 +3,7 @@ use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
 
-use crate::cases::common::build_api_table;
+use crate::cases::common::{build_api_table, CaseDocPage};
 
 #[contribute(
     host_id = "demo.shell",
@@ -18,6 +18,7 @@ pub struct ThemeCase {
     pub theme_index: u8,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
+    pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
 }
 
 impl IContribution for ThemeCase {
@@ -30,7 +31,8 @@ impl IContribution for ThemeCase {
 }
 
 impl ILifecycle for ThemeCase {
-    fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
+    fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
+        self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         self.theme_index = 0;
         let (cols, rows) = build_api_table(&[
             ("if={expr}", "指令", "根据主题索引条件渲染不同样式"),
@@ -51,6 +53,16 @@ impl ThemeCase {
             2 => "危险（红）",
             _ => "未知",
         }
+    }
+
+    #[computed]
+    pub fn rml_sample(&self) -> String {
+        include_str!("theme_case.rml").to_string()
+    }
+
+    #[computed]
+    pub fn rust_sample(&self) -> String {
+        include_str!("theme_case.rml.rs").to_string()
     }
 
     #[command]

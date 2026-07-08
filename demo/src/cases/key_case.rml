@@ -1,25 +1,23 @@
 <component>
-    <div display="flex" flex-direction="column" class="case-pane doc-pane">
-        <h2>{t("case.key.title")}</h2>
+    <CaseDocPage
+        title={t("case.key.title")}
+        description="key 指令为 each 列表项提供稳定 ElementId。codegen 生成 .id((&quot;rml_key&quot;, rml_core::element_id::from_key(&expr)))，使 GPUI 在列表重排时能正确识别移动项，保留元素状态（焦点、动画、内部 state）。key 表达式在 each 作用域内求值，直接引用循环变量（如 item.id）。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <Card title="带 key 的列表">
+                <p>共 {item_count} 项，每项含 id 和 label：</p>
+                <div display="flex" flex-direction="row" gap="16px">
+                    <Button label="头部插入" on-click={on_prepend} />
+                    <Button label="清空" on-click={on_clear} />
+                </div>
+                <component content={self.render_items(_window, cx)} />
+                <p>注：key=&#123;item.id&#125; 确保头部插入新项时，已有项的 ElementId 保持稳定，避免状态丢失。</p>
+            </Card>
+        </template>
 
-        <Card title="组件说明">
-            <p>key 指令为 each 列表项提供稳定 ElementId。codegen 生成 .id(("rml_key", rml_core::element_id::from_key(&expr)))，使 GPUI 在列表重排时能正确识别移动项，保留元素状态（焦点、动画、内部 state）。key 表达式在 each 作用域内求值，直接引用循环变量（如 item.id）。</p>
-        </Card>
-
-        <Card title="带 key 的列表">
-            <p>共 {item_count} 项，每项含 id 和 label：</p>
-            <div display="flex" flex-direction="row" gap="16px">
-                <Button label="头部插入" on-click={on_prepend} />
-                <Button label="清空" on-click={on_clear} />
-            </div>
-            <div display="flex" flex-direction="row" gap="8px" flex-wrap="wrap">
-                <component each={item in items} key={item.id} content={self.render_item(item, _window, cx)} />
-            </div>
-            <p>注：key=&#123;item.id&#125; 确保头部插入新项时，已有项的 ElementId 保持稳定，避免状态丢失。</p>
-        </Card>
-
-        <Card title="API">
+        <template slot="api">
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-        </Card>
-    </div>
+        </template>
+    </CaseDocPage>
 </component>

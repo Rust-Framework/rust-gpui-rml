@@ -3,7 +3,7 @@ use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
 
-use crate::cases::common::build_api_table;
+use crate::cases::common::{build_api_table, CaseDocPage};
 
 #[contribute(
     host_id = "demo.shell",
@@ -28,6 +28,7 @@ pub struct TwoWayCase {
     pub change_event_count: u32,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
+    pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
 }
 
 impl IContribution for TwoWayCase {
@@ -40,7 +41,8 @@ impl IContribution for TwoWayCase {
 }
 
 impl ILifecycle for TwoWayCase {
-    fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
+    fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
+        self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         let (cols, rows) = build_api_table(&[
             ("model", "字段引用", "双向绑定到 pub 字段"),
             ("#[validate]", "属性", "数值范围验证（如 range）"),
@@ -70,12 +72,13 @@ impl TwoWayCase {
     }
 
     #[computed]
-    pub fn code_sample(&self) -> String {
-        r#"<input model={name} placeholder="姓名" />
-<input model={age} placeholder="年龄" />
-<input model={price | Currency} placeholder="金额" />
-<p>{profile_summary}</p>"#
-            .to_string()
+    pub fn rml_sample(&self) -> String {
+        include_str!("two_way_case.rml").to_string()
+    }
+
+    #[computed]
+    pub fn rust_sample(&self) -> String {
+        include_str!("two_way_case.rml.rs").to_string()
     }
 
     /// B-3 demo：oninput 在 model 反向同步后触发，逐键递增计数。

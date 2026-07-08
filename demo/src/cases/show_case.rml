@@ -1,43 +1,43 @@
 <component>
-    <div display="flex" flex-direction="column" class="case-pane doc-pane">
-        <h2>{t("case.show.title")}</h2>
+    <CaseDocPage
+        title={t("case.show.title")}
+        description="show 指令控制元素可见性。show=&#123;cond&#125; 为 false 时生成 .when(!cond, |d| d.invisible())（GPUI Visibility::Hidden，CSS visibility:hidden），元素不可见但保留布局空间。与 if（Display::None 不占空间）明确区分。if 优先于 show，同时存在时 show 被忽略。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <Card title="show 演示（保留布局空间）">
+                <p>show_card = {show_card}</p>
+                <div display="flex" flex-direction="row" gap="16px">
+                    <Button label="切换 show" on-click={on_toggle_show} />
+                </div>
+                <div display="flex" flex-direction="column" gap="8px">
+                    <Card title="show 卡片" show={show_card}>
+                        <p>show=false 时此卡片不可见，但布局空间仍保留（visibility:hidden）。</p>
+                    </Card>
+                    <Card title="占位卡片">
+                        <p>始终可见，用于观察 show 卡片隐藏后留下的空白空间。</p>
+                    </Card>
+                </div>
+            </Card>
 
-        <Card title="组件说明">
-            <p>show 指令控制元素可见性。show=&#123;cond&#125; 为 false 时生成 .when(!cond, |d| d.invisible())（GPUI Visibility::Hidden，CSS visibility:hidden），元素不可见但保留布局空间。与 if（Display::None 不占空间）明确区分。if 优先于 show，同时存在时 show 被忽略。</p>
-        </Card>
+            <Card title="if 演示（不保留布局空间）">
+                <p>if_card = {if_card}</p>
+                <div display="flex" flex-direction="row" gap="16px">
+                    <Button label="切换 if" on-click={on_toggle_if} />
+                </div>
+                <div display="flex" flex-direction="column" gap="8px">
+                    <Card title="if 卡片" if={if_card}>
+                        <p>if=false 时此卡片不渲染，不占布局空间（Display::None）。</p>
+                    </Card>
+                    <Card title="占位卡片">
+                        <p>始终可见，if 卡片不渲染时会紧贴上方。</p>
+                    </Card>
+                </div>
+            </Card>
+        </template>
 
-        <Card title="show 演示（保留布局空间）">
-            <p>show_card = {show_card}</p>
-            <div display="flex" flex-direction="row" gap="16px">
-                <Button label="切换 show" on-click={on_toggle_show} />
-            </div>
-            <div display="flex" flex-direction="column" gap="8px">
-                <Card title="show 卡片" show={show_card}>
-                    <p>show=false 时此卡片不可见，但布局空间仍保留（visibility:hidden）。</p>
-                </Card>
-                <Card title="占位卡片">
-                    <p>始终可见，用于观察 show 卡片隐藏后留下的空白空间。</p>
-                </Card>
-            </div>
-        </Card>
-
-        <Card title="if 演示（不保留布局空间）">
-            <p>if_card = {if_card}</p>
-            <div display="flex" flex-direction="row" gap="16px">
-                <Button label="切换 if" on-click={on_toggle_if} />
-            </div>
-            <div display="flex" flex-direction="column" gap="8px">
-                <Card title="if 卡片" if={if_card}>
-                    <p>if=false 时此卡片不渲染，不占布局空间（Display::None）。</p>
-                </Card>
-                <Card title="占位卡片">
-                    <p>始终可见，if 卡片不渲染时会紧贴上方。</p>
-                </Card>
-            </div>
-        </Card>
-
-        <Card title="API">
+        <template slot="api">
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-        </Card>
-    </div>
+        </template>
+    </CaseDocPage>
 </component>

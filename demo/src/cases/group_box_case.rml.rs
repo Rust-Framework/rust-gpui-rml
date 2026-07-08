@@ -3,7 +3,7 @@ use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
 
-use crate::cases::common::build_api_table;
+use crate::cases::common::{build_api_table, CaseDocPage};
 
 #[contribute(
     host_id = "demo.shell",
@@ -16,9 +16,9 @@ use crate::cases::common::build_api_table;
 #[derive(Default)]
 pub struct GroupBoxCase {
     pub dynamic_title: String,
-    pub code_tab: usize,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
+    pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
 }
 
 impl IContribution for GroupBoxCase {
@@ -31,7 +31,8 @@ impl IContribution for GroupBoxCase {
 }
 
 impl ILifecycle for GroupBoxCase {
-    fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
+    fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
+        self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         self.dynamic_title = "动态标题 1".into();
         let (cols, rows) = build_api_table(&[
             ("title", "String / 绑定", "标题（impl IntoElement）"),
@@ -47,64 +48,12 @@ impl ILifecycle for GroupBoxCase {
 impl GroupBoxCase {
     #[computed]
     pub fn rml_sample(&self) -> String {
-        r#"<!-- group_box_case.rml：声明式 UI，描述结构 + 绑定 + 事件 -->
-<component>
-    <!-- normal 默认（无 variant 属性） -->
-    <GroupBox title="用户信息">
-        <p>用户名：admin</p>
-    </GroupBox>
-
-    <!-- fill 填充背景 -->
-    <GroupBox title="设置面板" fill="">
-        <p>主题：暗色</p>
-    </GroupBox>
-
-    <!-- outline 描边 -->
-    <GroupBox title="高级选项" outline="">
-        <p>启用通知：是</p>
-    </GroupBox>
-
-    <!-- variant 字符串属性 -->
-    <GroupBox title="示例" variant="fill">
-        <p>通过 variant 属性设置</p>
-    </GroupBox>
-
-    <!-- title 绑定字段 -->
-    <GroupBox title={dynamic_title} fill="">
-        <p>动态标题内容</p>
-    </GroupBox>
-</component>"#
-            .to_string()
+        include_str!("group_box_case.rml").to_string()
     }
 
     #[computed]
     pub fn rust_sample(&self) -> String {
-        r#"// group_box_case.rml.rs：后端状态 + computed + command handler
-use rml::prelude::*;
-
-#[component]
-#[derive(Default)]
-pub struct GroupBoxCase {
-    pub dynamic_title: String,
-}
-
-impl ILifecycle for GroupBoxCase {
-    fn on_loaded(&mut self, _w: &mut gpui::Window, _cx: &mut Context<Self>) {
-        self.dynamic_title = "动态标题 1".into();
-    }
-}
-
-impl GroupBoxCase {
-    #[command]
-    pub fn on_cycle_title(&mut self, _: &ClickEvent, _cx: &mut Context<Self>) {
-        self.dynamic_title = if self.dynamic_title.contains("1") {
-            "动态标题 2".into()
-        } else {
-            "动态标题 1".into()
-        };
-    }
-}"#
-            .to_string()
+        include_str!("group_box_case.rml.rs").to_string()
     }
 
     #[command]
@@ -114,10 +63,5 @@ impl GroupBoxCase {
         } else {
             "动态标题 1".into()
         };
-    }
-
-    #[command]
-    pub fn on_code_tab_change(&mut self, idx: usize, _cx: &mut Context<Self>) {
-        self.code_tab = idx;
     }
 }

@@ -3,7 +3,7 @@ use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
 
-use crate::cases::common::build_api_table;
+use crate::cases::common::{build_api_table, CaseDocPage};
 
 #[contribute(
     host_id = "demo.shell",
@@ -16,11 +16,11 @@ use crate::cases::common::build_api_table;
 #[derive(Default)]
 pub struct AvatarGroupCase {
     pub avatar_count: u8,
-    pub code_tab: usize,
     pub group_api_columns: Vec<TableColumn>,
     pub group_api_rows: Vec<TableRow>,
     pub avatar_api_columns: Vec<TableColumn>,
     pub avatar_api_rows: Vec<TableRow>,
+    pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
 }
 
 impl IContribution for AvatarGroupCase {
@@ -33,7 +33,8 @@ impl IContribution for AvatarGroupCase {
 }
 
 impl ILifecycle for AvatarGroupCase {
-    fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
+    fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
+        self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         self.avatar_count = 3;
         let (cols, rows) = build_api_table(&[
             ("limit", "数字", "最大显示数量"),
@@ -55,66 +56,12 @@ impl ILifecycle for AvatarGroupCase {
 impl AvatarGroupCase {
     #[computed]
     pub fn rml_sample(&self) -> String {
-        r#"<!-- avatar_group_case.rml：声明式 UI，描述结构 + 绑定 + 事件 -->
-<component>
-    <!-- 基础用法：包裹多个 Avatar 子节点 -->
-    <AvatarGroup>
-        <Avatar name="Alice" />
-        <Avatar name="Bob" />
-        <Avatar name="Charlie" />
-    </AvatarGroup>
-
-    <!-- 数量限制 + 溢出折叠：limit + ellipsis -->
-    <AvatarGroup limit="2" ellipsis="">
-        <Avatar name="Alice" />
-        <Avatar name="Bob" />
-        <Avatar name="Charlie" />
-        <Avatar name="Dave" />
-    </AvatarGroup>
-
-    <!-- 动态 if 条件渲染：根据 avatar_count 增减头像 -->
-    <AvatarGroup limit="5" ellipsis="">
-        <Avatar name="Alice" if={avatar_count >= 1} />
-        <Avatar name="Bob" if={avatar_count >= 2} />
-        <Avatar name="Charlie" if={avatar_count >= 3} />
-    </AvatarGroup>
-</component>"#
-            .to_string()
+        include_str!("avatar_group_case.rml").to_string()
     }
 
     #[computed]
     pub fn rust_sample(&self) -> String {
-        r#"// avatar_group_case.rml.rs：后端状态 + computed + command handler
-use rml::prelude::*;
-
-#[component]
-#[derive(Default)]
-pub struct AvatarGroupCase {
-    pub avatar_count: u8,
-}
-
-impl ILifecycle for AvatarGroupCase {
-    fn on_loaded(&mut self, _w: &mut gpui::Window, _cx: &mut Context<Self>) {
-        self.avatar_count = 3;
-    }
-}
-
-impl AvatarGroupCase {
-    #[command]
-    pub fn on_add_avatar(&mut self, _: &ClickEvent, _: &mut Context<Self>) {
-        if self.avatar_count < 5 {
-            self.avatar_count += 1;
-        }
-    }
-
-    #[command]
-    pub fn on_remove_avatar(&mut self, _: &ClickEvent, _: &mut Context<Self>) {
-        if self.avatar_count > 1 {
-            self.avatar_count -= 1;
-        }
-    }
-}"#
-            .to_string()
+        include_str!("avatar_group_case.rml.rs").to_string()
     }
 
     #[command]
@@ -129,10 +76,5 @@ impl AvatarGroupCase {
         if self.avatar_count > 1 {
             self.avatar_count -= 1;
         }
-    }
-
-    #[command]
-    pub fn on_code_tab_change(&mut self, idx: usize, _cx: &mut Context<Self>) {
-        self.code_tab = idx;
     }
 }

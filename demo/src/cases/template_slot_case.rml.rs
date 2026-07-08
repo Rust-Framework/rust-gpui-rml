@@ -3,7 +3,7 @@ use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
 
-use crate::cases::common::build_api_table;
+use crate::cases::common::{build_api_table, CaseDocPage};
 
 #[contribute(
     host_id = "demo.shell",
@@ -17,6 +17,7 @@ use crate::cases::common::build_api_table;
 pub struct TemplateSlotCase {
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
+    pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
 }
 
 impl IContribution for TemplateSlotCase {
@@ -29,7 +30,8 @@ impl IContribution for TemplateSlotCase {
 }
 
 impl ILifecycle for TemplateSlotCase {
-    fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
+    fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
+        self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         let (cols, rows) = build_api_table(&[
             ("component content={expr}", "透明容器", "注入 AnyElement，不创建包装元素"),
             ("render_* 方法", "命令式", "构建可复用的 UI 块"),
@@ -41,6 +43,16 @@ impl ILifecycle for TemplateSlotCase {
 }
 
 impl TemplateSlotCase {
+    #[computed]
+    pub fn rml_sample(&self) -> String {
+        include_str!("template_slot_case.rml").to_string()
+    }
+
+    #[computed]
+    pub fn rust_sample(&self) -> String {
+        include_str!("template_slot_case.rml.rs").to_string()
+    }
+
     /// 构建信息卡片模板（带标题 + 内容 + 操作区）。
     /// 演示如何用 render 方法封装可复用的 UI 块。
     pub fn render_info_card(

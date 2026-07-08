@@ -1,42 +1,37 @@
 <component>
-    <div display="flex" flex-direction="column" class="case-pane doc-pane">
-        <h2>{t("case.i18n.title")}</h2>
-
-        <Card title="组件说明">
-            <p>i18n 案例演示 RML 的国际化与主题切换机制。t("key") 函数在模板中引用 i18n 资源，cx.set_i18n 切换语言，cx.set_theme 切换主题。</p>
-            <p>核心概念：on_loaded 中通过 cx.observe_global::&lt;I18nState&gt; 监听语言变化自动重渲；t("key") 在运行时解析当前 locale 对应文案；主题切换通过 cx.set_theme("dark"/"light") 即时生效。</p>
-        </Card>
-
-        <Card title="API">
-            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-        </Card>
-
-        <Card title="示例代码">
-            <CodeEditor value={code_sample} />
-        </Card>
-
-        <Card title="演示效果">
-            <div class="demo-section">
-                <h3>静态翻译</h3>
-                <p>当前语言文案（切换语言后此处自动更新）：</p>
-                <p>{t("demo.hello")}</p>
-            </div>
-
-            <div class="demo-section">
-                <h3>切换语言</h3>
-                <p>点击按钮切换语言，观察上方文案与界面语言变化：</p>
-                <div class="button-row">
-                    <Button label="中文" on-click={on_switch_zh} />
-                    <Button label={t("menu.lang_en")} on-click={on_switch_en} />
+    <CaseDocPage
+        title={t("case.i18n.title")}
+        description="i18n 案例演示 RML 的国际化与主题切换机制。t(&quot;key&quot;) 函数在模板中引用 i18n 资源，cx.set_i18n 切换语言，cx.set_theme 切换主题。核心概念：on_loaded 中通过 cx.observe_global::&lt;I18nState&gt; 监听语言变化自动重渲；t(&quot;key&quot;) 在运行时解析当前 locale 对应文案；主题切换通过 cx.set_theme(&quot;dark&quot;/&quot;light&quot;) 即时生效。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <Card title="演示效果">
+                <div class="demo-section">
+                    <h3>静态翻译</h3>
+                    <p>当前语言文案（切换语言后此处自动更新）：</p>
+                    <p>{t("demo.hello")}</p>
                 </div>
-                <p>{lang_label}</p>
-            </div>
 
-            <div class="demo-section">
-                <h3>切换主题</h3>
-                <p>点击按钮在 dark/light 间切换，观察整体外观变化：</p>
-                <Button label={t("menu.theme_toggle")} on-click={on_toggle_theme} />
-            </div>
-        </Card>
-    </div>
+                <div class="demo-section">
+                    <h3>切换语言</h3>
+                    <p>点击按钮切换语言，观察上方文案与界面语言变化：</p>
+                    <div class="button-row">
+                        <Button label="中文" on-click={on_switch_zh} />
+                        <Button label={t("menu.lang_en")} on-click={on_switch_en} />
+                    </div>
+                    <p>{lang_label}</p>
+                </div>
+
+                <div class="demo-section">
+                    <h3>切换主题</h3>
+                    <p>点击按钮在 dark/light 间切换，观察整体外观变化：</p>
+                    <Button label={t("menu.theme_toggle")} on-click={on_toggle_theme} />
+                </div>
+            </Card>
+        </template>
+
+        <template slot="api">
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+        </template>
+    </CaseDocPage>
 </component>
