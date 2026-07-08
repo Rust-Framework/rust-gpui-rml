@@ -19,7 +19,7 @@ use super::attribute::apply_css_styles;
 ///
 /// 正向绑定（VM→UI）和反向绑定（UI→VM）均由 `__rml_get_or_init_input_state` 内部处理。
 /// placeholder 仅支持静态字符串（`InputState::placeholder()` 是 builder 方法，仅创建时可调）。
-pub(super) fn gen_model_input(
+pub(crate) fn gen_model_input(
     elem: &Element,
     _ctx: &CodegenCtx,
     _id_counter: &mut usize,

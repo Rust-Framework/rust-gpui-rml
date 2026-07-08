@@ -17,7 +17,7 @@ use super::text::gen_expr_code;
 /// 应用静态属性（class/id/style/src/href/type 等字面量属性）
 ///
 /// 未知属性输出 warning 并返回空字符串（不生成错误代码）。
-pub(super) fn apply_static_attr(name: &str, value: &str) -> String {
+pub(crate) fn apply_static_attr(name: &str, value: &str) -> String {
     match name {
         "class" | "id" => String::new(),
         "ref" => String::new(),
@@ -52,7 +52,7 @@ pub(super) fn apply_static_attr(name: &str, value: &str) -> String {
 /// 从元素的 class/id 属性提取值，匹配 CSS 样式表，返回 GPUI 方法调用代码
 ///
 /// `parents` 为父元素链（从根到直接父元素），用于后代/子选择器匹配。
-pub(super) fn apply_css_styles(
+pub(crate) fn apply_css_styles(
     elem: &Element,
     tag: &str,
     sheet: &css::StyleSheet,
@@ -108,7 +108,7 @@ fn apply_inline_style(style_str: &str) -> String {
 /// - `style={expr}`：输出 warning（bind 形式不支持，应使用 static `style="..."`）
 /// - `disabled`/`checked`/`readonly`：条件 `.when(...)` 包装
 /// - 未知属性：输出 warning + 返回空字符串
-pub(super) fn apply_bind_attr(
+pub(crate) fn apply_bind_attr(
     name: &str,
     expr: &str,
     loop_vars: &[&str],

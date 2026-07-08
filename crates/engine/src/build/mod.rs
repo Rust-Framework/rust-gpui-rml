@@ -306,6 +306,7 @@ impl Builder {
                 strict: self.strict,
                 self_alias: None,
                 source_map: std::cell::RefCell::new(crate::compiler::source_map::SourceMap::new()),
+                registry: crate::compiler::translator::TranslatorRegistry::builtin(),
             };
 
             match compile(&source, &ctx) {

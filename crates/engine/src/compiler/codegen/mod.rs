@@ -24,17 +24,17 @@
 //! - `component.rs`：gpui-component 扩展组件生成（Button/Input 等）
 //! - `expr.rs`：表达式解析器（{count + 1} → AST → Rust 代码）
 
-mod attribute;
-mod binding;
+pub(crate) mod attribute;
+pub(crate) mod binding;
 mod lifecycle;
 mod model;
-mod node;
+pub(crate) mod node;
 mod observable;
 mod once;
 mod render;
 mod shell;
 pub(crate) mod style_attr;
-mod text;
+pub(crate) mod text;
 mod window;
 
 use crate::compiler::{CodegenCtx, CodegenError};

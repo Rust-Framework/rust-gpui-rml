@@ -57,6 +57,8 @@
   1. **方案 A**（推荐）：扩展事件处理器语法支持 `on-click={command(expr)}`，codegen 生成 `let __rml_arg = expr; cx.listener(move |this, _ev, _window, cx| { this.command(__rml_arg, cx); })`。
   2. **方案 B**：引入 `data-*` 属性 + `on-click` 事件中通过 `ev` 访问 `data-id`（类似 HTML data attributes），但 GPUI 事件对象不支持自定义数据。
 
+> **详细 Bug 工单**：参见 [p1-event-handler-bugs.md](./p1-event-handler-bugs.md) — 将本节细化为 7 个可执行 Bug（BUG-P1-01 ~ BUG-P1-07），含代码位置、复现、修复方向与优先级排序。
+
 ### 2.4 `IVisual::render` 框架接口要求返回 AnyElement
 
 - **优先级**：低

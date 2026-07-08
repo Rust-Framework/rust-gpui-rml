@@ -22,8 +22,10 @@ pub mod popover;
 pub mod props_registry;
 pub mod radio_group;
 pub mod separator;
+pub mod printer;
 pub mod source_map;
 pub mod tab_bar;
+pub mod translator;
 pub mod tabs;
 pub mod tag;
 pub mod table;
@@ -220,6 +222,11 @@ pub struct CodegenCtx {
     /// 使用 `RefCell` 包裹以保持 `&CodegenCtx` 不可变借用在 codegen 全链路传播，
     /// 同时允许 sourcemap 在生成过程中增量记录。
     pub source_map: RefCell<SourceMap>,
+    /// Translator 注册表（Phase 0：新增，默认空注册表保持旧路径行为）
+    ///
+    /// codegen 在生成元素时优先查询注册表；未命中时回退到现有硬编码路由。
+    /// 设计器可通过 `TranslatorRegistry::builtin()` 获取完整注册表。
+    pub registry: crate::compiler::translator::TranslatorRegistry,
 }
 
 /// 代码生成错误
