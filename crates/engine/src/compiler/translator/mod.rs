@@ -10,6 +10,7 @@ pub mod ctx;
 pub mod menu;
 pub mod metadata;
 pub mod registry;
+pub mod root;
 pub mod slot;
 pub mod transparent;
 pub mod user_component;

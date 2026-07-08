@@ -1,6 +1,6 @@
 //! Badge 组件 codegen 模块入口。
 //!
-//! 构造器由 `component::gen_component` 的 `StatelessNoId` 分支统一处理，
+//! 构造器由 `StatelessComponentTranslator` 统一处理，
 //! 本模块仅提供专用 setter（count/max/dot/icon）。
 //!
 //! Badge 三种 variant：

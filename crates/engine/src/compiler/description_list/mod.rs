@@ -1,6 +1,6 @@
 //! DescriptionList 系列组件 codegen 模块。
 //!
-//! 由 `component::gen_component` 在 `StatelessWithItems` 分支按 canonical_tag == "DescriptionList" 调用。
+//! 由 `ItemsComponentTranslator` 按 canonical_tag == "DescriptionList" 调用。
 //!
 //! ## 模块结构
 //!

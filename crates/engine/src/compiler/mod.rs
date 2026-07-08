@@ -31,7 +31,6 @@ pub mod tag;
 pub mod table;
 pub mod tooltip;
 pub mod tree;
-pub mod user_component;
 pub mod validator;
 
 use crate::css::StyleSheet;
@@ -110,8 +109,8 @@ pub struct UserComponentInfo {
     pub slots: Vec<String>,
     /// 所有 pub 字段名 → 类型字符串（如 `"title" → "SharedString"`、`"count" → "i32"`）
     ///
-    /// 由 build.rs 从 `StructMetadata.field_types` 拷贝。codegen 在 `gen_user_component` 中
-    /// 处理 `<CaseDocPage title={...}>` 等属性绑定时，据此生成类型转换代码
+    /// 由 build.rs 从 `StructMetadata.field_types` 拷贝。`UserComponentTranslator` 处理
+    /// `<CaseDocPage title={...}>` 等属性绑定时，据此生成类型转换代码
     /// （`String`/`SharedString` → `.into()`/`.clone()`，`i32` → `parse()`，`Vec<_>` → `.clone()`）。
     pub field_types: HashMap<String, String>,
     /// 所有 `#[computed]` 方法名列表
@@ -186,7 +185,7 @@ pub struct CodegenCtx {
     /// 用户自定义组件注册表（`#[component]` 标注的 struct）
     ///
     /// 由 build.rs 从所有 `.rml.rs` 文件扫描收集，key 为 struct 名（如 "CounterCase"）。
-    /// codegen 在 `gen_component` 中 `component_lookup` 未命中时查此表，
+    /// `UserComponentTranslator` 在 `component_lookup` 未命中时查此表，
     /// 生成 `self.<entity_field>.as_ref().expect(...).clone()` 嵌入用户组件。
     pub user_components: HashMap<String, UserComponentInfo>,
     /// 是否标注 `#[contributehost]`（注册 host slot）
@@ -208,8 +207,8 @@ pub struct CodegenCtx {
     pub strict: bool,
     /// slot 闭包内引用父视图数据时的 self 别名（Phase 2：slot 闭包捕获父视图数据）
     ///
-    /// 由 `gen_user_component` 在生成 slot 内容前 clone ctx 并设置为
-    /// `Some("__rml_self_ref".to_string())`。表达式生成函数据此把 `self.xxx`
+    /// 由 `UserComponentTranslator` 在生成 slot 内容前通过 `expr::with_self_alias`
+    /// 设置为 `Some("__rml_self_ref".to_string())`。表达式生成函数据此把 `self.xxx`
     /// 替换为 `__rml_self_ref.xxx`，绕过 slot 闭包的生命周期限制。
     /// 默认 `None`，行为不变（生成 `self.xxx`）。
     pub self_alias: Option<String>,
@@ -316,7 +315,7 @@ impl From<CodegenError> for CompileError {
 /// sourcemap 由 codegen 在生成过程中透传 AST span 收集，可持久化为 `.rml.map`。
 pub fn compile(source: &str, ctx: &CodegenCtx) -> Result<CompileOutput, CompileError> {
     let root = parser::parse(source)?;
-    validator::validate(&root, &ctx.user_components)?;
+    validator::validate(&root, &ctx.registry, &ctx.user_components)?;
     let mut ctx = ctx.clone();
     ctx.model_fields = codegen::collect_model_fields(&root);
     ctx.model_converters = codegen::collect_model_converters(&root);

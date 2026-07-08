@@ -42,6 +42,7 @@ impl TranslatorRegistry {
         super::menu::register_all(&mut reg);
         super::slot::register_all(&mut reg);
         super::transparent::register_all(&mut reg);
+        super::root::register_all(&mut reg);
         reg
     }
 

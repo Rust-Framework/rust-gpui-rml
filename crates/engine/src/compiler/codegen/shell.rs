@@ -69,7 +69,7 @@ fn wrap_shell_slot(slot_code: &str, scope_var: Option<&str>) -> String {
 /// - title 复用 IWindow::title()，不重复定义
 /// - menu/footer/icon 从根元素 Attribute::Bind 提取，使用表达式解析器处理 computed 方法
 /// - `<template slot="menu/title/footer">` 从子节点插槽提取
-pub(super) fn gen_modern_window_wrapper(
+pub(crate) fn gen_modern_window_wrapper(
     elem: &Element,
     ctx: &CodegenCtx,
     children_body: &str,
@@ -171,7 +171,7 @@ pub(super) fn gen_modern_window_wrapper(
 /// 各 slot 字段为 `(Node, Option<String>)`，第二项为 `scope={name}` 提取出的作用域变量名，
 /// 用于 codegen 生成作用域插槽闭包（scoped slot closure）。
 #[derive(Default)]
-pub(super) struct ShellSlots {
+pub(crate) struct ShellSlots {
     pub menu: Option<(Node, Option<String>)>,
     pub title: Option<(Node, Option<String>)>,
     pub footer: Option<(Node, Option<String>)>,
@@ -197,7 +197,7 @@ pub(super) struct ShellSlots {
 ///
 /// 同时提取 `<template slot="x" scope={y}>` 的 `scope` 绑定表达式（`y`），
 /// 用于 codegen 生成作用域插槽闭包。
-pub(super) fn partition_slot_children(children: &[Node]) -> ShellSlots {
+pub(crate) fn partition_slot_children(children: &[Node]) -> ShellSlots {
     let mut slots = ShellSlots::default();
 
     for child in children {
@@ -281,7 +281,7 @@ fn template_block_content(elem: &Element) -> Option<Node> {
 ///
 /// `body` 是单个 `<Tab>` 子节点的 codegen 表达式（已用 `loop_vars=[item]` 生成），
 /// 在 `gen_tab_window_wrapper` 中包装为 `self.{iterable}.iter().map(|{item}| {body}).collect()`。
-pub(super) struct TabsEach {
+pub(crate) struct TabsEach {
     pub item: String,
     pub iterable: String,
     pub body: String,
@@ -296,7 +296,7 @@ pub(super) struct TabsEach {
 /// 各 slot 字段为 `(&str, Option<&str>)`：第一项为 element 代码，第二项为 `scope={name}`
 /// 提取出的作用域变量名（用于作用域插槽闭包生成）。
 #[derive(Default)]
-pub(super) struct TabWindowSlotCodes<'a> {
+pub(crate) struct TabWindowSlotCodes<'a> {
     pub menu: Option<(&'a str, Option<&'a str>)>,
     pub title: Option<(&'a str, Option<&'a str>)>,
     pub footer: Option<(&'a str, Option<&'a str>)>,
@@ -318,7 +318,7 @@ pub(super) struct TabWindowSlotCodes<'a> {
 /// `slot_tabs` 为模板定制模式：每个元素是一个 `<Tab>` 子节点的 codegen 输出，
 /// 生成 `.tab_children(vec![<Tab1>, <Tab2>, ...])`。
 /// 与 `tabs={Vec<TabItem>}` 简单模式互斥（编译期校验）。
-pub(super) fn gen_tab_window_wrapper(
+pub(crate) fn gen_tab_window_wrapper(
     elem: &Element,
     ctx: &CodegenCtx,
     children_body: &str,

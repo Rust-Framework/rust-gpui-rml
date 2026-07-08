@@ -2,14 +2,14 @@
 
 use crate::compiler::{CodegenCtx, CodegenError};
 use crate::parser::ast::{Element, Node};
-use crate::tags;
 
 use super::node::gen_node;
 use super::shell;
 
 /// 窗口壳包裹类型
-pub(super) enum ShellWrap {
+pub(crate) enum ShellWrap {
     None,
+    Window,
     Modern,
     Tab,
 }
@@ -18,7 +18,7 @@ pub(super) enum ShellWrap {
 ///
 /// 单个子节点：直接使用其代码。多个子节点：包裹在 `gpui::div()` 中。
 /// 零子节点：使用 `gpui::div()` 作为占位。
-pub(super) fn gen_render_impl_from_children(
+pub(crate) fn gen_render_impl_from_children(
     elem: &Element,
     ctx: &CodegenCtx,
     shell: ShellWrap,
@@ -196,14 +196,12 @@ pub(super) fn gen_render_impl_from_children(
                 tabs_each: slot_tabs_each,
             },
         )?,
-        ShellWrap::None => body,
+        ShellWrap::None | ShellWrap::Window => body,
     };
 
     // 窗口根节点自动注入 Dialog/Sheet/Notification 渲染层。
     // `<component>` 与 `<dialog>` 不注入（dialog 自身是 layer 内的 child）。
-    let with_layers = if matches!(shell, ShellWrap::Modern | ShellWrap::Tab)
-        || root_tag_is_window(elem)
-    {
+    let with_layers = if matches!(shell, ShellWrap::Window | ShellWrap::Modern | ShellWrap::Tab) {
         format!(
             "{{\n            \
              let __rml_body = {body};\n            \
@@ -237,12 +235,4 @@ pub(super) fn gen_render_impl_from_children(
     out.push_str("}\n");
 
     Ok(out)
-}
-
-/// 判断元素是否为窗口根节点（window/modern-window/tab-window）
-fn root_tag_is_window(elem: &Element) -> bool {
-    matches!(
-        tags::root_tag_lookup(&elem.tag),
-        Some(tags::RootTag::Window | tags::RootTag::ModernWindow | tags::RootTag::TabWindow)
-    )
 }

@@ -1,6 +1,6 @@
 //! 原生 HTML 标签 translators
 //!
-//! Phase 1 将 `tags::BuiltinTag` 下所有原生标签迁移为独立的 `IRmlTranslator` 实现。
+//! 所有原生标签已迁移为独立的 `IRmlTranslator` 实现。
 //! 每个标签独占一个文件，公共转译逻辑委托 `BuiltinTranslator` 引擎。
 
 pub mod meta;

@@ -13,7 +13,7 @@ use crate::tags;
 
 /// 生成 DescriptionList 构造代码（构造 + 属性 + 子节点注入）
 ///
-/// 由 `component::gen_component` 在 `StatelessWithItems` 分支按 canonical_tag == "DescriptionList" 调用。
+/// 由 `ItemsComponentTranslator` 按 canonical_tag == "DescriptionList" 时调用。
 ///
 /// ref 指令静默忽略（DescriptionList::new() 不接受 ElementId）。
 pub fn gen_description_list(
@@ -361,23 +361,4 @@ mod tests {
         assert!(code.contains(".bordered(self.show_border)"));
     }
 
-    /// 端到端验证：通过 gen_component 入口调用
-    #[test]
-    fn gen_description_list_via_gen_component_dispatch() {
-        use crate::compiler::component::gen_component;
-        let elem = make_element("descriptions", vec![], vec![]);
-        let mut id = 0;
-        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
-        assert!(code.contains("rml_ui::DescriptionList::new()"));
-    }
-
-    /// PascalCase 标签通过 gen_component 入口调度
-    #[test]
-    fn gen_description_list_pascalcase_via_gen_component() {
-        use crate::compiler::component::gen_component;
-        let elem = make_element("DescriptionList", vec![], vec![]);
-        let mut id = 0;
-        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
-        assert!(code.contains("rml_ui::DescriptionList::new()"));
-    }
 }

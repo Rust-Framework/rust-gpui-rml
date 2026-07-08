@@ -1,7 +1,7 @@
 //! Tree 组件 codegen 模块入口。
 //!
 //! Tree 构造器使用 `as_ref()` 而非 `&` 引用（与其他 Stateful 组件不同），
-//! 因此从 `gen_component` 的 `Stateful` 分支独立出来。
+//! 因此从 `StatefulComponentTranslator` 独立出来。
 
 pub mod gen;
 pub mod setters;

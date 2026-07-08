@@ -40,6 +40,8 @@ pub struct TranslatorMetadata {
     pub is_container: bool,
     /// 可接受的直接子标签白名单；空切片表示接受任意合法子节点
     pub allowed_children: &'static [&'static str],
+    /// 可接受的 slot 名白名单（仅对 shell 根节点/容器有意义）
+    pub allowed_slots: &'static [&'static str],
     /// 拖拽放入时的默认占位子节点标签名
     pub default_child: Option<&'static str>,
     /// 默认属性列表（属性名 → 默认值 RML 字符串）
@@ -63,6 +65,7 @@ impl TranslatorMetadata {
             category,
             is_container: false,
             allowed_children: &[],
+            allowed_slots: &[],
             default_child: None,
             default_attrs: &[],
             state_field_hint: None,
@@ -81,6 +84,12 @@ impl TranslatorMetadata {
     /// 链式设置 allowed_children
     pub const fn children(mut self, value: &'static [&'static str]) -> Self {
         self.allowed_children = value;
+        self
+    }
+
+    /// 链式设置 allowed_slots
+    pub const fn slots(mut self, value: &'static [&'static str]) -> Self {
+        self.allowed_slots = value;
         self
     }
 

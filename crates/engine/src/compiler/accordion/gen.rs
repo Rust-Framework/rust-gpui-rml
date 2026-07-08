@@ -9,7 +9,7 @@ use crate::tags;
 
 /// 生成 Accordion 构造代码（构造 + 属性 + 子节点 .item() 注入）
 ///
-/// 由 `component::gen_component` 在 `StatelessWithItems` 分支调用，
+/// 由 `ItemsComponentTranslator` 调用，
 /// 整个 Accordion codegen 流程自包含于此。
 pub fn gen_accordion(
     elem: &Element,
@@ -376,26 +376,6 @@ mod tests {
         let code = gen_accordion(&elem, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
         assert!(code.contains(".with_size(rml_ui::Size::Small)"));
         assert!(code.contains(".bordered(true)"));
-    }
-
-    /// 端到端验证：通过 gen_component 入口调用（验证委托路径畅通）
-    #[test]
-    fn gen_accordion_via_gen_component_dispatch() {
-        use crate::compiler::component::gen_component;
-        let elem = make_element("Accordion", vec![], vec![]);
-        let mut id = 0;
-        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
-        assert!(code.contains("rml_ui::Accordion::new"));
-    }
-
-    /// <accordion> 小写标签通过 gen_component 入口调度
-    #[test]
-    fn gen_accordion_lowercase_tag() {
-        use crate::compiler::component::gen_component;
-        let elem = make_element("accordion", vec![], vec![]);
-        let mut id = 0;
-        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
-        assert!(code.contains("rml_ui::Accordion::new"));
     }
 
     /// <item> 短标签作为 <accordion> 子节点

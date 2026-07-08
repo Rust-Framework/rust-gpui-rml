@@ -12,7 +12,7 @@ use crate::tags;
 
 /// 生成 Tabs 构造代码（构造 + 属性 + 子节点 .child(TabItem) 注入）
 ///
-/// 由 `component::gen_component` 在 `StatelessWithItems` 分支按 tag == "Tabs" 调用。
+/// 由 `ItemsComponentTranslator` 调用。
 pub fn gen_tabs(
     elem: &Element,
     ref_name: Option<&str>,
@@ -386,26 +386,6 @@ mod tests {
         assert_eq!(count, 2);
         assert!(code.contains(".title(\"A\")"));
         assert!(code.contains(".title(\"B\")"));
-    }
-
-    /// 端到端验证：通过 gen_component 入口调用 <Tabs>
-    #[test]
-    fn gen_tabs_via_gen_component_dispatch() {
-        use crate::compiler::component::gen_component;
-        let elem = make_element("Tabs", vec![], vec![]);
-        let mut id = 0;
-        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
-        assert!(code.contains("rml_ui::Tabs::new"));
-    }
-
-    /// <tabs> kebab-case 标签通过 gen_component 入口调度
-    #[test]
-    fn gen_tabs_kebab_tag() {
-        use crate::compiler::component::gen_component;
-        let elem = make_element("tabs", vec![], vec![]);
-        let mut id = 0;
-        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
-        assert!(code.contains("rml_ui::Tabs::new"));
     }
 
     /// <tab> 短标签作为 <tabs> 子节点

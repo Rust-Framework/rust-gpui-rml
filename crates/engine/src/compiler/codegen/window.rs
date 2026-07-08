@@ -1,4 +1,4 @@
-﻿//! 窗口/对话框 impl 代码生成
+//! 窗口/对话框 impl 代码生成
 //!
 //! - `<window>`/`<modern-window>`/`<tab-window>` → `impl IWindow`
 //! - `<dialog>` → `open(window, cx)` / `close(cx)` 方法
@@ -10,7 +10,7 @@ use crate::parser::ast::{Attribute, Element};
 ///
 /// 提取 `title`/`width`/`height` 属性，生成完整的 `impl IWindow` 代码块。
 /// `chrome_transparent` 为 true 时生成 `WindowChrome::Transparent`。
-pub(super) fn gen_window_impl(
+pub(crate) fn gen_window_impl(
     elem: &Element,
     ctx: &CodegenCtx,
     chrome_transparent: bool,
@@ -91,7 +91,7 @@ pub(super) fn gen_window_impl(
 /// 基于 gpui-component `AlertDialog` 实现：默认居中显示，内置 ESC 关闭、关闭按钮，
 /// `title` 属性映射到 `AlertDialog::title`，子元素通过 `content` 注入。
 /// `footer` 显式置空以避免 AlertDialog 默认 OK 按钮与 RML 子元素中的按钮重复。
-pub(super) fn gen_dialog_impl(elem: &Element, ctx: &CodegenCtx) -> Result<String, CodegenError> {
+pub(crate) fn gen_dialog_impl(elem: &Element, ctx: &CodegenCtx) -> Result<String, CodegenError> {
     let view_name = &ctx.view_struct_name;
 
     let title = extract_static_attr(elem, "title").unwrap_or_else(|| "Dialog".to_string());

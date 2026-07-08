@@ -13,7 +13,7 @@ use crate::tags;
 
 /// 生成 Table 构造代码（构造 + 属性 + Column 子节点 + template slot 子节点）
 ///
-/// 由 `component::gen_component` 在 `StatelessWithItems` 分支且 `canonical_tag == "Table"` 时调用。
+/// 由 `ItemsComponentTranslator` 按 `canonical_tag == "Table"` 时调用。
 pub fn gen_table(
     elem: &Element,
     ref_name: Option<&str>,
@@ -160,7 +160,7 @@ mod tests {
 
     #[test]
     fn gen_table_lowercase_tag() {
-        // <table /> 小写标签（通过 gen_component 入口调度，但 gen_table 本身不检查 tag）
+        // <table /> 小写标签（由 canonical_tag 处理，gen_table 本身不检查 tag）
         let elem = make_element("table", vec![], vec![]);
         let mut id = 0;
         let code = gen_table(&elem, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
@@ -358,23 +358,4 @@ mod tests {
         assert!(code.contains(".footer_template("));
     }
 
-    /// 端到端验证：通过 gen_component 入口调用（验证委托路径畅通）
-    #[test]
-    fn gen_table_via_gen_component_dispatch() {
-        use crate::compiler::component::gen_component;
-        let elem = make_element("Table", vec![], vec![]);
-        let mut id = 0;
-        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
-        assert!(code.contains("rml_ui::Table::new"));
-    }
-
-    /// <table> 小写标签通过 gen_component 入口调度
-    #[test]
-    fn gen_table_lowercase_via_gen_component() {
-        use crate::compiler::component::gen_component;
-        let elem = make_element("table", vec![], vec![]);
-        let mut id = 0;
-        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
-        assert!(code.contains("rml_ui::Table::new"));
-    }
 }

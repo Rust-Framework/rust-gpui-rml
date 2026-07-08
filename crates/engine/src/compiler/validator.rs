@@ -3,6 +3,7 @@
 //! Phase A：仅校验语法合法性（不校验 ViewModel 字段类型）。
 //! Phase C：校验 slot 名合法性 + 未知属性（编译期 error）。
 
+use crate::compiler::translator::TranslatorRegistry;
 use crate::compiler::UserComponentInfo;
 use crate::parser::ast::{Attribute, Directive, Element, Node};
 use crate::tags;
@@ -24,13 +25,16 @@ impl std::error::Error for ValidationError {}
 
 /// 校验 AST 合法性
 ///
-/// `user_components` 传入用户自定义组件注册表，用于校验 `<template slot="x">` 中
-/// `x` 是否在目标组件的 `slots` 声明中。
+/// - `registry`: translator 注册表，用于查询根节点等内置 translator 的元数据
+///   （如允许 slot 名、是否根节点）。
+/// - `user_components`: 用户自定义组件注册表，用于校验 `<template slot="x">` 中
+///   `x` 是否在组件的 `slots` 声明中。
 pub fn validate(
     node: &Node,
+    registry: &TranslatorRegistry,
     user_components: &HashMap<String, UserComponentInfo>,
 ) -> Result<(), ValidationError> {
-    validate_node(node, &mut ValidationCtx::default(), user_components)
+    validate_node(node, registry, &mut ValidationCtx::default(), user_components)
 }
 
 #[derive(Default)]
@@ -40,17 +44,19 @@ struct ValidationCtx {
 
 fn validate_node(
     node: &Node,
+    registry: &TranslatorRegistry,
     ctx: &mut ValidationCtx,
     user_components: &HashMap<String, UserComponentInfo>,
 ) -> Result<(), ValidationError> {
     match node {
-        Node::Element(elem) => validate_element(elem, ctx, user_components),
+        Node::Element(elem) => validate_element(elem, registry, ctx, user_components),
         Node::Text(_) | Node::Interpolation { .. } | Node::MixedText(_) => Ok(()),
     }
 }
 
 fn validate_element(
     elem: &Element,
+    registry: &TranslatorRegistry,
     ctx: &mut ValidationCtx,
     user_components: &HashMap<String, UserComponentInfo>,
 ) -> Result<(), ValidationError> {
@@ -108,25 +114,21 @@ fn validate_element(
 
     // Shell 根标签的 slot 名白名单校验
     // 防止未知 slot 名（如 `<template slot="tabs">` 误用在 modern-window 上）静默落入 body
-    if let Some(root_tag) = tags::root_tag_lookup(&elem.tag) {
-        let allowed_slots: &[&str] = match root_tag {
-            tags::RootTag::TabWindow => &[
-                "menu", "title", "footer", "left", "right", "bottom", "tabs",
-            ],
-            tags::RootTag::ModernWindow => &["menu", "title", "footer"],
-            _ => &[],
-        };
-        for child in &elem.children {
-            if let Node::Element(child_elem) = child {
-                if child_elem.tag == "template" {
-                    if let Some(slot_name) = &child_elem.slot_name {
-                        if !allowed_slots.contains(&slot_name.as_str()) {
-                            return Err(ValidationError {
-                                message: format!(
-                                    "unknown slot name `{}` for <{}>: allowed slots are {:?}",
-                                    slot_name, elem.tag, allowed_slots
-                                ),
-                            });
+    if let Some(meta) = registry.metadata(&elem.tag) {
+        if meta.is_root && !meta.allowed_slots.is_empty() {
+            let allowed_slots = meta.allowed_slots;
+            for child in &elem.children {
+                if let Node::Element(child_elem) = child {
+                    if child_elem.tag == "template" {
+                        if let Some(slot_name) = &child_elem.slot_name {
+                            if !allowed_slots.contains(&slot_name.as_str()) {
+                                return Err(ValidationError {
+                                    message: format!(
+                                        "unknown slot name `{}` for <{}>: allowed slots are {:?}",
+                                        slot_name, elem.tag, allowed_slots
+                                    ),
+                                });
+                            }
                         }
                     }
                 }
@@ -190,11 +192,11 @@ fn validate_element(
     }
 
     // 校验未知属性：扩展组件的 bind/event 属性必须在 props_registry 中登记
-    validate_unknown_props(elem)?;
+    validate_unknown_props(elem, registry)?;
 
     // 递归校验子节点
     for child in &elem.children {
-        validate_node(child, ctx, user_components)?;
+        validate_node(child, registry, ctx, user_components)?;
     }
 
     Ok(())
@@ -205,11 +207,14 @@ fn validate_element(
 /// - 扩展组件（`tags::is_extension_component`）：bind/event 属性用 `is_prop_registered` 校验
 /// - Shell 根标签（tab-window/modern-window/window/dialog）：bind/event 属性用 `is_shell_prop_registered` 校验
 /// - static 属性宽松处理（可能有自定义用途，不报错）
-fn validate_unknown_props(elem: &Element) -> Result<(), ValidationError> {
+fn validate_unknown_props(
+    elem: &Element,
+    registry: &TranslatorRegistry,
+) -> Result<(), ValidationError> {
     let tag = &elem.tag;
 
-    // Shell 根标签
-    if tags::root_tag_lookup(tag).is_some() {
+    // Shell 根标签：通过注册表元数据识别
+    if registry.metadata(tag).map(|m| m.is_root).unwrap_or(false) {
         for attr in &elem.attributes {
             if let Attribute::Bind { name, .. } | Attribute::Event { name, .. } = attr {
                 if !crate::compiler::props_registry::is_shell_prop_registered(tag, name) {

@@ -5,7 +5,7 @@
 //!
 //! ## codegen 路径
 //!
-//! 1. `gen_component` 在事件属性循环中调用 `is_input_event(name, tag)` 检测
+//! 1. `StatefulComponentTranslator` 在事件属性循环中调用 `is_input_event(name, tag)` 检测
 //! 2. 若是 Input 事件，跳过 `component_event_setter`，收集到 `input_event_handlers`
 //! 3. 在构造器生成完成后，若有 Input 事件，把构造器包装到 block 表达式中：
 //!    ```ignore

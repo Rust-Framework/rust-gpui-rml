@@ -15,8 +15,18 @@ use crate::parser::ast::{Attribute, Directive, Element};
 pub struct ComponentTranslator;
 
 impl IRmlTranslator for ComponentTranslator {
+    /// 注册表键名，与实际标签 `component` 解耦，避免与 `<component>` 根节点 translator 冲突。
     fn tag(&self) -> &'static str {
-        "component"
+        "*component-transparent"
+    }
+
+    /// 只匹配带 `content={...}` 的 `<component>` 透明容器；
+    /// 根节点 `<component>`（无 content）由 `ComponentRootTranslator` 处理。
+    fn matches(&self, elem: &Element) -> bool {
+        elem.tag == "component"
+            && elem.attributes.iter().any(|a| {
+                matches!(a, Attribute::Bind { name, .. } if name == "content")
+            })
     }
 
     fn to_rust(

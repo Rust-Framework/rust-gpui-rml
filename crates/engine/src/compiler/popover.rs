@@ -389,47 +389,6 @@ mod tests {
         assert!(result.unwrap_err().message.contains("exactly one trigger"));
     }
 
-    /// 端到端验证：通过 gen_component 入口调度（验证 StatelessWithItems 分支委托路径畅通）
-    #[test]
-    fn gen_popover_via_gen_component_dispatch() {
-        use crate::compiler::component::gen_component;
-        let trigger = Element {
-            tag: "Button".into(),
-            attributes: vec![Attribute::Static {
-                name: "label".into(),
-                value: "Open".into(),
-                span: Span::empty(),
-            }],
-            directives: vec![],
-            children: vec![],
-            slot_name: Some("trigger".into()),
-            ..Default::default()
-        };
-        let elem = make_element("Popover", vec![], vec![Node::Element(trigger)]);
-        let mut id = 0;
-        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
-        assert!(code.contains("rml_ui::Popover::new"));
-        assert!(code.contains(".trigger("));
-    }
-
-    /// <popover> 小写标签通过 gen_component 入口调度（验证 canonical_tag 别名映射）
-    #[test]
-    fn gen_popover_lowercase_tag() {
-        use crate::compiler::component::gen_component;
-        let trigger = Element {
-            tag: "Button".into(),
-            attributes: vec![],
-            directives: vec![],
-            children: vec![],
-            slot_name: Some("trigger".into()),
-            ..Default::default()
-        };
-        let elem = make_element("popover", vec![], vec![Node::Element(trigger)]);
-        let mut id = 0;
-        let code = gen_component(&elem, &ctx(), 0, &mut id, &Vec::new()).unwrap();
-        assert!(code.contains("rml_ui::Popover::new"));
-    }
-
     /// default_open 绑定属性生成 .default_open(self.field) 形式
     #[test]
     fn gen_popover_with_default_open_bind() {
