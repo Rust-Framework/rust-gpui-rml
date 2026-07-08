@@ -100,11 +100,9 @@ pub fn gen_user_component(
             gen_slot_content(slot_nodes, ctx, id_counter, loop_vars)
         })?;
         let binding = format!("__rml_slot_{}_value", slot_name);
-        // 每个 slot 闭包前 clone __rml_self_entity，避免被 move 后无法用于其他 slot 闭包。
-        // 闭包内通过 `__rml_self_entity.update(_app, |this, cx| { ... })` 进入 &mut Context<Self>，
-        // 使 slot 内容的 `cx.listener(...)` / `cx.t(...)` 等调用可用（与 wrap_shell_slot 同模式）。
+        // 每个 slot 闭包前 clone __rml_self_entity，避免被 move 后无法用于其他 slot 闭包
         code.push_str(&format!(
-            "    let {}: rml_core::slot::SlotRenderer = Box::new({{ let __rml_self_entity = __rml_self_entity.clone(); move |_scope: &dyn rml_core::slot::ISlotScope, _window: &mut gpui::Window, _app: &mut gpui::App| -> gpui::AnyElement {{ __rml_self_entity.update(_app, |this, cx| {{ let __rml_self_ref: &Self = this; ({}).into_any_element() }}) }} }});\n",
+            "    let {}: rml_core::slot::SlotRenderer = Box::new({{ let __rml_self_entity = __rml_self_entity.clone(); move |_scope: &dyn rml_core::slot::ISlotScope, _window: &mut gpui::Window, cx: &mut gpui::App| -> gpui::AnyElement {{ let __rml_self_ref = __rml_self_entity.read(cx); ({}).into_any_element() }} }});\n",
             binding, slot_code
         ));
         code.push_str(&format!(
@@ -118,9 +116,9 @@ pub fn gen_user_component(
         let default_code = expr::with_self_alias("__rml_self_ref", || {
             gen_slot_content(&default_children, ctx, id_counter, loop_vars)
         })?;
-        code.push_str("    let __rml_slot_default_value: rml_core::slot::SlotRenderer = Box::new({ let __rml_self_entity = __rml_self_entity.clone(); move |_scope: &dyn rml_core::slot::ISlotScope, _window: &mut gpui::Window, _app: &mut gpui::App| -> gpui::AnyElement { __rml_self_entity.update(_app, |this, cx| { let __rml_self_ref: &Self = this; (");
+        code.push_str("    let __rml_slot_default_value: rml_core::slot::SlotRenderer = Box::new({ let __rml_self_entity = __rml_self_entity.clone(); move |_scope: &dyn rml_core::slot::ISlotScope, _window: &mut gpui::Window, cx: &mut gpui::App| -> gpui::AnyElement { let __rml_self_ref = __rml_self_entity.read(cx); (");
         code.push_str(&default_code);
-        code.push_str(").into_any_element() }) } });\n");
+        code.push_str(").into_any_element() } });\n");
         code.push_str(
             "    __rml_entity.update(cx, |this, _cx| { this.__rml_set_slot_default(__rml_slot_default_value); });\n",
         );
@@ -661,13 +659,8 @@ mod tests {
             code
         );
         assert!(
-            code.contains("__rml_self_entity.update(_app, |this, cx|"),
-            "expected entity.update wrapper in slot closure, got: {}",
-            code
-        );
-        assert!(
-            code.contains("let __rml_self_ref: &Self = this;"),
-            "expected __rml_self_ref bound to this inside update, got: {}",
+            code.contains("let __rml_self_ref = __rml_self_entity.read(cx);"),
+            "expected __rml_self_ref read in slot closure, got: {}",
             code
         );
     }
