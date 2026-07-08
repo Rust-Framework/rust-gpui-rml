@@ -33,8 +33,8 @@ let style_chain = format!(
 - `value` / `language` — 构造器内联处理
 - `h_full` — 快捷属性，已处理
 - `context_menu` — 已处理
-- `bordered` — 已处理（上一轮新增）
-- `focus_bordered` — **未处理，用户无法覆盖**（Input 特有方法，不属于通用 CSS 属性）
+- `bordered` — 已处理，支持 static（`bordered="false"`）与 bind（`bordered={false}` / `bordered={field}`）
+- `focus_bordered` — 已处理，支持 static 与 bind 两种形式（同 `bordered`）
 
 ### gen.rs 代码流程
 1. `ctor_expr` = 构造器 + `style_chain`（硬编码默认值）
@@ -91,12 +91,15 @@ let user_set: HashSet<&str> = elem.attributes.iter().filter_map(|attr| match att
 }).collect();
 ```
 
-**3.2 新增 `focus_bordered` 属性解析**（与 `bordered` 同模式）
+**3.2 新增 `focus_bordered` 属性解析**（与 `bordered` 同模式，支持 static + bind）
 
 ```rust
-let focus_bordered: Option<bool> = elem.attributes.iter().find_map(|attr| match attr {
+let focus_bordered: Option<String> = elem.attributes.iter().find_map(|attr| match attr {
     Attribute::Static { name, value, .. } if name == "focus_bordered" => {
-        Some(value.is_empty() || value.eq_ignore_ascii_case("true"))
+        Some((value.is_empty() || value.eq_ignore_ascii_case("true")).to_string())
+    }
+    Attribute::Bind { name, expr, .. } if name == "focus_bordered" => {
+        Some(super::super::codegen::gen_expr_code(expr, &lv, &computed))
     }
     _ => None,
 });
@@ -139,9 +142,17 @@ let style_chain = format!("{}{}", defaults, border_chain);
 
 **3.4 将 `focus_bordered` 加入 `is_handled_inline` 列表**
 
-在 setter 链循环中，避免 `focus_bordered` 被重复处理：
+在 setter 链循环中，避免 `bordered` / `focus_bordered` 被重复处理（static 和 bind 均需跳过）：
 ```rust
-name == "value" || name == "language" || name == "h_full" || name == "context_menu" || name == "bordered" || name == "focus_bordered"
+let is_handled_inline = match attr {
+    Attribute::Static { name, .. } => {
+        name == "value" || name == "language" || name == "context_menu" || name == "bordered" || name == "focus_bordered"
+    }
+    Attribute::Bind { name, .. } => {
+        name == "value" || name == "bordered" || name == "focus_bordered"
+    }
+    _ => false,
+};
 ```
 
 ### 步骤 4：更新单测

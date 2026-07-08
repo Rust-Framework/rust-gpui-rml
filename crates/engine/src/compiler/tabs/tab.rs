@@ -388,11 +388,13 @@ pub fn gen_tab_child(
     }
 
     if let Some(clause) = each_clause {
+        // slot 闭包内 self_alias 为 __rml_self_ref，顶层 render 为 self
+        let self_prefix = crate::compiler::expr::current_self_alias().unwrap_or("self");
         let iter_code = format!(
-            "self.{}.iter().map(|{}| {{\n                \
+            "{}.{}.iter().map(|{}| {{\n                \
              let {} = {}.clone();\n                \
              {}\n            }})",
-            clause.iterable, clause.item, clause.item, clause.item, code
+            self_prefix, clause.iterable, clause.item, clause.item, clause.item, code
         );
         return Ok((iter_code, true));
     }

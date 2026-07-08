@@ -6,7 +6,7 @@ use rml_core::contribution::{register_visual_ability, IVisual};
 use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
 
-use crate::cases::common::build_api_table;
+use crate::cases::common::{build_api_table, CaseDocPage};
 
 #[contribute(
     host_id = "demo.shell",
@@ -19,9 +19,9 @@ use crate::cases::common::build_api_table;
 #[derive(Default)]
 pub struct StatusBarCase {
     pub last_action: String,
-    pub code_tab: usize,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
+    pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
 }
 
 impl IContribution for StatusBarCase {
@@ -34,13 +34,14 @@ impl IContribution for StatusBarCase {
 }
 
 impl ILifecycle for StatusBarCase {
-    fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
+    fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
+        self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         let (cols, rows) = build_api_table(&[
             ("kind = \"status\"", "贡献类型", "注册到状态栏插槽"),
             ("host_id", "字符串", "宿主标识"),
             ("order", "数字", "状态栏排序"),
             ("IContribution::name", "方法", "状态栏显示文案"),
-            ("IVisual::render", "方法", "自定义状态栏渲染"),
+            ("IVisual::render", "方法", "自定义状态栏渲染（当前需命令式 AnyElement，列入 RML 迭代计划）"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;
@@ -59,44 +60,12 @@ impl StatusBarCase {
 
     #[computed]
     pub fn rml_sample(&self) -> String {
-        r#"<!-- status_bar_case.rml：声明式 UI，描述结构 + 绑定 + 事件 -->
-<component>
-    <!-- StatusBar 案例演示贡献点机制（kind = "status"） -->
-    <p>请查看窗口底部状态栏，左侧 "就绪" 由 StatusReady 贡献点渲染。</p>
-    <p>{action_status}</p>
-    <Button label="查看就绪状态" on-click={on_show_ready} />
-    <Button label="查看案例状态" on-click={on_show_case} />
-</component>"#
-            .to_string()
+        include_str!("status_bar_case.rml").to_string()
     }
 
     #[computed]
     pub fn rust_sample(&self) -> String {
-        r#"// status_bar_case.rml.rs：状态栏贡献点（kind = "status"）
-use gpui::{AnyElement, ParentElement, SharedString, Styled};
-use rml::prelude::*;
-use rml_core::contribution::IVisual;
-
-// 通过 #[contribute(kind = "status")] 注册到宿主 shell 的状态栏插槽
-#[contribute(host_id = "demo.shell", id = "status.ready", kind = "status", order = 0)]
-#[derive(Default)]
-pub struct StatusReady;
-
-impl IContribution for StatusReady {
-    fn id(&self) -> &str { Self::CONTRIBUTION_ID }
-    fn name(&self) -> SharedString { t_static("shell.status_ready") }
-}
-
-// IVisual::render 自定义状态栏渲染内容
-impl IVisual for StatusReady {
-    fn render(&self, _window: &mut gpui::Window, _cx: &mut gpui::App) -> AnyElement {
-        gpui::div()
-            .text_xs()
-            .child(t_static("shell.status_ready"))
-            .into_any_element()
-    }
-}"#
-            .to_string()
+        include_str!("status_bar_case.rml.rs").to_string()
     }
 
     #[command]
@@ -107,11 +76,6 @@ impl IVisual for StatusReady {
     #[command]
     pub fn on_show_case(&mut self, _: &ClickEvent, _: &mut Context<Self>) {
         self.last_action = "查看案例状态".to_string();
-    }
-
-    #[command]
-    pub fn on_code_tab_change(&mut self, idx: usize, _cx: &mut Context<Self>) {
-        self.code_tab = idx;
     }
 }
 
@@ -129,6 +93,8 @@ impl IContribution for StatusReady {
     }
 }
 
+/// IVisual::render 是框架接口要求，当前状态栏贡献点必须返回 AnyElement。
+/// 这是 RML 框架限制（IVisual 不支持 RML 模板），列入迭代计划。
 impl IVisual for StatusReady {
     fn render(&self, _window: &mut gpui::Window, _cx: &mut gpui::App) -> AnyElement {
         gpui::div()
@@ -141,9 +107,6 @@ impl IVisual for StatusReady {
 static STATUS_READY_REGISTERED: Once = Once::new();
 
 /// 注册 `StatusReady` 的 `IVisual` 能力 cast。
-///
-/// `StatusReady` 有 `#[contribute]` 无 `#[component]`，视觉能力不自动注册。
-/// 需在 `MainWindow::on_loaded` 的 `project_entries()` 前调用，使 `as_visual()` 查询生效。
 pub fn ensure_status_ready_registered() {
     STATUS_READY_REGISTERED.call_once(|| {
         register_visual_ability::<StatusReady>();

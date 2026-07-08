@@ -2,20 +2,28 @@
 
 ## size 属性
 
-`size` 属性统一控制组件尺寸，使用 `medium` 不用 `middle`：
+`size` 属性统一控制组件尺寸，使用 `medium` 不用 `middle`。
+
+**遵循原生写法**：`Medium` 是 `Size` enum 的 `#[default]`，即组件原生默认。`size="medium"` / `size="default"` / 不写 `size` 属性 三者等价，均**不生成 `.with_size()` 调用**，避免冗余加工。
 
 | 值 | 生成代码 | 说明 |
 |----|----------|------|
 | `xsmall` | `.with_size(rml_ui::Size::XSmall)` | 超小 |
 | `small` | `.with_size(rml_ui::Size::Small)` | 小 |
-| `medium` | `.with_size(rml_ui::Size::Medium)` | 中（**不用 middle**） |
+| `medium` | **无调用** | 中（原生默认，**不用 middle**） |
+| `default` | **无调用** | `medium` 的语义别名 |
 | `large` | `.with_size(rml_ui::Size::Large)` | 大 |
+| 不写 | **无调用** | 同 `medium` / `default` |
 
 **语法**：
 ```xml
 <Button size="small">Small</Button>
-<Button size="medium">Medium</Button>
 <Button size="large">Large</Button>
+<!-- 以下三者等价，均使用原生默认（不生成 .with_size() 调用） -->
+<Button>Default</Button>
+<Button size="medium">Medium</Button>
+<Button size="default">Default</Button>
+<!-- 动态绑定：字段类型须为 Size 或实现 Into<Size> -->
 <Button size={size_value}>Dynamic</Button>
 ```
 
@@ -216,8 +224,9 @@ RML 将 CSS 子集统一为声明式一等直接属性，避免散落的 Tailwin
 
 ## 规范要点
 
-1. **size 用 medium 不用 middle**：所有组件统一使用 `medium`
-2. **vertical 不重复 horizontal**：默认横向，仅 `vertical=true` 切换纵向
-3. **variant 快捷方法省略值**：`primary` 等价于 `primary="true"`，但前者更简洁
-4. **size 支持动态绑定**：`size={size_value}` 绑定到视图字段
-5. **vertical 支持动态绑定**：`vertical={is_vertical}` 绑定到 bool 字段
+1. **size 用 medium 不用 middle**：所有组件统一使用 `medium`，`default` 为语义别名
+2. **size 遵循原生写法**：`medium`/`default`/不写 三者等价，均不生成 `.with_size()` 调用（Medium 是 `Size::#[default]`），避免冗余加工
+3. **vertical 不重复 horizontal**：默认横向，仅 `vertical=true` 切换纵向
+4. **variant 快捷方法省略值**：`primary` 等价于 `primary="true"`，但前者更简洁
+5. **size 支持动态绑定**：`size={size_value}` 绑定到视图字段（字段类型须为 `Size` 或实现 `Into<Size>`）
+6. **vertical 支持动态绑定**：`vertical={is_vertical}` 绑定到 bool 字段

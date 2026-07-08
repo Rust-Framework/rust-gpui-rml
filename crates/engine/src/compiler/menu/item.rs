@@ -380,10 +380,11 @@ fn bind_attr(
             crate::compiler::expr::parse(&expr_str)
                 .map(|p| crate::compiler::expr::to_rust_code_with_ctx(&p, &lv))
                 .unwrap_or_else(|_| {
+                    let self_prefix = crate::compiler::expr::current_self_alias().unwrap_or("self");
                     if computed.contains(&expr_str.as_str()) {
-                        format!("self.{}()", expr_str)
+                        format!("{}.{}()", self_prefix, expr_str)
                     } else {
-                        format!("self.{}", expr_str)
+                        format!("{}.{}", self_prefix, expr_str)
                     }
                 })
         };

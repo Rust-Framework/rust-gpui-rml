@@ -3,7 +3,7 @@ use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
 
-use crate::cases::common::build_api_table;
+use crate::cases::common::{build_api_table, CaseDocPage};
 
 /// 框架能力案例 —— 验证 CSS overflow-x / overflow-y 映射与滚动容器行为。
 #[contribute(
@@ -19,6 +19,7 @@ pub struct OverflowTestCase {
     pub items: Vec<SharedString>,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
+    pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
 }
 
 impl IContribution for OverflowTestCase {
@@ -31,7 +32,8 @@ impl IContribution for OverflowTestCase {
 }
 
 impl ILifecycle for OverflowTestCase {
-    fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
+    fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
+        self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         self.items = (1..=50)
             .map(|i| format!("条目 {i:02}：用于验证垂直滚动条与 overflow-y 映射").into())
             .collect();
@@ -49,40 +51,11 @@ impl ILifecycle for OverflowTestCase {
 impl OverflowTestCase {
     #[computed]
     pub fn rml_sample(&self) -> String {
-        r#"<!-- overflow_test_case.rml：验证 overflow 映射 -->
-<component>
-    <!-- 垂直滚动：overflow-y-auto -->
-    <div class="scroll-vertical" overflow-y-auto="" style="height: 200px;">
-        <p v-for="item in items">{item}</p>
-    </div>
-
-    <!-- 水平滚动：overflow-x-auto -->
-    <div class="scroll-horizontal" overflow-x-auto="">
-        <p>一段很长的内容用于验证水平滚动条 overflow-x 映射...</p>
-    </div>
-</component>"#
-            .to_string()
+        include_str!("overflow_test_case.rml").to_string()
     }
 
     #[computed]
     pub fn rust_sample(&self) -> String {
-        r#"// overflow_test_case.rml.rs
-use rml::prelude::*;
-
-#[contribute(host_id = "demo.shell", id = "framework.overflow", kind = "case", group = "framework", order = 47)]
-#[component]
-#[derive(Default)]
-pub struct OverflowTestCase {
-    pub items: Vec<SharedString>,
-}
-
-impl ILifecycle for OverflowTestCase {
-    fn on_loaded(&mut self, _w: &mut gpui::Window, _cx: &mut Context<Self>) {
-        self.items = (1..=50)
-            .map(|i| format!("条目 {i:02}").into())
-            .collect();
-    }
-}"#
-            .to_string()
+        include_str!("overflow_test_case.rml.rs").to_string()
     }
 }

@@ -79,56 +79,6 @@ impl KeyCase {
         include_str!("key_case.rml.rs").to_string()
     }
 
-    /// 命令式构建单个列表项的渲染树。
-    /// 由模板 `<component each={item in items} key={item.id} content={...} />` 调用。
-    /// key={item.id} 提供稳定 ElementId，列表重排时 GPUI 能正确识别移动项，
-    /// 保留元素状态（焦点、动画、内部 state）。
-    pub fn render_item(
-        &self,
-        item: &KeyItem,
-        _window: &mut gpui::Window,
-        _cx: &mut Context<Self>,
-    ) -> gpui::AnyElement {
-        use gpui::{div, px, IntoElement, ParentElement, Styled};
-        use rml_ui::Tag;
-
-        div()
-            .px(px(8.))
-            .py(px(4.))
-            .child(Tag::new().child(item.id.clone()))
-            .child(Tag::new().child(item.label.clone()))
-            .into_any_element()
-    }
-
-    /// 命令式构建带 key 的列表渲染树。
-    /// 由模板 `<component content={self.render_items(_window, cx)} />` 调用。
-    /// 每项通过 .id(("rml_key", from_key(&item.id))) 提供稳定 ElementId，
-    /// 列表重排时 GPUI 能正确识别移动项，保留元素状态。
-    pub fn render_items(
-        &self,
-        _window: &mut gpui::Window,
-        _cx: &mut Context<Self>,
-    ) -> gpui::AnyElement {
-        use gpui::{div, px, IntoElement, InteractiveElement, ParentElement, Styled};
-        use rml_core::element_id;
-        use rml_ui::Tag;
-
-        div()
-            .flex()
-            .flex_row()
-            .gap(px(8.))
-            .flex_wrap()
-            .children(self.items.iter().map(|item| {
-                div()
-                    .id(("rml_key", element_id::from_key(&item.id)))
-                    .px(px(8.))
-                    .py(px(4.))
-                    .child(Tag::new().child(item.id.clone()))
-                    .child(Tag::new().child(item.label.clone()))
-            }))
-            .into_any_element()
-    }
-
     #[command]
     pub fn on_prepend(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
         let idx = self.items.len() + 1;

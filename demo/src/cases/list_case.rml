@@ -1,13 +1,17 @@
 <component>
     <CaseDocPage
         title={t("case.list.title")}
-        description="列表渲染案例演示 RML 的 each 指令。通过 each=&#123;item in items&#125; 遍历 Vec&lt;T&gt;，配合 content=&#123;expr&#125; 渲染每个元素。修改 Vec 字段后需调用 __rml_bump_version 通知框架重渲。"
+        description="列表渲染案例演示 RML 的 each 指令。通过 each=&#123;item in items&#125; 遍历 Vec&lt;T&gt;，在 each 作用域内绑定循环变量渲染每个元素。修改 Vec 字段后需调用 __rml_bump_version 通知框架重渲。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
             <Card title="基础列表">
                 <p>共 {item_count} 项：</p>
-                <component content={self.render_item_list(_window, cx)} />
+                <div display="flex" flex-direction="row" gap="8px" flex-wrap="wrap">
+                    <div each={item in items} padding="8px 4px">
+                        <Tag>{item}</Tag>
+                    </div>
+                </div>
             </Card>
 
             <Card title="动态增删">

@@ -676,8 +676,8 @@ mod tests {
             code
         );
         assert!(
-            code.contains("let __rml_self_ref = __rml_self_entity.read(cx);"),
-            "expected __rml_self_ref read in slot closure, got: {}",
+            code.contains("let __rml_self_ref: &Self = this;"),
+            "expected __rml_self_ref binding in slot closure, got: {}",
             code
         );
     }

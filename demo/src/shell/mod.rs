@@ -3,6 +3,7 @@ pub mod menu_commands;
 pub mod menu_view_model;
 pub mod status_view_model;
 pub mod workbench;
+pub mod bottom_tabs;
 #[path = "activity_panel.rml.rs"]
 pub mod activity_panel;
 #[path = "login_dialog.rml.rs"]

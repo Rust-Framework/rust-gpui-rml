@@ -3,7 +3,7 @@ use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
 
-use crate::cases::common::build_api_table;
+use crate::cases::common::{build_api_table, CaseDocPage};
 
 #[contribute(
     host_id = "demo.shell",
@@ -16,13 +16,13 @@ use crate::cases::common::build_api_table;
 #[derive(Default)]
 pub struct TabBarCase {
     pub active_tab: usize,
-    pub code_tab: usize,
     pub tabs_api_columns: Vec<TableColumn>,
     pub tabs_api_rows: Vec<TableRow>,
     pub tab_bar_api_columns: Vec<TableColumn>,
     pub tab_bar_api_rows: Vec<TableRow>,
     pub tab_api_columns: Vec<TableColumn>,
     pub tab_api_rows: Vec<TableRow>,
+    pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
 }
 
 impl IContribution for TabBarCase {
@@ -35,8 +35,9 @@ impl IContribution for TabBarCase {
 }
 
 impl ILifecycle for TabBarCase {
-    fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
-        // Tabs API（WPF TabControl：header + body，全量属性）
+    fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
+        self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
+
         let (cols, rows) = build_api_table(&[
             ("selected-index", "绑定", "当前选中索引"),
             ("on-click", "事件", "点击回调，签名 fn(index: usize)"),
@@ -54,7 +55,6 @@ impl ILifecycle for TabBarCase {
         self.tabs_api_columns = cols;
         self.tabs_api_rows = rows;
 
-        // TabBar API（原生 header-only，不含 bordered/on_close*/on_promote）
         let (cols, rows) = build_api_table(&[
             ("selected-index", "绑定", "当前选中索引"),
             ("on-click", "事件", "点击回调，签名 fn(index: usize)"),
@@ -90,113 +90,17 @@ impl TabBarCase {
 
     #[computed]
     pub fn rml_sample(&self) -> String {
-        r#"<!-- tab_bar_case.rml：声明式 UI，描述结构 + 绑定 + 事件 -->
-<component>
-    <!-- 基础用法：selected-index={active_tab} on-click={on_tab_select} -->
-    <TabBar selected-index={active_tab} on-click={on_tab_select}>
-        <Tab label="Account" />
-        <Tab label="Profile" />
-        <Tab label="Settings" />
-    </TabBar>
-
-    <!-- 5 种 variant：underline/pill/flat/outline/segmented -->
-    <TabBar underline="">
-        <Tab label="Underline" />
-    </TabBar>
-    <TabBar pill="">
-        <Tab label="Pill" />
-    </TabBar>
-    <TabBar segmented="">
-        <Tab label="Segmented" />
-    </TabBar>
-
-    <!-- 尺寸 size -->
-    <TabBar size="small">
-        <Tab label="small" />
-    </TabBar>
-
-    <!-- 带图标 -->
-    <TabBar>
-        <Tab icon="User" label="Account" />
-        <Tab icon="Bell" label="Notifications" />
-    </TabBar>
-
-    <!-- 禁用/选中（选中状态由 TabBar::selected-index 控制） -->
-    <TabBar>
-        <Tab label="Normal" />
-        <Tab label="Disabled" disabled="true" />
-    </TabBar>
-
-    <!-- menu 模式（标签过多时启用下拉） -->
-    <TabBar menu="true">
-        <Tab label="Tab 1" />
-        <Tab label="Tab 2" />
-        <Tab label="Tab 3" />
-    </TabBar>
-
-    <!-- header 自定义插槽：template slot="header" 注入任意标题元素 -->
-    <TabBar selected-index={active_tab} on-click={on_tab_select}>
-        <Tab>
-            <template slot="header">
-                <span>Account</span>
-                <Badge>3</Badge>
-            </template>
-        </Tab>
-        <Tab>
-            <template slot="header">
-                <span>Profile</span>
-            </template>
-        </Tab>
-    </TabBar>
-
-    <!-- 内容面板 body：Tab 直接包裹 element 子节点（WPF TabControl/TabItem 模式） -->
-    <!-- body 模式用 <Tabs>（非 <TabBar>），bordered 包裹 header + body 整体 -->
-    <Tabs bordered="" selected-index={active_tab} on-click={on_tab_select}>
-        <Tab label="Account">
-            <div>Account settings panel</div>
-        </Tab>
-        <Tab label="Profile">
-            <div>User profile panel</div>
-        </Tab>
-    </Tabs>
-</component>"#
-            .to_string()
+        include_str!("tab_bar_case.rml").to_string()
     }
 
     #[computed]
     pub fn rust_sample(&self) -> String {
-        r#"// tab_bar_case.rml.rs：后端状态 + computed + command handler
-use rml::prelude::*;
-
-#[component]
-#[derive(Default)]
-pub struct TabBarCase {
-    pub active_tab: usize,
-}
-
-impl TabBarCase {
-    #[computed]
-    pub fn status_text(&self) -> String {
-        format!("当前选中索引：{}", self.active_tab)
+        include_str!("tab_bar_case.rml.rs").to_string()
     }
 
-    // on-click 回调签名：fn(index: usize, &mut Context<Self>)
     #[command]
     pub fn on_tab_select(&mut self, index: usize, cx: &mut Context<Self>) {
         self.active_tab = index;
         cx.notify();
-    }
-}"#
-            .to_string()
-    }
-
-    #[command]
-    pub fn on_tab_select(&mut self, index: usize, cx: &mut Context<Self>) {
-        self.active_tab = index;
-    }
-
-    #[command]
-    pub fn on_code_tab_change(&mut self, idx: usize, _cx: &mut Context<Self>) {
-        self.code_tab = idx;
     }
 }

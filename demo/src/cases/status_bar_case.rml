@@ -1,46 +1,31 @@
 <component>
-    <div display="flex" flex-direction="column" class="case-pane doc-pane">
-        <h2>{t("case.status_bar.title")}</h2>
-
-        <p>StatusBar 案例演示 RML 的状态栏贡献机制。通过 #[contribute(kind = "status")] 将实现 IContribution 的 struct 注册到 shell 状态栏插槽，框架自动渲染到窗口底部。核心概念：kind = "status" 标识状态栏贡献点；host_id 指向宿主 shell；order 控制排序；IContribution 提供 id 与 name（显示文案）。本案例的 StatusReady 已注册到窗口底部状态栏。</p>
-
-        <Card title="演示效果">
-            <div class="demo-section">
-                <h3>状态栏贡献说明</h3>
+    <CaseDocPage
+        title={t("case.status_bar.title")}
+        description="StatusBar 案例演示 RML 的状态栏贡献机制。通过 #[contribute(kind = status)] 将实现 IContribution 的 struct 注册到 shell 状态栏插槽，框架自动渲染到窗口底部。核心概念：kind = status 标识状态栏贡献点；host_id 指向宿主 shell；order 控制排序；IContribution 提供 id 与 name（显示文案）。本案例的 StatusReady 已注册到窗口底部状态栏。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <Card title="状态栏贡献说明">
                 <p>{t("case.status_bar.hint")}</p>
                 <p>请查看窗口底部状态栏，左侧显示的 "就绪" 文案即由 StatusReady 贡献点渲染。</p>
-            </div>
+            </Card>
 
-            <div class="demo-section">
-                <h3>贡献点机制</h3>
+            <Card title="贡献点机制">
                 <p>本案例源码中定义了 StatusReady struct，通过 #[contribute] 宏注册到 demo.shell 宿主的状态栏插槽。框架在 shell 启动时收集所有 status 类型贡献点，按 order 排序后渲染到 StatusBar 组件。</p>
                 <p>扩展方式：新增 #[contribute(kind = "status")] struct 即可向状态栏添加新项，无需修改 shell 代码。</p>
-            </div>
+            </Card>
 
-            <div class="demo-section">
-                <h3>交互演示</h3>
+            <Card title="交互演示">
                 <p>{action_status}</p>
                 <div class="button-row">
                     <Button label="查看就绪状态" on-click={on_show_ready} />
                     <Button label="查看案例状态" on-click={on_show_case} />
                 </div>
-            </div>
-        </Card>
-
-        <Card title="代码示例">
-            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
-                <Tab label=".rml">
-                    <CodeEditor ref="rml_editor" value={rml_sample} language="rml" />
-                </Tab>
-                <Tab label=".rml.rs">
-                    <CodeEditor ref="rust_editor" value={rust_sample} language="rust" />
-                </Tab>
-            </TabBar>
-        </Card>
-
-        <h3>StatusBar</h3>
-        <Card title="API">
+            </Card>
+        </template>
+        <template slot="api">
+            <h3>StatusBar</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-        </Card>
-    </div>
+        </template>
+    </CaseDocPage>
 </component>

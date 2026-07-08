@@ -86,7 +86,7 @@ pub fn gen_menu_bar(
         {
             clause.iterable.clone()
         } else {
-            format!("self.{}", clause.iterable)
+            format!("{}.{}", crate::compiler::expr::current_self_alias().unwrap_or("self"), clause.iterable)
         };
 
         let iter_code = format!(
@@ -379,7 +379,7 @@ fn gen_menu_bar_with_children_bind(
     {
         clause.iterable.clone()
     } else {
-        format!("self.{}", clause.iterable)
+        format!("{}.{}", crate::compiler::expr::current_self_alias().unwrap_or("self"), clause.iterable)
     };
 
     let macro_name = format!("__rml_popup_item_{bar_id}");

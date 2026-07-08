@@ -11,7 +11,12 @@
                     <Button label="头部插入" on-click={on_prepend} />
                     <Button label="清空" on-click={on_clear} />
                 </div>
-                <component content={self.render_items(_window, cx)} />
+                <div display="flex" flex-direction="row" gap="8px" flex-wrap="wrap">
+                    <div each={item in items} key={item.id} padding="8px 4px">
+                        <Tag>{item.id}</Tag>
+                        <Tag>{item.label}</Tag>
+                    </div>
+                </div>
                 <p>注：key=&#123;item.id&#125; 确保头部插入新项时，已有项的 ElementId 保持稳定，避免状态丢失。</p>
             </Card>
         </template>

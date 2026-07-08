@@ -469,16 +469,18 @@ pub fn component_static_setter(name: &str, value: &str, tag: &str) -> Option<Str
                 None
             }
         }
-        // Sizable 尺寸：size="xsmall" / size="small" / size="medium" / size="large" / size="default"
-        // 替代旧 small/xsmall/large 布尔标志，统一通过 with_size(impl Into<Size>) 设置
-        // 不写 size 属性 = 使用组件默认（Size::Medium，由 #[default] 指定）
-        // "default" 为 "medium" 的语义别名，均生成 .with_size(Size::Medium)
+        // Sizable 尺寸：size="xsmall" / size="small" / size="large"
+        // medium/default 为组件原生默认（Size::Medium 由 #[default] 指定），
+        // 遵循原生写法不生成 .with_size() 调用，避免冗余加工。
+        // 不写 size 属性 = size="medium" = size="default" = 无调用
+        // 返回 Some("") 而非 None，避免 check_missing_mapping 误报"无映射"。
         "size" => {
             let size = match value {
                 "xsmall" => "rml_ui::Size::XSmall",
                 "small" => "rml_ui::Size::Small",
-                "medium" | "default" => "rml_ui::Size::Medium",
                 "large" => "rml_ui::Size::Large",
+                // medium/default 是原生默认，返回空字符串（no-op）
+                "medium" | "default" => return Some(String::new()),
                 _ => return None,
             };
             Some(format!(".with_size({})", size))
@@ -1024,8 +1026,9 @@ mod tests {
 
     #[test]
     fn static_setter_size_attribute() {
-        // size="xsmall" / size="small" / size="medium" / size="large" / size="default"
-        // 统一通过 .with_size(Size::*) 设置，不写 size = 组件默认（Medium）
+        // size="xsmall" / size="small" / size="large" 生成 .with_size(Size::*)
+        // size="medium" / size="default" 返回 None（原生默认，不生成调用）
+        // 不写 size 属性 = size="medium" = 无调用
         assert_eq!(
             component_static_setter("size", "xsmall", "Button").unwrap(),
             ".with_size(rml_ui::Size::XSmall)"
@@ -1035,18 +1038,13 @@ mod tests {
             ".with_size(rml_ui::Size::Small)"
         );
         assert_eq!(
-            component_static_setter("size", "medium", "Button").unwrap(),
-            ".with_size(rml_ui::Size::Medium)"
-        );
-        // "default" 为 "medium" 的语义别名
-        assert_eq!(
-            component_static_setter("size", "default", "Button").unwrap(),
-            ".with_size(rml_ui::Size::Medium)"
-        );
-        assert_eq!(
             component_static_setter("size", "large", "Button").unwrap(),
             ".with_size(rml_ui::Size::Large)"
         );
+        // medium/default 是原生默认，遵循原生写法不生成调用（返回空字符串 no-op，
+        // 而非 None，避免 check_missing_mapping 误报"无映射"）
+        assert_eq!(component_static_setter("size", "medium", "Button").unwrap(), "");
+        assert_eq!(component_static_setter("size", "default", "Button").unwrap(), "");
         // 无效值返回 None
         assert!(component_static_setter("size", "huge", "Button").is_none());
     }

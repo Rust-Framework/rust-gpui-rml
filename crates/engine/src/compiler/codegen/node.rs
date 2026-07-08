@@ -140,7 +140,7 @@ pub(crate) fn gen_element(
             }) {
                 clause.iterable.clone()
             } else {
-                format!("self.{}", clause.iterable)
+                format!("{}.{}", crate::compiler::expr::current_self_alias().unwrap_or("self"), clause.iterable)
             };
             return Ok((
                 format!(

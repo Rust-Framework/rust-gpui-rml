@@ -95,15 +95,17 @@ pub(super) fn gen_modern_window_wrapper(
                             Ok(expr::Expr::Field(field_name))
                                 if computed.contains(&field_name.as_str()) =>
                             {
-                                format!("self.{}()", field_name)
+                                let self_prefix = expr::current_self_alias().unwrap_or("self");
+                                format!("{}.{}()", self_prefix, field_name)
                             }
                             Ok(parsed) => expr::to_rust_code_with_ctx(&parsed, &empty),
                             Err(_) => {
                                 let trimmed = expr.trim();
+                                let self_prefix = expr::current_self_alias().unwrap_or("self");
                                 if computed.contains(&trimmed) {
-                                    format!("self.{}()", trimmed)
+                                    format!("{}.{}()", self_prefix, trimmed)
                                 } else {
-                                    format!("self.{}", trimmed)
+                                    format!("{}.{}", self_prefix, trimmed)
                                 }
                             }
                         };
@@ -543,19 +545,20 @@ pub(super) fn gen_tab_window_wrapper(
 /// 将 shell 根元素的 bind 表达式编译为 Rust 代码
 fn shell_bind_expr(expr: &str, computed: &[&str], loop_vars: &[&str]) -> String {
     let trimmed = expr.trim();
+    let self_prefix = expr::current_self_alias().unwrap_or("self");
     if computed.contains(&trimmed) {
-        return format!("self.{}()", trimmed);
+        return format!("{}.{}()", self_prefix, trimmed);
     }
     match expr::parse(expr) {
         Ok(expr::Expr::Field(field_name)) if computed.contains(&field_name.as_str()) => {
-            format!("self.{}()", field_name)
+            format!("{}.{}()", self_prefix, field_name)
         }
         Ok(parsed) => expr::to_rust_code_with_ctx(&parsed, loop_vars),
         Err(_) => {
             if computed.contains(&trimmed) {
-                format!("self.{}()", trimmed)
+                format!("{}.{}()", self_prefix, trimmed)
             } else {
-                format!("self.{}", trimmed)
+                format!("{}.{}", self_prefix, trimmed)
             }
         }
     }
