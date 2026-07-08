@@ -4,12 +4,8 @@
 
 use crate::compiler::{CodegenCtx, CodegenError};
 use crate::css::ParentInfo;
-use crate::parser::ast::{Attribute, Directive, Element, Node};
-use crate::tags;
-use crate::compiler::component as comp;
-use crate::compiler::menu;
+use crate::parser::ast::{Directive, Element, Node};
 
-use super::attribute::apply_css_styles;
 use super::text::{gen_expr_code, gen_mixed_text};
 
 /// codegen 结果：元素代码 + 是否迭代器
@@ -145,127 +141,8 @@ pub(crate) fn gen_element(
 
     let tag = &elem.tag;
 
-    // 透明容器：<component content={expr} /> 直接嵌入表达式，不创建元素包装。
-    // 用于在 RML 模板中注入动态 AnyElement/impl IntoElement（类似 WPF ContentControl）。
-    // 表达式可引用 _window/cx（render 方法作用域内可用）。
-    // 支持 `each` 指令：<component each={s in status} content={s.render(_window, cx)} />
-    if tag == "component" {
-        let content_expr = elem.attributes.iter().find_map(|attr| {
-            if let Attribute::Bind { name, expr, .. } = attr {
-                if name == "content" {
-                    return Some(expr.clone());
-                }
-            }
-            None
-        });
-        if let Some(expr) = content_expr {
-            // `<component content={...} />` 表达式可引用 render 方法作用域内的 _window/cx，
-            // 将它们加入 loop_vars 避免被加 self. 前缀
-            let mut scope_vars: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
-            for v in ["_window", "cx"] {
-                if !scope_vars.contains(&v) {
-                    scope_vars.push(v);
-                }
-            }
-
-            // 检测 each 指令 — 必须在生成 code 前将 loop 变量加入 scope_vars，
-            // 否则 gen_expr_code 会把 `group` 误加 `self.` 前缀变成 `self.group`
-            let each_clause = elem.directives.iter().find_map(|d| match d {
-                Directive::Each { clause: c, .. } => Some(c.clone()),
-                _ => None,
-            });
-            if let Some(clause) = &each_clause {
-                if !scope_vars.contains(&clause.item.as_str()) {
-                    scope_vars.push(clause.item.as_str());
-                }
-                if let Some(idx) = &clause.index {
-                    if !scope_vars.contains(&idx.as_str()) {
-                        scope_vars.push(idx.as_str());
-                    }
-                }
-            }
-
-            let lv: Vec<&str> = scope_vars;
-            let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
-            let code = crate::compiler::codegen::gen_expr_code(&expr, &lv, &computed);
-
-            if let Some(clause) = each_clause {
-                // iterable 可能是 self.field 或 loop_var.field
-                let iter_expr = if loop_vars.iter().any(|lv| {
-                    clause.iterable == *lv || clause.iterable.starts_with(&format!("{}.", lv))
-                }) {
-                    clause.iterable.clone()
-                } else {
-                    format!("{}.{}", crate::compiler::expr::current_self_alias().unwrap_or("self"), clause.iterable)
-                };
-                let iter_code = format!(
-                    "{iter_expr}.iter().map(|{}| {})",
-                    clause.item, code
-                );
-                return Ok((iter_code, true));
-            }
-            return Ok((code, false));
-        }
-        return Err(CodegenError {
-            message: "<component> 标签必须提供 content={expr} 属性".to_string(),
-            span: Some(elem.span),
-        });
-    }
-
-    // <slot> 占位符：组件模板内声明插槽渲染位置（Vue 风格 `<slot name="header" />`）。
-    //
-    // slot 渲染闭包存储在 `self.__rml_state.slots: HashMap<&'static str, SlotRenderer>`，
-    // codegen 通过 `self.__rml_state.slot(<name>)` 查询并调用闭包即时生成 element：
-    //   `self.__rml_state.slot("name").map(|f| f(&NullSlotScope::new("name"), _window, cx)).unwrap_or(gpui::Empty)`
-    //
-    // 闭包首参 `&dyn ISlotScope` 由插槽宿主构造传入；自定义组件默认传 `NullSlotScope`，
-    // 仅向 slot 内容暴露插槽名，不提供父容器操控权（如 resizable）。
-    //
-    // 返回 is_iter=false（直接是 AnyElement，不需要 .children() 包裹）。
-    // 无 name 属性的 `<slot />` 对应 "default" 插槽。
-    if tag == "slot" {
-        let slot_name = elem
-            .attributes
-            .iter()
-            .find_map(|a| match a {
-                Attribute::Static { name, value, .. } if name == "name" => Some(value.clone()),
-                _ => None,
-            })
-            .unwrap_or_else(|| "default".to_string());
-        return Ok((
-            format!(
-                "self.__rml_state.slot({slot_name:?}).map_or(gpui::Empty.into_any_element(), |f| f(&rml_core::slot::NullSlotScope::new({slot_name:?}), _window, cx))",
-                slot_name = slot_name
-            ),
-            false,
-        ));
-    }
-
-    // 菜单容器标签（context-menu / dropdown-menu / menu-bar / app-menu-bar）
-    if menu::is_menu_container(tag) {
-        let code = menu::gen_menu_element(elem, ctx, depth, id_counter, loop_vars)?;
-        return Ok((code, false));
-    }
-
-    // 用户自定义 #[component]（PascalCase，如 WelcomeCase）
-    if ctx.user_components.contains_key(tag) {
-        let mut code = comp::gen_component(elem, ctx, depth, id_counter, loop_vars)?;
-        if let Some(sheet) = &ctx.stylesheet {
-            code.push_str(&apply_css_styles(elem, tag, sheet, parents));
-        }
-        return Ok((code, false));
-    }
-
-    // 扩展组件（PascalCase、kebab-case 或特殊小写标签 menu/status-bar）
-    if tags::is_extension_component(tag) {
-        let mut code = comp::gen_component(elem, ctx, depth, id_counter, loop_vars)?;
-        if let Some(sheet) = &ctx.stylesheet {
-            code.push_str(&apply_css_styles(elem, tag, sheet, parents));
-        }
-        return Ok((code, false));
-    }
-
-    // 原生 HTML 标签通过注册表路由到对应 translator
+    // 所有元素（原生标签、扩展组件、菜单容器、用户组件、<component>、<slot>）
+    // 统一通过 TranslatorRegistry 路由。`once`/`html` 作为跨标签指令已在上方处理。
     if let Some(translator) = ctx.registry.resolve(elem) {
         return translator.to_rust(elem, ctx, id_counter, loop_vars, parents);
     }

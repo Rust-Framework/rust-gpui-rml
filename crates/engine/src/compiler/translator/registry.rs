@@ -3,6 +3,7 @@
 //! 按标签名索引所有 `IRmlTranslator` 实现，提供统一查询与分类能力。
 
 use super::{ComponentCategory, IRmlTranslator, TranslatorMetadata};
+use crate::compiler::UserComponentInfo;
 use crate::parser::ast::Element;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -37,6 +38,23 @@ impl TranslatorRegistry {
     pub fn builtin() -> Self {
         let mut reg = Self::empty();
         super::builtin::register_all(&mut reg);
+        super::component::register_all(&mut reg);
+        super::menu::register_all(&mut reg);
+        super::slot::register_all(&mut reg);
+        super::transparent::register_all(&mut reg);
+        reg
+    }
+
+    /// 基于当前注册表克隆，并追加用户组件 translator。
+    ///
+    /// 用户组件标签是动态的，无法在静态 `builtin()` 中注册，因此通过
+    /// `CodegenCtx` 中的 `user_components` 在每次编译前注入。
+    pub fn with_user_components(
+        &self,
+        user_components: &HashMap<String, UserComponentInfo>,
+    ) -> Self {
+        let mut reg = self.clone();
+        super::user_component::register_user_components(&mut reg, user_components);
         reg
     }
 

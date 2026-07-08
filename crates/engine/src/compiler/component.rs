@@ -39,17 +39,8 @@ pub fn gen_component(
     let component = match tags::component_lookup_resolved(tag) {
         Some(c) => c,
         None => {
-            // 内置路由表未命中：检查用户组件注册表
-            if let Some(info) = ctx.user_components.get(tag) {
-                return crate::compiler::user_component::gen_user_component(
-                    info, elem, ctx, id_counter, loop_vars,
-                );
-            }
             return Err(CodegenError {
-                message: format!(
-                    "unknown component: <{}> (not in gpui-component routing table or user component registry)",
-                    tag
-                ),
+                message: format!("unknown component: <{}>", tag),
                 span: Some(elem.span),
             });
         }

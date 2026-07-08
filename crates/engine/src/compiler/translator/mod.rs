@@ -5,9 +5,14 @@
 //! 构造逻辑、子节点处理、设计时元数据内聚在一处。
 
 pub mod builtin;
+pub mod component;
 pub mod ctx;
+pub mod menu;
 pub mod metadata;
 pub mod registry;
+pub mod slot;
+pub mod transparent;
+pub mod user_component;
 pub mod utils;
 
 pub use ctx::PrinterCtx;
