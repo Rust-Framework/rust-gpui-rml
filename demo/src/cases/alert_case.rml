@@ -1,92 +1,92 @@
 <component>
-    <div display="flex" flex-direction="column" class="case-pane doc-pane">
-        <h2>{t("case.alert.title")}</h2>
-        <p>Alert 是 RML 的警告提示组件，标签为 PascalCase <code>Alert</code>。Stateless 组件，构造器接受 <code>(ElementId, message)</code>。支持 5 种 variant（Default/Info/Success/Warning/Error），通过 variant 关联函数或 <code>variant</code> 属性切换。</p>
-
-        <Card title="variant 关联函数（布尔属性）">
-            <p>4 种 variant 关联函数通过同名空属性切换：<code>info=""</code> → <code>Alert::info(id, msg)</code>。不写 variant 即默认 Default。</p>
-            <div display="flex" flex-direction="column" gap="8px">
-                <Alert message="默认提示：用于一般性信息展示" />
-                <Alert info="" message="Info：用于重要提示信息" />
-                <Alert success="" message="Success：操作成功的反馈" />
-                <Alert warning="" message="Warning：警告信息，需注意" />
-                <Alert error="" message="Error：错误提示，需立即处理" />
+    <CaseDocPage
+        title={t("case.alert.title")}
+        description="Alert 是 RML 的警告提示组件，标签为 PascalCase Alert 或小写 alert（均合法）。Stateless 组件，构造器接受 (ElementId, message) 两个参数。支持 5 种 variant（Default/Info/Success/Warning/Error），通过 variant 关联函数或 variant 属性切换。支持 title 标题、banner 横幅、icon 自定义图标、on-close 关闭事件、size 尺寸等能力。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <div class="demo-section">
+                <h3>variant 关联函数</h3>
+                <p>4 种 variant 关联函数通过同名空属性切换：info="" / success="" / warning="" / error="" 分别映射到 Alert::info(id, msg) 等构造器。不写 variant 即默认 Default。两种形式互斥：布尔属性优先于 variant 属性。</p>
+                <div class="alert-col">
+                    <Alert message="默认提示：用于一般性信息展示" />
+                    <Alert info="" message="Info：用于重要提示信息" />
+                    <Alert success="" message="Success：操作成功的反馈" />
+                    <Alert warning="" message="Warning：警告信息，需注意" />
+                    <Alert error="" message="Error：错误提示，需立即处理" />
+                </div>
             </div>
-        </Card>
 
-        <Card title="variant 属性（builder 方法）">
-            <p>使用 <code>variant="info"</code> 属性切换 variant（等价于关联函数，但走 builder 方法 <code>.with_variant(AlertVariant::Info)</code>）。</p>
-            <div display="flex" flex-direction="column" gap="8px">
-                <Alert variant="info" message="variant=info 的提示" />
-                <Alert variant="success" message="variant=success 的提示" />
-                <Alert variant="warning" message="variant=warning 的提示" />
-                <Alert variant="error" message="variant=error 的提示" />
+            <div class="demo-section">
+                <h3>variant 属性（builder 方法）</h3>
+                <p>使用 variant="info" 属性切换 variant，等价于关联函数但走 builder 方法 .with_variant(AlertVariant::Info)。适用于 variant 由状态字段动态决定的场景（如 variant 绑定到枚举字段）。</p>
+                <div class="alert-col">
+                    <Alert variant="info" message="variant=info 的提示" />
+                    <Alert variant="success" message="variant=success 的提示" />
+                    <Alert variant="warning" message="variant=warning 的提示" />
+                    <Alert variant="error" message="variant=error 的提示" />
+                </div>
             </div>
-        </Card>
 
-        <Card title="title + banner">
-            <p><code>title</code> 设置标题，<code>banner=""</code> 切换为顶部横幅模式（无边框，撑满宽度）。</p>
-            <div display="flex" flex-direction="column" gap="8px">
-                <Alert info="" title="提示标题" message="带标题的提示信息" />
-                <Alert warning="" banner="" message="顶部横幅警告（无边框）" />
-                <Alert error="" title="错误" banner="" message="带标题的横幅错误" />
+            <div class="demo-section">
+                <h3>title + banner</h3>
+                <p>title 属性设置提示标题，banner="" 切换为顶部横幅模式（无边框，撑满宽度，常用于页面顶部全局提示）。</p>
+                <div class="alert-col">
+                    <Alert info="" title="提示标题" message="带标题的提示信息，标题与消息一起展示" />
+                    <Alert warning="" banner="" message="顶部横幅警告（无边框，撑满宽度）" />
+                    <Alert error="" title="错误" banner="" message="带标题的横幅错误，常用于严重错误的全局通知" />
+                </div>
             </div>
-        </Card>
 
-        <Card title="message 来源">
-            <p>message 优先级：<code>message="..."</code> 静态属性 &gt; <code>message=绑定</code> 绑定属性 &gt; 文本子节点 &gt; 空字符串。</p>
-            <div display="flex" flex-direction="column" gap="8px">
-                <Alert info="" message="静态属性 message" />
-                <Alert info="">{message_from_field}</Alert>
-                <Alert success="">文本子节点作为 message</Alert>
+            <div class="demo-section">
+                <h3>message 来源优先级</h3>
+                <p>message 优先级：message="..." 静态属性 &gt; message 绑定属性 &gt; 文本子节点 &gt; 空字符串。下方三个 Alert 分别演示前三种来源。</p>
+                <div class="alert-col">
+                    <Alert info="" message="静态属性 message（最高优先级）" />
+                    <Alert info="">{message_from_field}</Alert>
+                    <Alert success="">文本子节点作为 message（第三优先级）</Alert>
+                </div>
             </div>
-        </Card>
 
-        <Card title="icon 自定义">
-            <p><code>icon="Bell"</code> 设置自定义图标（值为 <code>rml_ui::IconName</code> 枚举变体名）。</p>
-            <div display="flex" flex-direction="column" gap="8px">
-                <Alert info="" icon="Info" message="自定义 Info 图标" />
-                <Alert success="" icon="Check" message="自定义 Check 图标" />
-                <Alert warning="" icon="Bell" message="自定义 Bell 图标" />
-                <Alert error="" icon="CircleX" message="自定义 CircleX 图标" />
+            <div class="demo-section">
+                <h3>icon 自定义</h3>
+                <p>icon 属性设置自定义图标，值为 rml_ui::IconName 枚举变体名（如 Info/Check/Bell/CircleX）。不设置 icon 时，Alert 会根据 variant 自动选择对应图标。</p>
+                <div class="alert-col">
+                    <Alert info="" icon="Info" message="自定义 Info 图标" />
+                    <Alert success="" icon="Check" message="自定义 Check 图标" />
+                    <Alert warning="" icon="Bell" message="自定义 Bell 图标" />
+                    <Alert error="" icon="CircleX" message="自定义 CircleX 图标" />
+                </div>
             </div>
-        </Card>
 
-        <Card title="on_close 事件 + 动态绑定">
-            <p>点击关闭按钮触发 <code>on-close</code> 事件，演示事件回调 + 条件渲染（关闭后隐藏）：</p>
-            <div display="flex" flex-direction="column" gap="8px">
-                <Alert info="" title="可关闭提示" message="点击右侧 X 按钮关闭" on-close={on_close} if={is_visible} />
-                <Alert warning="" message="另一个可关闭提示" on-close={on_close} if={is_visible} />
-                <Button label="重置显示" on-click={on_reset} />
+            <div class="demo-section">
+                <h3>on-close 事件 + if 条件渲染</h3>
+                <p>点击 Alert 右侧关闭按钮触发 on-close 事件，配合 if={is_visible} 指令实现关闭后隐藏。下方演示事件回调 + 条件渲染的典型业务场景。</p>
+                <div class="alert-col">
+                    <Alert info="" title="可关闭提示" message="点击右侧 X 按钮关闭此提示" on-close={on_close} if={is_visible} />
+                    <Alert warning="" message="另一个可关闭的警告提示" on-close={on_close} if={is_visible} />
+                    <Button label="重置显示" on-click={on_reset} />
+                </div>
+                <p>当前状态：{visibility_label}</p>
             </div>
-            <p>当前状态：{visibility_label}</p>
-        </Card>
 
-        <Card title="尺寸 size">
-            <p>size 属性控制提示大小：xsmall / small / medium / large。</p>
-            <div display="flex" flex-direction="column" gap="8px">
-                <Alert info="" size="small" message="small 尺寸的提示" />
-                <Alert info="" size="medium" message="medium 尺寸的提示" />
-                <Alert info="" size="large" message="large 尺寸的提示" />
+            <div class="demo-section">
+                <h3>尺寸 size</h3>
+                <p>size 属性控制提示大小：xsmall / small / medium / large，走通用 Sizable trait。影响图标尺寸、字号和内边距。</p>
+                <div class="alert-col">
+                    <Alert info="" size="small" message="small 尺寸的提示" />
+                    <Alert info="" size="medium" message="medium 尺寸的提示" />
+                    <Alert info="" size="large" message="large 尺寸的提示" />
+                </div>
             </div>
-        </Card>
+        </template>
 
-        <Card title="示例代码">
-            <p>点击下方 Tab 切换 <code>.rml</code> 声明文件与 <code>.rml.rs</code> 后端文件：</p>
-            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
-                <Tab label=".rml">
-                    <CodeEditor ref="rml_editor" value={rml_sample} language="rml" />
-                </Tab>
-                <Tab label=".rml.rs">
-                    <CodeEditor ref="rust_editor" value={rust_sample} language="rust" />
-                </Tab>
-            </TabBar>
-        </Card>
-
-        <Card title="API">
+        <template slot="api">
             <h3>Alert</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-            <p>另：<code>size</code> 属性来自 Sizable trait，<code>disabled</code> 等通用属性对所有 Stateless 组件生效。</p>
-        </Card>
-    </div>
+            <p>另：info / success / warning / error 布尔属性是 variant 关联函数的快捷方式，与 variant 属性互斥（布尔属性优先）。</p>
+            <p>另：size 属性来自 Sizable trait，disabled 等通用属性对所有 Stateless 组件生效。</p>
+            <p>另：alert 与 Alert 标签等价（normalize_component_tag 统一为 Alert）。</p>
+        </template>
+    </CaseDocPage>
 </component>

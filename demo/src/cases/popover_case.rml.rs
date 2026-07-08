@@ -3,7 +3,7 @@ use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
 
-use crate::cases::common::build_api_table;
+use crate::cases::common::{build_api_table, CaseDocPage};
 
 #[contribute(
     host_id = "demo.shell",
@@ -15,9 +15,9 @@ use crate::cases::common::build_api_table;
 #[component]
 #[derive(Default)]
 pub struct PopoverCase {
-    pub code_tab: usize,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
+    pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
 }
 
 impl IContribution for PopoverCase {
@@ -30,8 +30,9 @@ impl IContribution for PopoverCase {
 }
 
 impl ILifecycle for PopoverCase {
-    fn on_loaded(&mut self, _window: &mut gpui::Window, _cx: &mut Context<Self>) {
-        let _ = (_window, _cx);
+    fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
+        self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
+
         let (cols, rows) = build_api_table(&[
             ("anchor", "枚举", "气泡定位锚点：top-left/top-center/top-right/bottom-left/bottom-center/bottom-right/left-center/right-center"),
             ("mouse-button", "枚举", "触发按键：left/right/middle，默认 left"),
@@ -48,51 +49,11 @@ impl ILifecycle for PopoverCase {
 impl PopoverCase {
     #[computed]
     pub fn rml_sample(&self) -> String {
-        r#"<!-- popover_case.rml：声明式 UI，描述结构 + 绑定 + 事件 -->
-<component>
-    <!-- 基础用法：slot="trigger" 标记触发元素，其余子节点为 content -->
-    <Popover>
-        <Button slot="trigger" label="点击展开" />
-        <div display="flex" flex-direction="column" gap="8px" padding="12px">
-            <p>这是气泡内容。</p>
-            <p>可以放置任意元素。</p>
-        </div>
-    </Popover>
-
-    <!-- 锚点定位 anchor -->
-    <Popover anchor="bottom-left">
-        <Button slot="trigger" label="bottom-left" />
-        <div padding="8px">左下角锚点</div>
-    </Popover>
-
-    <!-- 默认展开 default-open="true" -->
-    <Popover default-open="true">
-        <Button slot="trigger" label="已展开" />
-        <div padding="8px">初始展开的气泡内容</div>
-    </Popover>
-</component>"#
-            .to_string()
+        include_str!("popover_case.rml").to_string()
     }
 
     #[computed]
     pub fn rust_sample(&self) -> String {
-        r#"// popover_case.rml.rs：后端状态 + computed + command handler
-use rml::prelude::*;
-
-#[component]
-#[derive(Default)]
-pub struct PopoverCase {}
-
-impl ILifecycle for PopoverCase {
-    fn on_loaded(&mut self, _w: &mut gpui::Window, _cx: &mut Context<Self>) {
-        // Popover 是无状态容器组件，无需 state
-    }
-}"#
-            .to_string()
-    }
-
-    #[command]
-    pub fn on_code_tab_change(&mut self, idx: usize, _cx: &mut Context<Self>) {
-        self.code_tab = idx;
+        include_str!("popover_case.rml.rs").to_string()
     }
 }

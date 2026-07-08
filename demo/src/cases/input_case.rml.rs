@@ -1,9 +1,9 @@
 use gpui::SharedString;
 use rml::prelude::*;
 use rml_core::i18n::t_static;
-use rml_ui::{InputState, TableColumn, TableRow};
+use rml_ui::{InputState, Size, TableColumn, TableRow};
 
-use crate::cases::common::build_api_table;
+use crate::cases::common::{build_api_table, CaseDocPage};
 
 #[contribute(
     host_id = "demo.shell",
@@ -15,15 +15,42 @@ use crate::cases::common::build_api_table;
 #[component]
 #[derive(Default)]
 pub struct InputCase {
-    /// 通过 `ref="input_state"` 指令关联，
-    /// 首次渲染后由 `__rml_populate_refs` 注入 `Entity<InputState>` 句柄。
-    ///
-    /// placeholder 通过 InputState builder 在 on_loaded 中设置
-    ///（Input element 不直接接收 placeholder 属性，需在 state 上设置）。
-    pub input_state: ElementRef<InputState>,
-    pub code_tab: usize,
+    /// Section 1：基础用法 + ref 指令
+    /// `<Input ref="basic_input" />` 惰性创建 Entity<InputState>，
+    /// 首次 render 后由 __rml_populate_refs 注入到此字段。
+    pub basic_input: ElementRef<InputState>,
+
+    /// Section 2：placeholder 设置时机
+    /// Pattern B：在 on_loaded 中创建 InputState Entity 并配置 placeholder，
+    /// .rml 中用 `<Input />`（无 ref）通过 state_field 路径取用。
+    /// 字段名必须为 input_state（tags.rs 中 Input 的 state_field 硬编码）。
+    /// 此模式适合需要在创建时配置 InputState builder 的场景（placeholder/default_value/masked 等）。
+    pub input_state: Option<gpui::Entity<InputState>>,
+
+    /// Section 3：disabled 禁用
+    /// Pattern A：ref + ElementRef，通过 RML 组件属性 `disabled={is_disabled}` 切换。
+    pub disabled_input: ElementRef<InputState>,
+    pub is_disabled: bool,
+
+    /// Section 4：尺寸 size
+    /// 通过 RML 组件属性 `size={size_value}` 切换（Sizable trait 通用属性）。
+    /// size_value computed 返回 rml_ui::Size 枚举值，供 with_size(impl Into<Size>) 使用。
+    pub sized_input: ElementRef<InputState>,
+    pub current_size: u8,
+
+    /// Section 5：selected 选中态
+    /// 通过 RML 组件属性 `selected={is_selected}` 切换（Selectable trait 通用属性）。
+    pub selected_input: ElementRef<InputState>,
+    pub is_selected: bool,
+
+    /// Section 6：多 Input 组合（表单布局）
+    /// 多个 ref 字段在 flex 布局中并排，演示真实表单场景。
+    pub form_name_input: ElementRef<InputState>,
+    pub form_email_input: ElementRef<InputState>,
+
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
+    pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
 }
 
 impl IContribution for InputCase {
@@ -37,17 +64,27 @@ impl IContribution for InputCase {
 
 impl ILifecycle for InputCase {
     fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
-        // Entity<InputState> 在首次渲染时由 `ref` 指令惰性创建。
-        // on_loaded 阶段 ref_entities 尚未填充，故 ElementRef 仍为空，
-        // placeholder 等需要在 InputState 上设置的属性，
-        // 应在首次 render 后通过 ElementRef.with_mut 设置，
-        // 或后续通过其他生命周期钩子（如 on_rendered，待 M5' 实现）。
-        let _ = (_window, cx);
+        self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
+
+        // Section 2：在 on_loaded 中创建 InputState Entity 并配置 placeholder。
+        // Pattern B 的核心：state_ctor 是 `InputState::new(w, c)`，无法在 ref 路径注入
+        // placeholder 等 builder 参数；改在 on_loaded 中手动 cx.new 创建，配合
+        // `<Input />`（无 ref）通过 self.input_state.as_ref().expect(...) 取用。
+        self.input_state = Some(cx.new(|cx| {
+            InputState::new(_window, cx).placeholder("请输入用户名（on_loaded 中配置）")
+        }));
+
         let (cols, rows) = build_api_table(&[
-            ("placeholder", "字符串", "占位文本（InputState builder）"),
-            ("default_value", "字符串", "默认值（InputState builder）"),
-            ("disabled", "布尔", "禁用（Input 组件属性）"),
-            ("ref", "字符串", "元素引用名（绑定到 ElementRef<T> 字段）"),
+            ("ref", "字符串（指令）", "元素引用名，绑定到 ElementRef<InputState> 字段（PascalCase <Input>）"),
+            ("disabled", "布尔/绑定", "禁用状态（Input 组件属性）"),
+            ("size", "xsmall/small/medium/large", "尺寸（Sizable trait 通用属性，绑定需返回 Size 枚举）"),
+            ("selected", "布尔/绑定", "选中态（Selectable trait）"),
+            ("on_change", "事件", "内容变化回调（参数：&InputState；通过 cx.subscribe 订阅 InputEvent::Change）"),
+            ("on_enter", "事件", "回车按下回调（InputEvent::PressEnter）"),
+            ("on_focus", "事件", "获得焦点回调（InputEvent::Focus）"),
+            ("on_blur", "事件", "失去焦点回调（InputEvent::Blur）"),
+            ("model", "字段引用（指令）", "双向绑定到 pub 字段（仅小写 <input> 标签支持，见 two_way_case 演示）"),
+            ("placeholder", "字符串", "占位文本（仅小写 <input model={...}> 支持；PascalCase Input 需在 on_loaded 中通过 InputState builder 配置）"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;
@@ -57,39 +94,70 @@ impl ILifecycle for InputCase {
 impl InputCase {
     #[computed]
     pub fn rml_sample(&self) -> String {
-        r#"<!-- input_case.rml：声明式 UI，描述结构 + 绑定 + 事件 -->
-<component>
-    <!-- 基础用法：ref="input_state" 惰性创建 Entity<InputState> -->
-    <Input ref="input_state" />
-</component>"#
-            .to_string()
+        include_str!("input_case.rml").to_string()
     }
 
     #[computed]
     pub fn rust_sample(&self) -> String {
-        r#"// input_case.rml.rs：后端状态 + computed + command handler
-use rml::prelude::*;
-use rml_ui::InputState;
-
-#[component]
-#[derive(Default)]
-pub struct InputCase {
-    // ref="input_state" 注入 Entity<InputState> 句柄
-    pub input_state: ElementRef<InputState>,
-}
-
-impl ILifecycle for InputCase {
-    fn on_loaded(&mut self, _w: &mut gpui::Window, _cx: &mut Context<Self>) {
-        // InputState Entity 在首次渲染时由 ref 指令惰性创建
-        // placeholder 等需在 state 上设置，应在首次 render 后通过
-        // ElementRef.with_mut 设置
-    }
-}"#
-            .to_string()
+        include_str!("input_case.rml.rs").to_string()
     }
 
+    #[computed]
+    pub fn disabled_status_text(&self) -> &'static str {
+        if self.is_disabled {
+            "已禁用"
+        } else {
+            "未禁用"
+        }
+    }
+
+    #[computed]
+    pub fn selected_status_text(&self) -> &'static str {
+        if self.is_selected {
+            "已选中"
+        } else {
+            "未选中"
+        }
+    }
+
+    #[computed]
+    pub fn size_label(&self) -> &'static str {
+        match self.current_size {
+            0 => "xsmall",
+            1 => "small",
+            2 => "medium",
+            _ => "large",
+        }
+    }
+
+    /// 返回 rml_ui::Size 枚举值供 size={size_value} 绑定使用。
+    /// size 绑定走 component_bind_setter，生成 .with_size(self.size_value())，
+    /// with_size 接收 impl Into<Size>，Size 本身实现 Into<Size>（identity）。
+    #[computed]
+    pub fn size_value(&self) -> Size {
+        match self.current_size {
+            0 => Size::XSmall,
+            1 => Size::Small,
+            2 => Size::Medium,
+            _ => Size::Large,
+        }
+    }
+
+    /// Section 3：切换 disabled 状态
     #[command]
-    pub fn on_code_tab_change(&mut self, idx: usize, _cx: &mut Context<Self>) {
-        self.code_tab = idx;
+    pub fn on_toggle_disabled(&mut self, _: &ClickEvent, _cx: &mut Context<Self>) {
+        self.is_disabled = !self.is_disabled;
+    }
+
+    /// Section 4：循环切换 size（xsmall → small → medium → large → xsmall）
+    #[command]
+    pub fn on_cycle_size(&mut self, _: &ClickEvent, _cx: &mut Context<Self>) {
+        self.current_size = (self.current_size + 1) % 4;
+    }
+
+    /// Section 5：切换 selected 状态
+    #[command]
+    pub fn on_toggle_selected(&mut self, _: &ClickEvent, _cx: &mut Context<Self>) {
+        self.is_selected = !self.is_selected;
     }
 }

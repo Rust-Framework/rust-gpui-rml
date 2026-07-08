@@ -25,7 +25,11 @@ pub fn gen_tree(
             })
         }
     };
-    let mut code = format!("{}::new(self.{}.as_ref())", component.ctor_path, state_field);
+    let self_prefix = crate::compiler::expr::current_self_alias().unwrap_or("self");
+    let mut code = format!(
+        "{}::new({}.{}.as_ref())",
+        component.ctor_path, self_prefix, state_field
+    );
 
     let resolved = tags::normalize_component_tag(&elem.tag);
     let lv: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();

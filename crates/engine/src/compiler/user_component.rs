@@ -12,6 +12,7 @@
 use crate::compiler::codegen::gen_node;
 use crate::compiler::component::{component_bind_rust_expr, parse_bool};
 use crate::compiler::expr;
+use crate::compiler::tabs::tab::extract_state_refs;
 use crate::compiler::{CodegenCtx, CodegenError, UserComponentInfo};
 use crate::parser::ast::{Attribute, Element};
 
@@ -99,11 +100,22 @@ pub fn gen_user_component(
         let slot_code = expr::with_self_alias("__rml_self_ref", || {
             gen_slot_content(slot_nodes, ctx, id_counter, loop_vars)
         })?;
+        // 提取 self.__rml_state.get_or_init_ref(...) 到 prelude（render 作用域），
+        // 使 slot 闭包（Fn）不捕获 &mut self，而是 move 捕获提取的 Entity 变量。
+        // 变量名带 slot_name 前缀避免多 slot 场景冲突。
+        let var_prefix = format!("__rml_slot_{}_entity_", slot_name);
+        let (prelude, slot_code_replaced) = extract_state_refs(&slot_code, &var_prefix);
         let binding = format!("__rml_slot_{}_value", slot_name);
-        // 每个 slot 闭包前 clone __rml_self_entity，避免被 move 后无法用于其他 slot 闭包
+        // 先发射 prelude（render 作用域，self 是 &mut Self）
+        if !prelude.is_empty() {
+            code.push_str(&format!("    {}\n", prelude));
+        }
+        // 每个 slot 闭包前 clone __rml_self_entity，避免被 move 后无法用于其他 slot 闭包。
+        // 闭包内通过 `__rml_self_entity.update(_app, |this, cx| { ... })` 进入 &mut Context<Self>，
+        // 使 slot 内容的 `cx.listener(...)` / `cx.t(...)` 等调用可用（与 wrap_shell_slot 同模式）。
         code.push_str(&format!(
-            "    let {}: rml_core::slot::SlotRenderer = Box::new({{ let __rml_self_entity = __rml_self_entity.clone(); move |_scope: &dyn rml_core::slot::ISlotScope, _window: &mut gpui::Window, cx: &mut gpui::App| -> gpui::AnyElement {{ let __rml_self_ref = __rml_self_entity.read(cx); ({}).into_any_element() }} }});\n",
-            binding, slot_code
+            "    let {}: rml_core::slot::SlotRenderer = Box::new({{ let __rml_self_entity = __rml_self_entity.clone(); move |_scope: &dyn rml_core::slot::ISlotScope, _window: &mut gpui::Window, _app: &mut gpui::App| -> gpui::AnyElement {{ __rml_self_entity.update(_app, |this, cx| {{ let __rml_self_ref: &Self = this; ({}).into_any_element() }}) }} }});\n",
+            binding, slot_code_replaced
         ));
         code.push_str(&format!(
             "    __rml_entity.update(cx, |this, _cx| {{ this.__rml_set_slot_{}({}); }});\n",
@@ -116,9 +128,14 @@ pub fn gen_user_component(
         let default_code = expr::with_self_alias("__rml_self_ref", || {
             gen_slot_content(&default_children, ctx, id_counter, loop_vars)
         })?;
-        code.push_str("    let __rml_slot_default_value: rml_core::slot::SlotRenderer = Box::new({ let __rml_self_entity = __rml_self_entity.clone(); move |_scope: &dyn rml_core::slot::ISlotScope, _window: &mut gpui::Window, cx: &mut gpui::App| -> gpui::AnyElement { let __rml_self_ref = __rml_self_entity.read(cx); (");
-        code.push_str(&default_code);
-        code.push_str(").into_any_element() } });\n");
+        let (prelude, default_code_replaced) =
+            extract_state_refs(&default_code, "__rml_slot_default_entity_");
+        if !prelude.is_empty() {
+            code.push_str(&format!("    {}\n", prelude));
+        }
+        code.push_str("    let __rml_slot_default_value: rml_core::slot::SlotRenderer = Box::new({ let __rml_self_entity = __rml_self_entity.clone(); move |_scope: &dyn rml_core::slot::ISlotScope, _window: &mut gpui::Window, _app: &mut gpui::App| -> gpui::AnyElement { __rml_self_entity.update(_app, |this, cx| { let __rml_self_ref: &Self = this; (");
+        code.push_str(&default_code_replaced);
+        code.push_str(").into_any_element() }) } });\n");
         code.push_str(
             "    __rml_entity.update(cx, |this, _cx| { this.__rml_set_slot_default(__rml_slot_default_value); });\n",
         );

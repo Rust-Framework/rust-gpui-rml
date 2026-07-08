@@ -1,10 +1,10 @@
 use std::{cell::RefCell, rc::Rc, time::Duration};
 
 use gpui::{
-    Anchor, Animation, AnimationExt as _, AnyElement, App, Background, Bounds, Context, Div, Edges,
-    ElementId, Entity, InteractiveElement, IntoElement, ParentElement, Pixels, RenderOnce,
-    ScrollHandle, SharedString, Stateful, StatefulInteractiveElement as _, StyleRefinement, Styled,
-    Window, div, prelude::FluentBuilder as _, px,
+    Anchor, Animation, AnimationExt as _, AnyElement, App, Background, Bounds, Context, Corners,
+    Div, Edges, ElementId, Entity, InteractiveElement, IntoElement, ParentElement, Pixels,
+    RenderOnce, ScrollHandle, SharedString, Stateful, StatefulInteractiveElement as _,
+    StyleRefinement, Styled, Window, div, prelude::FluentBuilder as _, px,
 };
 use smallvec::SmallVec;
 
@@ -71,7 +71,7 @@ impl Tabs {
         let id = id.into();
         Self {
             id: id.clone(),
-            base: div().id(id).px(px(-1.)),
+            base: div().id(id),
             style: StyleRefinement::default(),
             children: SmallVec::new(),
             scroll_handle: None,
@@ -79,7 +79,7 @@ impl Tabs {
             suffix: None,
             variant: TabVariant::default(),
             size: Size::default(),
-            last_empty_space: div().w_3().into_any_element(),
+            last_empty_space: div().into_any_element(),
             selected_index: None,
             on_click: None,
             on_close: None,
@@ -416,6 +416,7 @@ impl RenderOnce for Tabs {
             .and_then(|ix| self.children.get(ix))
             .and_then(|item| item.body.clone())
             .map(|f| f(window, cx));
+        let has_body = body_element.is_some();
 
         let default_gap = match self.size {
             Size::Small | Size::XSmall => px(8.),
@@ -429,11 +430,21 @@ impl RenderOnce for Tabs {
             }
             TabVariant::Outline => {
                 let padding = Edges::all(px(0.));
-                (cx.theme().transparent.into(), padding, default_gap)
+                let bg = if has_body {
+                    cx.theme().tokens.tab_bar.into()
+                } else {
+                    cx.theme().transparent.into()
+                };
+                (bg, padding, default_gap)
             }
             TabVariant::Pill => {
                 let padding = Edges::all(px(0.));
-                (cx.theme().transparent.into(), padding, px(4.))
+                let bg = if has_body {
+                    cx.theme().tokens.tab_bar.into()
+                } else {
+                    cx.theme().transparent.into()
+                };
+                (bg, padding, px(4.))
             }
             TabVariant::Segmented => {
                 let padding_x = match self.size {
@@ -590,19 +601,24 @@ impl RenderOnce for Tabs {
             .items_center()
             .bg(bg)
             .text_color(cx.theme().tab_foreground)
-            .when(self.variant == TabVariant::Underline, |this| {
-                this.child(
-                    div()
-                        .id("border-b")
-                        .absolute()
-                        .left_0()
-                        .bottom_0()
-                        .size_full()
-                        .border_b_1()
-                        .border_color(cx.theme().border),
-                )
-            })
-            .rounded(self.variant.tab_bar_radius(self.size, cx))
+            .when(
+                self.variant == TabVariant::Underline
+                    || (has_body
+                        && matches!(self.variant, TabVariant::Outline | TabVariant::Pill)),
+                |this| this.border_b_1().border_color(cx.theme().border),
+            )
+            .when_else(
+                self.variant == TabVariant::Segmented && has_body,
+                |this| {
+                    this.corner_radii(Corners {
+                        top_left: self.variant.tab_bar_radius(self.size, cx),
+                        top_right: self.variant.tab_bar_radius(self.size, cx),
+                        bottom_left: px(0.),
+                        bottom_right: px(0.),
+                    })
+                },
+                |this| this.rounded(self.variant.tab_bar_radius(self.size, cx)),
+            )
             .paddings(paddings)
             .refine_style(&self.style)
             .when_some(content_width_rc.clone(), |this, cw_rc| {
@@ -778,7 +794,7 @@ impl RenderOnce for Tabs {
                                             tab.into_any_element()
                                         }
                                     }))
-                                    .when(has_suffix_or_menu, |this| this.child(self.last_empty_space)),
+                                    .when(has_suffix_or_menu, |this| this.child(div().w(gap).child(self.last_empty_space))),
                             ),
                     ),
             )
@@ -825,7 +841,13 @@ impl RenderOnce for Tabs {
                     this.border_1().border_color(cx.theme().border)
                 })
                 .child(header)
-                .child(div().flex_1().min_h_0().child(body))
+                .child(
+                    div()
+                        .flex_1()
+                        .min_h_0()
+                        .bg(cx.theme().tokens.background)
+                        .child(body),
+                )
                 .into_any_element(),
             None => header.into_any_element(),
         }

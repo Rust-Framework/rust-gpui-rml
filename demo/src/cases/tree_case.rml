@@ -1,28 +1,37 @@
 <component>
-    <div display="flex" flex-direction="column" class="case-pane doc-pane">
-        <h2>{t("case.tree.title")}</h2>
+    <CaseDocPage
+        title={t("case.tree.title")}
+        description="Tree 是 RML 的树视图组件，标签为 PascalCase Tree。Stateful 模式，但与 Input 不同：Tree 不支持 ref 指令（gen_tree 硬编码 self.tree_state.as_ref()），必须在 on_loaded 中手动 cx.new 创建 TreeState Entity 并设置 items，.rml 中通过 Tree 标签无 ref 取用。on_activate 仅叶子节点触发，on_select 含文件夹节点触发。TreeItem 通过 builder 模式构建（new/child/children/expanded/disabled），is_folder 根据 children 自动判断。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <div class="demo-section">
+                <h3>1. 基础用法 + 事件对比</h3>
+                <p>Tree 必须在 on_loaded 中创建 TreeState Entity 并配置 items。Tree 标签同时绑定 on-activate 和 on-select 两个事件：on-activate 仅叶子节点点击触发，on-select 含文件夹节点触发。点击文件夹节点仅展开/折叠（不触发 on-activate），点击叶子节点同时触发两个事件。</p>
+                <p>当前激活（叶子）：{activated_text}</p>
+                <p>当前选中（含文件夹）：{selected_text}</p>
+                <Tree on-activate={on_activate} on-select={on_select} />
+                <p class="hint">注：Tree 不支持 ref 指令，所有 Tree 标签共享 self.tree_state 字段（tags.rs 中 state_field 硬编码为 tree_state）。如需多个 Tree 实例，需扩展 gen_tree 支持 ref 路径（当前未实现）。</p>
+            </div>
 
-        <p>Tree 是 RML 的树视图组件。Stateful 模式，需在 on_loaded 中初始化 TreeState Entity 并设置 items。点击叶子节点触发 on-activate 事件，文件夹节点点击仅展开/折叠。</p>
+            <div class="demo-section">
+                <h3>2. TreeItem 构建模式</h3>
+                <p>TreeItem 通过 builder 模式构建：TreeItem::new(id, label) 创建根节点，.child(...) 添加单个子节点，.children(iter) 添加多个子节点。.expanded(true) 设置初始展开状态，.disabled(true) 禁用节点（禁用节点不触发事件）。is_folder() 根据 children 是否为空自动判断，无需手动设置。</p>
+                <p>上方 Tree 的 items 构建代码（on_loaded 中）：</p>
+                <p class="hint">TreeItem::new("group1", "分组一").expanded(true).child(TreeItem::new("item1", "选项 1")).child(TreeItem::new("item2", "选项 2")) —— 文件夹节点，expanded(true) 初始展开。TreeItem::new("group2", "分组二").child(...) —— 文件夹节点，默认折叠。TreeItem::new("item5", "独立项") —— 叶子节点（无 children）。TreeItem::new("disabled_item", "禁用项").disabled(true) —— 禁用节点，点击无事件触发。</p>
+            </div>
 
-        <Card title="基础用法">
-            <p>{status_text}</p>
-            <Tree ref="tree_state" on-activate={on_activate} />
-        </Card>
+            <div class="demo-section">
+                <h3>3. 多层级嵌套</h3>
+                <p>TreeItem 支持任意深度嵌套：.child() 可链式调用，子节点也可继续 .child() 添加孙节点。depth 由 TreeState 内部计算（渲染时缩进 = 16px * depth），无需手动设置。is_folder() 仅判断直接 children，孙节点不影响父节点的 folder 判断。</p>
+                <p class="hint">示例：TreeItem::new("root", "根").child(TreeItem::new("child", "子").child(TreeItem::new("grandchild", "孙"))) —— 三层嵌套，root 和 child 是文件夹，grandchild 是叶子。</p>
+            </div>
+        </template>
 
-        <Card title="代码示例">
-            <TabBar selected-index={code_tab} on-click={on_code_tab_change}>
-                <Tab label=".rml">
-                    <CodeEditor ref="rml_editor" value={rml_sample} language="rml" />
-                </Tab>
-                <Tab label=".rml.rs">
-                    <CodeEditor ref="rust_editor" value={rust_sample} language="rust" />
-                </Tab>
-            </TabBar>
-        </Card>
-
-        <h3>Tree</h3>
-        <Card title="API">
+        <template slot="api">
+            <h3>Tree</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-        </Card>
-    </div>
+            <p>另：Tree 是 Stateful 组件但不支持 ref 指令（gen_tree 专用路径），所有 Tree 标签共享 self.tree_state 字段。TreeState 必须在 on_loaded 中手动创建：cx.new(|cx| TreeState::new(cx).items(items))。TreeItem 是 builder 模式，构造后不可变（expanded/disabled 通过 state 内部 RefCell 运行时修改）。</p>
+        </template>
+    </CaseDocPage>
 </component>

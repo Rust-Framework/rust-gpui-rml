@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.tooltip.title")}
-        description="Tooltip 在 RML 中作为通用属性使用，而非独立组件。tooltip=\"text\" 生成 .tooltip(\"text\")，由专属 compiler/tooltip 模块处理组件白名单检查（Button / IconButton / DropdownButton / Toggle / Checkbox / Clipboard / Radio / Switch）。鼠标悬浮或聚焦时显示补充信息，常用于操作说明、快捷键提示。"
+        description="Tooltip 在 RML 中作为通用属性使用，而非独立组件。tooltip=&quot;text&quot; 生成 .tooltip(&quot;text&quot;)，由专属 compiler/tooltip 模块处理组件白名单检查（Button / IconButton / DropdownButton / Toggle / Checkbox / Clipboard / Radio / Switch）。鼠标悬浮或聚焦时显示补充信息，常用于操作说明、快捷键提示。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">

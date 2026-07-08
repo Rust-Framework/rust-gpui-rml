@@ -68,7 +68,7 @@ fn map_declaration(decl: &Declaration, vars: &HashMap<String, Value>) -> Option<
         "font-weight" => font_weight_method(&value),
         "font-family" => font_family_method(&value),
         "text-align" => text_align_method(&value),
-        "line-height" => length_method("line_height", &value),
+        "line-height" => line_height_method(&value),
         "white-space" => white_space_method(&value),
 
         // ─── Flexbox ───
@@ -176,6 +176,18 @@ fn length_method(method: &str, value: &Value) -> Option<String> {
         Value::Length(n, Unit::Pt) => Some(format!("{}(gpui::px({:?}))", method, n * 1.333)),
         Value::Number(n) => Some(format!("{}(gpui::px({:?}))", method, n)),
         _ => None,
+    }
+}
+
+/// line-height 专用映射
+///
+/// CSS 中 unitless line-height（如 line-height: 1.6）是相对倍数，应乘以字体尺寸。
+/// GPUI 的 `line_height` 接受 `gpui::relative(倍数)` 表示相对行高。
+/// 带单位长度（px/pt）仍按绝对像素处理。
+fn line_height_method(value: &Value) -> Option<String> {
+    match value {
+        Value::Number(n) => Some(format!("line_height(gpui::relative({:?}))", n)),
+        _ => length_method("line_height", value),
     }
 }
 
@@ -612,6 +624,30 @@ mod tests {
         let d = decl("min-width", Value::Length(100.0, Unit::Percent));
         let code = map_declarations(&[d], &HashMap::new());
         assert!(code.contains(".min_w(gpui::relative(1.0))"), "expected min_w relative, got: {}", code);
+    }
+
+    #[test]
+    fn map_line_height_unitless_to_relative() {
+        // CSS unitless line-height 是相对倍数，应映射为 gpui::relative()
+        let d = decl("line-height", Value::Number(1.6));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(
+            code.contains(".line_height(gpui::relative(1.6))"),
+            "expected relative line-height, got: {}",
+            code
+        );
+    }
+
+    #[test]
+    fn map_line_height_px_to_absolute() {
+        // 带 px 单位的 line-height 仍按绝对像素处理
+        let d = decl("line-height", Value::Length(24.0, Unit::Px));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(
+            code.contains(".line_height(gpui::px(24"),
+            "expected absolute line-height, got: {}",
+            code
+        );
     }
 
     #[test]

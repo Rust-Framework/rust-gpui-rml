@@ -57,6 +57,54 @@
     flex-wrap: wrap;
 }
 
+.alert-col {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.avatar-row {
+    display: flex;
+    flex-direction: row;
+    gap: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.popover-row {
+    display: flex;
+    flex-direction: row;
+    gap: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.popover-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+}
+
+.popover-tip {
+    padding: 8px 12px;
+    font-size: 13px;
+}
+
+.popover-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    min-width: 200px;
+}
+
+.popover-panel h4 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+}
+
 /* ── 文档格式 case 样式 ── */
 
 .doc-pane {
