@@ -11,7 +11,7 @@ const META: &BuiltinMeta = &BuiltinMeta {
     category: ComponentCategory::Primitive,
     ctor: "gpui::div().text_sm().text_color(rml_core::theme::color(\"--text-muted\"))",
     is_container: true,
-    is_self_closing: false,
+    is_self_closing: true,
 };
 
 #[derive(Debug)]
