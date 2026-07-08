@@ -1,17 +1,32 @@
 //! 扩展组件 translator
 //!
-//! 按组件类别拆分为独立 translator：
-//! - `stateless`：Stateless / StatelessNoId 组件
-//! - `stateful`：Stateful 组件（Input / TextInput / Slider 等）
-//! - `items`：StatelessWithItems 容器组件（Tabs / TabBar / Table / DescriptionList / Popover / Accordion）
-//! - `special`：构造器特殊的组件（Label / Separator / Icon / Kbd / Tag / Alert / RadioGroup）
+//! 每个扩展组件独占一个 translator 文件，遵循"一个 rs 文件 = 一个组件 / 一个职责"原则：
+//! - `stateless`：通用 Stateless / StatelessNoId 组件（Button / Avatar / Card 等，通过 component_lookup + setter 通用分发）
+//! - `stateful`：通用 Stateful 组件（Input / TextInput / Slider 等）
+//! - `tree` / `code_editor`：从 Stateful 抽出的特殊构造器组件
+//! - `tabs` / `tab_bar` / `table` / `description_list` / `popover` / `accordion`：容器组件
+//! - `label` / `separator` / `icon` / `kbd` / `tag` / `alert` / `radio_group` / `activity_bar`：特殊构造组件
 //!
 //! 本模块保留 `<component content={...}>` 透明容器 translator。
 
-pub mod items;
-pub mod special;
+pub mod accordion;
+pub mod activity_bar;
+pub mod alert;
+pub mod code_editor;
+pub mod description_list;
+pub mod icon;
+pub mod kbd;
+pub mod label;
+pub mod popover;
+pub mod radio_group;
+pub mod separator;
 pub mod stateful;
 pub mod stateless;
+pub mod tab_bar;
+pub mod table;
+pub mod tabs;
+pub mod tag;
+pub mod tree;
 
 use super::{ComponentCategory, IRmlTranslator, PrinterCtx, TranslatorMetadata};
 use crate::compiler::codegen::attribute::apply_css_styles;
@@ -79,9 +94,23 @@ impl IRmlTranslator for ComponentTranslator {
 
 /// 注册所有扩展组件 translator
 pub fn register_all(registry: &mut crate::compiler::translator::TranslatorRegistry) {
-    stateless::register_all(registry);
-    stateful::register_all(registry);
-    items::register_all(registry);
-    special::register_all(registry);
+    stateless::register(registry);
+    stateful::register(registry);
+    tree::register(registry);
+    code_editor::register(registry);
+    tabs::register(registry);
+    tab_bar::register(registry);
+    table::register(registry);
+    description_list::register(registry);
+    popover::register(registry);
+    accordion::register(registry);
+    label::register(registry);
+    separator::register(registry);
+    icon::register(registry);
+    kbd::register(registry);
+    tag::register(registry);
+    alert::register(registry);
+    radio_group::register(registry);
+    activity_bar::register(registry);
     registry.register(ComponentTranslator);
 }

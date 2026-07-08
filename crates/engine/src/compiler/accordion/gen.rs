@@ -9,7 +9,7 @@ use crate::tags;
 
 /// 生成 Accordion 构造代码（构造 + 属性 + 子节点 .item() 注入）
 ///
-/// 由 `ItemsComponentTranslator` 调用，
+/// 由 `AccordionTranslator` 调用，
 /// 整个 Accordion codegen 流程自包含于此。
 pub fn gen_accordion(
     elem: &Element,

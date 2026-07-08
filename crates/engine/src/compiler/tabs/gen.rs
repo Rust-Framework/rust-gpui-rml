@@ -12,7 +12,7 @@ use crate::tags;
 
 /// 生成 Tabs 构造代码（构造 + 属性 + 子节点 .child(TabItem) 注入）
 ///
-/// 由 `ItemsComponentTranslator` 调用。
+/// 由 `TabsTranslator` 调用。
 pub fn gen_tabs(
     elem: &Element,
     ref_name: Option<&str>,

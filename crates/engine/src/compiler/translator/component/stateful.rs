@@ -1,7 +1,8 @@
 //! 有状态扩展组件 translator
 //!
 //! 处理 `ComponentKind::Stateful` 组件：Input、TextInput、Slider 等。
-//! Tree 与 CodeEditor 构造特殊，内部委托到 compiler/tree 与 compiler/code_editor。
+//! Tree 与 CodeEditor 构造特殊，由独立的 `TreeTranslator` / `CodeEditorTranslator` 处理，
+//! 本 translator 在 `matches` 中显式排除。
 //!
 //! 有状态组件围绕 `Option<Entity<T>>` 字段：
 //! - 无 ref 时读取 ViewModel 字段
@@ -29,6 +30,10 @@ impl IRmlTranslator for StatefulComponentTranslator {
     }
 
     fn matches(&self, elem: &Element) -> bool {
+        let canonical = tags::canonical_tag(&elem.tag);
+        if matches!(canonical.as_str(), "Tree" | "CodeEditor") {
+            return false;
+        }
         matches!(
             tags::component_lookup_resolved(&elem.tag).map(|c| c.kind),
             Some(tags::ComponentKind::Stateful { .. })
@@ -39,7 +44,7 @@ impl IRmlTranslator for StatefulComponentTranslator {
         &self,
         elem: &Element,
         ctx: &CodegenCtx,
-        id_counter: &mut usize,
+        _id_counter: &mut usize,
         loop_vars: &[String],
         parents: &[ParentInfo],
     ) -> Result<(String, bool), CodegenError> {
@@ -65,14 +70,7 @@ impl IRmlTranslator for StatefulComponentTranslator {
             _ => unreachable!(),
         };
 
-        // Tree / CodeEditor 构造特殊，委托到专用模块
-        let mut code = if tags::canonical_tag(tag) == "Tree" {
-            crate::compiler::tree::gen_tree(elem, component, ctx, 0, id_counter, loop_vars)?
-        } else if tags::canonical_tag(tag) == "CodeEditor" {
-            crate::compiler::code_editor::gen_code_editor(elem, component, ctx, 0, id_counter, loop_vars)?
-        } else {
-            gen_stateful_body(elem, &component, ref_name, state_field, state_ctor, loop_vars)?
-        };
+        let mut code = gen_stateful_body(elem, &component, ref_name, state_field, state_ctor, loop_vars)?;
 
         // 应用静态/bind/event setter（Input 事件由 gen_stateful_body 内部处理，setter 返回 None）
         let lv: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
@@ -188,6 +186,6 @@ fn gen_stateful_body(
 }
 
 /// 注册有状态扩展组件 translator
-pub fn register_all(registry: &mut crate::compiler::translator::TranslatorRegistry) {
+pub fn register(registry: &mut crate::compiler::translator::TranslatorRegistry) {
     registry.register(StatefulComponentTranslator);
 }

@@ -1,13 +1,8 @@
 //! 扩展组件 setter 工具集（gpui-component 路由）
 //!
-//! 本模块不再包含集中式 `gen_component` 生成入口；扩展组件代码生成已迁移到
-//! `compiler/translator/component/` 下的各类别 translator：
-//! - `stateless`：Stateless / StatelessNoId 组件
-//! - `stateful`：Stateful 组件
-//! - `items`：StatelessWithItems 容器组件
-//! - `special`：构造器特殊的组件
-//!
-//! 本模块仅保留各 translator 共享的 setter 函数与辅助方法。
+//! 本模块不含组件生成入口；每个扩展组件独占一个 translator 文件
+//!（位于 `compiler/translator/component/`），通过本模块的 setter 函数
+//! 复用静态属性 / 绑定属性 / 事件属性的统一映射逻辑。
 
 use crate::compiler::expr;
 use crate::compiler::{CodegenCtx, CodegenError};

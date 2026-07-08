@@ -13,7 +13,7 @@ use crate::tags;
 
 /// 生成 Table 构造代码（构造 + 属性 + Column 子节点 + template slot 子节点）
 ///
-/// 由 `ItemsComponentTranslator` 按 `canonical_tag == "Table"` 时调用。
+/// 由 `TableTranslator` 调用。
 pub fn gen_table(
     elem: &Element,
     ref_name: Option<&str>,

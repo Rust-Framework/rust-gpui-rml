@@ -13,7 +13,7 @@ use crate::tags;
 
 /// 生成 DescriptionList 构造代码（构造 + 属性 + 子节点注入）
 ///
-/// 由 `ItemsComponentTranslator` 按 canonical_tag == "DescriptionList" 时调用。
+/// 由 `DescriptionListTranslator` 调用。
 ///
 /// ref 指令静默忽略（DescriptionList::new() 不接受 ElementId）。
 pub fn gen_description_list(

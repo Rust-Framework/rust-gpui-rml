@@ -17,7 +17,7 @@ use crate::tags;
 
 /// 生成 TabBar 构造代码（构造 + 属性 + 子节点 .child(TabItem) 注入）
 ///
-/// 由 `ItemsComponentTranslator` 调用。
+/// 由 `TabBarTranslator` 调用。
 pub fn gen_tab_bar(
     elem: &Element,
     ref_name: Option<&str>,

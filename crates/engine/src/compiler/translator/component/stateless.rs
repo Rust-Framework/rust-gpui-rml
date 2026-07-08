@@ -2,8 +2,8 @@
 //!
 //! 处理 `ComponentKind::Stateless` 与 `ComponentKind::StatelessNoId` 组件：
 //! Button、Avatar、Badge、Card、Checkbox、Collapsible、DropdownButton、GroupBox、
-//! Label、Link、Pagination、Progress、ProgressCircle、Radio、Skeleton、Spinner、
-//! Switch、Tab、Text、Toggle、TitleBar、StatusBar 等。
+//! Link、Pagination、Progress、ProgressCircle、Radio、Skeleton、Spinner、
+//! Switch、Text、Toggle、TitleBar、StatusBar 等。
 //!
 //! 构造器：
 //! - Stateless：`Type::new(ElementId)`（ref 指令生成稳定 ID，否则用计数器）
@@ -68,7 +68,7 @@ impl IRmlTranslator for StatelessComponentTranslator {
 }
 
 /// 生成无状态组件构造代码
-pub(crate) fn gen_stateless_body(
+fn gen_stateless_body(
     elem: &Element,
     ctx: &CodegenCtx,
     id_counter: &mut usize,
@@ -173,6 +173,6 @@ pub(crate) fn gen_stateless_body(
 }
 
 /// 注册无状态扩展组件 translator
-pub fn register_all(registry: &mut crate::compiler::translator::TranslatorRegistry) {
+pub fn register(registry: &mut crate::compiler::translator::TranslatorRegistry) {
     registry.register(StatelessComponentTranslator);
 }
