@@ -94,6 +94,8 @@ pub mod theme_case;
 
 #[path = "css_priority_case.rml.rs"]
 pub mod css_priority_case;
+#[path = "css_functions_case.rml.rs"]
+pub mod css_functions_case;
 
 // M1'.10：6 个指令专项 demo
 #[path = "else_case.rml.rs"]

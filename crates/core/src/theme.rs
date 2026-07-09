@@ -433,7 +433,7 @@ pub fn parse_theme_vars(
         if let Some(colon_idx) = decl.find(':') {
             let name = decl[..colon_idx].trim().to_string();
             let value = decl[colon_idx + 1..].trim();
-            if let Some(rgba) = parse_hex_color(value) {
+            if let Some(rgba) = parse_css_color(value) {
                 colors.insert(name, rgba);
             } else if let Some(v) = parse_theme_var_value(value) {
                 vars.insert(name, v);
@@ -444,7 +444,12 @@ pub fn parse_theme_vars(
     Ok((colors, vars))
 }
 
-/// 解析非颜色变量值: `Npx`/`Npt` → Length, 纯数字 → Number
+/// 解析非颜色变量值: `Npx`/`Npt`/`Nem`/`Nrem` → Length, 纯数字 → Number
+///
+/// 单位换算与 mapper.rs 的 `length_method` 保持一致：
+/// - `px` → 原样
+/// - `pt` → n * 4/3（1pt ≈ 1.333px）
+/// - `em`/`rem` → n * 16.0（基准字号 16px）
 fn parse_theme_var_value(s: &str) -> Option<ThemeVar> {
     let s = s.trim();
     // px 长度
@@ -457,6 +462,12 @@ fn parse_theme_var_value(s: &str) -> Option<ThemeVar> {
     if let Some(rest) = s.strip_suffix("pt") {
         if let Ok(n) = rest.trim().parse::<f32>() {
             return Some(ThemeVar::Length(n * 4.0 / 3.0));
+        }
+    }
+    // em/rem 长度(基准字号 16px)，先匹配 rem 再匹配 em，避免 "1rem" 误匹配 "em"
+    if let Some(rest) = s.strip_suffix("rem").or_else(|| s.strip_suffix("em")) {
+        if let Ok(n) = rest.trim().parse::<f32>() {
+            return Some(ThemeVar::Length(n * 16.0));
         }
     }
     // 纯数字
@@ -549,6 +560,144 @@ fn parse_hex_color(s: &str) -> Option<Rgba> {
         b: b as f32 / 255.0,
         a: a as f32 / 255.0,
     })
+}
+
+/// 解析 CSS 颜色值：`#hex` / `rgb()` / `rgba()` / `hsl()` / `hsla()`
+///
+/// 与 mapper.rs 的 `function_to_color` 逻辑保持一致，但返回 GPUI 的 `Rgba`（f32 0.0-1.0）。
+/// 用于 `parse_theme_vars` 解析 `:root` 中的颜色变量。
+fn parse_css_color(s: &str) -> Option<Rgba> {
+    let s = s.trim();
+    if let Some(rgba) = parse_hex_color(s) {
+        return Some(rgba);
+    }
+    let open = s.find('(')?;
+    let close = s.rfind(')')?;
+    if close <= open {
+        return None;
+    }
+    let name = s[..open].trim();
+    let args_str = &s[open + 1..close];
+    let raw_args: Vec<&str> = args_str.split(',').map(|a| a.trim()).collect();
+
+    match name {
+        "rgb" if raw_args.len() == 3 => {
+            let r = parse_rgb_channel(raw_args[0])?;
+            let g = parse_rgb_channel(raw_args[1])?;
+            let b = parse_rgb_channel(raw_args[2])?;
+            Some(rgba_from_u8(r, g, b, 255))
+        }
+        "rgba" if raw_args.len() == 4 => {
+            let r = parse_rgb_channel(raw_args[0])?;
+            let g = parse_rgb_channel(raw_args[1])?;
+            let b = parse_rgb_channel(raw_args[2])?;
+            let a = parse_alpha(raw_args[3])?;
+            Some(rgba_from_u8(r, g, b, a))
+        }
+        "hsl" if raw_args.len() == 3 => {
+            let h = raw_args[0].parse::<f32>().ok()?;
+            let sat = parse_percent_or_number(raw_args[1])?;
+            let light = parse_percent_or_number(raw_args[2])?;
+            let (r, g, b) = hsl_to_rgb(h, sat, light);
+            Some(rgba_from_u8(r, g, b, 255))
+        }
+        "hsla" if raw_args.len() == 4 => {
+            let h = raw_args[0].parse::<f32>().ok()?;
+            let sat = parse_percent_or_number(raw_args[1])?;
+            let light = parse_percent_or_number(raw_args[2])?;
+            let a = parse_alpha(raw_args[3])?;
+            let (r, g, b) = hsl_to_rgb(h, sat, light);
+            Some(rgba_from_u8(r, g, b, a))
+        }
+        _ => None,
+    }
+}
+
+/// 从 u8 通道构造 `Rgba`（f32 0.0-1.0）
+fn rgba_from_u8(r: u8, g: u8, b: u8, a: u8) -> Rgba {
+    Rgba {
+        r: r as f32 / 255.0,
+        g: g as f32 / 255.0,
+        b: b as f32 / 255.0,
+        a: a as f32 / 255.0,
+    }
+}
+
+/// 解析 rgb 通道值：`255` → 255, `100%` → 255
+fn parse_rgb_channel(s: &str) -> Option<u8> {
+    let s = s.trim();
+    if let Some(pct) = s.strip_suffix('%') {
+        let n = pct.trim().parse::<f32>().ok()?;
+        return Some(clamp_u8(n * 2.55));
+    }
+    let n = s.parse::<f32>().ok()?;
+    Some(clamp_u8(n))
+}
+
+/// 解析 alpha 值：`0.5` → 128, `50%` → 128
+fn parse_alpha(s: &str) -> Option<u8> {
+    let s = s.trim();
+    if let Some(pct) = s.strip_suffix('%') {
+        let n = pct.trim().parse::<f32>().ok()?;
+        return Some(clamp_u8(n * 2.55));
+    }
+    let n = s.parse::<f32>().ok()?;
+    Some(clamp_u8(n * 255.0))
+}
+
+/// 解析百分比值：`50%` → 0.5, `0.5` → 0.005（CSS hsl 中 s/l 通常用百分号）
+fn parse_percent_or_number(s: &str) -> Option<f32> {
+    let s = s.trim();
+    if let Some(pct) = s.strip_suffix('%') {
+        let n = pct.trim().parse::<f32>().ok()?;
+        return Some(n / 100.0);
+    }
+    s.parse::<f32>().ok().map(|n| n / 100.0)
+}
+
+/// HSL → RGB 转换（h: 0-360, s/l: 0.0-1.0）
+fn hsl_to_rgb(h: f32, s: f32, l: f32) -> (u8, u8, u8) {
+    let h = h.rem_euclid(360.0) / 360.0;
+    let s = s.clamp(0.0, 1.0);
+    let l = l.clamp(0.0, 1.0);
+
+    if s == 0.0 {
+        let v = clamp_u8(l * 255.0);
+        return (v, v, v);
+    }
+
+    let q = if l < 0.5 {
+        l * (1.0 + s)
+    } else {
+        l + s - l * s
+    };
+    let p = 2.0 * l - q;
+
+    let hue_to_rgb = |t: f32| -> f32 {
+        let mut t = t;
+        if t < 0.0 { t += 1.0; }
+        if t > 1.0 { t -= 1.0; }
+        if t < 1.0 / 6.0 {
+            p + (q - p) * 6.0 * t
+        } else if t < 0.5 {
+            q
+        } else if t < 2.0 / 3.0 {
+            p + (q - p) * (2.0 / 3.0 - t) * 6.0
+        } else {
+            p
+        }
+    };
+
+    let r = hue_to_rgb(h + 1.0 / 3.0);
+    let g = hue_to_rgb(h);
+    let b = hue_to_rgb(h - 1.0 / 3.0);
+
+    (clamp_u8(r * 255.0), clamp_u8(g * 255.0), clamp_u8(b * 255.0))
+}
+
+/// 将 f32 钳位到 u8（0-255）
+fn clamp_u8(n: f32) -> u8 {
+    n.round().clamp(0.0, 255.0) as u8
 }
 
 #[cfg(test)]
@@ -702,8 +851,16 @@ mod tests {
     #[test]
     fn parse_theme_var_value_rejects_unknown() {
         assert_eq!(parse_theme_var_value("red"), None);
-        assert_eq!(parse_theme_var_value("1em"), None);
+        assert_eq!(parse_theme_var_value("50vw"), None);
         assert_eq!(parse_theme_var_value(""), None);
+    }
+
+    #[test]
+    fn parse_theme_var_value_em_rem() {
+        assert_eq!(parse_theme_var_value("1em"), Some(ThemeVar::Length(16.0)));
+        assert_eq!(parse_theme_var_value("1rem"), Some(ThemeVar::Length(16.0)));
+        assert_eq!(parse_theme_var_value("1.5em"), Some(ThemeVar::Length(24.0)));
+        assert_eq!(parse_theme_var_value("0.5rem"), Some(ThemeVar::Length(8.0)));
     }
 
     #[test]
@@ -815,5 +972,119 @@ mod tests {
         // 切换回 dark
         assert!(state.switch_theme("dark"));
         assert_eq!(state.var("--spacing"), Some(ThemeVar::Length(16.0)));
+    }
+
+    // ─── 颜色函数解析测试 ───
+
+    #[test]
+    fn parse_css_color_rgb() {
+        let c = parse_css_color("rgb(255, 0, 0)").unwrap();
+        assert_eq!(c.r, 1.0);
+        assert_eq!(c.g, 0.0);
+        assert_eq!(c.b, 0.0);
+        assert_eq!(c.a, 1.0);
+    }
+
+    #[test]
+    fn parse_css_color_rgba() {
+        let c = parse_css_color("rgba(0, 255, 0, 0.5)").unwrap();
+        assert_eq!(c.r, 0.0);
+        assert_eq!(c.g, 1.0);
+        assert_eq!(c.b, 0.0);
+        assert!((c.a - 0.5019).abs() < 1e-3);
+    }
+
+    #[test]
+    fn parse_css_color_rgb_percent() {
+        let c = parse_css_color("rgb(100%, 50%, 0%)").unwrap();
+        assert_eq!(c.r, 1.0);
+        assert!((c.g - 0.5019).abs() < 1e-3);
+        assert_eq!(c.b, 0.0);
+    }
+
+    #[test]
+    fn parse_css_color_hsl() {
+        let c = parse_css_color("hsl(120, 100%, 50%)").unwrap();
+        assert_eq!(c.r, 0.0);
+        assert_eq!(c.g, 1.0);
+        assert_eq!(c.b, 0.0);
+    }
+
+    #[test]
+    fn parse_css_color_hsla() {
+        let c = parse_css_color("hsla(240, 100%, 50%, 0.5)").unwrap();
+        assert_eq!(c.r, 0.0);
+        assert_eq!(c.g, 0.0);
+        assert_eq!(c.b, 1.0);
+        assert!((c.a - 0.5019).abs() < 1e-3);
+    }
+
+    #[test]
+    fn parse_css_color_hex_still_works() {
+        let c = parse_css_color("#0066cc").unwrap();
+        assert_eq!(c.r, 0.0);
+        assert!((c.g - 0.4).abs() < 1e-3);
+        assert_eq!(c.b, 0.8);
+    }
+
+    #[test]
+    fn parse_css_color_rejects_invalid() {
+        assert_eq!(parse_css_color("red"), None);
+        assert_eq!(parse_css_color("rgb(1, 2)"), None);
+        assert_eq!(parse_css_color(""), None);
+    }
+
+    #[test]
+    fn parse_theme_vars_extracts_rgb_color() {
+        let css = r#"
+            :root {
+                --primary: rgb(0, 102, 204);
+                --accent: rgba(255, 0, 0, 0.5);
+            }
+        "#;
+        let (colors, _vars) = parse_theme_vars(css).unwrap();
+        assert_eq!(colors.len(), 2);
+        assert!(colors.contains_key("--primary"));
+        assert!(colors.contains_key("--accent"));
+        let primary = colors.get("--primary").unwrap();
+        assert!((primary.b - 0.8).abs() < 1e-3);
+    }
+
+    #[test]
+    fn parse_theme_vars_extracts_hsl_color() {
+        let css = r#"
+            :root {
+                --brand: hsl(280, 100%, 50%);
+            }
+        "#;
+        let (colors, _vars) = parse_theme_vars(css).unwrap();
+        assert_eq!(colors.len(), 1);
+        assert!(colors.contains_key("--brand"));
+    }
+
+    #[test]
+    fn parse_theme_vars_extracts_em_rem_length() {
+        let css = r#"
+            :root {
+                --base-spacing: 1rem;
+                --large-spacing: 2em;
+            }
+        "#;
+        let (_colors, vars) = parse_theme_vars(css).unwrap();
+        assert_eq!(vars.get("--base-spacing"), Some(&ThemeVar::Length(16.0)));
+        assert_eq!(vars.get("--large-spacing"), Some(&ThemeVar::Length(32.0)));
+    }
+
+    #[test]
+    fn hsl_to_rgb_pure_gray() {
+        let (r, g, b) = hsl_to_rgb(0.0, 0.0, 0.5);
+        assert_eq!((r, g, b), (128, 128, 128));
+    }
+
+    #[test]
+    fn hsl_to_rgb_hue_wraparound() {
+        // 480° == 120° → green
+        let (r, g, b) = hsl_to_rgb(480.0, 1.0, 0.5);
+        assert_eq!((r, g, b), (0, 255, 0));
     }
 }

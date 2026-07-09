@@ -1,0 +1,104 @@
+<component>
+    <style source="css_functions_case.css" />
+    <CaseDocPage
+        title="颜色函数 + 单位 + CSS 变量注入"
+        description="演示 rgb()/rgba()/hsl()/hsla() 颜色函数、em/rem/vw/vh 单位、CSS 变量动态注入与动态主题切换。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <Card title="rgb() 颜色函数">
+                <p>CSS class 使用 rgb(240,248,255) 背景 + rgb(173,216,230) 边框：</p>
+                <div class="rgb-card">
+                    <p>background = rgb(240, 248, 255)</p>
+                    <p>border = 1px solid rgb(173, 216, 230)</p>
+                </div>
+                <p>内联 style 使用 rgba(100,149,237,0.3) 半透明背景：</p>
+                <div class="rgba-overlay">
+                    <p>background = rgba(100, 149, 237, 0.3)</p>
+                </div>
+                <p>归一化属性 background="rgb(200,230,200)"：</p>
+                <div padding="8px" background="rgb(200, 230, 200)" border-radius="4px">
+                    <p>归一化属性: background=rgb(200,230,200)</p>
+                </div>
+            </Card>
+
+            <Card title="hsl()/hsla() 颜色函数">
+                <p>CSS class 使用 hsl(120,60%,90%) 背景 + hsl(120,60%,50%) 边框：</p>
+                <div class="hsl-card">
+                    <p>background = hsl(120, 60%, 90%)</p>
+                    <p>border = 1px solid hsl(120, 60%, 50%)</p>
+                </div>
+                <p>内联 style 使用 hsla(30,100%,50%,0.4)：</p>
+                <div class="hsla-gradient">
+                    <p>background = hsla(30, 100%, 50%, 0.4)</p>
+                </div>
+            </Card>
+
+            <Card title="em/rem 单位（1em = 1rem = 16px）">
+                <p>CSS class 使用 em/rem 单位设置 padding/margin/font-size：</p>
+                <div class="em-rem-box">
+                    <p>padding: 0.5em 1em = 8px 16px</p>
+                    <p>margin: 0.5rem 0 = 8px 0</p>
+                    <p>font-size: 1.25rem = 20px</p>
+                </div>
+                <p>归一化属性 padding="1em" gap="0.5em"：</p>
+                <div padding="1em" gap="0.5em" display="flex" flex-direction="column" background="rgb(245,245,255)">
+                    <p>padding = 1em = 16px</p>
+                    <p>gap = 0.5em = 8px</p>
+                </div>
+            </Card>
+
+            <Card title="vw/vh 单位（近似为 relative）">
+                <p>CSS class 使用 50vw 宽度 + 8vh 最小高度：</p>
+                <div class="vw-vh-box">
+                    <p>width = 50vw → relative(0.5)</p>
+                    <p>min-height = 8vh → relative(0.08)</p>
+                </div>
+            </Card>
+
+            <Card title="CSS 变量动态注入（颜色函数值）">
+                <p>:root 定义颜色变量（rgb/hsl/rgba 函数值），运行时通过 rml::theme::color() 查询：</p>
+                <div class="var-color-box">
+                    <p>background = var(--brand-rgb) = rgb(0,102,204)</p>
+                </div>
+                <div class="var-hsl-box">
+                    <p>background = var(--brand-hsl) = hsl(280,100%,50%)</p>
+                </div>
+                <div class="var-accent-box">
+                    <p>background = var(--accent-rgba) = rgba(255,140,0,0.8)</p>
+                </div>
+            </Card>
+
+            <Card title="动态主题切换（if 条件切换 class）">
+                <p>当前主题：{theme_label}</p>
+                <div class="button-row">
+                    <Button label="切换主题" on-click={on_toggle_theme} primary="" />
+                </div>
+                <div if={is_dark} class="theme-dark">
+                    <p>深色主题：rgb(33,37,41) 背景 + rgb(248,249,250) 文字</p>
+                </div>
+                <div if={!is_dark} class="theme-light">
+                    <p>浅色主题：rgb(248,249,250) 背景 + rgb(33,37,41) 文字</p>
+                </div>
+            </Card>
+
+            <Card title="复杂嵌套（颜色函数 + 单位 + 组件）">
+                <div class="nested-container">
+                    <div class="nested-row" style="background: rgba(0, 102, 204, 0.1);">
+                        <Button label="rgb 按钮" primary="" />
+                        <Tag>rgba 标签</Tag>
+                        <Icon name="Bell" />
+                    </div>
+                    <div class="nested-row" style="background: hsla(120, 100%, 50%, 0.1);">
+                        <Icon name="Search" />
+                        <Label>hsla 行（padding=0.25em 0.5em）</Label>
+                    </div>
+                    <div class="nested-row" padding="0.5em" gap="0.75em" background="rgb(255,248,225)">
+                        <Icon name="Star" />
+                        <Label>归一化属性行（em 单位）</Label>
+                    </div>
+                </div>
+            </Card>
+        </template>
+    </CaseDocPage>
+</component>
