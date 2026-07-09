@@ -63,8 +63,8 @@ pub fn gen_code_editor(
         })
         .unwrap_or("rml");
 
-    // 声明式 bordered 属性：控制 Input 的外边框（默认 true）。
-    // 未指定时不生成调用（保持 Input 默认）；指定时按布尔值生成 .bordered(<bool>)。
+    // 声明式 bordered 属性：控制 Input 的外边框（CodeEditor 默认 false，避免与容器边框重叠）。
+    // 未指定时生成 .bordered(false)；指定时按布尔值生成 .bordered(<bool>)。
     let bordered: Option<bool> = elem.attributes.iter().find_map(|attr| match attr {
         Attribute::Static { name, value, .. } if name == "bordered" => {
             Some(value.is_empty() || value.eq_ignore_ascii_case("true"))
@@ -144,7 +144,7 @@ pub fn gen_code_editor(
         }
         match bordered {
             Some(b) => s.push_str(&format!("\n            .bordered({})", b)),
-            None => {}
+            None => s.push_str("\n            .bordered(false)"),
         }
         s
     };
@@ -281,8 +281,8 @@ mod tests {
         assert!(code.contains(".w_full()"));
         assert!(code.contains(".h(gpui::px(360.))"));
         assert!(code.contains(".focus_bordered(false)"));
-        // 未指定 bordered 时不生成 .bordered() 调用（保持 Input 默认 true）
-        assert!(!code.contains(".bordered("));
+        // 未指定 bordered 时默认生成 .bordered(false)
+        assert!(code.contains(".bordered(false)"));
     }
 
     #[test]
@@ -552,14 +552,14 @@ mod tests {
     }
 
     #[test]
-    fn gen_code_editor_no_bordered_attr_omits_call() {
-        // 未指定 bordered 时不生成 .bordered() 调用（保持 Input 默认 true）
+    fn gen_code_editor_no_bordered_attr_defaults_false() {
+        // 未指定 bordered 时默认生成 .bordered(false) 避免边框重叠
         let elem = make_element("CodeEditor", vec![], vec![]);
         let mut id = 0;
         let code =
             gen_code_editor(&elem, code_editor_component(), &ctx(), 0, &mut id, &Vec::new())
                 .unwrap();
-        assert!(!code.contains(".bordered("));
+        assert!(code.contains(".bordered(false)"));
     }
 
     #[test]

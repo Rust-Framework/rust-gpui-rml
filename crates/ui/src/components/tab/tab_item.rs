@@ -16,7 +16,7 @@ use std::sync::Arc;
 use gpui::{AnyElement, App, ClickEvent, IntoElement, ParentElement, SharedString, Window};
 use gpui_component::Icon;
 
-type TabBodyRenderer = Arc<dyn Fn(&mut Window, &mut App) -> AnyElement + Send + Sync + 'static>;
+pub type TabBodyRenderer = Arc<dyn Fn(&mut Window, &mut App) -> AnyElement + Send + Sync + 'static>;
 type TabClickHandler = Rc<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>;
 
 /// WPF TabItem 风格的 Tab 子项：title (header) + body (闭包模板)。
@@ -80,6 +80,11 @@ impl TabItem {
     {
         self.body = Some(Arc::new(body));
         self
+    }
+
+    /// 返回 body renderer 的 clone（Arc 共享），供外部在内容区渲染选中 tab 的 body。
+    pub fn body_renderer(&self) -> Option<TabBodyRenderer> {
+        self.body.clone()
     }
 
     /// 设置 disabled 状态。

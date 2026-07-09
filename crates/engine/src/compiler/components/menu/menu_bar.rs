@@ -90,7 +90,7 @@ pub fn gen_menu_bar(
         };
 
         let iter_code = format!(
-            "{iter_expr}.iter().map(|{}| {{\n                {}\n            }})",
+            "{iter_expr}.iter().enumerate().map(|(__rml_ix, {})| {{\n                {}\n            }})",
             clause.item, button_code
         );
 
@@ -150,11 +150,11 @@ fn gen_menu_bar_button_for_item(
                 .unwrap();
             let onclick = gen_top_button_onclick(&cmd_expr, ctx, loop_vars)?;
             Ok(format!(
-                "rml_ui::menu_bar_button((\"rml_menu_bar\", 0usize), {label}){onclick}"
+                "rml_ui::menu_bar_button((\"rml_menu_bar\", __rml_ix), {label}){onclick}"
             ))
         } else {
             Ok(format!(
-                "rml_ui::menu_bar_button((\"rml_menu_bar\", 0usize), {label})"
+                "rml_ui::menu_bar_button((\"rml_menu_bar\", __rml_ix), {label})"
             ))
         }
     } else {
@@ -179,7 +179,7 @@ fn gen_menu_bar_button_for_item(
         let body = stmts.join("\n                        ");
         *id_counter = inner_id;
         let button = format!(
-            "rml_ui::menu_bar_button((\"rml_menu_bar\", 0usize), {label})\n                .dropdown_menu(move |menu, window, cx| {{\n                    {body}\n                }})"
+            "rml_ui::menu_bar_button((\"rml_menu_bar\", __rml_ix), {label})\n                .dropdown_menu(move |menu, window, cx| {{\n                    {body}\n                }})"
         );
         if hoist_lets.is_empty() {
             Ok(button)
@@ -336,14 +336,14 @@ fn bind_expr_code(
 /// `children={expr}` 绑定路径——WPF `HierarchicalDataTemplate` 模式。
 ///
 /// 模板 `<menu-item each={m in menus} label={m.name} command={m.command} children={m.children} />`
-/// 生成递归 `macro_rules!`,同一模板在所有层级复用,实现无限层级自动递归解析。
+/// 生成递归辅助函数,同一函数在所有层级复用,实现无限层级自动递归解析。
 ///
 /// - **顶层(MenuBar)**:`menu_bar_button` + `.dropdown_menu(...)`(分支)或 `.on_click(...)`(叶子)
 /// - **嵌套层(PopupMenu)**:`menu.item(PopupMenuItem::new(label))`(叶子)或
 ///   `menu.submenu(label, ..., |submenu, ...| { ...递归... })`(分支)
 ///
-/// `children` 表达式应为 loop_var 字段访问(如 `m.children`),在宏体内经
-/// `let m = $item;` 绑定后正确解析(宏卫生保证同一作用域)。
+/// `children` 表达式应为 loop_var 字段访问(如 `m.children`),在函数体内经
+/// `let m = $item;` 绑定后正确解析。
 fn gen_menu_bar_with_children_bind(
     template_item: &Element,
     clause: &EachClause,
@@ -382,20 +382,23 @@ fn gen_menu_bar_with_children_bind(
         format!("{}.{}", crate::compiler::expr::current_self_alias().unwrap_or("self"), clause.iterable)
     };
 
-    let macro_name = format!("__rml_popup_item_{bar_id}");
+    let fn_name = format!("__rml_popup_item_{bar_id}");
 
-    // 递归 macro_rules! —— 嵌套层级(PopupMenu)渲染,同一模板复用于所有深度
-    let macro_def = format!(
-        "macro_rules! {macro_name} {{\n                ($menu:ident, $item:expr, $window:expr, $cx:expr) => {{\n                    let {item_var} = $item;\n                    let __rml_label = {label_code}.clone();\n                    let __rml_children = {children_code}.clone();\n                    if __rml_children.is_empty() {{\n                        $menu = $menu.item(\n                            rml_ui::PopupMenuItem::new(__rml_label)\n                            {onclick_code}\n                        );\n                    }} else {{\n                        $menu = $menu.submenu(__rml_label, $window, $cx, move |submenu, window, cx| {{\n                            let mut submenu = rml_ui::configure_menu_bar_popup(submenu);\n                            for __rml_c in &__rml_children {{\n                                {macro_name}!(submenu, __rml_c, window, cx);\n                            }}\n                            submenu\n                        }});\n                    }}\n                }};\n            }}"
+    // 递归辅助函数 —— 嵌套层级(PopupMenu)渲染,同一函数复用于所有深度
+    // 使用具体类型 MenuViewModel 而非泛型,以便调用 .label()/.children/.command() 方法
+    // 采用值传递(PopupMenu -> PopupMenu)而非 &mut,避免访问私有的 PopupMenu::new() 构造函数
+    let fn_def = format!(
+        "fn {fn_name}(menu: rml_ui::PopupMenu, {item_var}: &crate::shell::menu_view_model::MenuViewModel, window: &mut gpui::Window, cx: &mut gpui::Context<rml_ui::PopupMenu>) -> rml_ui::PopupMenu {{\n                let __rml_label = {label_code}.clone();\n                let __rml_children = {children_code}.clone();\n                if __rml_children.is_empty() {{\n                    let item = rml_ui::PopupMenuItem::new(__rml_label){onclick_code};\n                    menu.item(item)\n                }} else {{\n                    menu.submenu(__rml_label, window, cx, move |submenu, window, cx| {{\n                        let mut submenu = rml_ui::configure_menu_bar_popup(submenu);\n                        for __rml_c in &__rml_children {{\n                            submenu = {fn_name}(submenu, __rml_c, window, cx);\n                        }}\n                        submenu\n                    }})\n                }}\n            }}"
     );
 
     // 顶层 MenuBar + children map —— 顶层叶子用 menu_bar_button,分支用 dropdown_menu
+    // 使用 enumerate 索引作为元素 ID,避免多个按钮共享同一 ID 导致 GPUI 事件路由异常
     let top_code = format!(
-        "rml_ui::MenuBar::new((\"rml_menu_bar\", {bar_id}usize)).children({iter_expr}.iter().map(|{item_var}| {{\n                let __rml_label = {label_code}.clone();\n                let __rml_children = {children_code}.clone();\n                if __rml_children.is_empty() {{\n                    rml_ui::menu_bar_button((\"rml_menu_bar\", 0usize), __rml_label)\n                    {onclick_code}\n                }} else {{\n                    rml_ui::menu_bar_button((\"rml_menu_bar\", 0usize), __rml_label)\n                        .dropdown_menu(move |menu, window, cx| {{\n                            let mut menu = rml_ui::configure_menu_bar_popup(menu);\n                            for __rml_c in &__rml_children {{\n                                {macro_name}!(menu, __rml_c, window, cx);\n                            }}\n                            menu\n                        }})\n                }}\n            }}))"
+        "{{\n                let mut __rml_menu = rml_ui::MenuBar::new((\"rml_menu_bar\", {bar_id}usize));\n                for (__rml_ix, {item_var}) in {iter_expr}.iter().enumerate() {{\n                    let __rml_label = {label_code}.clone();\n                    let __rml_children = {children_code}.clone();\n                    if __rml_children.is_empty() {{\n                        __rml_menu = __rml_menu.child(\n                            rml_ui::menu_bar_button((\"rml_menu_bar\", __rml_ix), __rml_label){onclick_code}\n                        );\n                    }} else {{\n                        __rml_menu = __rml_menu.child(\n                            rml_ui::menu_bar_button((\"rml_menu_bar\", __rml_ix), __rml_label)\n                                .dropdown_menu(move |menu, window, cx| {{\n                                    let mut menu = rml_ui::configure_menu_bar_popup(menu);\n                                    for __rml_c in &__rml_children {{\n                                        menu = {fn_name}(menu, __rml_c, window, cx);\n                                    }}\n                                    menu\n                                }})\n                        );\n                    }}\n                }}\n                __rml_menu\n            }}"
     );
 
     Ok(format!(
-        "{{\n            let __rml_menu_weak = cx.weak_entity();\n            {macro_def}\n            {top_code}\n        }}"
+        "{{\n            let __rml_menu_weak = cx.weak_entity();\n            {fn_def}\n            {top_code}\n        }}"
     ))
 }
 
@@ -412,7 +415,7 @@ mod tests {
     }
 
     #[test]
-    fn children_bind_generates_recursive_macro() {
+    fn children_bind_generates_recursive_function() {
         let src = r#"<menu-bar>
             <menu-item each={m in menus} label={m.name} command={m.command} children={m.children} />
         </menu-bar>"#;
@@ -424,32 +427,42 @@ mod tests {
         let mut id = 0usize;
         let code = gen_menu_bar(&elem, &ctx, 0, &mut id, &[]).unwrap();
 
-        // 生成递归 macro_rules!
+        // 生成递归辅助函数（值传递模式）
         assert!(
-            code.contains("macro_rules! __rml_popup_item_"),
-            "应生成递归宏定义,实际:\n{}",
+            code.contains("fn __rml_popup_item_0(menu: rml_ui::PopupMenu,"),
+            "应生成递归辅助函数(值传递),实际:\n{}",
             code
         );
-        // 宏递归调用自身
         assert!(
-            code.contains("__rml_popup_item_0!(submenu,"),
-            "宏应递归调用自身(submenu),实际:\n{}",
+            code.contains("-> rml_ui::PopupMenu"),
+            "函数应返回 PopupMenu,实际:\n{}",
             code
         );
-        // 顶层 dropdown_menu 调用宏
+        // 函数递归调用自身
         assert!(
-            code.contains("__rml_popup_item_0!(menu,"),
-            "顶层 dropdown_menu 应调用宏,实际:\n{}",
+            code.contains("submenu = __rml_popup_item_0(submenu,"),
+            "函数应递归调用自身(submenu),实际:\n{}",
             code
         );
-        // 顶层 MenuBar + children map
+        // 顶层 dropdown_menu 调用函数
+        assert!(
+            code.contains("menu = __rml_popup_item_0(menu,"),
+            "顶层 dropdown_menu 应调用函数,实际:\n{}",
+            code
+        );
+        // 顶层 MenuBar + for 循环
         assert!(
             code.contains("MenuBar::new"),
             "应生成 MenuBar::new"
         );
         assert!(
-            code.contains("self.menus.iter().map"),
-            "应生成 self.menus.iter().map"
+            code.contains("for (__rml_ix, m) in self.menus.iter().enumerate()"),
+            "应生成 for (__rml_ix, m) in self.menus.iter().enumerate()"
+        );
+        // 按钮元素 ID 应使用索引,避免重复 ID 导致事件路由异常
+        assert!(
+            code.contains("menu_bar_button((\"rml_menu_bar\", __rml_ix)"),
+            "按钮元素 ID 应使用 __rml_ix 索引"
         );
         // 叶子/分支判断
         assert!(
@@ -458,8 +471,14 @@ mod tests {
         );
         // submenu 递归调用
         assert!(
-            code.contains("$menu.submenu("),
+            code.contains("menu.submenu("),
             "分支应生成 menu.submenu() 调用"
+        );
+        // 不应使用私有的 PopupMenu::new()
+        assert!(
+            !code.contains("PopupMenu::new()"),
+            "不应访问私有的 PopupMenu::new() 构造函数,实际:\n{}",
+            code
         );
     }
 

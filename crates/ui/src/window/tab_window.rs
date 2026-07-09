@@ -747,21 +747,32 @@ impl RenderOnce for TabWindowShell {
         // 1) 模板定制模式：tab_children 非空 → 直接注入预构建的 TabItem
         // 2) 简单绑定模式：tabs（IValue）非空 → 从 IValue 构建 TabItem
         //    as_contribution()?.name() 提供 title，as_visual()?.render() 提供 body
+        //
+        // 同时提取选中 tab 的 body renderer，用于在内容区渲染 tab body。
+        let mut selected_body: Option<crate::components::tab::TabBodyRenderer> = None;
+        let selected_index = self.selected_index;
+
         if !self.tab_children.is_empty() {
-            for item in std::mem::take(&mut self.tab_children) {
+            for (ix, item) in std::mem::take(&mut self.tab_children).into_iter().enumerate() {
+                if ix == selected_index {
+                    selected_body = item.body_renderer();
+                }
                 tab_bar = tab_bar.child(item);
             }
         } else {
-            for value in &self.tabs {
+            for (ix, value) in self.tabs.iter().enumerate() {
                 let c = Arc::clone(value);
                 let title = c.as_contribution().map(|c| c.name()).unwrap_or_default();
-                let item = TabItem::new().title(title).body(move |window, cx| {
+                let item = TabItem::new().title(title).closable(true).body(move |window, cx| {
                     if let Some(visual) = c.as_visual() {
                         visual.render(window, cx)
                     } else {
                         gpui::div().into_any_element()
                     }
                 });
+                if ix == selected_index {
+                    selected_body = item.body_renderer();
+                }
                 tab_bar = tab_bar.child(item);
             }
         }
@@ -831,7 +842,16 @@ impl RenderOnce for TabWindowShell {
 
         let body = resizable_panel()
             .flex_1()
-            .child(div().flex_1().min_h_0().size_full().children(self.children));
+            .child(
+                div()
+                    .flex_1()
+                    .min_h_0()
+                    .size_full()
+                    .when_some(selected_body, |this, body_fn| {
+                        this.child(body_fn(window, cx))
+                    })
+                    .children(self.children),
+            );
 
         // center_col：v_resizable 始终包含 body；bottom 展开时进 v_resizable，
         // 折叠时移出 v_resizable 放到下方独立 div（无 resize handle）。

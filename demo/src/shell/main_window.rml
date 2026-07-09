@@ -4,6 +4,7 @@
     height="720"
     startup="CenterScreen"
     icon="logo.svg"
+    tabs={tab_items}
     selected-index={selected_tab}
     on-tab-click="on_tab_click"
     on-tab-close="on_tab_close"
@@ -13,26 +14,48 @@
     on-chrome-toggle="on_chrome_toggle"
     left-size={slot_left_size}>
 
-    <template slot="tabs" each={w in workbenches}>
-        <Tab label={w.name()} closable />
-    </template>
-
     <template slot="left">
         <ActivityBar ref="activity_bar" />
     </template>
 
     <template slot="menu">
-        <component content={self.render_menu_bar(_window, cx)} />
+        <menu-bar>
+            <menu-item
+                each={m in menus}
+                label={m.label()}
+                children={m.children}
+                command={m.command()} />
+        </menu-bar>
     </template>
 
     <template slot="bottom" scope={panel}>
-        <component content={self.render_bottom_panel(panel, _window, cx)} />
+        <div class="flex flex-col size-full">
+            <div class="flex flex-row items-center justify-between px-3 py-1.5 border-b">
+                <div class="text-[13px] font-semibold">终端面板</div>
+                <div class="flex gap-3 text-xs text-muted-foreground">
+                    <span>slot={panel.slot_name()}</span>
+                    <span>size={panel.current_size().map(|s| format!("{}", s)).unwrap_or("N/A".to_string())}</span>
+                    <span>resizable={panel.has_resizable()}</span>
+                </div>
+            </div>
+            <div class="flex-1 px-3 py-2 text-xs text-muted-foreground">
+                <span>$ demo terminal — scope variable accessible from slot content</span>
+            </div>
+        </div>
     </template>
 
     <template slot="footer">
-        <component content={self.render_status_bar(_window, cx)} />
+        <native-status-bar>
+            <div class="flex gap-2">
+                <component each={s in status_left} content={s.render(_window, cx)} />
+            </div>
+            <div class="flex gap-2">
+                <component each={s in status_center} content={s.render(_window, cx)} />
+            </div>
+            <div class="flex gap-2">
+                <component each={s in status_right} content={s.render(_window, cx)} />
+            </div>
+        </native-status-bar>
     </template>
-
-    <component content={self.active_view(_window, cx)} />
 
 </tab-window>

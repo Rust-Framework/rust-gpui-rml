@@ -15,6 +15,26 @@ use rml_core::contribution::{ContributionOptions, IContribution};
 
 use crate::shell::status_view_model::ContribEntry;
 
+/// 贡献命令包装器 —— 将 `Arc<dyn IContribution>` 包装为 `ICommand` 实现。
+///
+/// 用于 RML 声明式绑定 `command={m.command()}`，使菜单项可以直接绑定到贡献的命令能力。
+#[derive(Clone)]
+pub struct ContributedCommand(pub Arc<dyn IContribution>);
+
+impl ContributedCommand {
+    /// 委托到底层贡献的命令能力查询。
+    pub fn can_execute(&self, ctx: &mut CallContext) -> bool {
+        self.0.as_command().map(|c| c.can_execute(ctx)).unwrap_or(false)
+    }
+
+    /// 委托到底层贡献的命令执行。
+    pub fn execute(&self, ctx: &mut CallContext) {
+        if let Some(cmd) = self.0.as_command() {
+            cmd.execute(ctx);
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct MenuViewModel {
     pub id: SharedString,
@@ -32,6 +52,17 @@ impl MenuViewModel {
 
     pub fn has_children(&self) -> bool {
         !self.children.is_empty()
+    }
+
+    /// 提取命令能力（供 RML `command={m.command()}` 绑定）。
+    ///
+    /// 若贡献实现了 `ICommand`，返回 `Some(ContributedCommand)`；否则 `None`。
+    pub fn command(&self) -> Option<ContributedCommand> {
+        if self.contribution.as_command().is_some() {
+            Some(ContributedCommand(self.contribution.clone()))
+        } else {
+            None
+        }
     }
 
     /// 从贡献条目构造；非 menu 槽位返回 `None`。

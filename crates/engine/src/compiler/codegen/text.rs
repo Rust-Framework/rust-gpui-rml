@@ -54,7 +54,15 @@ pub(crate) fn gen_expr_code(expr_str: &str, loop_vars: &[&str], computed: &[&str
             } else if computed.contains(&trimmed) {
                 format!("{}.{}()", prefix, trimmed)
             } else {
-                format!("{}.{}", prefix, trimmed)
+                // Check if expression starts with a loop variable (e.g., panel.current_size())
+                let starts_with_loop_var = loop_vars.iter().any(|v| {
+                    trimmed.starts_with(&format!("{}.", v)) || trimmed.starts_with(&format!("{}(", v))
+                });
+                if starts_with_loop_var {
+                    trimmed.to_string()
+                } else {
+                    format!("{}.{}", prefix, trimmed)
+                }
             }
         }
     }

@@ -83,6 +83,12 @@ impl IRmlTranslator for ComponentTranslator {
                 clause.iterable == *lv || clause.iterable.starts_with(&format!("{}.", lv))
             }) {
                 clause.iterable.clone()
+            } else if computed.contains(&clause.iterable.as_str()) {
+                format!(
+                    "{}.{}()",
+                    expr::current_self_alias().unwrap_or("self"),
+                    clause.iterable
+                )
             } else {
                 format!(
                     "{}.{}",

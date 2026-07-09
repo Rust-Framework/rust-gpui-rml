@@ -50,6 +50,7 @@ fn wrap_shell_slot(slot_code: &str, scope_var: Option<&str>) -> String {
         "Box::new({{\n    \
          let __rml_weak = cx.weak_entity();\n    \
          move |scope: &dyn rml_core::slot::ISlotScope, _window: &mut gpui::Window, _app: &mut gpui::App| {{\n        \
+         let _rml_render_guard = rml_core::computed_cache::RenderThreadGuard::enter();\n        \
          {scope_binding}\n        \
          if let Some(__rml_entity) = __rml_weak.upgrade() {{\n            \
          __rml_entity.update(_app, |this, cx| {{\n                \

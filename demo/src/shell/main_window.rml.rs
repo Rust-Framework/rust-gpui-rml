@@ -1,13 +1,11 @@
 use std::sync::{Arc, RwLock};
 
 use crossbeam_channel::Receiver;
-use gpui::prelude::StatefulInteractiveElement as _;
-use gpui::{InteractiveElement, IntoElement, ParentElement, Styled, WeakEntity, Window};
+use gpui::{WeakEntity, Window};
 use rml::prelude::*;
 use rust_rml_client::{LanguageClient, ServerStatus};
 use rml_app::IAppContextExt;
-use rml_core::command::CommandAbilityExt;
-use rml_core::contribution::{IContribution, VisualAbilityExt};
+use rml_core::contribution::VisualAbilityExt;
 use rml_core::i18n::{I18nExt, I18nState};
 use rml_core::observable::ObservableVec;
 use rml_core::theme::ThemeExt;
@@ -289,199 +287,6 @@ impl MainWindow {
         self.status = build_status_view_models(&entries);
     }
 
-    /// 渲染激活的 workbench 视图：读 activated → as_visual() → render。
-    ///
-    /// 手动 `overflow_y_scroll` + `Scrollbar` 实现垂直滚动。
-    /// 不能使用 gpui-component 的 `overflow_y_scrollbar()`，因为其内部对内容
-    /// 元素施加 `flex_1()`，导致内容高度始终等于容器高度，溢出检测失效。
-    pub fn active_view(&self, window: &mut Window, cx: &mut gpui::Context<Self>) -> gpui::AnyElement {
-        let activated = self.activated.read().unwrap().clone();
-        if let Some(wb) = activated {
-            let iv: &dyn IContribution = wb.as_ref();
-            if let Some(visual) = iv.as_visual() {
-                let scroll_handle_id = "active-view-scroll-handle";
-                let scroll_handle = window
-                    .use_keyed_state(
-                        scroll_handle_id,
-                        &mut **cx,
-                        |_, _| gpui::ScrollHandle::default(),
-                    )
-                    .read(cx)
-                    .clone();
-
-                return gpui::div()
-                    .id("active-view-container")
-                    .size_full()
-                    .relative()
-                    .child(
-                        gpui::div()
-                            .id("active-view-scroll-area")
-                            .size_full()
-                            .flex()
-                            .flex_col()
-                            .overflow_y_scroll()
-                            .track_scroll(&scroll_handle)
-                            .child(visual.render(window, cx)),
-                    )
-                    .child(
-                        gpui_component::scroll::Scrollbar::vertical(&scroll_handle)
-                            .id("active-view-scrollbar"),
-                    )
-                    .into_any_element();
-            }
-        }
-        gpui::div().into_any_element()
-    }
-
-    /// 渲染菜单栏（从 `menus` ViewModel 树构建 `MenuBar` + `PopupMenu`）。
-    ///
-    /// 子菜单经 `dropdown_menu` 闭包 + `MenuViewModel::build_popup_menu` 递归构建。
-    /// 叶子节点的命令经 `contribution.as_command()` 提取。
-    pub fn render_menu_bar(
-        &self,
-        _window: &mut Window,
-        _cx: &mut gpui::Context<Self>,
-    ) -> gpui::AnyElement {
-        use rml_ui::{MenuBar, configure_menu_bar_popup, menu_bar_button};
-        use gpui_component::menu::DropdownMenu as _;
-        use gpui::ParentElement;
-
-        if self.menus.is_empty() {
-            return gpui::div().into_any_element();
-        }
-
-        let mut bar = MenuBar::new(("rml_menu_bar", 0usize));
-        for (ix, m) in self.menus.iter().enumerate() {
-            let btn: gpui::AnyElement = if m.has_children() {
-                let children = m.children.clone();
-                let label = m.label();
-                menu_bar_button(("rml_menu_btn", ix), label)
-                    .dropdown_menu(move |menu, window, cx| {
-                        let menu = configure_menu_bar_popup(menu);
-                        MenuViewModel::build_popup_menu(menu, &children, window, cx)
-                    })
-                    .into_any_element()
-            } else {
-                let label = m.label();
-                let mut btn = menu_bar_button(("rml_menu_btn", ix), label);
-                let contrib = m.contribution.clone();
-                if contrib.as_command().is_some() {
-                    btn = btn.on_click(move |_, window, app| {
-                        if let Some(cmd) = contrib.as_command() {
-                            let mut ctx = rml_core::command::CallContext::new(window, app);
-                            if cmd.can_execute(&mut ctx) {
-                                cmd.execute(&mut ctx);
-                            }
-                        }
-                    });
-                }
-                btn.into_any_element()
-            };
-            bar = bar.child(btn);
-        }
-        bar.into_any_element()
-    }
-
-    /// 渲染状态栏（从 `status` ViewModel 列表构建 `NativeStatusBar`）。
-    pub fn render_status_bar(
-        &self,
-        window: &mut Window,
-        _cx: &mut gpui::Context<Self>,
-    ) -> gpui::AnyElement {
-        use gpui::ParentElement;
-        use rml_ui::{NativeStatusBar, StatusBarAlign};
-
-        let mut bar = NativeStatusBar::new();
-        for s in &self.status {
-            let content = s.render(window, _cx);
-            match s.align {
-                StatusBarAlign::Left => {
-                    bar = bar.left(content);
-                }
-                StatusBarAlign::Right => {
-                    bar = bar.right(content);
-                }
-                StatusBarAlign::Center => {
-                    bar = bar.child(content);
-                }
-            }
-        }
-        bar.into_any_element()
-    }
-
-    /// 渲染 bottom 插槽内容，演示作用域插槽 `scope={panel}` 的参数传递能力。
-    ///
-    /// `panel: &dyn ISlotScope` 由 TabWindowShell 在调用 slot 闭包时构造，
-    /// 暴露 left/right/bottom 插槽的 resizable 操控权。
-    ///
-    /// 当前实现：在渲染时读取 panel 的元信息（slot_name / current_size / has_resizable）
-    /// 展示为终端面板式的状态条。
-    ///
-    /// 限制：`panel` 是渲染期引用，无法被 'static 闭包（如 on-click）捕获。
-    /// 后续通过 `to_op_handle()` API 扩展可支持延迟调用（maximize/restore/close 按钮）。
-    pub fn render_bottom_panel(
-        &self,
-        panel: &dyn rml_core::slot::ISlotScope,
-        _window: &mut Window,
-        _cx: &mut gpui::Context<Self>,
-    ) -> gpui::AnyElement {
-        use gpui::{IntoElement, ParentElement, Styled, div, px};
-        use rml_ui::ActiveTheme;
-
-        let slot_name = panel.slot_name();
-        let current_size = panel.current_size();
-        let has_resizable = panel.has_resizable();
-
-        let size_text = match current_size {
-            Some(sz) => format!("{}", sz),
-            None => "N/A".to_string(),
-        };
-
-        div()
-            .flex()
-            .flex_col()
-            .size_full()
-            .bg(_cx.theme().background)
-            .child(
-                div()
-                    .flex()
-                    .flex_row()
-                    .items_center()
-                    .justify_between()
-                    .px(px(12.))
-                    .py(px(6.))
-                    .border_b_1()
-                    .border_color(_cx.theme().border)
-                    .child(
-                        div()
-                            .text_size(px(13.))
-                            .font_weight(gpui::FontWeight::SEMIBOLD)
-                            .child("终端面板"),
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .flex_row()
-                            .gap(px(12.))
-                            .text_size(px(12.))
-                            .text_color(_cx.theme().muted_foreground)
-                            .child(format!("slot={}", slot_name))
-                            .child(format!("size={}", size_text))
-                            .child(format!("resizable={}", has_resizable)),
-                    ),
-            )
-            .child(
-                div()
-                    .flex_1()
-                    .px(px(12.))
-                    .py(px(8.))
-                    .text_size(px(12.))
-                    .text_color(_cx.theme().muted_foreground)
-                    .child("$ demo terminal — scope variable accessible from slot content"),
-            )
-            .into_any_element()
-    }
-
     /// 当前激活的 Tab 索引（#[computed] 自动缓存，依赖 workbenches + activated 版本）。
     /// workbenches 版本由 ObservableVec::push 内部 fetch_add 自动递增；
     /// activated 版本由命令方法手动 __rml_bump_version("activated") 递增。
@@ -498,6 +303,48 @@ impl MainWindow {
             .as_ref()
             .and_then(|uri| workbenches.iter().position(|w| w.uri() == uri))
             .unwrap_or(0)
+    }
+
+    /// Tab 项列表（#[computed] 自动缓存，依赖 workbenches 版本）。
+    /// 将 `ObservableVec<Arc<dyn IWorkbench>>` 转换为 `Vec<Arc<dyn IValue>>`，
+    /// 供 `<tab-window tabs={tab_items}>` 简单绑定模式使用。
+    #[computed]
+    pub fn tab_items(&self) -> Vec<Arc<dyn rml_core::value::IValue>> {
+        self.workbenches
+            .snapshot()
+            .into_iter()
+            .map(|w| w as Arc<dyn rml_core::value::IValue>)
+            .collect()
+    }
+
+    /// 状态栏左侧项（#[computed] 自动缓存，依赖 status 版本）。
+    #[computed]
+    pub fn status_left(&self) -> Vec<StatusViewModel> {
+        self.status
+            .iter()
+            .filter(|s| s.align == rml_ui::StatusBarAlign::Left)
+            .cloned()
+            .collect()
+    }
+
+    /// 状态栏居中项（#[computed] 自动缓存，依赖 status 版本）。
+    #[computed]
+    pub fn status_center(&self) -> Vec<StatusViewModel> {
+        self.status
+            .iter()
+            .filter(|s| s.align == rml_ui::StatusBarAlign::Center)
+            .cloned()
+            .collect()
+    }
+
+    /// 状态栏右侧项（#[computed] 自动缓存，依赖 status 版本）。
+    #[computed]
+    pub fn status_right(&self) -> Vec<StatusViewModel> {
+        self.status
+            .iter()
+            .filter(|s| s.align == rml_ui::StatusBarAlign::Right)
+            .cloned()
+            .collect()
     }
 
     #[command]

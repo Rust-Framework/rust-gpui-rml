@@ -14,12 +14,22 @@
             </div>
             <div class="case-code-panel" display="flex" flex-direction="column" gap="8px">
                 <div style="font-size: 14px; font-weight: 600;">{t("case.common.code")}</div>
-                <tabs selected-index={code_tab} on-click={on_code_tab_change}>
+                <tabs
+                    bordered
+                    style="width:100%"
+                    selected-index={code_tab}
+                    on-click={on_code_tab_change}>
                     <tab label=".rml">
-                        <CodeEditor ref="rml_editor" value={rml_code} language="rml" />
+                        <CodeEditor
+                            ref="rml_editor"
+                            value={rml_code}
+                            language="rml" />
                     </tab>
                     <tab label=".rml.rs">
-                        <CodeEditor ref="rust_editor" value={rust_code} language="rust" />
+                        <CodeEditor
+                            ref="rust_editor"
+                            value={rust_code}
+                            language="rust" />
                     </tab>
                 </tabs>
             </div>
