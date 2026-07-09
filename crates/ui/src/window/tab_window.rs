@@ -844,9 +844,11 @@ impl RenderOnce for TabWindowShell {
             .flex_1()
             .child(
                 div()
+                    .id("tab-window-body")
                     .flex_1()
                     .min_h_0()
                     .size_full()
+                    .overflow_y_scroll()
                     .when_some(selected_body, |this, body_fn| {
                         this.child(body_fn(window, cx))
                     })

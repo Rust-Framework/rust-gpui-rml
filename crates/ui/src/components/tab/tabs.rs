@@ -837,6 +837,7 @@ impl RenderOnce for Tabs {
         match body_element {
             Some(body) => v_flex()
                 .size_full()
+                .items_stretch()
                 .when(self.bordered, |this| {
                     this.border_1().border_color(cx.theme().border)
                 })
