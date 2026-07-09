@@ -37,7 +37,7 @@ impl IRmlTranslator for DescriptionListTranslator {
         let id_val = *id_counter;
         *id_counter += 1;
 
-        let mut code = crate::compiler::description_list::gen_description_list(
+        let mut code = crate::compiler::components::description_list::gen_description_list(
             elem,
             ref_name,
             id_val,

@@ -36,7 +36,7 @@ impl IRmlTranslator for TableTranslator {
         let id_val = *id_counter;
         *id_counter += 1;
 
-        let mut code = crate::compiler::table::gen_table(
+        let mut code = crate::compiler::components::table::gen_table(
             elem,
             ref_name,
             id_val,

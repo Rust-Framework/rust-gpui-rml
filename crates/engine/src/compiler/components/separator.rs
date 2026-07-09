@@ -1,4 +1,4 @@
-﻿//! Separator 组件代码生成
+//! Separator 组件代码生成
 //!
 //! Separator 无 `new()` 构造器，使用关联函数：
 //! - `Separator::horizontal()` (默认)
@@ -59,13 +59,13 @@ pub fn gen_separator(
                     continue;
                 }
                 if let Some(setter) =
-                    super::component::component_static_setter(name, value, resolved)
+                    crate::compiler::setters::component_static_setter(name, value, resolved)
                 {
                     code.push_str(&setter);
                 }
             }
             Attribute::Bind { name, expr, .. } => {
-                if let Some(setter) = super::component::component_bind_setter(
+                if let Some(setter) = crate::compiler::setters::component_bind_setter(
                     name, expr, &lv, &computed, resolved,
                 ) {
                     code.push_str(&setter);
@@ -73,7 +73,7 @@ pub fn gen_separator(
             }
             Attribute::Event { name, handler, .. } => {
                 if let Some(setter) =
-                    super::component::component_event_setter(name, handler, resolved)
+                    crate::compiler::setters::component_event_setter(name, handler, resolved)
                 {
                     code.push_str(&setter);
                 }

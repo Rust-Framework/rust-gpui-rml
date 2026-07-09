@@ -39,13 +39,13 @@ pub fn gen_tree(
         match attr {
             Attribute::Static { name, value, .. } => {
                 if let Some(s) =
-                    super::super::component::component_static_setter(name, value, &resolved)
+                    crate::compiler::setters::component_static_setter(name, value, &resolved)
                 {
                     code.push_str(&s);
                 }
             }
             Attribute::Bind { name, expr, .. } => {
-                if let Some(s) = super::super::component::component_bind_setter(
+                if let Some(s) = crate::compiler::setters::component_bind_setter(
                     name, expr, &lv, &computed, &resolved,
                 ) {
                     code.push_str(&s);
@@ -55,7 +55,7 @@ pub fn gen_tree(
                 if let Some(s) = super::setters::event_setter(name, handler, &resolved) {
                     code.push_str(&s);
                 } else if let Some(s) =
-                    super::super::component::component_event_setter(name, handler, &resolved)
+                    crate::compiler::setters::component_event_setter(name, handler, &resolved)
                 {
                     code.push_str(&s);
                 }

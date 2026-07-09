@@ -43,7 +43,7 @@ pub fn gen_tab_bar(
                 if let Some(s) = super::setters::static_setter(name, value, "TabBar") {
                     code.push_str(&s);
                 } else if let Some(s) =
-                    super::super::component::component_static_setter(name, value, "TabBar")
+                    crate::compiler::setters::component_static_setter(name, value, "TabBar")
                 {
                     code.push_str(&s);
                 }
@@ -53,7 +53,7 @@ pub fn gen_tab_bar(
                     super::setters::bind_setter(name, expr, &lv, &computed, "TabBar")
                 {
                     code.push_str(&s);
-                } else if let Some(s) = super::super::component::component_bind_setter(
+                } else if let Some(s) = crate::compiler::setters::component_bind_setter(
                     name, expr, &lv, &computed, "TabBar",
                 ) {
                     code.push_str(&s);
@@ -63,7 +63,7 @@ pub fn gen_tab_bar(
                 if let Some(s) = super::setters::event_setter(name, handler, "TabBar") {
                     code.push_str(&s);
                 } else if let Some(s) =
-                    super::super::component::component_event_setter(name, handler, "TabBar")
+                    crate::compiler::setters::component_event_setter(name, handler, "TabBar")
                 {
                     code.push_str(&s);
                 }

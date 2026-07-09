@@ -72,8 +72,16 @@ impl TranslatorRegistry {
 
     /// 按元素匹配 translator
     ///
-    /// 遍历所有 translator，返回第一个 `matches(elem)` 为 true 的实现。
+    /// 优先按 canonical tag 精确匹配（专用 translator 优先于通配 translator），
+    /// 避免通用 `*stateless-component` / `*stateful-component` 阴影 Icon / Label 等专用实现。
+    /// 精确匹配未命中时，回退到遍历 `matches()` 的模式匹配（覆盖通配与透明 translator）。
     pub fn resolve(&self, elem: &Element) -> Option<&dyn IRmlTranslator> {
+        let canonical = crate::tags::canonical_tag(&elem.tag);
+        if let Some(t) = self.translators.get(canonical.as_str()) {
+            if t.matches(elem) {
+                return Some(t.as_ref());
+            }
+        }
         self.translators.values().find(|t| t.matches(elem)).map(|b| b.as_ref())
     }
 

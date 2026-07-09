@@ -57,7 +57,7 @@ pub fn bind_setter(
     match name {
         "count" | "max" => {
             let rust_expr =
-                super::super::component::component_bind_rust_expr(expr_str, loop_vars, computed);
+                crate::compiler::setters::component_bind_rust_expr(expr_str, loop_vars, computed);
             Some(format!(".{}({})", name, rust_expr))
         }
         _ => None,

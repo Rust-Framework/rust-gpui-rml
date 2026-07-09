@@ -28,6 +28,7 @@ extern crate rust_rml_core as rml_core;
 pub mod prelude;
 pub mod components;
 pub mod state;
+pub mod styled;
 pub mod window;
 
 /// 初始化扩展组件。
@@ -73,6 +74,8 @@ pub use gpui_component::{
     button::ButtonVariants, scroll::ScrollableElement, ActiveTheme, Disableable, Selectable,
     Sizable, Size, StyledExt,
 };
+
+pub use styled::OverflowStyle;
 
 // 窗口组件：ModernWindowShell 内置封装 + 内置 Window/ModernWindow + 助手 trait
 pub use window::{

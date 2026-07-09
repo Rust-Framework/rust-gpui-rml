@@ -50,19 +50,19 @@ pub fn bind_setter(
 ) -> Option<String> {
     match name {
         "selected_index" | "menu" | "last_empty_space" if tag == "TabBar" => {
-            let rust_expr = super::super::component::component_bind_rust_expr(
+            let rust_expr = crate::compiler::setters::component_bind_rust_expr(
                 expr_str, loop_vars, computed,
             );
             Some(format!(".{}({})", name, rust_expr))
         }
         "track_scroll" if tag == "TabBar" => {
-            let rust_expr = super::super::component::component_bind_rust_expr(
+            let rust_expr = crate::compiler::setters::component_bind_rust_expr(
                 expr_str, loop_vars, computed,
             );
             Some(format!(".track_scroll(&{})", rust_expr))
         }
         "prefix" | "suffix" if tag == "TabBar" => {
-            let rust_expr = super::super::component::component_bind_rust_expr(
+            let rust_expr = crate::compiler::setters::component_bind_rust_expr(
                 expr_str, loop_vars, computed,
             );
             Some(format!(".{}({})", name, rust_expr))

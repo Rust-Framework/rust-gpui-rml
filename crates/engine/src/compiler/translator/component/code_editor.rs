@@ -6,7 +6,7 @@
 
 use super::super::{ComponentCategory, IRmlTranslator, PrintError, PrinterCtx, TranslatorMetadata};
 use crate::compiler::codegen::attribute::apply_css_styles;
-use crate::compiler::component::{
+use crate::compiler::setters::{
     component_bind_setter, component_event_setter, component_static_setter,
 };
 use crate::compiler::{CodegenCtx, CodegenError};
@@ -42,7 +42,7 @@ impl IRmlTranslator for CodeEditorTranslator {
                 span: Some(elem.span),
             })?;
 
-        let mut code = crate::compiler::code_editor::gen_code_editor(
+        let mut code = crate::compiler::components::code_editor::gen_code_editor(
             elem,
             component,
             ctx,
@@ -54,12 +54,28 @@ impl IRmlTranslator for CodeEditorTranslator {
         let lv: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
         let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
         for attr in &elem.attributes {
+            // value/language/bordered/focus_bordered/context_menu 由 gen_code_editor 内联处理，
+            // 不走 setter 链路（避免生成 Input 不支持的 .value() 等方法）
+            let is_handled_inline = match attr {
+                Attribute::Static { name, .. } => {
+                    name == "value"
+                        || name == "language"
+                        || name == "context_menu"
+                        || name == "bordered"
+                        || name == "focus_bordered"
+                }
+                Attribute::Bind { name, .. } => name == "value",
+                _ => false,
+            };
+            if is_handled_inline {
+                continue;
+            }
             match attr {
                 Attribute::Static { name, value, .. } => {
                     if let Some(setter) = component_static_setter(name, value, &resolved) {
                         code.push_str(&setter);
                     } else {
-                        crate::compiler::component::check_missing_mapping(
+                        crate::compiler::setters::check_missing_mapping(
                             ctx, &resolved, name, "static",
                         )?;
                     }
@@ -70,7 +86,7 @@ impl IRmlTranslator for CodeEditorTranslator {
                     {
                         code.push_str(&setter);
                     } else {
-                        crate::compiler::component::check_missing_mapping(
+                        crate::compiler::setters::check_missing_mapping(
                             ctx, &resolved, name, "bind",
                         )?;
                     }

@@ -43,7 +43,7 @@ fn build_element_symbol(
         SymbolKind::MODULE
     } else if tags::component_lookup(&elem.tag).is_some() {
         SymbolKind::CLASS
-    } else if tags::lookup(&elem.tag).is_some() {
+    } else if tags::is_builtin_html_tag(&elem.tag) {
         SymbolKind::OBJECT
     } else {
         SymbolKind::CLASS

@@ -14,7 +14,6 @@ const META: &BuiltinMeta = &BuiltinMeta {
     category: ComponentCategory::Form,
     ctor: "gpui::div()",
     is_container: false,
-    is_self_closing: false,
     is_styled: true,
 };
 

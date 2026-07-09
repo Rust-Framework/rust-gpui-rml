@@ -139,6 +139,20 @@ pub fn is_root_tag(tag: &str) -> bool {
     )
 }
 
+/// 判断标签是否为内置 HTML 原生标签
+///
+/// 这些标签在 `translator::builtin` 中注册了专用 translator，
+/// 映射到 GPUI 原生元素（`gpui::div()` / `gpui::img()` 等）。
+pub fn is_builtin_html_tag(tag: &str) -> bool {
+    matches!(
+        tag,
+        "div" | "span" | "p" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6"
+            | "button" | "input" | "textarea" | "ul" | "ol" | "li"
+            | "img" | "svg" | "a" | "label" | "br" | "code"
+            | "anchored" | "deferred"
+    )
+}
+
 /// 查找根节点类型
 pub fn root_tag_lookup(tag: &str) -> Option<RootTag> {
     match tag {

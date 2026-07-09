@@ -39,7 +39,7 @@ pub fn gen_column(
                 if let Some(s) = super::setters::static_setter(name, value, "Column") {
                     code.push_str(&s);
                 } else if let Some(s) =
-                    super::super::component::component_static_setter(name, value, "Column")
+                    crate::compiler::setters::component_static_setter(name, value, "Column")
                 {
                     code.push_str(&s);
                 }
@@ -52,7 +52,7 @@ pub fn gen_column(
                     super::setters::bind_setter(name, expr, &lv, &computed, "Column")
                 {
                     code.push_str(&s);
-                } else if let Some(s) = super::super::component::component_bind_setter(
+                } else if let Some(s) = crate::compiler::setters::component_bind_setter(
                     name, expr, &lv, &computed, "Column",
                 ) {
                     code.push_str(&s);
@@ -92,7 +92,7 @@ fn extract_required_arg(
                 return Ok(format!("{:?}", value));
             }
             Attribute::Bind { name: n, expr, .. } if n == name => {
-                let rust_expr = super::super::component::component_bind_rust_expr(
+                let rust_expr = crate::compiler::setters::component_bind_rust_expr(
                     expr, loop_vars, computed,
                 );
                 return Ok(format!("{}.clone()", rust_expr));

@@ -422,13 +422,13 @@ mod tests {
     #[test]
     fn apply_overflow_y_scroll() {
         let code = apply_style_attr("overflow_y", "scroll").unwrap();
-        assert_eq!(code, ".overflow_y_scroll()");
+        assert_eq!(code, ".overflow_y(gpui::Overflow::Scroll)");
     }
 
     #[test]
     fn apply_overflow_x_auto() {
         let code = apply_style_attr("overflow_x", "auto").unwrap();
-        assert_eq!(code, ".overflow_x_scroll()");
+        assert_eq!(code, ".overflow_x(gpui::Overflow::Scroll)");
     }
 
     #[test]

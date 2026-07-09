@@ -78,7 +78,7 @@ pub fn gen_radio_group(
                     continue;
                 }
                 if let Some(s) =
-                    super::component::component_static_setter(name, value, resolved)
+                    crate::compiler::setters::component_static_setter(name, value, resolved)
                 {
                     code.push_str(&s);
                 }
@@ -87,7 +87,7 @@ pub fn gen_radio_group(
                 if name == "horizontal" || name == "layout" || name == "vertical" {
                     continue;
                 }
-                if let Some(s) = super::component::component_bind_setter(
+                if let Some(s) = crate::compiler::setters::component_bind_setter(
                     name, expr, &lv, &computed, resolved,
                 ) {
                     code.push_str(&s);
@@ -95,7 +95,7 @@ pub fn gen_radio_group(
             }
             Attribute::Event { name, handler, .. } => {
                 if let Some(s) =
-                    super::component::component_event_setter(name, handler, resolved)
+                    crate::compiler::setters::component_event_setter(name, handler, resolved)
                 {
                     code.push_str(&s);
                 }

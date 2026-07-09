@@ -17,7 +17,7 @@ use super::super::{ComponentCategory, IRmlTranslator, PrintError, PrinterCtx, Tr
 use crate::compiler::codegen::attribute::apply_css_styles;
 use crate::compiler::codegen::gen_node;
 use crate::compiler::{CodegenCtx, CodegenError};
-use crate::compiler::component::{
+use crate::compiler::setters::{
     component_bind_setter, component_event_setter, component_static_setter,
 };
 use crate::css::ParentInfo;
@@ -127,7 +127,7 @@ fn gen_stateless_body(
                         label_set_by_attr = true;
                     }
                 } else {
-                    crate::compiler::component::check_missing_mapping(ctx, &resolved, name, "static")?;
+                    crate::compiler::setters::check_missing_mapping(ctx, &resolved, name, "static")?;
                 }
             }
             Attribute::Bind { name, expr, .. } => {
@@ -137,7 +137,7 @@ fn gen_stateless_body(
                         label_set_by_attr = true;
                     }
                 } else {
-                    crate::compiler::component::check_missing_mapping(ctx, &resolved, name, "bind")?;
+                    crate::compiler::setters::check_missing_mapping(ctx, &resolved, name, "bind")?;
                 }
             }
             Attribute::Event { name, handler, .. } => {

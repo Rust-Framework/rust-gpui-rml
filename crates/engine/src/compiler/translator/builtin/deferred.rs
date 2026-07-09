@@ -118,6 +118,8 @@ impl IRmlTranslator for DeferredTranslator {
     }
 
     fn metadata(&self) -> TranslatorMetadata {
+        // container=true：含子元素，但子元素作为 gpui::deferred(child) 构造参数传入，
+        // 非 ParentElement 的 .child() 链式调用
         TranslatorMetadata::new(TAG, DISPLAY_NAME, ComponentCategory::Layout).container(true)
     }
 }

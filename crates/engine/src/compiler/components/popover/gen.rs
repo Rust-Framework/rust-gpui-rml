@@ -1,23 +1,15 @@
-//! Popover 容器 codegen —— 构造 + 属性 + trigger/content 注入
-//!
-//! 将 `<Popover>` 转译为 `rml_ui::Popover::new(id).trigger(...).anchor(...).child(...)`。
+//! Popover 构造代码生成
 //!
 //! ## 子节点处理
 //!
 //! - `slot="trigger"` 的子元素 → `.trigger(element)`（trigger 需实现 Selectable + IntoElement）
 //! - 其余子元素 → `.child(element)`（content）
-//!
-//! ## 属性映射
-//!
-//! - `anchor="top-left"` → `.anchor(rml_ui::Anchor::TopLeft)`
-//! - `mouse_button="left"` → `.mouse_button(gpui::MouseButton::Left)`
-//! - `appearance="false"` → `.appearance(false)`
-//! - `overlay_closable="false"` → `.overlay_closable(false)`
-//! - `default_open="true"` → `.default_open(true)`
 
 use crate::compiler::codegen::gen_node;
 use crate::compiler::{CodegenCtx, CodegenError};
 use crate::parser::ast::{Attribute, Element};
+
+use super::setters::{bind_setter, static_setter};
 
 /// 生成 Popover 构造代码
 pub fn gen_popover(
@@ -42,7 +34,7 @@ pub fn gen_popover(
                 if let Some(s) = static_setter(name, value) {
                     code.push_str(&s);
                 } else if let Some(s) =
-                    super::component::component_static_setter(name, value, "Popover")
+                    crate::compiler::setters::component_static_setter(name, value, "Popover")
                 {
                     code.push_str(&s);
                 }
@@ -52,7 +44,7 @@ pub fn gen_popover(
                 let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
                 if let Some(s) = bind_setter(name, expr, &lv, &computed) {
                     code.push_str(&s);
-                } else if let Some(s) = super::component::component_bind_setter(
+                } else if let Some(s) = crate::compiler::setters::component_bind_setter(
                     name, expr, &lv, &computed, "Popover",
                 ) {
                     code.push_str(&s);
@@ -60,7 +52,7 @@ pub fn gen_popover(
             }
             Attribute::Event { name, handler, .. } => {
                 if let Some(s) =
-                    super::component::component_event_setter(name, handler, "Popover")
+                    crate::compiler::setters::component_event_setter(name, handler, "Popover")
                 {
                     code.push_str(&s);
                 }
@@ -111,80 +103,6 @@ pub fn gen_popover(
     Ok(code)
 }
 
-/// Popover 专用静态属性 setter
-///
-/// - `anchor="top-left"` → `.anchor(rml_ui::Anchor::TopLeft)`
-/// - `mouse_button="left"` → `.mouse_button(gpui::MouseButton::Left)`
-/// - `appearance="false"` → `.appearance(false)`
-/// - `overlay_closable="false"` → `.overlay_closable(false)`
-/// - `default_open="true"` → `.default_open(true)`
-pub fn static_setter(name: &str, value: &str) -> Option<String> {
-    match name {
-        "anchor" => {
-            let anchor = match value {
-                "top-left" => "TopLeft",
-                "top-center" => "TopCenter",
-                "top-right" => "TopRight",
-                "bottom-left" => "BottomLeft",
-                "bottom-center" => "BottomCenter",
-                "bottom-right" => "BottomRight",
-                "left-center" => "LeftCenter",
-                "right-center" => "RightCenter",
-                _ => return None,
-            };
-            Some(format!(".anchor(gpui::Anchor::{})", anchor))
-        }
-        "mouse_button" => {
-            let btn = match value {
-                "left" => "Left",
-                "right" => "Right",
-                "middle" => "Middle",
-                _ => return None,
-            };
-            Some(format!(".mouse_button(gpui::MouseButton::{})", btn))
-        }
-        "appearance" => {
-            // appearance 默认 true，仅在 false 时显式设置
-            if value.eq_ignore_ascii_case("false") {
-                Some(".appearance(false)".into())
-            } else {
-                Some(String::new())
-            }
-        }
-        "overlay_closable" => {
-            // overlay_closable 默认 true，仅在 false 时显式设置
-            if value.eq_ignore_ascii_case("false") {
-                Some(".overlay_closable(false)".into())
-            } else {
-                Some(String::new())
-            }
-        }
-        "default_open" => {
-            if value.is_empty() || value.eq_ignore_ascii_case("true") {
-                Some(".default_open(true)".into())
-            } else {
-                Some(String::new())
-            }
-        }
-        _ => None,
-    }
-}
-
-/// Popover 专用绑定属性 setter
-///
-/// 当前仅支持 `default_open` 绑定（非受控初始状态）。
-/// 受控模式（`open` + `on_open_change`）需要特殊的回调签名适配，
-/// 待真正需求出现时再添加。
-pub fn bind_setter(name: &str, expr: &str, loop_vars: &[&str], computed: &[&str]) -> Option<String> {
-    match name {
-        "default_open" => {
-            let rust_expr = super::component::component_bind_rust_expr(expr, loop_vars, computed);
-            Some(format!(".default_open({})", rust_expr))
-        }
-        _ => None,
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -209,61 +127,6 @@ mod tests {
             slot_name: None,
             ..Default::default()
         }
-    }
-
-    #[test]
-    fn static_setter_anchor() {
-        assert_eq!(
-            static_setter("anchor", "top-left"),
-            Some(".anchor(gpui::Anchor::TopLeft)".to_string())
-        );
-        assert_eq!(
-            static_setter("anchor", "bottom-center"),
-            Some(".anchor(gpui::Anchor::BottomCenter)".to_string())
-        );
-    }
-
-    #[test]
-    fn static_setter_mouse_button() {
-        assert_eq!(
-            static_setter("mouse_button", "left"),
-            Some(".mouse_button(gpui::MouseButton::Left)".to_string())
-        );
-        assert_eq!(
-            static_setter("mouse_button", "right"),
-            Some(".mouse_button(gpui::MouseButton::Right)".to_string())
-        );
-    }
-
-    #[test]
-    fn static_setter_appearance_false() {
-        assert_eq!(static_setter("appearance", "false"), Some(".appearance(false)".into()));
-    }
-
-    #[test]
-    fn static_setter_appearance_true_no_op() {
-        // appearance=true 是默认值，不生成代码
-        let s = static_setter("appearance", "true").unwrap();
-        assert!(s.is_empty());
-    }
-
-    #[test]
-    fn static_setter_overlay_closable_false() {
-        assert_eq!(
-            static_setter("overlay_closable", "false"),
-            Some(".overlay_closable(false)".into())
-        );
-    }
-
-    #[test]
-    fn static_setter_default_open() {
-        assert_eq!(static_setter("default_open", "true"), Some(".default_open(true)".into()));
-        assert_eq!(static_setter("default_open", ""), Some(".default_open(true)".into()));
-    }
-
-    #[test]
-    fn static_setter_unknown() {
-        assert_eq!(static_setter("unknown", "x"), None);
     }
 
     #[test]

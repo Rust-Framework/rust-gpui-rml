@@ -49,7 +49,7 @@ pub fn gen_description_item(
                     if name == "value" {
                         value_set_by_attr = true;
                     }
-                } else if let Some(s) = super::super::component::component_static_setter(
+                } else if let Some(s) = crate::compiler::setters::component_static_setter(
                     name,
                     value,
                     "DescriptionItem",
@@ -68,7 +68,7 @@ pub fn gen_description_item(
                     if name == "value" {
                         value_set_by_attr = true;
                     }
-                } else if let Some(s) = super::super::component::component_bind_setter(
+                } else if let Some(s) = crate::compiler::setters::component_bind_setter(
                     name,
                     expr,
                     &lv,
@@ -79,7 +79,7 @@ pub fn gen_description_item(
                 }
             }
             Attribute::Event { name, handler, .. } => {
-                if let Some(s) = super::super::component::component_event_setter(
+                if let Some(s) = crate::compiler::setters::component_event_setter(
                     name,
                     handler,
                     "DescriptionItem",
@@ -118,7 +118,7 @@ fn extract_required_label(
             }
             Attribute::Bind { name, expr, .. } if name == "label" => {
                 let rust_expr =
-                    super::super::component::component_bind_rust_expr(expr, loop_vars, computed);
+                    crate::compiler::setters::component_bind_rust_expr(expr, loop_vars, computed);
                 return Ok(format!("{}.clone()", rust_expr));
             }
             _ => {}

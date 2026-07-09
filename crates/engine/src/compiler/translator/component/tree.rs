@@ -6,7 +6,7 @@
 
 use super::super::{ComponentCategory, IRmlTranslator, PrintError, PrinterCtx, TranslatorMetadata};
 use crate::compiler::codegen::attribute::apply_css_styles;
-use crate::compiler::component::{
+use crate::compiler::setters::{
     component_bind_setter, component_event_setter, component_static_setter,
 };
 use crate::compiler::{CodegenCtx, CodegenError};
@@ -43,7 +43,7 @@ impl IRmlTranslator for TreeTranslator {
             })?;
 
         let mut code =
-            crate::compiler::tree::gen_tree(elem, component, ctx, 0, id_counter, loop_vars)?;
+            crate::compiler::components::tree::gen_tree(elem, component, ctx, 0, id_counter, loop_vars)?;
 
         let lv: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
         let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
@@ -53,7 +53,7 @@ impl IRmlTranslator for TreeTranslator {
                     if let Some(setter) = component_static_setter(name, value, &resolved) {
                         code.push_str(&setter);
                     } else {
-                        crate::compiler::component::check_missing_mapping(
+                        crate::compiler::setters::check_missing_mapping(
                             ctx, &resolved, name, "static",
                         )?;
                     }
@@ -64,7 +64,7 @@ impl IRmlTranslator for TreeTranslator {
                     {
                         code.push_str(&setter);
                     } else {
-                        crate::compiler::component::check_missing_mapping(
+                        crate::compiler::setters::check_missing_mapping(
                             ctx, &resolved, name, "bind",
                         )?;
                     }

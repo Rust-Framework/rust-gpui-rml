@@ -36,7 +36,7 @@ impl IRmlTranslator for TabBarTranslator {
         let id_val = *id_counter;
         *id_counter += 1;
 
-        let mut code = crate::compiler::tab_bar::gen_tab_bar(
+        let mut code = crate::compiler::components::tab_bar::gen_tab_bar(
             elem,
             ref_name,
             id_val,

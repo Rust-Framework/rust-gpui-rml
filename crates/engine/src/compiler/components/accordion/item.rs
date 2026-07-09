@@ -32,7 +32,7 @@ pub fn gen_item_builder(
                     super::setters::static_setter(name, value, "AccordionItem")
                 {
                     code.push_str(&s);
-                } else if let Some(s) = super::super::component::component_static_setter(
+                } else if let Some(s) = crate::compiler::setters::component_static_setter(
                     name, value, "AccordionItem",
                 ) {
                     code.push_str(&s);
@@ -43,7 +43,7 @@ pub fn gen_item_builder(
                     name, expr, &lv, &computed, "AccordionItem",
                 ) {
                     code.push_str(&s);
-                } else if let Some(s) = super::super::component::component_bind_setter(
+                } else if let Some(s) = crate::compiler::setters::component_bind_setter(
                     name, expr, &lv, &computed, "AccordionItem",
                 ) {
                     code.push_str(&s);

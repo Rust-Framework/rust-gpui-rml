@@ -9,9 +9,8 @@ const META: &BuiltinMeta = &BuiltinMeta {
     tag: "br",
     display_name: "Line Break",
     category: ComponentCategory::Primitive,
-    ctor: "gpui::div().hidden()",
+    ctor: "gpui::div().w_full().h_0()",
     is_container: false,
-    is_self_closing: true,
     is_styled: true,
 };
 

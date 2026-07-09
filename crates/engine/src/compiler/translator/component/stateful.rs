@@ -11,7 +11,7 @@
 
 use super::super::{ComponentCategory, IRmlTranslator, PrintError, PrinterCtx, TranslatorMetadata};
 use crate::compiler::codegen::attribute::apply_css_styles;
-use crate::compiler::component::{
+use crate::compiler::setters::{
     component_bind_setter, component_event_setter, component_static_setter,
 };
 use crate::compiler::expr;
@@ -81,14 +81,14 @@ impl IRmlTranslator for StatefulComponentTranslator {
                     if let Some(setter) = component_static_setter(name, value, &resolved) {
                         code.push_str(&setter);
                     } else {
-                        crate::compiler::component::check_missing_mapping(ctx, &resolved, name, "static")?;
+                        crate::compiler::setters::check_missing_mapping(ctx, &resolved, name, "static")?;
                     }
                 }
                 Attribute::Bind { name, expr, .. } => {
                     if let Some(setter) = component_bind_setter(name, expr, &lv, &computed, &resolved) {
                         code.push_str(&setter);
                     } else {
-                        crate::compiler::component::check_missing_mapping(ctx, &resolved, name, "bind")?;
+                        crate::compiler::setters::check_missing_mapping(ctx, &resolved, name, "bind")?;
                     }
                 }
                 Attribute::Event { name, handler, .. } => {
@@ -138,7 +138,7 @@ fn gen_stateful_body(
         .iter()
         .filter_map(|attr| {
             if let Attribute::Event { name, handler, .. } = attr {
-                if crate::compiler::input::is_input_event(name, &resolved) {
+                if crate::compiler::components::input::is_input_event(name, &resolved) {
                     Some((name.as_str(), handler))
                 } else {
                     None
@@ -164,7 +164,7 @@ fn gen_stateful_body(
         let subscribe_code: String = input_event_handlers
             .iter()
             .map(|(event_name, handler)| {
-                crate::compiler::input::gen_input_event_subscribe(ref_key, event_name, handler)
+                crate::compiler::components::input::gen_input_event_subscribe(ref_key, event_name, handler)
             })
             .collect::<Vec<_>>()
             .join(" ");

@@ -38,7 +38,7 @@ pub fn gen_tabs(
                 if let Some(s) = super::setters::static_setter(name, value, "Tabs") {
                     code.push_str(&s);
                 } else if let Some(s) =
-                    super::super::component::component_static_setter(name, value, "Tabs")
+                    crate::compiler::setters::component_static_setter(name, value, "Tabs")
                 {
                     code.push_str(&s);
                 }
@@ -48,7 +48,7 @@ pub fn gen_tabs(
                     super::setters::bind_setter(name, expr, &lv, &computed, "Tabs")
                 {
                     code.push_str(&s);
-                } else if let Some(s) = super::super::component::component_bind_setter(
+                } else if let Some(s) = crate::compiler::setters::component_bind_setter(
                     name, expr, &lv, &computed, "Tabs",
                 ) {
                     code.push_str(&s);
@@ -58,7 +58,7 @@ pub fn gen_tabs(
                 if let Some(s) = super::setters::event_setter(name, handler, "Tabs") {
                     code.push_str(&s);
                 } else if let Some(s) =
-                    super::super::component::component_event_setter(name, handler, "Tabs")
+                    crate::compiler::setters::component_event_setter(name, handler, "Tabs")
                 {
                     code.push_str(&s);
                 }

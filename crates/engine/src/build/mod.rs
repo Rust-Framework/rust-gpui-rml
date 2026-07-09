@@ -258,16 +258,37 @@ impl Builder {
                 None
             };
 
-            // 缓存命中条件：.rml 源哈希匹配 AND code-behind 哈希匹配
+            // 缓存命中条件：.rml 源哈希匹配 AND code-behind 哈希匹配 AND 页面 CSS 哈希匹配
             // （任一不匹配则需重新生成，确保 computed_methods 等上下文变化生效）
             let rml_unchanged = cache.entries.get(&key) == Some(&hash);
             let cb_unchanged = match &current_cb_hash {
                 Some(h) => cache.is_codebehind_unchanged(&key, h),
                 None => cache.is_codebehind_unchanged(&key, ""), // .rml.rs 不存在时检查缓存中是否也无
             };
-            if rml_unchanged && cb_unchanged {
+
+            // 加载页面级 CSS（<style source="..."/>），计算哈希用于缓存校验
+            let rml_dir = rml_path.parent().unwrap_or(std::path::Path::new("."));
+            let (page_sheet, page_css_source, _page_css_paths) =
+                load_page_stylesheets(&source, rml_dir)?;
+            let page_css_hash = hash_str(&page_css_source);
+            let page_css_unchanged = cache.is_page_style_unchanged(&key, &page_css_hash);
+
+            if rml_unchanged && cb_unchanged && page_css_unchanged {
                 continue;
             }
+
+            // 合并全局样式表 + 页面级样式表（页面规则追加在全局之后 → 优先级更高）
+            let merged_stylesheet = match (&stylesheet, page_sheet) {
+                (Some(global), Some(page)) => {
+                    let mut merged = global.clone();
+                    merged.rules.extend(page.rules);
+                    merged.variables.extend(page.variables);
+                    Some(merged)
+                }
+                (Some(global), None) => Some(global.clone()),
+                (None, Some(page)) => Some(page),
+                (None, None) => None,
+            };
 
             // 文件名 → 视图结构名
             let stem = rml_path
@@ -478,6 +499,56 @@ fn hash_str(s: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(s.as_bytes());
     format!("{:x}", hasher.finalize())
+}
+
+/// 加载 .rml 文件引用的页面级 CSS 文件，合并为单个 StyleSheet。
+///
+/// 扫描 .rml 源码中所有 `<style source="..."/>` 指令，按声明顺序加载 CSS 文件并合并。
+/// 路径相对于 .rml 文件所在目录。后者规则追加在末尾（优先级更高）。
+///
+/// 返回：
+/// - `Option<StyleSheet>`：合并后的页面样式表（无 `<style>` 指令时为 None）
+/// - `String`：所有 CSS 源码拼接（用于计算缓存哈希）
+/// - `Vec<PathBuf>`：所有 CSS 文件绝对路径（用于 `cargo:rerun-if-changed`）
+fn load_page_stylesheets(
+    rml_source: &str,
+    rml_dir: &std::path::Path,
+) -> Result<(Option<css::StyleSheet>, String, Vec<PathBuf>), BuildError> {
+    let paths = crate::compiler::scan_style_directives(rml_source).map_err(|e| BuildError {
+        message: format!("scan <style> directives: {}", e),
+    })?;
+
+    if paths.is_empty() {
+        return Ok((None, String::new(), Vec::new()));
+    }
+
+    let mut merged = css::StyleSheet::default();
+    let mut css_source = String::new();
+    let mut abs_paths = Vec::new();
+
+    for rel_path in &paths {
+        let abs_path = rml_dir.join(rel_path);
+        println!("cargo:rerun-if-changed={}", abs_path.display());
+        let source = fs::read_to_string(&abs_path).map_err(|e| BuildError {
+            message: format!("read page css {}: {}", abs_path.display(), e),
+        })?;
+        css_source.push_str(&source);
+        css_source.push('\n');
+        match css::parse(&source) {
+            Ok(sheet) => {
+                merged.rules.extend(sheet.rules);
+                merged.variables.extend(sheet.variables);
+            }
+            Err(e) => {
+                let msg = format!("parse page css {}: {}", abs_path.display(), e);
+                println!("cargo:warning=RML: {}", msg);
+                return Err(BuildError { message: msg });
+            }
+        }
+        abs_paths.push(abs_path);
+    }
+
+    Ok((Some(merged), css_source, abs_paths))
 }
 
 /// snake_case / kebab-case → PascalCase（如 "counter" → "Counter"，"my_view" → "MyView"）

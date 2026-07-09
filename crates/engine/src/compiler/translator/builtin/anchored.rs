@@ -15,7 +15,6 @@ const META: &BuiltinMeta = &BuiltinMeta {
     category: ComponentCategory::Layout,
     ctor: "gpui::anchored()",
     is_container: true,
-    is_self_closing: false,
     is_styled: false,
 };
 

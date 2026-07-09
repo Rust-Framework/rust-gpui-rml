@@ -30,7 +30,7 @@ impl IRmlTranslator for AppMenuBarTranslator {
         _loop_vars: &[String],
         parents: &[ParentInfo],
     ) -> Result<(String, bool), CodegenError> {
-        let mut code = crate::compiler::menu::gen_app_menu_bar(elem, ctx)?;
+        let mut code = crate::compiler::components::menu::gen_app_menu_bar(elem, ctx)?;
         if let Some(sheet) = &ctx.stylesheet {
             let style_code = apply_css_styles(elem, "AppMenuBar", sheet, parents);
             if !style_code.is_empty() {

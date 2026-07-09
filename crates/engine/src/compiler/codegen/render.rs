@@ -38,7 +38,7 @@ pub(crate) fn gen_render_impl_from_children(
     out.push_str("        }\n");
     out.push_str("        use gpui::{ParentElement, InteractiveElement, StatefulInteractiveElement, IntoElement, Styled};\n");
     out.push_str("        use rml_ui::{ContextMenuExt, DropdownMenu, PopupMenuItem, Side, h_flex};\n");
-    out.push_str("        use rml_ui::{ActiveTheme, ButtonVariants, Disableable, GroupBoxVariants, ScrollableElement, Sizable, Selectable, StyledExt};\n");
+    out.push_str("        use rml_ui::{ActiveTheme, ButtonVariants, Disableable, GroupBoxVariants, OverflowStyle, ScrollableElement, Sizable, Selectable, StyledExt};\n");
     out.push_str("        use rml::runtime::event_flow::convert as rml_convert;\n");
 
     let mut id_counter: usize = 0;
@@ -119,7 +119,7 @@ pub(crate) fn gen_render_impl_from_children(
                 })
             }
         };
-        let (body, _) = crate::compiler::tabs::tab::gen_tab_child(
+        let (body, _) = crate::compiler::components::tabs::tab::gen_tab_child(
             tab_elem,
             ctx,
             &mut id_counter,
@@ -144,7 +144,7 @@ pub(crate) fn gen_render_impl_from_children(
             .iter()
             .map(|node| {
                 if let Node::Element(tab_elem) = node {
-                    let (code, _) = crate::compiler::tabs::tab::gen_tab_child(
+                    let (code, _) = crate::compiler::components::tabs::tab::gen_tab_child(
                         tab_elem,
                         ctx,
                         &mut id_counter,

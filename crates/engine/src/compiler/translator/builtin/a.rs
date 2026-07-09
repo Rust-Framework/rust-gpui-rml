@@ -3,7 +3,7 @@
 use super::{BuiltinMeta, BuiltinTranslator, ComponentCategory, IRmlTranslator};
 use crate::compiler::{CodegenCtx, CodegenError};
 use crate::css::ParentInfo;
-use crate::parser::ast::Element;
+use crate::parser::ast::{Attribute, Element};
 
 const META: &BuiltinMeta = &BuiltinMeta {
     tag: "a",
@@ -11,7 +11,6 @@ const META: &BuiltinMeta = &BuiltinMeta {
     category: ComponentCategory::Primitive,
     ctor: "gpui::div()",
     is_container: true,
-    is_self_closing: true,
     is_styled: true,
 };
 
@@ -31,6 +30,15 @@ impl IRmlTranslator for ATranslator {
         loop_vars: &[String],
         parents: &[ParentInfo],
     ) -> Result<(String, bool), CodegenError> {
+        if elem.attributes.iter().any(|a| {
+            matches!(a, Attribute::Static { name, .. } | Attribute::Bind { name, .. } if name == "href")
+        }) {
+            eprintln!(
+                "[rml warning] `<a href=\"...\">` is not functional in GPUI; \
+                 use `<Link href=\"...\">` component for hyperlink behavior. \
+                 href will be dropped."
+            );
+        }
         BuiltinTranslator { meta: META }.to_rust(elem, ctx, id_counter, loop_vars, parents)
     }
 

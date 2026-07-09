@@ -10,8 +10,8 @@
 //!
 //! `<context-menu>` / `<dropdown-menu>` 不在此处理，仍直译 gpui-component 弹层 API。
 
-use crate::compiler::menu::hoist::MenuHoist;
-use crate::compiler::menu::item::{gen_command_closure, gen_menu_item_stmt, is_menu_item_tag};
+use crate::compiler::components::menu::hoist::MenuHoist;
+use crate::compiler::components::menu::item::{gen_command_closure, gen_menu_item_stmt, is_menu_item_tag};
 use crate::compiler::{CodegenCtx, CodegenError};
 use crate::parser::ast::{Attribute, Directive, EachClause, Element, Node};
 

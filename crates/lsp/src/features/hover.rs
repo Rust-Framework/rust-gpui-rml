@@ -217,7 +217,7 @@ fn format_tag_hover(elem: &Element, rust_query: &dyn RustSemanticQuery) -> Strin
                 md.push_str(&format!("- `{}`\n", prop));
             }
         }
-    } else if tags::lookup(tag).is_some() {
+    } else if tags::is_builtin_html_tag(tag) {
         md.push_str(&format!("## `<{}>` — HTML element\n\n", tag));
         md.push_str("Built-in HTML tag mapped to `gpui::div()`.\n");
     } else if tags::component_lookup(tag).is_some() {

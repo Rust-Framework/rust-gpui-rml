@@ -41,7 +41,7 @@ pub fn gen_icon(
                 // name={icon_name_field} → Icon::new(icon_name_field.clone())
                 // 注：IconName 是 Copy，但字段引用需 clone 避免 move
                 let rust_expr =
-                    super::component::component_bind_rust_expr(expr, &lv, &computed);
+                    crate::compiler::setters::component_bind_rust_expr(expr, &lv, &computed);
                 code.push_str(&format!("rml_ui::Icon::new({})", rust_expr));
                 name_set = true;
             }
@@ -52,7 +52,7 @@ pub fn gen_icon(
             }
             Attribute::Bind { name, expr, .. } if name == "path" && !name_set => {
                 let rust_expr =
-                    super::component::component_bind_rust_expr(expr, &lv, &computed);
+                    crate::compiler::setters::component_bind_rust_expr(expr, &lv, &computed);
                 code.push_str(&format!("rml_ui::Icon::empty().path({})", rust_expr));
                 path_set = true;
             }
@@ -73,7 +73,7 @@ pub fn gen_icon(
                     continue;
                 }
                 if let Some(s) =
-                    super::component::component_static_setter(name, value, resolved)
+                    crate::compiler::setters::component_static_setter(name, value, resolved)
                 {
                     code.push_str(&s);
                 }
@@ -82,7 +82,7 @@ pub fn gen_icon(
                 if name == "name" || name == "path" {
                     continue;
                 }
-                if let Some(s) = super::component::component_bind_setter(
+                if let Some(s) = crate::compiler::setters::component_bind_setter(
                     name, expr, &lv, &computed, resolved,
                 ) {
                     code.push_str(&s);
@@ -90,7 +90,7 @@ pub fn gen_icon(
             }
             Attribute::Event { name, handler, .. } => {
                 if let Some(s) =
-                    super::component::component_event_setter(name, handler, resolved)
+                    crate::compiler::setters::component_event_setter(name, handler, resolved)
                 {
                     code.push_str(&s);
                 }

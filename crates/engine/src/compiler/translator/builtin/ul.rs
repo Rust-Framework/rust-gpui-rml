@@ -11,7 +11,6 @@ const META: &BuiltinMeta = &BuiltinMeta {
     category: ComponentCategory::Data,
     ctor: "gpui::div().flex().flex_col()",
     is_container: true,
-    is_self_closing: true,
     is_styled: true,
 };
 

@@ -36,7 +36,7 @@ impl IRmlTranslator for TabsTranslator {
         let id_val = *id_counter;
         *id_counter += 1;
 
-        let mut code = crate::compiler::tabs::gen_tabs(
+        let mut code = crate::compiler::components::tabs::gen_tabs(
             elem,
             ref_name,
             id_val,

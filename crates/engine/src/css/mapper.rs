@@ -139,17 +139,21 @@ fn map_declaration(decl: &Declaration, vars: &HashMap<String, Value>) -> Option<
         },
         "overflow" => match &value {
             Value::Keyword(k) if k == "hidden" => Some("overflow_hidden()".into()),
-            Value::Keyword(k) if k == "scroll" => Some("overflow_scroll()".into()),
+            Value::Keyword(k) if k == "scroll" => Some("overflow(gpui::Overflow::Scroll)".into()),
             _ => None,
         },
         "overflow-x" => match &value {
             Value::Keyword(k) if k == "hidden" => Some("overflow_x_hidden()".into()),
-            Value::Keyword(k) if k == "scroll" || k == "auto" => Some("overflow_x_scroll()".into()),
+            Value::Keyword(k) if k == "scroll" || k == "auto" => {
+                Some("overflow_x(gpui::Overflow::Scroll)".into())
+            }
             _ => None,
         },
         "overflow-y" => match &value {
             Value::Keyword(k) if k == "hidden" => Some("overflow_y_hidden()".into()),
-            Value::Keyword(k) if k == "scroll" || k == "auto" => Some("overflow_y_scroll()".into()),
+            Value::Keyword(k) if k == "scroll" || k == "auto" => {
+                Some("overflow_y(gpui::Overflow::Scroll)".into())
+            }
             _ => None,
         },
 
@@ -908,7 +912,10 @@ mod tests {
     fn map_overflow_x_scroll() {
         let d = decl("overflow-x", Value::Keyword("auto".into()));
         let code = map_declarations(&[d], &HashMap::new());
-        assert!(code.contains(".overflow_x_scroll()"), "expected overflow_x_scroll, got: {}", code);
+        assert!(
+            code.contains(".overflow_x(gpui::Overflow::Scroll)"),
+            "expected overflow_x(Scroll), got: {}", code
+        );
     }
 
     #[test]

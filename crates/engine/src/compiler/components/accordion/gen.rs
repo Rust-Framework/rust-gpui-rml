@@ -34,7 +34,7 @@ pub fn gen_accordion(
     // 注意：RML 属性名在 parser 中已从 kebab-case 规范化为 snake_case
     let open_ixs_expr = elem.attributes.iter().find_map(|attr| match attr {
         Attribute::Bind { name, expr, .. } if name == "open_ixs" => Some(
-            super::super::component::component_bind_rust_expr(expr, &lv, &computed),
+            crate::compiler::setters::component_bind_rust_expr(expr, &lv, &computed),
         ),
         _ => None,
     });
@@ -62,7 +62,7 @@ pub fn gen_accordion(
                 if let Some(s) = super::setters::static_setter(name, value, "Accordion") {
                     code.push_str(&s);
                 } else if let Some(s) =
-                    super::super::component::component_static_setter(name, value, "Accordion")
+                    crate::compiler::setters::component_static_setter(name, value, "Accordion")
                 {
                     code.push_str(&s);
                 }
@@ -72,7 +72,7 @@ pub fn gen_accordion(
                     super::setters::bind_setter(name, expr, &lv, &computed, "Accordion")
                 {
                     code.push_str(&s);
-                } else if let Some(s) = super::super::component::component_bind_setter(
+                } else if let Some(s) = crate::compiler::setters::component_bind_setter(
                     name, expr, &lv, &computed, "Accordion",
                 ) {
                     code.push_str(&s);
@@ -82,7 +82,7 @@ pub fn gen_accordion(
                 if let Some(s) = super::setters::event_setter(name, handler, "Accordion") {
                     code.push_str(&s);
                 } else if let Some(s) =
-                    super::super::component::component_event_setter(name, handler, "Accordion")
+                    crate::compiler::setters::component_event_setter(name, handler, "Accordion")
                 {
                     code.push_str(&s);
                 }

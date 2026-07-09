@@ -48,12 +48,12 @@ pub fn bind_setter(
         "Avatar" => match name {
             "src" | "name" => {
                 let rust_expr =
-                    super::super::component::component_bind_rust_expr(expr_str, loop_vars, computed);
+                    crate::compiler::setters::component_bind_rust_expr(expr_str, loop_vars, computed);
                 Some(format!(".{}({}.clone())", name, rust_expr))
             }
             "placeholder" => {
                 let rust_expr =
-                    super::super::component::component_bind_rust_expr(expr_str, loop_vars, computed);
+                    crate::compiler::setters::component_bind_rust_expr(expr_str, loop_vars, computed);
                 Some(format!(".placeholder({})", rust_expr))
             }
             _ => None,
@@ -61,7 +61,7 @@ pub fn bind_setter(
         "AvatarGroup" => match name {
             "limit" => {
                 let rust_expr =
-                    super::super::component::component_bind_rust_expr(expr_str, loop_vars, computed);
+                    crate::compiler::setters::component_bind_rust_expr(expr_str, loop_vars, computed);
                 Some(format!(".limit({})", rust_expr))
             }
             _ => None,

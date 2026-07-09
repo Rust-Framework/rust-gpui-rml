@@ -10,6 +10,7 @@
 use std::collections::HashMap;
 
 use lsp_types::{Diagnostic, DiagnosticSeverity, Position, Range};
+use rust_rml_engine::compiler::translator::TranslatorRegistry;
 use rust_rml_engine::compiler::validator;
 use rust_rml_engine::compiler::UserComponentInfo;
 
@@ -53,7 +54,8 @@ pub fn collect(uri: &lsp_types::Url, workspace: &Workspace) -> Vec<Diagnostic> {
     // 2. validator 校验错误（未知属性/slot/ref 重复）
     if let Some(root) = &tree.root {
         let user_components: HashMap<String, UserComponentInfo> = HashMap::new();
-        if let Err(val_err) = validator::validate(root, &user_components) {
+        let registry = TranslatorRegistry::default();
+        if let Err(val_err) = validator::validate(root, &registry, &user_components) {
             // validator 无 span：用根元素的 span 回填
             let span = root_span(root);
             let range = conv::empty_range_at(span, source, line_starts);

@@ -36,7 +36,7 @@ pub fn gen_description_list(
             Attribute::Static { name, value, .. } => {
                 if let Some(s) = super::setters::static_setter(name, value, "DescriptionList") {
                     code.push_str(&s);
-                } else if let Some(s) = super::super::component::component_static_setter(
+                } else if let Some(s) = crate::compiler::setters::component_static_setter(
                     name,
                     value,
                     "DescriptionList",
@@ -49,7 +49,7 @@ pub fn gen_description_list(
                     super::setters::bind_setter(name, expr, &lv, &computed, "DescriptionList")
                 {
                     code.push_str(&s);
-                } else if let Some(s) = super::super::component::component_bind_setter(
+                } else if let Some(s) = crate::compiler::setters::component_bind_setter(
                     name,
                     expr,
                     &lv,
@@ -60,7 +60,7 @@ pub fn gen_description_list(
                 }
             }
             Attribute::Event { name, handler, .. } => {
-                if let Some(s) = super::super::component::component_event_setter(
+                if let Some(s) = crate::compiler::setters::component_event_setter(
                     name,
                     handler,
                     "DescriptionList",

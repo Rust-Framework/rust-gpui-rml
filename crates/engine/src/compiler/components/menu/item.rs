@@ -1,8 +1,8 @@
 //! `MenuItem` / `MenuSeparator` → PopupMenu builder 链
 
 use crate::compiler::codegen::gen_node;
-use crate::compiler::menu::hoist::MenuHoist;
-use crate::compiler::menu::popup::apply_popup_config;
+use crate::compiler::components::menu::hoist::MenuHoist;
+use crate::compiler::components::menu::popup::apply_popup_config;
 use crate::compiler::{CodegenCtx, CodegenError};
 use crate::parser::ast::{Attribute, Directive, Element, EventHandler, Node};
 

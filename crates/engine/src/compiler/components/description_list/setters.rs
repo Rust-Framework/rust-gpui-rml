@@ -97,7 +97,7 @@ pub fn bind_setter(
     tag: &str,
 ) -> Option<String> {
     let canonical = crate::tags::canonical_tag(tag);
-    let rust_expr = super::super::component::component_bind_rust_expr(expr_str, loop_vars, computed);
+    let rust_expr = crate::compiler::setters::component_bind_rust_expr(expr_str, loop_vars, computed);
 
     match canonical.as_str() {
         "DescriptionList" => match name {

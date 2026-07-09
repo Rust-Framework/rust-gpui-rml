@@ -95,7 +95,7 @@ fn emit_tag_token(elem: &Element, source: &str, result: &mut BindingResult) {
     if tag_span.is_empty() {
         return;
     }
-    let token_type = if tags::is_builtin(&elem.tag) {
+    let token_type = if tags::is_builtin_html_tag(&elem.tag) {
         token_type::TAG
     } else {
         token_type::TYPE

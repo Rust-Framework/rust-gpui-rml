@@ -29,7 +29,7 @@ impl IRmlTranslator for RadioGroupTranslator {
         loop_vars: &[String],
         parents: &[ParentInfo],
     ) -> Result<(String, bool), CodegenError> {
-        let mut code = crate::compiler::radio_group::gen_radio_group(elem, ctx, id_counter, loop_vars)?;
+        let mut code = crate::compiler::components::radio_group::gen_radio_group(elem, ctx, id_counter, loop_vars)?;
         if let Some(sheet) = &ctx.stylesheet {
             let style_code = apply_css_styles(elem, "RadioGroup", sheet, parents);
             if !style_code.is_empty() {

@@ -45,7 +45,7 @@ pub fn gen_code_editor(
     // 声明式 value 属性：绑定或静态字符串，用于 InputState::default_value
     let value_expr: Option<String> = elem.attributes.iter().find_map(|attr| match attr {
         Attribute::Bind { name, expr, .. } if name == "value" => {
-            Some(super::super::codegen::gen_expr_code(expr, &lv, &computed))
+            Some(crate::compiler::codegen::gen_expr_code(expr, &lv, &computed))
         }
         Attribute::Static { name, value, .. } if name == "value" => {
             Some(format!("{:?}.to_string()", value))
@@ -215,46 +215,6 @@ pub fn gen_code_editor(
 
     let mut code = ctor_expr;
 
-    // 非事件属性的 setter 链（value/language/bordered/focus_bordered 由内联创建处理，事件属性由 block 表达式处理）
-    for attr in &elem.attributes {
-        let is_handled_inline = match attr {
-            Attribute::Static { name, .. } => {
-                name == "value" || name == "language" || name == "context_menu" || name == "bordered" || name == "focus_bordered"
-            }
-            Attribute::Bind { name, .. } => name == "value",
-            _ => false,
-        };
-        if is_handled_inline {
-            continue;
-        }
-        match attr {
-            Attribute::Static { name, value, .. } => {
-                if let Some(s) =
-                    super::super::component::component_static_setter(name, value, &resolved)
-                {
-                    code.push_str(&s);
-                }
-            }
-            Attribute::Bind { name, expr, .. } => {
-                if let Some(s) = super::super::component::component_bind_setter(
-                    name, expr, &lv, &computed, &resolved,
-                ) {
-                    code.push_str(&s);
-                }
-            }
-            Attribute::Event { name, handler, .. } => {
-                // 非 Input 事件委托到通用 component_event_setter
-                if !super::super::input::is_input_event(name, &resolved) {
-                    if let Some(s) =
-                        super::super::component::component_event_setter(name, handler, &resolved)
-                    {
-                        code.push_str(&s);
-                    }
-                }
-            }
-        }
-    }
-
     // context-menu 属性：生成 .context_menu(closure) 调用
     // 闭包通过 cx.entity().update() 桥接 &mut App → &mut Context<Self>
     if let Some(method) = context_menu_method {
@@ -413,8 +373,8 @@ mod tests {
 
     #[test]
     fn gen_code_editor_height_full_overrides_default() {
-        // <CodeEditor height="full" />：用户设置了 height，不生成默认 .h(360.)；
-        // 归一化样式属性 height="full" 经 setter 链生成 .h_full()。
+        // <CodeEditor height="full" />：用户设置了 height，不生成默认 .h(360.)。
+        // height="full" 的 setter 链（.h_full()）由 translator 负责，不在 gen_code_editor 输出中。
         let elem = make_element(
             "CodeEditor",
             vec![Attribute::Static {
@@ -430,8 +390,6 @@ mod tests {
                 .unwrap();
         // 用户设置了 height，不生成默认 .h(360.)
         assert!(!code.contains(".h(gpui::px(360.))"));
-        // 归一化 height="full" 经 setter 链生成 .h_full()
-        assert!(code.contains(".h_full()"));
     }
 
     #[test]

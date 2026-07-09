@@ -1,7 +1,4 @@
-//! Kbd 组件代码生成
-//!
-//! Kbd 构造器：`Kbd::new(Keystroke)`，接受 `Keystroke` 类型。
-//! Kbd 是 RenderOnce，无 ElementId。
+//! Kbd 构造代码生成
 //!
 //! ## 属性映射
 //!
@@ -13,6 +10,8 @@
 use crate::compiler::{CodegenCtx, CodegenError};
 use crate::parser::ast::{Attribute, Element};
 use crate::tags;
+
+use super::setters::kbd_static_setter;
 
 /// 生成 Kbd 构造代码
 pub fn gen_kbd(
@@ -43,7 +42,7 @@ pub fn gen_kbd(
                 // key={keystroke_expr} → Kbd::new(keystroke_expr)
                 // 注：绑定表达式需返回 Keystroke 类型
                 let rust_expr =
-                    super::component::component_bind_rust_expr(expr, &lv, &computed);
+                    crate::compiler::setters::component_bind_rust_expr(expr, &lv, &computed);
                 code.push_str(&format!("rml_ui::Kbd::new({})", rust_expr));
                 key_set = true;
             }
@@ -72,7 +71,7 @@ pub fn gen_kbd(
                 }
                 // 通用属性
                 if let Some(s) =
-                    super::component::component_static_setter(name, value, resolved)
+                    crate::compiler::setters::component_static_setter(name, value, resolved)
                 {
                     code.push_str(&s);
                 }
@@ -81,7 +80,7 @@ pub fn gen_kbd(
                 if name == "key" {
                     continue;
                 }
-                if let Some(s) = super::component::component_bind_setter(
+                if let Some(s) = crate::compiler::setters::component_bind_setter(
                     name, expr, &lv, &computed, resolved,
                 ) {
                     code.push_str(&s);
@@ -89,7 +88,7 @@ pub fn gen_kbd(
             }
             Attribute::Event { name, handler, .. } => {
                 if let Some(s) =
-                    super::component::component_event_setter(name, handler, resolved)
+                    crate::compiler::setters::component_event_setter(name, handler, resolved)
                 {
                     code.push_str(&s);
                 }
@@ -100,27 +99,6 @@ pub fn gen_kbd(
     let _ = id_counter;
     let _ = tags::canonical_tag(&elem.tag);
     Ok(code)
-}
-
-/// Kbd 专用静态属性 setter
-///
-/// - `outline=""` / `outline="true"` → `.outline()`
-/// - `appearance="false"` → `.appearance(false)`（appearance 默认 true，仅在 false 时显式设置）
-/// - `appearance="true"` → 无操作（默认值）
-pub fn kbd_static_setter(name: &str, value: &str) -> Option<String> {
-    match name {
-        "outline" if value.is_empty() || value.eq_ignore_ascii_case("true") => {
-            Some(".outline()".into())
-        }
-        "appearance" if value.eq_ignore_ascii_case("false") => {
-            Some(".appearance(false)".into())
-        }
-        "appearance" if value.is_empty() || value.eq_ignore_ascii_case("true") => {
-            // 默认值，无需生成代码
-            Some(String::new())
-        }
-        _ => None,
-    }
 }
 
 #[cfg(test)]

@@ -80,17 +80,17 @@ pub fn bind_setter(
     match name {
         "title" => {
             let rust_expr =
-                super::super::component::component_bind_rust_expr(expr_str, loop_vars, computed);
+                crate::compiler::setters::component_bind_rust_expr(expr_str, loop_vars, computed);
             Some(format!(".title({}.clone())", rust_expr))
         }
         "extra" | "cover" | "footer" => {
             let rust_expr =
-                super::super::component::component_bind_rust_expr(expr_str, loop_vars, computed);
+                crate::compiler::setters::component_bind_rust_expr(expr_str, loop_vars, computed);
             Some(format!(".{}({}.clone())", name, rust_expr))
         }
         "bordered" | "hoverable" => {
             let rust_expr =
-                super::super::component::component_bind_rust_expr(expr_str, loop_vars, computed);
+                crate::compiler::setters::component_bind_rust_expr(expr_str, loop_vars, computed);
             Some(format!(".{}({})", name, rust_expr))
         }
         _ => None,

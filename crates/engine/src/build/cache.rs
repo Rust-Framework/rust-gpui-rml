@@ -29,10 +29,14 @@ pub struct Cache {
     /// 不匹配则该文件重新生成（即使 .rml 源未变）。
     #[serde(default)]
     pub codebehind_hash: HashMap<String, String>,
-    /// 上次构建时合并后的 CSS 内容哈希；不匹配则 entries 全部失效，
+    /// 上次构建时合并后的全局 CSS 内容哈希；不匹配则 entries 全部失效，
     /// 确保 CSS 规则/变量变化能反映到生成的样式调用中。
     #[serde(default)]
     pub style_hash: Option<String>,
+    /// `.rml` 文件路径 → 该文件引用的页面级 CSS（`<style source="..."/>`）内容哈希；
+    /// 不匹配则该文件重新生成（即使 .rml 源未变）。
+    #[serde(default)]
+    pub page_style_hash: HashMap<String, String>,
 }
 
 impl Cache {
@@ -71,6 +75,7 @@ impl Cache {
     pub fn invalidate_all(&mut self) {
         self.entries.clear();
         self.codebehind_hash.clear();
+        self.page_style_hash.clear();
     }
 
     /// 判断缓存对当前 CSS 哈希是否有效。
@@ -100,6 +105,22 @@ impl Cache {
     /// 记录 `.rml` 文件对应的 `.rml.rs` 哈希。
     pub fn stamp_codebehind(&mut self, rml_key: String, cb_hash: String) {
         self.codebehind_hash.insert(rml_key, cb_hash);
+    }
+
+    /// 判断单个 `.rml` 文件引用的页面级 CSS 是否与缓存中记录的哈希一致。
+    ///
+    /// 返回 true 表示页面 CSS 未变化（可跳过重新生成）；
+    /// 返回 false 表示页面 CSS 已变化或缓存中无记录（必须重新生成）。
+    pub fn is_page_style_unchanged(&self, rml_key: &str, current_hash: &str) -> bool {
+        match self.page_style_hash.get(rml_key) {
+            Some(h) => h == current_hash,
+            None => false,
+        }
+    }
+
+    /// 记录 `.rml` 文件引用的页面级 CSS 内容哈希。
+    pub fn stamp_page_style(&mut self, rml_key: String, hash: String) {
+        self.page_style_hash.insert(rml_key, hash);
     }
 }
 
@@ -258,6 +279,7 @@ mod tests {
         cache.entries.insert("a.rml".to_string(), "hash_a".to_string());
         cache.entries.insert("b.rml".to_string(), "hash_b".to_string());
         cache.stamp_codebehind("a.rml".to_string(), "cb_a".to_string());
+        cache.stamp_page_style("a.rml".to_string(), "ps_a".to_string());
         cache.stamp_engine("engine_v1".to_string());
 
         cache.invalidate_all();
@@ -266,6 +288,10 @@ mod tests {
         assert!(
             cache.codebehind_hash.is_empty(),
             "codebehind_hash should be cleared"
+        );
+        assert!(
+            cache.page_style_hash.is_empty(),
+            "page_style_hash should be cleared"
         );
         // engine_hash 不应被清空（用于后续 is_valid_for_engine 检查）
         assert_eq!(cache.engine_hash.as_deref(), Some("engine_v1"));
@@ -329,6 +355,63 @@ mod tests {
         cache.stamp_codebehind("b.rml".to_string(), "hash_b".to_string());
         cache.stamp_codebehind("c.rml".to_string(), "hash_c".to_string());
         assert_eq!(cache.codebehind_hash.len(), 3);
+    }
+
+    // ─── is_page_style_unchanged / stamp_page_style ───
+
+    #[test]
+    fn is_page_style_unchanged_missing_key_returns_false() {
+        let cache = Cache::default();
+        assert!(!cache.is_page_style_unchanged("src/missing.rml", "any_hash"));
+    }
+
+    #[test]
+    fn is_page_style_unchanged_matching_hash_returns_true() {
+        let mut cache = Cache::default();
+        cache.stamp_page_style("src/foo.rml".to_string(), "ps_v1".to_string());
+        assert!(cache.is_page_style_unchanged("src/foo.rml", "ps_v1"));
+    }
+
+    #[test]
+    fn is_page_style_unchanged_mismatched_hash_returns_false() {
+        let mut cache = Cache::default();
+        cache.stamp_page_style("src/foo.rml".to_string(), "ps_v1".to_string());
+        assert!(!cache.is_page_style_unchanged("src/foo.rml", "ps_v2"));
+    }
+
+    #[test]
+    fn stamp_page_style_overwrites_existing_entry() {
+        let mut cache = Cache::default();
+        cache.stamp_page_style("src/foo.rml".to_string(), "v1".to_string());
+        cache.stamp_page_style("src/foo.rml".to_string(), "v2".to_string());
+        assert_eq!(cache.page_style_hash.len(), 1);
+        assert_eq!(cache.page_style_hash.get("src/foo.rml").unwrap(), "v2");
+    }
+
+    #[test]
+    fn page_style_hash_save_load_roundtrip() {
+        let path = unique_temp_path();
+        let _guard = TempFileGuard(path.clone());
+
+        let mut original = Cache::default();
+        original.stamp_page_style("src/foo.rml".to_string(), "ps_1".to_string());
+        original.stamp_page_style("src/bar.rml".to_string(), "ps_2".to_string());
+
+        original.save(&path).unwrap();
+        let loaded = Cache::load(&path);
+
+        assert_eq!(loaded.page_style_hash.len(), 2);
+        assert_eq!(loaded.page_style_hash.get("src/foo.rml").unwrap(), "ps_1");
+        assert_eq!(loaded.page_style_hash.get("src/bar.rml").unwrap(), "ps_2");
+    }
+
+    #[test]
+    fn page_style_hash_absent_in_old_cache_returns_false() {
+        // 模拟旧版缓存（无 page_style_hash 字段）反序列化后向后兼容
+        let old_json = r#"{"entries":{},"engine_hash":null,"codebehind_hash":{},"style_hash":null}"#;
+        let cache: Cache = serde_json::from_str(old_json).expect("should deserialize");
+        assert!(cache.page_style_hash.is_empty());
+        assert!(!cache.is_page_style_unchanged("any.rml", "any_hash"));
     }
 
     // ─── 综合场景：增量缓存工作流 ───

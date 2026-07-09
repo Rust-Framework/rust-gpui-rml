@@ -42,7 +42,7 @@ pub fn gen_alert(
                 message_set = true;
             }
             Attribute::Bind { name, expr, .. } if name == "message" && !message_set => {
-                let rust_expr = super::component::component_bind_rust_expr(expr, &lv, &computed);
+                let rust_expr = crate::compiler::setters::component_bind_rust_expr(expr, &lv, &computed);
                 message_code = format!("{}.clone()", rust_expr);
                 message_set = true;
             }
@@ -115,7 +115,7 @@ pub fn gen_alert(
                 }
                 // visible="true" → .visible(true)
                 if name == "visible" {
-                    code.push_str(&format!(".visible({})", super::component::parse_bool(value)));
+                    code.push_str(&format!(".visible({})", crate::compiler::setters::parse_bool(value)));
                     continue;
                 }
                 // title="..." → .title("...")
@@ -133,7 +133,7 @@ pub fn gen_alert(
                 }
                 // 通用 setter（size / disabled / tooltip 等）
                 if let Some(s) =
-                    super::component::component_static_setter(name, value, &resolved)
+                    crate::compiler::setters::component_static_setter(name, value, &resolved)
                 {
                     code.push_str(&s);
                 }
@@ -144,36 +144,36 @@ pub fn gen_alert(
                 }
                 // variant={expr} → .with_variant(expr)
                 if name == "variant" && !variant_set_by_attr {
-                    let rust_expr = super::component::component_bind_rust_expr(expr, &lv, &computed);
+                    let rust_expr = crate::compiler::setters::component_bind_rust_expr(expr, &lv, &computed);
                     code.push_str(&format!(".with_variant({})", rust_expr));
                     continue;
                 }
                 // banner={cond} → .when(cond, |a| a.banner())
                 if name == "banner" {
-                    let rust_expr = super::component::component_bind_rust_expr(expr, &lv, &computed);
+                    let rust_expr = crate::compiler::setters::component_bind_rust_expr(expr, &lv, &computed);
                     code.push_str(&format!(".when({}, |a| a.banner())", rust_expr));
                     continue;
                 }
                 // visible={cond} → .visible(cond)
                 if name == "visible" {
-                    let rust_expr = super::component::component_bind_rust_expr(expr, &lv, &computed);
+                    let rust_expr = crate::compiler::setters::component_bind_rust_expr(expr, &lv, &computed);
                     code.push_str(&format!(".visible({})", rust_expr));
                     continue;
                 }
                 // title={expr} → .title(expr.clone())
                 if name == "title" {
-                    let rust_expr = super::component::component_bind_rust_expr(expr, &lv, &computed);
+                    let rust_expr = crate::compiler::setters::component_bind_rust_expr(expr, &lv, &computed);
                     code.push_str(&format!(".title({}.clone())", rust_expr));
                     continue;
                 }
                 // icon={expr} → .icon(expr)
                 if name == "icon" {
-                    let rust_expr = super::component::component_bind_rust_expr(expr, &lv, &computed);
+                    let rust_expr = crate::compiler::setters::component_bind_rust_expr(expr, &lv, &computed);
                     code.push_str(&format!(".icon({})", rust_expr));
                     continue;
                 }
                 // 通用 bind setter
-                if let Some(s) = super::component::component_bind_setter(
+                if let Some(s) = crate::compiler::setters::component_bind_setter(
                     name,
                     expr,
                     &lv,
@@ -193,7 +193,7 @@ pub fn gen_alert(
                     }
                 }
                 if let Some(s) =
-                    super::component::component_event_setter(name, handler, &resolved)
+                    crate::compiler::setters::component_event_setter(name, handler, &resolved)
                 {
                     code.push_str(&s);
                 }

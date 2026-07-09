@@ -20,23 +20,23 @@ use crate::parser::ast::EventHandler;
 /// - `h_flex`/`v_flex` → StyledExt 布局快捷方法
 pub fn component_static_setter(name: &str, value: &str, tag: &str) -> Option<String> {
     // 组件专用 static setter 委托（Avatar/AvatarGroup 的 src/name/placeholder/limit/ellipsis）
-    if let Some(s) = super::avatar::static_setter(name, value, tag) {
+    if let Some(s) = super::components::avatar::static_setter(name, value, tag) {
         return Some(s);
     }
     // Badge 的 count/max/dot/icon（Number/Dot/Icon 三种 variant）
-    if let Some(s) = super::badge::static_setter(name, value, tag) {
+    if let Some(s) = super::components::badge::static_setter(name, value, tag) {
         return Some(s);
     }
     // Card 的 title/bordered/borderless/hoverable
-    if let Some(s) = super::card::static_setter(name, value, tag) {
+    if let Some(s) = super::components::card::static_setter(name, value, tag) {
         return Some(s);
     }
     // Table 的 bordered/borderless/stripe + Column 的 width/align
-    if let Some(s) = super::table::setters::static_setter(name, value, tag) {
+    if let Some(s) = super::components::table::setters::static_setter(name, value, tag) {
         return Some(s);
     }
     // DescriptionList 的 vertical/horizontal/bordered/columns/label_width + DescriptionItem 的 value/span
-    if let Some(s) = super::description_list::setters::static_setter(name, value, tag) {
+    if let Some(s) = super::components::description_list::setters::static_setter(name, value, tag) {
         return Some(s);
     }
     // Tooltip 通用属性（Button/Checkbox/Clipboard/DropdownButton/Toggle/Radio/Switch 的 .tooltip()）
@@ -206,28 +206,28 @@ pub fn component_bind_setter(
     tag: &str,
 ) -> Option<String> {
     // 组件专用 bind setter 委托（menu/MenuBar/status-bar 的 items 属性）
-    if let Some(s) = super::menu::bind_setter(name, expr_str, loop_vars, computed, tag) {
+    if let Some(s) = super::components::menu::bind_setter(name, expr_str, loop_vars, computed, tag) {
         return Some(s);
     }
     // Avatar/AvatarGroup 的 src/name/placeholder/limit 属性
-    if let Some(s) = super::avatar::bind_setter(name, expr_str, loop_vars, computed, tag) {
+    if let Some(s) = super::components::avatar::bind_setter(name, expr_str, loop_vars, computed, tag) {
         return Some(s);
     }
     // Badge 的 count/max 绑定（Number variant 动态计数）
-    if let Some(s) = super::badge::bind_setter(name, expr_str, loop_vars, computed, tag) {
+    if let Some(s) = super::components::badge::bind_setter(name, expr_str, loop_vars, computed, tag) {
         return Some(s);
     }
     // Card 的 title/extra/cover/footer/bordered/hoverable 属性
-    if let Some(s) = super::card::bind_setter(name, expr_str, loop_vars, computed, tag) {
+    if let Some(s) = super::components::card::bind_setter(name, expr_str, loop_vars, computed, tag) {
         return Some(s);
     }
     // Table 的 columns/rows/delegate/bordered/stripe + Column 的 width/align
-    if let Some(s) = super::table::setters::bind_setter(name, expr_str, loop_vars, computed, tag) {
+    if let Some(s) = super::components::table::setters::bind_setter(name, expr_str, loop_vars, computed, tag) {
         return Some(s);
     }
     // DescriptionList 的 bordered/columns/label_width + DescriptionItem 的 value/span
     if let Some(s) =
-        super::description_list::setters::bind_setter(name, expr_str, loop_vars, computed, tag)
+        super::components::description_list::setters::bind_setter(name, expr_str, loop_vars, computed, tag)
     {
         return Some(s);
     }
@@ -329,7 +329,7 @@ pub(crate) fn check_missing_mapping(
     }
     let msg = format!(
         "<{}> {} property `{}` is registered in props_registry but has no mapping in component_{}_setter; \
-         property will be silently dropped. Add a match arm in crates/engine/src/compiler/component.rs.",
+         property will be silently dropped. Add a match arm in crates/engine/src/compiler/setters.rs.",
         tag, kind, name, kind
     );
     if ctx.strict {
@@ -357,7 +357,7 @@ pub fn component_event_setter(name: &str, handler: &EventHandler, tag: &str) -> 
     // Input 事件（on_change/on_enter/on_focus/on_blur）通过 EventEmitter + cx.subscribe 模式处理，
     // 不走 setter 链路——在 stateful translator 中统一生成 block 表达式包装构造器。
     // 此处返回 None 让属性循环跳过 setter 生成，事件由 stateful translator 收集后统一 subscribe。
-    if super::input::is_input_event(name, tag) {
+    if super::components::input::is_input_event(name, tag) {
         return None;
     }
 
@@ -377,7 +377,7 @@ pub fn component_event_setter(name: &str, handler: &EventHandler, tag: &str) -> 
              if let Some(entity) = weak.upgrade() {{\n                            \
              entity.update(app, |this, cx| {{ this.{}(level, index, cx); }});\n                        \
              }}\n                    \
-             }}\n                \\ }}))",
+             }}\n                }}))",
             method
         ));
     }
@@ -395,12 +395,12 @@ pub fn component_event_setter(name: &str, handler: &EventHandler, tag: &str) -> 
                 return match handler {
                     EventHandler::Ident(_) | EventHandler::MethodName(_) => Some(format!(
                         ".on_click(cx.listener(move |this, page: &usize, _window, cx| {{\n                    \
-                         this.{}(page, cx);\n                \\ }}))",
+                         this.{}(page, cx);\n                }}))",
                         method
                     )),
                     EventHandler::WithArgs(_, args) if args.is_empty() => Some(format!(
                         ".on_click(cx.listener(move |this, page: &usize, _window, cx| {{\n                    \
-                         this.{}(page, cx);\n                \\ }}))",
+                         this.{}(page, cx);\n                }}))",
                         method
                     )),
                     EventHandler::WithArgs(_, args) => {
@@ -408,7 +408,7 @@ pub fn component_event_setter(name: &str, handler: &EventHandler, tag: &str) -> 
                         Some(format!(
                             ".on_click(cx.listener(move |this, page: &usize, _window, cx| {{\n                    \
                              let p0 = {}.clone();\n                    \
-                             this.{}(p0, page, cx);\n                \\ }}))",
+                             this.{}(p0, page, cx);\n                }}))",
                             arg, method
                         ))
                     }
@@ -421,12 +421,12 @@ pub fn component_event_setter(name: &str, handler: &EventHandler, tag: &str) -> 
                 return match handler {
                     EventHandler::Ident(_) | EventHandler::MethodName(_) => Some(format!(
                         ".on_click(cx.listener(move |this, idx: &usize, _window, cx| {{\n                    \
-                         this.{}(idx, cx);\n                \\ }}))",
+                         this.{}(idx, cx);\n                }}))",
                         method
                     )),
                     EventHandler::WithArgs(_, args) if args.is_empty() => Some(format!(
                         ".on_click(cx.listener(move |this, idx: &usize, _window, cx| {{\n                    \
-                         this.{}(idx, cx);\n                \\ }}))",
+                         this.{}(idx, cx);\n                }}))",
                         method
                     )),
                     EventHandler::WithArgs(_, args) => {
@@ -434,7 +434,7 @@ pub fn component_event_setter(name: &str, handler: &EventHandler, tag: &str) -> 
                         Some(format!(
                             ".on_click(cx.listener(move |this, idx: &usize, _window, cx| {{\n                    \
                              let p0 = {}.clone();\n                    \
-                             this.{}(p0, idx, cx);\n                \\ }}))",
+                             this.{}(p0, idx, cx);\n                }}))",
                             arg, method
                         ))
                     }
@@ -449,12 +449,12 @@ pub fn component_event_setter(name: &str, handler: &EventHandler, tag: &str) -> 
                 match handler {
                     EventHandler::Ident(_) | EventHandler::MethodName(_) => Some(format!(
                         ".on_click(cx.listener(move |this, checked: &bool, _window, cx| {{\n                    \
-                         this.{}(checked, cx);\n                \\ }}))",
+                         this.{}(checked, cx);\n                }}))",
                         method
                     )),
                     EventHandler::WithArgs(_, args) if args.is_empty() => Some(format!(
                         ".on_click(cx.listener(move |this, checked: &bool, _window, cx| {{\n                    \
-                         this.{}(checked, cx);\n                \\ }}))",
+                         this.{}(checked, cx);\n                }}))",
                         method
                     )),
                     EventHandler::WithArgs(_, args) => {
@@ -462,7 +462,7 @@ pub fn component_event_setter(name: &str, handler: &EventHandler, tag: &str) -> 
                         Some(format!(
                             ".on_click(cx.listener(move |this, checked: &bool, _window, cx| {{\n                    \
                              let p0 = {}.clone();\n                    \
-                             this.{}(p0, checked, cx);\n                \\ }}))",
+                             this.{}(p0, checked, cx);\n                }}))",
                             arg, method
                         ))
                     }
@@ -472,13 +472,13 @@ pub fn component_event_setter(name: &str, handler: &EventHandler, tag: &str) -> 
                     EventHandler::Ident(_) | EventHandler::MethodName(_) => Some(format!(
                         ".on_click(cx.listener(move |this, _ev: &gpui::ClickEvent, _window, cx| {{\n                    \
                          let rml_ev = rml_convert::from_gpui_click(_ev);\n                    \
-                         this.{}(&rml_ev, cx);\n                \\ }}))",
+                         this.{}(&rml_ev, cx);\n                }}))",
                         method
                     )),
                     EventHandler::WithArgs(_, args) if args.is_empty() => Some(format!(
                         ".on_click(cx.listener(move |this, _ev: &gpui::ClickEvent, _window, cx| {{\n                    \
                          let rml_ev = rml_convert::from_gpui_click(_ev);\n                    \
-                         this.{}(&rml_ev, cx);\n                \\ }}))",
+                         this.{}(&rml_ev, cx);\n                }}))",
                         method
                     )),
                     EventHandler::WithArgs(_, args) => {
@@ -487,7 +487,7 @@ pub fn component_event_setter(name: &str, handler: &EventHandler, tag: &str) -> 
                             ".on_click(cx.listener(move |this, _ev: &gpui::ClickEvent, _window, cx| {{\n                    \
                              let p0 = {}.clone();\n                    \
                              let rml_ev = rml_convert::from_gpui_click(_ev);\n                    \
-                             this.{}(p0, &rml_ev, cx);\n                \\ }}))",
+                             this.{}(p0, &rml_ev, cx);\n                }}))",
                             arg, method
                         ))
                     }

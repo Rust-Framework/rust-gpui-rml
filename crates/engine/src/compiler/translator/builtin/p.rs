@@ -9,9 +9,8 @@ const META: &BuiltinMeta = &BuiltinMeta {
     tag: "p",
     display_name: "Paragraph",
     category: ComponentCategory::Primitive,
-    ctor: "gpui::div().text_sm().text_color(rml_core::theme::color(\"--text-muted\"))",
+    ctor: "gpui::div()",
     is_container: true,
-    is_self_closing: true,
     is_styled: true,
 };
 

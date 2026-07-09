@@ -36,7 +36,7 @@ impl IRmlTranslator for AccordionTranslator {
         let id_val = *id_counter;
         *id_counter += 1;
 
-        let mut code = crate::compiler::accordion::gen_accordion(
+        let mut code = crate::compiler::components::accordion::gen_accordion(
             elem,
             ref_name,
             id_val,

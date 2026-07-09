@@ -30,7 +30,7 @@ impl IRmlTranslator for DropdownMenuTranslator {
         parents: &[ParentInfo],
     ) -> Result<(String, bool), CodegenError> {
         let mut code =
-            crate::compiler::menu::gen_dropdown_menu(elem, ctx, 0, id_counter, loop_vars)?;
+            crate::compiler::components::menu::gen_dropdown_menu(elem, ctx, 0, id_counter, loop_vars)?;
         if let Some(sheet) = &ctx.stylesheet {
             let style_code = apply_css_styles(elem, "DropdownMenu", sheet, parents);
             if !style_code.is_empty() {

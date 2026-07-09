@@ -17,9 +17,9 @@
 use super::{ComponentCategory, IRmlTranslator, PrinterCtx, TranslatorMetadata, TranslatorRegistry};
 use crate::compiler::codegen::attribute::apply_css_styles;
 use crate::compiler::codegen::gen_node;
-use crate::compiler::component::{component_bind_rust_expr, parse_bool};
+use crate::compiler::setters::{component_bind_rust_expr, parse_bool};
 use crate::compiler::expr;
-use crate::compiler::tabs::tab::extract_state_refs;
+use crate::compiler::components::tabs::tab::extract_state_refs;
 use crate::compiler::{CodegenCtx, CodegenError, UserComponentInfo};
 use crate::css::ParentInfo;
 use crate::parser::ast::{Attribute, Element, Node};

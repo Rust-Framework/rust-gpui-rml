@@ -22,8 +22,6 @@ pub struct BuiltinMeta {
     pub ctor: &'static str,
     /// 是否可作为容器包含子元素
     pub is_container: bool,
-    /// 是否为 void / 自闭合标签
-    pub is_self_closing: bool,
     /// 是否实现 GPUI `Styled` trait（anchored/deferred 等非 Styled 元素为 false）
     pub is_styled: bool,
 }

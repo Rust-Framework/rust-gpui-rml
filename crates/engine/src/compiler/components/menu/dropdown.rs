@@ -1,9 +1,9 @@
 //! `DropdownMenu` codegen
 
-use crate::compiler::menu::hoist::MenuHoist;
-use crate::compiler::menu::item::gen_popup_menu_body;
-use crate::compiler::menu::popup::anchor_from_elem;
-use crate::compiler::menu::{gen_trigger_children, partition_menu_children};
+use crate::compiler::components::menu::hoist::MenuHoist;
+use crate::compiler::components::menu::item::gen_popup_menu_body;
+use crate::compiler::components::menu::popup::anchor_from_elem;
+use crate::compiler::components::menu::{gen_trigger_children, partition_menu_children};
 use crate::compiler::{CodegenCtx, CodegenError};
 use crate::parser::ast::Element;
 

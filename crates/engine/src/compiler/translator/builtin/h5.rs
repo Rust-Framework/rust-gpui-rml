@@ -11,7 +11,6 @@ const META: &BuiltinMeta = &BuiltinMeta {
     category: ComponentCategory::Primitive,
     ctor: "gpui::div().text_size(gpui::px(16.)).font_weight(gpui::FontWeight::SEMIBOLD)",
     is_container: true,
-    is_self_closing: true,
     is_styled: true,
 };
 

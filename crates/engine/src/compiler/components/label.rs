@@ -1,4 +1,4 @@
-﻿//! Label 组件代码生成
+//! Label 组件代码生成
 //!
 //! Label 构造器接受 label 文本作为参数：`Label::new(label: impl Into<SharedString>)`
 //! 不使用 ElementId。本模块从 `label="..."` 属性或文本子节点提取文本，生成构造调用。
@@ -32,7 +32,7 @@ pub fn gen_label(
             }
             Attribute::Bind { name, expr, .. } if name == "label" => {
                 let rust_expr =
-                    super::component::component_bind_rust_expr(expr, &lv, &computed);
+                    crate::compiler::setters::component_bind_rust_expr(expr, &lv, &computed);
                 code.push_str(&format!("rml_ui::Label::new({})", rust_expr));
                 label_set = true;
             }
@@ -60,7 +60,7 @@ pub fn gen_label(
                     continue;
                 }
                 if let Some(setter) =
-                    super::component::component_static_setter(name, value, resolved)
+                    crate::compiler::setters::component_static_setter(name, value, resolved)
                 {
                     code.push_str(&setter);
                 }
@@ -69,7 +69,7 @@ pub fn gen_label(
                 if name == "label" {
                     continue;
                 }
-                if let Some(setter) = super::component::component_bind_setter(
+                if let Some(setter) = crate::compiler::setters::component_bind_setter(
                     name, expr, &lv, &computed, resolved,
                 ) {
                     code.push_str(&setter);
@@ -77,7 +77,7 @@ pub fn gen_label(
             }
             Attribute::Event { name, handler, .. } => {
                 if let Some(setter) =
-                    super::component::component_event_setter(name, handler, resolved)
+                    crate::compiler::setters::component_event_setter(name, handler, resolved)
                 {
                     code.push_str(&setter);
                 }

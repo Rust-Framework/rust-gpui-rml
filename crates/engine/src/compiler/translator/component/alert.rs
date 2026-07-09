@@ -29,7 +29,7 @@ impl IRmlTranslator for AlertTranslator {
         loop_vars: &[String],
         parents: &[ParentInfo],
     ) -> Result<(String, bool), CodegenError> {
-        let mut code = crate::compiler::alert::gen_alert(elem, ctx, id_counter, loop_vars)?;
+        let mut code = crate::compiler::components::alert::gen_alert(elem, ctx, id_counter, loop_vars)?;
         if let Some(sheet) = &ctx.stylesheet {
             let style_code = apply_css_styles(elem, "Alert", sheet, parents);
             if !style_code.is_empty() {

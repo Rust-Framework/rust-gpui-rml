@@ -36,7 +36,7 @@ impl IRmlTranslator for PopoverTranslator {
         let id_val = *id_counter;
         *id_counter += 1;
 
-        let mut code = crate::compiler::popover::gen_popover(
+        let mut code = crate::compiler::components::popover::gen_popover(
             elem,
             ref_name,
             id_val,

@@ -92,7 +92,7 @@ pub fn bind_setter(
 ) -> Option<String> {
     match name {
         "selected_index" | "menu" | "last_empty_space" | "bordered" if tag == "Tabs" => {
-            let rust_expr = super::super::component::component_bind_rust_expr(
+            let rust_expr = crate::compiler::setters::component_bind_rust_expr(
                 expr_str, loop_vars, computed,
             );
             Some(format!(".{}({})", name, rust_expr))
@@ -100,25 +100,25 @@ pub fn bind_setter(
         // track_scroll 接受 &ScrollHandle 引用，不能 clone。
         // 用户在 .rml.rs 中声明 `my_scroll: ScrollHandle` 字段，RML 生成 `.track_scroll(&self.my_scroll)`。
         "track_scroll" if tag == "Tabs" => {
-            let rust_expr = super::super::component::component_bind_rust_expr(
+            let rust_expr = crate::compiler::setters::component_bind_rust_expr(
                 expr_str, loop_vars, computed,
             );
             Some(format!(".track_scroll(&{})", rust_expr))
         }
         "closable" => {
-            let rust_expr = super::super::component::component_bind_rust_expr(
+            let rust_expr = crate::compiler::setters::component_bind_rust_expr(
                 expr_str, loop_vars, computed,
             );
             Some(format!(".closable({})", rust_expr))
         }
         "preview" => {
-            let rust_expr = super::super::component::component_bind_rust_expr(
+            let rust_expr = crate::compiler::setters::component_bind_rust_expr(
                 expr_str, loop_vars, computed,
             );
             Some(format!(".preview({})", rust_expr))
         }
         "prefix" | "suffix" if tag == "Tabs" => {
-            let rust_expr = super::super::component::component_bind_rust_expr(
+            let rust_expr = crate::compiler::setters::component_bind_rust_expr(
                 expr_str, loop_vars, computed,
             );
             Some(format!(".{}({})", name, rust_expr))
@@ -127,14 +127,14 @@ pub fn bind_setter(
         "selected" | "prefix" | "suffix" if tag == "Tab" => Some(String::new()),
         // <tab label={expr} /> → .title(expr.clone())（TabItem::title 接收 SharedString）
         "label" if tag == "Tab" => {
-            let rust_expr = super::super::component::component_bind_rust_expr(
+            let rust_expr = crate::compiler::setters::component_bind_rust_expr(
                 expr_str, loop_vars, computed,
             );
             Some(format!(".title({}.clone())", rust_expr))
         }
         // <tab icon={expr} /> → .title_icon(expr)
         "icon" if tag == "Tab" => {
-            let rust_expr = super::super::component::component_bind_rust_expr(
+            let rust_expr = crate::compiler::setters::component_bind_rust_expr(
                 expr_str, loop_vars, computed,
             );
             Some(format!(".title_icon({})", rust_expr))

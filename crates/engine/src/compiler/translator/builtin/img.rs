@@ -8,6 +8,7 @@ use super::{BuiltinMeta, BuiltinTranslator, ComponentCategory, IRmlTranslator};
 use crate::compiler::{CodegenCtx, CodegenError};
 use crate::css::ParentInfo;
 use crate::parser::ast::{Attribute, Element};
+use crate::compiler::codegen::text::gen_expr_code;
 
 const META: &BuiltinMeta = &BuiltinMeta {
     tag: "img",
@@ -15,7 +16,6 @@ const META: &BuiltinMeta = &BuiltinMeta {
     category: ComponentCategory::Primitive,
     ctor: "gpui::img(\"\")",
     is_container: false,
-    is_self_closing: true,
     is_styled: true,
 };
 
@@ -35,16 +35,23 @@ impl IRmlTranslator for ImgTranslator {
         loop_vars: &[String],
         parents: &[ParentInfo],
     ) -> Result<(String, bool), CodegenError> {
-        // 提取 src 属性作为 img() 构造参数
-        let src = elem
+        let lv: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
+        let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
+
+        let ctor = elem
             .attributes
             .iter()
             .find_map(|attr| match attr {
-                Attribute::Static { name, value, .. } if name == "src" => Some(value.clone()),
+                Attribute::Static { name, value, .. } if name == "src" => {
+                    Some(format!("gpui::img({:?})", value))
+                }
+                Attribute::Bind { name, expr, .. } if name == "src" => {
+                    Some(format!("gpui::img({})", gen_expr_code(expr, &lv, &computed)))
+                }
                 _ => None,
             })
-            .unwrap_or_default();
-        let ctor = format!("gpui::img({:?})", src);
+            .unwrap_or_else(|| "gpui::img(\"\")".to_string());
+
         super::meta::builtin_engine::translate(
             elem, ctx, id_counter, loop_vars, parents, &ctor, true,
         )
