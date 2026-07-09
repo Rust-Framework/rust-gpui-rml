@@ -50,7 +50,8 @@ pub fn is_style_attr(name: &str) -> bool {
         // 文本截断
         "text-overflow" | "line-clamp" | "truncate" |
         // P1 文本装饰 / 字体风格 / 对齐
-        "text-decoration" | "font-style" | "align-self" | "align-content" |
+        "text-decoration" | "text-decoration-color" | "text-decoration-style" |
+        "font-style" | "align-self" | "align-content" |
         // P1 border 细化 / 圆角细化
         "border-x" | "border-y" | "border-style" |
         "border-top-left-radius" | "border-top-right-radius" |
@@ -61,7 +62,9 @@ pub fn is_style_attr(name: &str) -> bool {
         "grid-template-columns" | "grid-template-rows" |
         "grid-column" | "grid-row" |
         "grid-column-start" | "grid-column-end" |
-        "grid-row-start" | "grid-row-end"
+        "grid-row-start" | "grid-row-end" |
+        // 滚动条
+        "scrollbar-width"
     )
 }
 
@@ -205,6 +208,57 @@ mod tests {
         assert!(!is_style_attr("v_flex"));
         assert!(!is_style_attr("h_full"));
         assert!(!is_style_attr("w_full"));
+    }
+
+    #[test]
+    fn is_style_attr_recognizes_p1_additions_extra() {
+        // 文本装饰细化
+        assert!(is_style_attr("text_decoration_color"));
+        assert!(is_style_attr("text_decoration_style"));
+        // 滚动条
+        assert!(is_style_attr("scrollbar_width"));
+    }
+
+    #[test]
+    fn apply_text_decoration_color_rgb() {
+        let code = apply_style_attr("text_decoration_color", "rgb(255,0,0)").unwrap();
+        assert!(code.contains(".text_decoration_color(gpui::rgb(0xff0000ff))"), "got: {}", code);
+    }
+
+    #[test]
+    fn apply_text_decoration_style_wavy() {
+        let code = apply_style_attr("text_decoration_style", "wavy").unwrap();
+        assert_eq!(code, ".text_decoration_wavy()");
+    }
+
+    #[test]
+    fn apply_scrollbar_width_px() {
+        let code = apply_style_attr("scrollbar_width", "8px").unwrap();
+        assert!(code.contains(".scrollbar_width(gpui::px(8"), "got: {}", code);
+    }
+
+    #[test]
+    fn apply_padding_em() {
+        let code = apply_style_attr("padding", "1em").unwrap();
+        assert!(code.contains(".p(gpui::px(16"), "got: {}", code);
+    }
+
+    #[test]
+    fn apply_font_size_rem() {
+        let code = apply_style_attr("font_size", "1.5rem").unwrap();
+        assert!(code.contains(".text_size(gpui::px(24"), "got: {}", code);
+    }
+
+    #[test]
+    fn apply_width_vw() {
+        let code = apply_style_attr("width", "50vw").unwrap();
+        assert!(code.contains(".w(gpui::relative(0.5"), "got: {}", code);
+    }
+
+    #[test]
+    fn apply_height_vh() {
+        let code = apply_style_attr("height", "100vh").unwrap();
+        assert!(code.contains(".h(gpui::relative(1.0"), "got: {}", code);
     }
 
     // ─── apply_style_attr: width/height + full 快捷词 ───

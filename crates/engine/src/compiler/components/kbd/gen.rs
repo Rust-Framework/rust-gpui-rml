@@ -7,7 +7,9 @@
 //! - `appearance="false"` → `.appearance(false)`
 //! - `size` 等通用属性走 `component_static_setter` 链
 
+use crate::compiler::codegen::attribute::append_css_class_styles;
 use crate::compiler::{CodegenCtx, CodegenError};
+use crate::css::ParentInfo;
 use crate::parser::ast::{Attribute, Element};
 use crate::tags;
 
@@ -19,6 +21,7 @@ pub fn gen_kbd(
     ctx: &CodegenCtx,
     id_counter: &mut usize,
     loop_vars: &[String],
+    parents: &[ParentInfo],
 ) -> Result<String, CodegenError> {
     let resolved = "Kbd";
     let lv: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
@@ -56,6 +59,9 @@ pub fn gen_kbd(
             span: Some(elem.span),
         });
     }
+
+    // CSS class 样式（基础层，被后续内联 style / 归一化属性覆盖）
+    append_css_class_styles(&mut code, elem, "Kbd", ctx.stylesheet.as_ref(), parents);
 
     // 2. Kbd 专用属性 → builder 方法
     for attr in &elem.attributes {
@@ -139,7 +145,7 @@ mod tests {
             }],
             vec![],
         );
-        let code = gen_kbd(&elem, &ctx(), &mut 0, &Vec::new()).unwrap();
+        let code = gen_kbd(&elem, &ctx(), &mut 0, &Vec::new(), &[]).unwrap();
         assert!(code.contains("rml_ui::Kbd::new(gpui::Keystroke::parse(\"cmd-a\").expect(\"valid keystroke\"))"));
     }
 
@@ -162,7 +168,7 @@ mod tests {
             ],
             vec![],
         );
-        let code = gen_kbd(&elem, &ctx(), &mut 0, &Vec::new()).unwrap();
+        let code = gen_kbd(&elem, &ctx(), &mut 0, &Vec::new(), &[]).unwrap();
         assert!(code.contains("Kbd::new(gpui::Keystroke::parse(\"ctrl-a\")"));
         assert!(code.contains(".outline()"));
     }
@@ -186,7 +192,7 @@ mod tests {
             ],
             vec![],
         );
-        let code = gen_kbd(&elem, &ctx(), &mut 0, &Vec::new()).unwrap();
+        let code = gen_kbd(&elem, &ctx(), &mut 0, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".appearance(false)"));
     }
 
@@ -209,7 +215,7 @@ mod tests {
             ],
             vec![],
         );
-        let code = gen_kbd(&elem, &ctx(), &mut 0, &Vec::new()).unwrap();
+        let code = gen_kbd(&elem, &ctx(), &mut 0, &Vec::new(), &[]).unwrap();
         // appearance=true 是默认值，不应生成 .appearance(true)
         assert!(!code.contains(".appearance"));
     }
@@ -218,7 +224,7 @@ mod tests {
     fn gen_kbd_missing_key_returns_error() {
         // <Kbd /> → 缺少 key 属性，返回错误
         let elem = make_element("Kbd", vec![], vec![]);
-        let result = gen_kbd(&elem, &ctx(), &mut 0, &Vec::new());
+        let result = gen_kbd(&elem, &ctx(), &mut 0, &Vec::new(), &[]);
         assert!(result.is_err());
         assert!(result
             .unwrap_err()
@@ -238,7 +244,7 @@ mod tests {
             }],
             vec![],
         );
-        let code = gen_kbd(&elem, &ctx(), &mut 0, &Vec::new()).unwrap();
+        let code = gen_kbd(&elem, &ctx(), &mut 0, &Vec::new(), &[]).unwrap();
         assert!(code.contains("rml_ui::Kbd::new(self.keystroke)"));
     }
 }

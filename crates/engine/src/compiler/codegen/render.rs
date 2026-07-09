@@ -44,7 +44,7 @@ pub(crate) fn gen_render_impl_from_children(
     let mut id_counter: usize = 0;
     let empty: Vec<String> = Vec::new();
 
-    let slots = if matches!(shell, ShellWrap::Tab | ShellWrap::Modern) {
+    let mut slots = if matches!(shell, ShellWrap::Tab | ShellWrap::Modern) {
         shell::partition_slot_children(&elem.children)
     } else {
         shell::ShellSlots {
@@ -52,6 +52,9 @@ pub(crate) fn gen_render_impl_from_children(
             ..Default::default()
         }
     };
+
+    // 过滤 <style> 元素：页面级 CSS 指令由 build.rs 在编译期处理，不参与渲染
+    slots.body.retain(|node| !matches!(node, Node::Element(e) if e.tag == "style"));
 
     let body = if slots.body.is_empty() {
         "gpui::div()".to_string()

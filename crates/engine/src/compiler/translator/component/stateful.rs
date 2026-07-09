@@ -10,7 +10,7 @@
 //! - Input 事件（on_change/on_enter/on_focus/on_blur）通过 `cx.subscribe` 在构造时注册
 
 use super::super::{ComponentCategory, IRmlTranslator, PrintError, PrinterCtx, TranslatorMetadata};
-use crate::compiler::codegen::attribute::apply_css_styles;
+use crate::compiler::codegen::attribute::append_css_class_styles;
 use crate::compiler::setters::{
     component_bind_setter, component_event_setter, component_static_setter,
 };
@@ -72,6 +72,9 @@ impl IRmlTranslator for StatefulComponentTranslator {
 
         let mut code = gen_stateful_body(elem, &component, ref_name, state_field, state_ctor, loop_vars)?;
 
+        // CSS class 样式（基础层，被后续内联 style / 归一化属性覆盖）
+        append_css_class_styles(&mut code, elem, tag, ctx.stylesheet.as_ref(), parents);
+
         // 应用静态/bind/event setter（Input 事件由 gen_stateful_body 内部处理，setter 返回 None）
         let lv: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
         let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
@@ -96,13 +99,6 @@ impl IRmlTranslator for StatefulComponentTranslator {
                         code.push_str(&setter);
                     }
                 }
-            }
-        }
-
-        if let Some(sheet) = &ctx.stylesheet {
-            let style_code = apply_css_styles(elem, tag, sheet, parents);
-            if !style_code.is_empty() {
-                code.push_str(&style_code);
             }
         }
 

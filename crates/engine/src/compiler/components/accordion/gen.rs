@@ -3,7 +3,9 @@
 //! 将 `<Accordion><AccordionItem ...>...</AccordionItem></Accordion>` 转译为
 //! `rml_ui::Accordion::new(id).multiple(true).item(|__rml_item| __rml_item.title(...).child(...))`。
 
+use crate::compiler::codegen::attribute::append_css_class_styles;
 use crate::compiler::{CodegenCtx, CodegenError};
+use crate::css::ParentInfo;
 use crate::parser::ast::{Attribute, Element, EventHandler, Node};
 use crate::tags;
 
@@ -18,6 +20,7 @@ pub fn gen_accordion(
     ctx: &CodegenCtx,
     id_counter: &mut usize,
     loop_vars: &[String],
+    parents: &[ParentInfo],
 ) -> Result<String, CodegenError> {
     // 1. 构造器
     let mut code = if let Some(name) = ref_name {
@@ -25,6 +28,9 @@ pub fn gen_accordion(
     } else {
         format!("rml_ui::Accordion::new((\"rml_el\", {}usize))", id_val)
     };
+
+    // CSS class 样式（基础层，被后续内联 style / 归一化属性覆盖）
+    append_css_class_styles(&mut code, elem, "Accordion", ctx.stylesheet.as_ref(), parents);
 
     // 2. 属性 → setter（先调 accordion 专用 setter，未命中回退到公共 setter 处理 Sizable 等通用属性）
     let lv: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
@@ -216,7 +222,7 @@ mod tests {
         // <Accordion /> → rml_ui::Accordion::new(("rml_el", 0usize))
         let elem = make_element("Accordion", vec![], vec![]);
         let mut id = 0;
-        let code = gen_accordion(&elem, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_accordion(&elem, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains("rml_ui::Accordion::new"));
         assert!(code.contains("\"rml_el\""));
     }
@@ -241,7 +247,7 @@ mod tests {
             vec![],
         );
         let mut id = 0;
-        let code = gen_accordion(&elem, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_accordion(&elem, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".multiple(true)"));
         assert!(code.contains(".bordered(true)"));
     }
@@ -261,7 +267,7 @@ mod tests {
         let accordion = make_element("Accordion", vec![], vec![Node::Element(item)]);
         let mut id = 0;
         let code =
-            gen_accordion(&accordion, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+            gen_accordion(&accordion, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".item("));
         assert!(code.contains("|__rml_item: rml_ui::AccordionItem|"));
         assert!(code.contains(".title(\"Section 1\")"));
@@ -290,7 +296,7 @@ mod tests {
         let accordion = make_element("Accordion", vec![], vec![Node::Element(item)]);
         let mut id = 0;
         let code =
-            gen_accordion(&accordion, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+            gen_accordion(&accordion, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".open(true)"));
         assert!(code.contains(".icon(rml_ui::IconName::Settings)"));
     }
@@ -308,7 +314,7 @@ mod tests {
             vec![],
         );
         let mut id = 0;
-        let code = gen_accordion(&elem, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_accordion(&elem, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".on_toggle_click("));
         assert!(code.contains("cx.listener"));
         assert!(code.contains("open_ixs: &[usize]"));
@@ -332,6 +338,7 @@ mod tests {
             &ctx(),
             &mut id,
             &Vec::new(),
+            &[],
         )
         .unwrap();
         assert!(code.contains("rml_ui::Accordion::new(\"rml_ref:my_accordion\")"));
@@ -344,7 +351,7 @@ mod tests {
         let div = make_element("div", vec![], vec![]);
         let accordion = make_element("Accordion", vec![], vec![Node::Element(div)]);
         let mut id = 0;
-        let result = gen_accordion(&accordion, None, id, &ctx(), &mut id, &Vec::new());
+        let result = gen_accordion(&accordion, None, id, &ctx(), &mut id, &Vec::new(), &[]);
         assert!(result.is_err());
         assert!(result
             .unwrap_err()
@@ -373,7 +380,7 @@ mod tests {
             vec![],
         );
         let mut id = 0;
-        let code = gen_accordion(&elem, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_accordion(&elem, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".with_size(rml_ui::Size::Small)"));
         assert!(code.contains(".bordered(true)"));
     }
@@ -393,7 +400,7 @@ mod tests {
         let accordion = make_element("accordion", vec![], vec![Node::Element(item)]);
         let mut id = 0;
         let code =
-            gen_accordion(&accordion, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+            gen_accordion(&accordion, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".item("));
         assert!(code.contains("|__rml_item: rml_ui::AccordionItem|"));
         assert!(code.contains(".title(\"Section 1\")"));

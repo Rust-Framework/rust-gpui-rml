@@ -14,7 +14,7 @@
 //! - 非容器组件：仅单个文本子节点作为 `.label()`（Avatar 映射为 `.name()`）
 
 use super::super::{ComponentCategory, IRmlTranslator, PrintError, PrinterCtx, TranslatorMetadata};
-use crate::compiler::codegen::attribute::apply_css_styles;
+use crate::compiler::codegen::attribute::append_css_class_styles;
 use crate::compiler::codegen::gen_node;
 use crate::compiler::{CodegenCtx, CodegenError};
 use crate::compiler::setters::{
@@ -48,13 +48,7 @@ impl IRmlTranslator for StatelessComponentTranslator {
         loop_vars: &[String],
         parents: &[ParentInfo],
     ) -> Result<(String, bool), CodegenError> {
-        let mut code = gen_stateless_body(elem, ctx, id_counter, loop_vars)?;
-        if let Some(sheet) = &ctx.stylesheet {
-            let style_code = apply_css_styles(elem, &elem.tag, sheet, parents);
-            if !style_code.is_empty() {
-                code.push_str(&style_code);
-            }
-        }
+        let code = gen_stateless_body(elem, ctx, id_counter, loop_vars, parents)?;
         Ok((code, false))
     }
 
@@ -73,6 +67,7 @@ fn gen_stateless_body(
     ctx: &CodegenCtx,
     id_counter: &mut usize,
     loop_vars: &[String],
+    parents: &[ParentInfo],
 ) -> Result<String, CodegenError> {
     let tag = &elem.tag;
     let resolved = tags::normalize_component_tag(tag);
@@ -113,6 +108,9 @@ fn gen_stateless_body(
             });
         }
     };
+
+    // CSS class 样式（基础层，被后续内联 style / 归一化属性覆盖）
+    append_css_class_styles(&mut code, elem, tag, ctx.stylesheet.as_ref(), parents);
 
     let lv: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
     let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();

@@ -309,7 +309,7 @@ impl Builder {
             let ctx = CodegenCtx {
                 view_struct_name: view_struct_name.clone(),
                 view_module_path: self.namespace.clone().unwrap_or_default(),
-                stylesheet: stylesheet.clone(),
+                stylesheet: merged_stylesheet,
                 computed_methods: struct_meta.computed_methods.clone(),
                 observable_fields: struct_meta.observable_fields.clone(),
                 version_fields: struct_meta.version_fields.clone(),
@@ -357,6 +357,7 @@ impl Builder {
                         }
                     }
                     cache.entries.insert(key.clone(), hash);
+                    cache.stamp_page_style(key.clone(), page_css_hash);
                     if let Some(h) = current_cb_hash {
                         cache.stamp_codebehind(key, h);
                     } else {

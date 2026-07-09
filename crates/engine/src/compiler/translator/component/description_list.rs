@@ -4,7 +4,6 @@
 //! 构造 + 属性 + DescriptionItem 子节点 + template slot 子节点。
 
 use super::super::{ComponentCategory, IRmlTranslator, PrintError, PrinterCtx, TranslatorMetadata};
-use crate::compiler::codegen::attribute::apply_css_styles;
 use crate::compiler::{CodegenCtx, CodegenError};
 use crate::css::ParentInfo;
 use crate::parser::ast::{Directive, Element};
@@ -37,21 +36,16 @@ impl IRmlTranslator for DescriptionListTranslator {
         let id_val = *id_counter;
         *id_counter += 1;
 
-        let mut code = crate::compiler::components::description_list::gen_description_list(
+        let code = crate::compiler::components::description_list::gen_description_list(
             elem,
             ref_name,
             id_val,
             ctx,
             id_counter,
             loop_vars,
+            parents,
         )?;
 
-        if let Some(sheet) = &ctx.stylesheet {
-            let style_code = apply_css_styles(elem, "DescriptionList", sheet, parents);
-            if !style_code.is_empty() {
-                code.push_str(&style_code);
-            }
-        }
         Ok((code, false))
     }
 

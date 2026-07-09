@@ -3,7 +3,6 @@
 //! 薄包装 `compiler::table::gen_table`，构造 + 属性 + Column 子节点 + template slot 子节点。
 
 use super::super::{ComponentCategory, IRmlTranslator, PrintError, PrinterCtx, TranslatorMetadata};
-use crate::compiler::codegen::attribute::apply_css_styles;
 use crate::compiler::{CodegenCtx, CodegenError};
 use crate::css::ParentInfo;
 use crate::parser::ast::{Directive, Element};
@@ -36,21 +35,16 @@ impl IRmlTranslator for TableTranslator {
         let id_val = *id_counter;
         *id_counter += 1;
 
-        let mut code = crate::compiler::components::table::gen_table(
+        let code = crate::compiler::components::table::gen_table(
             elem,
             ref_name,
             id_val,
             ctx,
             id_counter,
             loop_vars,
+            parents,
         )?;
 
-        if let Some(sheet) = &ctx.stylesheet {
-            let style_code = apply_css_styles(elem, "Table", sheet, parents);
-            if !style_code.is_empty() {
-                code.push_str(&style_code);
-            }
-        }
         Ok((code, false))
     }
 

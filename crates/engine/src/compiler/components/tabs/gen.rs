@@ -6,7 +6,9 @@
 //! `<tab>` 是 Tabs 唯一支持的子节点标签（`<tab-item>` 已弃用并移除）。
 //! `tab::gen_tab_child` 生成 `TabItem::new()...` 表达式，统一承载 title + body。
 
+use crate::compiler::codegen::attribute::append_css_class_styles;
 use crate::compiler::{CodegenCtx, CodegenError};
+use crate::css::ParentInfo;
 use crate::parser::ast::{Attribute, Element, Node};
 use crate::tags;
 
@@ -20,6 +22,7 @@ pub fn gen_tabs(
     ctx: &CodegenCtx,
     id_counter: &mut usize,
     loop_vars: &[String],
+    parents: &[ParentInfo],
 ) -> Result<String, CodegenError> {
     // 1. 构造器
     let mut code = if let Some(name) = ref_name {
@@ -27,6 +30,9 @@ pub fn gen_tabs(
     } else {
         format!("rml_ui::Tabs::new((\"rml_el\", {}usize))", id_val)
     };
+
+    // CSS class 样式（基础层，被后续内联 style / 归一化属性覆盖）
+    append_css_class_styles(&mut code, elem, "Tabs", ctx.stylesheet.as_ref(), parents);
 
     // 2. 属性 → setter（先调 tabs 专用 setter，未命中回退到公共 setter 处理 Sizable 等通用属性）
     let lv: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
@@ -148,7 +154,7 @@ mod tests {
         // <Tabs /> → rml_ui::Tabs::new(("rml_el", 0usize))
         let elem = make_element("Tabs", vec![], vec![]);
         let mut id = 0;
-        let code = gen_tabs(&elem, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_tabs(&elem, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains("rml_ui::Tabs::new"));
         assert!(code.contains("\"rml_el\""));
     }
@@ -173,7 +179,7 @@ mod tests {
             vec![],
         );
         let mut id = 0;
-        let code = gen_tabs(&elem, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_tabs(&elem, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".underline()"));
         assert!(code.contains(".menu(true)"));
     }
@@ -192,7 +198,7 @@ mod tests {
         );
         let bar = make_element("Tabs", vec![], vec![Node::Element(tab)]);
         let mut id = 0;
-        let code = gen_tabs(&bar, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_tabs(&bar, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".child("));
         assert!(code.contains("rml_ui::TabItem::new()"));
         assert!(code.contains(".title(\"Account\")"));
@@ -204,7 +210,7 @@ mod tests {
         let tab = make_element("Tab", vec![], vec![Node::Text("Account".into())]);
         let bar = make_element("Tabs", vec![], vec![Node::Element(tab)]);
         let mut id = 0;
-        let code = gen_tabs(&bar, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_tabs(&bar, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains("rml_ui::TabItem::new()"));
         assert!(code.contains(".title(\"Account\")"));
     }
@@ -225,7 +231,7 @@ mod tests {
         );
         let bar = make_element("Tabs", vec![], vec![Node::Element(tab)]);
         let mut id = 0;
-        let code = gen_tabs(&bar, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_tabs(&bar, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains("rml_ui::TabItem::new()"));
         assert!(code.contains(".title(\"A\")"));
         assert!(code.contains(".body("));
@@ -253,7 +259,7 @@ mod tests {
         );
         let bar = make_element("Tabs", vec![], vec![Node::Element(tab)]);
         let mut id = 0;
-        let code = gen_tabs(&bar, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_tabs(&bar, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".title_icon(rml_ui::IconName::User)"));
         assert!(code.contains(".title(\"Account\")"));
     }
@@ -271,7 +277,7 @@ mod tests {
             vec![],
         );
         let mut id = 0;
-        let code = gen_tabs(&elem, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_tabs(&elem, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".on_click("));
         assert!(code.contains("cx.listener"));
         assert!(code.contains("idx: &usize"));
@@ -291,7 +297,7 @@ mod tests {
             vec![],
         );
         let mut id = 0;
-        let code = gen_tabs(&elem, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_tabs(&elem, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".selected_index(self.active_tab)"));
     }
 
@@ -312,6 +318,7 @@ mod tests {
             &ctx(),
             &mut id,
             &Vec::new(),
+            &[],
         )
         .unwrap();
         assert!(code.contains("rml_ui::Tabs::new(\"rml_ref:my_tabs\")"));
@@ -324,7 +331,7 @@ mod tests {
         let div = make_element("div", vec![], vec![]);
         let bar = make_element("Tabs", vec![], vec![Node::Element(div)]);
         let mut id = 0;
-        let result = gen_tabs(&bar, None, id, &ctx(), &mut id, &Vec::new());
+        let result = gen_tabs(&bar, None, id, &ctx(), &mut id, &Vec::new(), &[]);
         assert!(result.is_err());
         assert!(result
             .unwrap_err()
@@ -352,7 +359,7 @@ mod tests {
             vec![],
         );
         let mut id = 0;
-        let code = gen_tabs(&elem, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_tabs(&elem, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".with_size(rml_ui::Size::Small)"));
         assert!(code.contains(".underline()"));
     }
@@ -380,7 +387,7 @@ mod tests {
         );
         let bar = make_element("Tabs", vec![], vec![Node::Element(tab1), Node::Element(tab2)]);
         let mut id = 0;
-        let code = gen_tabs(&bar, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_tabs(&bar, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         // 应有两次 .child(
         let count = code.matches(".child(").count();
         assert_eq!(count, 2);
@@ -402,7 +409,7 @@ mod tests {
         );
         let bar = make_element("tabs", vec![], vec![Node::Element(tab)]);
         let mut id = 0;
-        let code = gen_tabs(&bar, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_tabs(&bar, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".child("));
         assert!(code.contains("rml_ui::TabItem::new()"));
         assert!(code.contains(".title(\"Account\")"));
@@ -438,7 +445,7 @@ mod tests {
         );
         let bar = make_element("Tabs", vec![], vec![Node::Element(tab)]);
         let mut id = 0;
-        let code = gen_tabs(&bar, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_tabs(&bar, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         // each 模式生成 .children(self.tabs.iter().map(...))
         assert!(code.contains(".children("));
         assert!(code.contains("self.tabs.iter().map(|tab|"));

@@ -5,8 +5,10 @@
 //! - `slot="trigger"` 的子元素 → `.trigger(element)`（trigger 需实现 Selectable + IntoElement）
 //! - 其余子元素 → `.child(element)`（content）
 
+use crate::compiler::codegen::attribute::append_css_class_styles;
 use crate::compiler::codegen::gen_node;
 use crate::compiler::{CodegenCtx, CodegenError};
+use crate::css::ParentInfo;
 use crate::parser::ast::{Attribute, Element};
 
 use super::setters::{bind_setter, static_setter};
@@ -19,6 +21,7 @@ pub fn gen_popover(
     ctx: &CodegenCtx,
     id_counter: &mut usize,
     loop_vars: &[String],
+    parents: &[ParentInfo],
 ) -> Result<String, CodegenError> {
     // 1. 构造器
     let mut code = if let Some(name) = ref_name {
@@ -26,6 +29,9 @@ pub fn gen_popover(
     } else {
         format!("rml_ui::Popover::new((\"rml_el\", {}usize))", id_val)
     };
+
+    // CSS class 样式（基础层，被后续内联 style / 归一化属性覆盖）
+    append_css_class_styles(&mut code, elem, "Popover", ctx.stylesheet.as_ref(), parents);
 
     // 2. 属性 → setter
     for attr in &elem.attributes {
@@ -149,7 +155,7 @@ mod tests {
             vec![],
             vec![Node::Element(trigger)],
         );
-        let code = gen_popover(&elem, None, 0, &ctx(), &mut 1, &Vec::new()).unwrap();
+        let code = gen_popover(&elem, None, 0, &ctx(), &mut 1, &Vec::new(), &[]).unwrap();
         assert!(code.contains("rml_ui::Popover::new((\"rml_el\", 0usize))"));
         assert!(code.contains(".trigger("));
         // trigger 内部是 Button
@@ -184,7 +190,7 @@ mod tests {
             vec![],
             vec![Node::Element(trigger), Node::Element(content)],
         );
-        let code = gen_popover(&elem, None, 0, &ctx(), &mut 1, &Vec::new()).unwrap();
+        let code = gen_popover(&elem, None, 0, &ctx(), &mut 1, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".trigger("));
         assert!(code.contains(".child("));
     }
@@ -209,7 +215,7 @@ mod tests {
             }],
             vec![Node::Element(trigger)],
         );
-        let code = gen_popover(&elem, None, 0, &ctx(), &mut 1, &Vec::new()).unwrap();
+        let code = gen_popover(&elem, None, 0, &ctx(), &mut 1, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".anchor(gpui::Anchor::BottomRight)"));
     }
 
@@ -225,7 +231,7 @@ mod tests {
             ..Default::default()
         };
         let elem = make_element("Popover", vec![], vec![Node::Element(content)]);
-        let code = gen_popover(&elem, None, 0, &ctx(), &mut 1, &Vec::new()).unwrap();
+        let code = gen_popover(&elem, None, 0, &ctx(), &mut 1, &Vec::new(), &[]).unwrap();
         // 无 trigger，但仍生成 content
         assert!(!code.contains(".trigger("));
         assert!(code.contains(".child("));
@@ -247,7 +253,7 @@ mod tests {
             vec![],
             vec![Node::Element(make_trigger()), Node::Element(make_trigger())],
         );
-        let result = gen_popover(&elem, None, 0, &ctx(), &mut 1, &Vec::new());
+        let result = gen_popover(&elem, None, 0, &ctx(), &mut 1, &Vec::new(), &[]);
         assert!(result.is_err());
         assert!(result.unwrap_err().message.contains("exactly one trigger"));
     }
@@ -272,7 +278,7 @@ mod tests {
             }],
             vec![Node::Element(trigger)],
         );
-        let code = gen_popover(&elem, None, 0, &ctx(), &mut 1, &Vec::new()).unwrap();
+        let code = gen_popover(&elem, None, 0, &ctx(), &mut 1, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".default_open(self.is_open)"));
     }
 }

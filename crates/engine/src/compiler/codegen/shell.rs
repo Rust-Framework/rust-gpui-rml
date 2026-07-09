@@ -202,6 +202,10 @@ pub(crate) fn partition_slot_children(children: &[Node]) -> ShellSlots {
 
     for child in children {
         if let Node::Element(elem) = child {
+            // 过滤 <style> 元素：页面级 CSS 指令由 build.rs 在编译期处理，不参与渲染
+            if elem.tag == "style" {
+                continue;
+            }
             if elem.tag == "template" {
                 if let Some(name) = &elem.slot_name {
                     let scope = extract_scope(elem);

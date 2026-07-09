@@ -7,7 +7,9 @@
 //! - Column 子节点生成直接构造表达式（非闭包），调用 `.column(...)`
 //! - 额外处理 `<template slot="header/cell/footer">` 插槽模板子节点
 
+use crate::compiler::codegen::attribute::append_css_class_styles;
 use crate::compiler::{CodegenCtx, CodegenError};
+use crate::css::ParentInfo;
 use crate::parser::ast::{Attribute, Element, Node};
 use crate::tags;
 
@@ -21,6 +23,7 @@ pub fn gen_table(
     ctx: &CodegenCtx,
     id_counter: &mut usize,
     loop_vars: &[String],
+    parents: &[ParentInfo],
 ) -> Result<String, CodegenError> {
     // 1. 构造器
     let mut code = if let Some(name) = ref_name {
@@ -28,6 +31,9 @@ pub fn gen_table(
     } else {
         format!("rml_ui::Table::new((\"rml_el\", {}usize))", id_val)
     };
+
+    // CSS class 样式（基础层，被后续内联 style / 归一化属性覆盖）
+    append_css_class_styles(&mut code, elem, "Table", ctx.stylesheet.as_ref(), parents);
 
     // 2. 属性 → setter（先调 table 专用 setter，未命中回退到公共 setter）
     let lv: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
@@ -153,7 +159,7 @@ mod tests {
         // <Table /> → rml_ui::Table::new(("rml_el", 0usize))
         let elem = make_element("Table", vec![], vec![]);
         let mut id = 0;
-        let code = gen_table(&elem, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_table(&elem, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains("rml_ui::Table::new"));
         assert!(code.contains("\"rml_el\""));
     }
@@ -163,7 +169,7 @@ mod tests {
         // <table /> 小写标签（由 canonical_tag 处理，gen_table 本身不检查 tag）
         let elem = make_element("table", vec![], vec![]);
         let mut id = 0;
-        let code = gen_table(&elem, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_table(&elem, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains("rml_ui::Table::new"));
     }
 
@@ -179,7 +185,7 @@ mod tests {
             vec![],
         );
         let mut id = 0;
-        let code = gen_table(&elem, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_table(&elem, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".bordered(true)"));
         assert!(code.contains(".stripe(true)"));
     }
@@ -196,7 +202,7 @@ mod tests {
             vec![],
         );
         let mut id = 0;
-        let code = gen_table(&elem, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_table(&elem, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".columns(self.api_columns.clone())"));
         assert!(code.contains(".rows(self.api_rows.clone())"));
     }
@@ -214,7 +220,7 @@ mod tests {
         );
         let table = make_element("Table", vec![], vec![Node::Element(column)]);
         let mut id = 0;
-        let code = gen_table(&table, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_table(&table, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".column("));
         assert!(code.contains("rml_ui::TableColumn::new(\"name\", \"Name\")"));
     }
@@ -232,7 +238,7 @@ mod tests {
         );
         let table = make_element("table", vec![], vec![Node::Element(column)]);
         let mut id = 0;
-        let code = gen_table(&table, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_table(&table, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".column("));
         assert!(code.contains("rml_ui::TableColumn::new(\"x\", \"X\")"));
     }
@@ -258,7 +264,7 @@ mod tests {
         };
         let table = make_element("Table", vec![], vec![Node::Element(template)]);
         let mut id = 0;
-        let code = gen_table(&table, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_table(&table, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".header_template("));
         assert!(code.contains("std::sync::Arc::new"));
     }
@@ -288,7 +294,7 @@ mod tests {
         };
         let table = make_element("Table", vec![], vec![Node::Element(template)]);
         let mut id = 0;
-        let code = gen_table(&table, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_table(&table, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".cell_template(\"name\","));
         assert!(code.contains("std::sync::Arc::new"));
     }
@@ -303,7 +309,7 @@ mod tests {
             vec![],
         );
         let mut id = 0;
-        let code = gen_table(&elem, Some("my_table"), id, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_table(&elem, Some("my_table"), id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains("rml_ui::Table::new(\"rml_ref:my_table\")"));
         assert!(!code.contains("rml_el"));
     }
@@ -314,7 +320,7 @@ mod tests {
         let div = make_element("div", vec![], vec![]);
         let table = make_element("Table", vec![], vec![Node::Element(div)]);
         let mut id = 0;
-        let result = gen_table(&table, None, id, &ctx(), &mut id, &Vec::new());
+        let result = gen_table(&table, None, id, &ctx(), &mut id, &Vec::new(), &[]);
         assert!(result.is_err());
         assert!(result.unwrap_err().message.contains("仅支持"));
     }
@@ -352,7 +358,7 @@ mod tests {
             vec![Node::Element(column), Node::Element(template)],
         );
         let mut id = 0;
-        let code = gen_table(&table, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_table(&table, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".columns(self.cols.clone())"));
         assert!(code.contains(".column("));
         assert!(code.contains(".footer_template("));

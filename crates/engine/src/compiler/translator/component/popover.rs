@@ -3,7 +3,6 @@
 //! 薄包装 `compiler::popover::gen_popover`，构造 + 属性 + slot 子节点（trigger/content/footer）。
 
 use super::super::{ComponentCategory, IRmlTranslator, PrintError, PrinterCtx, TranslatorMetadata};
-use crate::compiler::codegen::attribute::apply_css_styles;
 use crate::compiler::{CodegenCtx, CodegenError};
 use crate::css::ParentInfo;
 use crate::parser::ast::{Directive, Element};
@@ -36,21 +35,16 @@ impl IRmlTranslator for PopoverTranslator {
         let id_val = *id_counter;
         *id_counter += 1;
 
-        let mut code = crate::compiler::components::popover::gen_popover(
+        let code = crate::compiler::components::popover::gen_popover(
             elem,
             ref_name,
             id_val,
             ctx,
             id_counter,
             loop_vars,
+            parents,
         )?;
 
-        if let Some(sheet) = &ctx.stylesheet {
-            let style_code = apply_css_styles(elem, "Popover", sheet, parents);
-            if !style_code.is_empty() {
-                code.push_str(&style_code);
-            }
-        }
         Ok((code, false))
     }
 

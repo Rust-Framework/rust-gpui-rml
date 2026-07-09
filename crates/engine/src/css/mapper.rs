@@ -32,8 +32,16 @@ fn map_declaration(decl: &Declaration, vars: &HashMap<String, Value>) -> Option<
         _ => {}
     }
 
-    // 非颜色属性:构建期解析 var()(这些变量不参与主题切换)
+    // 非颜色属性:构建期解析 var()
     let value = resolve_var(&decl.value, vars);
+
+    // 构建期未解析的 var():尝试生成运行时主题查询(支持主题切换)
+    // 多值简写(如 padding: var(--a) var(--b))不在此处理,需构建期解析
+    if let Value::Var(name, _) = &value {
+        if let Some(code) = runtime_var_method(prop, name) {
+            return Some(code);
+        }
+    }
 
     match prop {
         // ─── 盒模型 ───
@@ -363,7 +371,27 @@ fn map_declaration(decl: &Declaration, vars: &HashMap<String, Value>) -> Option<
             _ => None,
         },
 
-        _ => None,
+        // ─── 文本装饰细化 ───
+        "text-decoration-color" => color_method("text_decoration_color", &value, vars),
+        "text-decoration-style" => match &value {
+            Value::Keyword(k) => match k.as_str() {
+                "solid" => Some("text_decoration_solid()".into()),
+                "wavy" => Some("text_decoration_wavy()".into()),
+                _ => None,
+            },
+            _ => None,
+        },
+
+        // ─── 滚动条 ───
+        "scrollbar-width" => length_method("scrollbar_width", &value),
+
+        _ => {
+            eprintln!(
+                "[rml warning] unsupported CSS property `{}` (value={:?}); property will be dropped.",
+                prop, value
+            );
+            None
+        }
     }
 }
 
@@ -387,11 +415,59 @@ fn resolve_var(value: &Value, vars: &HashMap<String, Value>) -> Value {
     }
 }
 
-/// 长度值 → GPUI px() 调用
+/// 为构建期未解析的 var() 生成运行时主题查询
+///
+/// 长度类属性 → `rml::theme::length("--name")`
+/// 数字类属性 → `rml::theme::number("--name")`
+/// 多值简写属性不支持运行时查询(需构建期解析)。
+fn runtime_var_method(prop: &str, var_name: &str) -> Option<String> {
+    match prop {
+        // 长度类属性 → rml::theme::length("--name")
+        "padding" => Some(format!("p(rml::theme::length({:?}))", var_name)),
+        "padding-top" => Some(format!("pt(rml::theme::length({:?}))", var_name)),
+        "padding-bottom" => Some(format!("pb(rml::theme::length({:?}))", var_name)),
+        "padding-left" => Some(format!("pl(rml::theme::length({:?}))", var_name)),
+        "padding-right" => Some(format!("pr(rml::theme::length({:?}))", var_name)),
+        "margin" => Some(format!("m(rml::theme::length({:?}))", var_name)),
+        "margin-top" => Some(format!("mt(rml::theme::length({:?}))", var_name)),
+        "margin-bottom" => Some(format!("mb(rml::theme::length({:?}))", var_name)),
+        "margin-left" => Some(format!("ml(rml::theme::length({:?}))", var_name)),
+        "margin-right" => Some(format!("mr(rml::theme::length({:?}))", var_name)),
+        "width" => Some(format!("w(rml::theme::length({:?}))", var_name)),
+        "height" => Some(format!("h(rml::theme::length({:?}))", var_name)),
+        "font-size" => Some(format!("text_size(rml::theme::length({:?}))", var_name)),
+        "gap" => Some(format!("gap(rml::theme::length({:?}))", var_name)),
+        "border-radius" => Some(format!("rounded(rml::theme::length({:?}))", var_name)),
+        "min-width" => Some(format!("min_w(rml::theme::length({:?}))", var_name)),
+        "min-height" => Some(format!("min_h(rml::theme::length({:?}))", var_name)),
+        "max-width" => Some(format!("max_w(rml::theme::length({:?}))", var_name)),
+        "max-height" => Some(format!("max_h(rml::theme::length({:?}))", var_name)),
+        // 数字类属性 → rml::theme::number("--name")
+        "opacity" => Some(format!("opacity(rml::theme::number({:?}))", var_name)),
+        "flex-grow" => Some(format!("flex_grow(rml::theme::number({:?}))", var_name)),
+        "flex-shrink" => Some(format!("flex_shrink(rml::theme::number({:?}))", var_name)),
+        _ => None,
+    }
+}
+
+/// 长度值 → GPUI 方法调用
+///
+/// 单位换算：
+/// - `px` → `gpui::px(n)`（原样）
+/// - `pt` → `gpui::px(n * 1.333)`（1pt ≈ 1.333px）
+/// - `em`/`rem` → `gpui::px(n * 16.0)`（基准字号 16px，标准浏览器默认）
+/// - `vw`/`vh` → `gpui::relative(n / 100.0)`（视口百分比，GPUI 无视口单位，用 relative 近似）
+/// - 裸数字 → `gpui::px(n)`（如 `padding: 10` 等价 `10px`）
 fn length_method(method: &str, value: &Value) -> Option<String> {
     match value {
         Value::Length(n, Unit::Px) => Some(format!("{}(gpui::px({:?}))", method, n)),
         Value::Length(n, Unit::Pt) => Some(format!("{}(gpui::px({:?}))", method, n * 1.333)),
+        Value::Length(n, Unit::Em) | Value::Length(n, Unit::Rem) => {
+            Some(format!("{}(gpui::px({:?}))", method, n * 16.0))
+        }
+        Value::Length(n, Unit::Vw) | Value::Length(n, Unit::Vh) => {
+            Some(format!("{}(gpui::relative({:?}))", method, n / 100.0))
+        }
         Value::Number(n) => Some(format!("{}(gpui::px({:?}))", method, n)),
         _ => None,
     }
@@ -424,6 +500,7 @@ fn length_or_percentage_method(method: &str, value: &Value) -> Option<String> {
 ///
 /// - `Value::Color`:构建期内联为 `gpui::rgb(0xrrggbbaa)`
 /// - `Value::Var`:生成运行时主题查询 `rml::theme::color("--name")`
+/// - `Value::Function`:将 `rgb()/rgba()/hsl()/hsla()` 转为 Color 后内联
 /// - 其他:尝试 `resolve_var` 后再处理
 fn color_method(method: &str, value: &Value, vars: &HashMap<String, Value>) -> Option<String> {
     match value {
@@ -436,8 +513,19 @@ fn color_method(method: &str, value: &Value, vars: &HashMap<String, Value>) -> O
             // 主题变量:生成运行时查询,切换主题时即时生效
             Some(format!("{}(rml::theme::color({:?}))", method, name))
         }
+        Value::Function(name, args) => {
+            if let Some(c) = function_to_color(name, args) {
+                let rgba = ((c.r as u32) << 24)
+                    | ((c.g as u32) << 16)
+                    | ((c.b as u32) << 8)
+                    | (c.a as u32);
+                Some(format!("{}(gpui::rgb(0x{:08x}))", method, rgba))
+            } else {
+                None
+            }
+        }
         _ => {
-            // 非颜色字面量也非 Var:尝试构建期解析(如嵌套 var 引用非颜色变量)
+            // 非颜色字面量也非 Var/Function:尝试构建期解析(如嵌套 var 引用非颜色变量)
             let resolved = resolve_var(value, vars);
             match &resolved {
                 Value::Color(c) => {
@@ -447,10 +535,148 @@ fn color_method(method: &str, value: &Value, vars: &HashMap<String, Value>) -> O
                         | (c.a as u32);
                     Some(format!("{}(gpui::rgb(0x{:08x}))", method, rgba))
                 }
+                Value::Function(name, args) => {
+                    if let Some(c) = function_to_color(name, args) {
+                        let rgba = ((c.r as u32) << 24)
+                            | ((c.g as u32) << 16)
+                            | ((c.b as u32) << 8)
+                            | (c.a as u32);
+                        Some(format!("{}(gpui::rgb(0x{:08x}))", method, rgba))
+                    } else {
+                        None
+                    }
+                }
                 _ => None,
             }
         }
     }
+}
+
+/// 将 `rgb()/rgba()/hsl()/hsla()` 函数值转换为 `Color`
+///
+/// 支持的格式：
+/// - `rgb(r, g, b)` — r/g/b 为 0-255 整数或百分比
+/// - `rgba(r, g, b, a)` — a 为 0-1 浮点或 0-100% 百分比
+/// - `hsl(h, s, l)` — h 为 0-360 度，s/l 为 0-100% 或 0-100 数值
+/// - `hsla(h, s, l, a)` — 同 hsl + alpha
+fn function_to_color(name: &str, args: &[Value]) -> Option<Color> {
+    match name {
+        "rgb" if args.len() == 3 => {
+            let r = extract_color_channel(&args[0])?;
+            let g = extract_color_channel(&args[1])?;
+            let b = extract_color_channel(&args[2])?;
+            Some(Color::rgb(r, g, b))
+        }
+        "rgba" if args.len() == 4 => {
+            let r = extract_color_channel(&args[0])?;
+            let g = extract_color_channel(&args[1])?;
+            let b = extract_color_channel(&args[2])?;
+            let a = extract_alpha(&args[3])?;
+            Some(Color::rgba(r, g, b, a))
+        }
+        "hsl" if args.len() == 3 => {
+            let h = extract_number(&args[0])?;
+            let s = extract_percent_value(&args[1])?;
+            let l = extract_percent_value(&args[2])?;
+            let (r, g, b) = hsl_to_rgb(h, s, l);
+            Some(Color::rgb(r, g, b))
+        }
+        "hsla" if args.len() == 4 => {
+            let h = extract_number(&args[0])?;
+            let s = extract_percent_value(&args[1])?;
+            let l = extract_percent_value(&args[2])?;
+            let a = extract_alpha(&args[3])?;
+            let (r, g, b) = hsl_to_rgb(h, s, l);
+            Some(Color::rgba(r, g, b, a))
+        }
+        _ => None,
+    }
+}
+
+/// 从 Value 提取颜色通道值（0-255）
+///
+/// 支持：`Value::Number(255)` / `Value::Length(100%, Percent)` / `Value::Number(0.5)`
+fn extract_color_channel(v: &Value) -> Option<u8> {
+    match v {
+        Value::Number(n) => Some(clamp_u8(*n)),
+        Value::Length(n, Unit::Percent) => Some(clamp_u8(*n * 2.55)),
+        _ => None,
+    }
+}
+
+/// 从 Value 提取 alpha 值（0-255）
+///
+/// 支持：`Value::Number(0.5)` (0-1 浮点) / `Value::Length(50%, Percent)` (0-100%)
+fn extract_alpha(v: &Value) -> Option<u8> {
+    match v {
+        Value::Number(n) => Some(clamp_u8(*n * 255.0)),
+        Value::Length(n, Unit::Percent) => Some(clamp_u8(*n * 2.55)),
+        _ => None,
+    }
+}
+
+/// 从 Value 提取裸数字
+fn extract_number(v: &Value) -> Option<f32> {
+    match v {
+        Value::Number(n) => Some(*n),
+        _ => None,
+    }
+}
+
+/// 从 Value 提取百分比值（0-100 范围 → 0.0-1.0 分数）
+///
+/// 支持：`Value::Length(50%, Percent)` / `Value::Number(50)` (0-100 数值)
+fn extract_percent_value(v: &Value) -> Option<f32> {
+    match v {
+        Value::Length(n, Unit::Percent) => Some(*n / 100.0),
+        Value::Number(n) => Some(*n / 100.0),
+        _ => None,
+    }
+}
+
+/// HSL → RGB 转换（h: 0-360, s/l: 0.0-1.0）
+fn hsl_to_rgb(h: f32, s: f32, l: f32) -> (u8, u8, u8) {
+    let h = h.rem_euclid(360.0) / 360.0;
+    let s = s.clamp(0.0, 1.0);
+    let l = l.clamp(0.0, 1.0);
+
+    if s == 0.0 {
+        let v = clamp_u8(l * 255.0);
+        return (v, v, v);
+    }
+
+    let q = if l < 0.5 {
+        l * (1.0 + s)
+    } else {
+        l + s - l * s
+    };
+    let p = 2.0 * l - q;
+
+    let hue_to_rgb = |t: f32| -> f32 {
+        let mut t = t;
+        if t < 0.0 { t += 1.0; }
+        if t > 1.0 { t -= 1.0; }
+        if t < 1.0 / 6.0 {
+            p + (q - p) * 6.0 * t
+        } else if t < 0.5 {
+            q
+        } else if t < 2.0 / 3.0 {
+            p + (q - p) * (2.0 / 3.0 - t) * 6.0
+        } else {
+            p
+        }
+    };
+
+    let r = hue_to_rgb(h + 1.0 / 3.0);
+    let g = hue_to_rgb(h);
+    let b = hue_to_rgb(h - 1.0 / 3.0);
+
+    (clamp_u8(r * 255.0), clamp_u8(g * 255.0), clamp_u8(b * 255.0))
+}
+
+/// 将 f32 钳位到 u8（0-255）
+fn clamp_u8(n: f32) -> u8 {
+    n.round().clamp(0.0, 255.0) as u8
 }
 
 /// font-weight 关键字映射
@@ -791,6 +1017,134 @@ mod tests {
         assert!(
             code.contains(".p(gpui::px(16"),
             "expected build-time inlined length, got: {}",
+            code
+        );
+    }
+
+    // ─── 运行时 var 查询(构建期未解析的 var) ───
+
+    #[test]
+    fn map_padding_var_undefined_generates_runtime_length_query() {
+        // 未在构建期 vars 中定义的 var(--spacing) → 运行时查询 rml::theme::length
+        let vars = HashMap::new();
+        let d = decl("padding", Value::Var("--spacing".into(), None));
+        let code = map_declarations(&[d], &vars);
+        assert!(
+            code.contains(".p(rml::theme::length(\"--spacing\"))"),
+            "expected runtime length query, got: {}",
+            code
+        );
+    }
+
+    #[test]
+    fn map_margin_top_var_undefined_generates_runtime_query() {
+        let vars = HashMap::new();
+        let d = decl("margin-top", Value::Var("--mt".into(), None));
+        let code = map_declarations(&[d], &vars);
+        assert!(
+            code.contains(".mt(rml::theme::length(\"--mt\"))"),
+            "got: {}",
+            code
+        );
+    }
+
+    #[test]
+    fn map_width_var_undefined_generates_runtime_query() {
+        let vars = HashMap::new();
+        let d = decl("width", Value::Var("--sidebar-w".into(), None));
+        let code = map_declarations(&[d], &vars);
+        assert!(
+            code.contains(".w(rml::theme::length(\"--sidebar-w\"))"),
+            "got: {}",
+            code
+        );
+    }
+
+    #[test]
+    fn map_font_size_var_undefined_generates_runtime_query() {
+        let vars = HashMap::new();
+        let d = decl("font-size", Value::Var("--fs".into(), None));
+        let code = map_declarations(&[d], &vars);
+        assert!(
+            code.contains(".text_size(rml::theme::length(\"--fs\"))"),
+            "got: {}",
+            code
+        );
+    }
+
+    #[test]
+    fn map_gap_var_undefined_generates_runtime_query() {
+        let vars = HashMap::new();
+        let d = decl("gap", Value::Var("--gap".into(), None));
+        let code = map_declarations(&[d], &vars);
+        assert!(
+            code.contains(".gap(rml::theme::length(\"--gap\"))"),
+            "got: {}",
+            code
+        );
+    }
+
+    #[test]
+    fn map_opacity_var_undefined_generates_runtime_number_query() {
+        let vars = HashMap::new();
+        let d = decl("opacity", Value::Var("--opacity".into(), None));
+        let code = map_declarations(&[d], &vars);
+        assert!(
+            code.contains(".opacity(rml::theme::number(\"--opacity\"))"),
+            "got: {}",
+            code
+        );
+    }
+
+    #[test]
+    fn map_flex_grow_var_undefined_generates_runtime_number_query() {
+        let vars = HashMap::new();
+        let d = decl("flex-grow", Value::Var("--grow".into(), None));
+        let code = map_declarations(&[d], &vars);
+        assert!(
+            code.contains(".flex_grow(rml::theme::number(\"--grow\"))"),
+            "got: {}",
+            code
+        );
+    }
+
+    #[test]
+    fn map_border_radius_var_undefined_generates_runtime_query() {
+        let vars = HashMap::new();
+        let d = decl("border-radius", Value::Var("--radius".into(), None));
+        let code = map_declarations(&[d], &vars);
+        assert!(
+            code.contains(".rounded(rml::theme::length(\"--radius\"))"),
+            "got: {}",
+            code
+        );
+    }
+
+    #[test]
+    fn map_multi_value_shorthand_var_not_runtime() {
+        // 多值简写 padding: var(--a) var(--b) 不支持运行时查询,构建期未解析则静默跳过
+        let vars = HashMap::new();
+        let d = decl("padding", Value::List(vec![
+            Value::Var("--a".into(), None),
+            Value::Var("--b".into(), None),
+        ]));
+        let code = map_declarations(&[d], &vars);
+        assert!(
+            code.is_empty(),
+            "multi-value shorthand var should be skipped, got: {}",
+            code
+        );
+    }
+
+    #[test]
+    fn map_var_with_fallback_uses_fallback_when_defined() {
+        // var(--undefined, 10px) 有 fallback,fallback 在构建期内联
+        let vars = HashMap::new();
+        let d = decl("padding", Value::Var("--undefined".into(), Some(Box::new(Value::Length(10.0, Unit::Px)))));
+        let code = map_declarations(&[d], &vars);
+        assert!(
+            code.contains(".p(gpui::px(10"),
+            "expected fallback inlined, got: {}",
             code
         );
     }
@@ -1243,5 +1597,193 @@ mod tests {
     fn map_grid_row_end() {
         let d = decl("grid-row-end", Value::Number(5.0));
         assert_eq!(map_declarations(&[d], &HashMap::new()), ".row_end(5i16)");
+    }
+
+    // ─── rgb()/rgba()/hsl()/hsla() 颜色函数 ───
+
+    #[test]
+    fn map_color_rgb_function() {
+        let d = decl("color", Value::Function("rgb".into(), vec![
+            Value::Number(255.0),
+            Value::Number(0.0),
+            Value::Number(0.0),
+        ]));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".text_color(gpui::rgb(0xff0000ff))"), "got: {}", code);
+    }
+
+    #[test]
+    fn map_background_rgba_function() {
+        let d = decl("background", Value::Function("rgba".into(), vec![
+            Value::Number(0.0),
+            Value::Number(0.0),
+            Value::Number(0.0),
+            Value::Number(0.5),
+        ]));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".bg(gpui::rgb(0x00000080))"), "got: {}", code);
+    }
+
+    #[test]
+    fn map_color_rgb_percent() {
+        let d = decl("color", Value::Function("rgb".into(), vec![
+            Value::Length(100.0, Unit::Percent),
+            Value::Length(50.0, Unit::Percent),
+            Value::Length(0.0, Unit::Percent),
+        ]));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".text_color(gpui::rgb(0xff8000ff))"), "got: {}", code);
+    }
+
+    #[test]
+    fn map_color_hsl_function() {
+        let d = decl("color", Value::Function("hsl".into(), vec![
+            Value::Number(0.0),
+            Value::Length(100.0, Unit::Percent),
+            Value::Length(50.0, Unit::Percent),
+        ]));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".text_color(gpui::rgb(0xff0000ff))"), "got: {}", code);
+    }
+
+    #[test]
+    fn map_background_hsla_function() {
+        let d = decl("background", Value::Function("hsla".into(), vec![
+            Value::Number(120.0),
+            Value::Length(100.0, Unit::Percent),
+            Value::Length(50.0, Unit::Percent),
+            Value::Number(0.5),
+        ]));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".bg(gpui::rgb(0x00ff0080))"), "got: {}", code);
+    }
+
+    #[test]
+    fn map_border_color_rgb() {
+        let d = decl("border-color", Value::Function("rgb".into(), vec![
+            Value::Number(200.0),
+            Value::Number(200.0),
+            Value::Number(200.0),
+        ]));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".border_color(gpui::rgb(0xc8c8c8ff))"), "got: {}", code);
+    }
+
+    #[test]
+    fn map_rgba_alpha_percent() {
+        let d = decl("color", Value::Function("rgba".into(), vec![
+            Value::Number(255.0),
+            Value::Number(255.0),
+            Value::Number(255.0),
+            Value::Length(50.0, Unit::Percent),
+        ]));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".text_color(gpui::rgb(0xffffff80))"), "got: {}", code);
+    }
+
+    // ─── em/rem/vw/vh 单位 ───
+
+    #[test]
+    fn map_padding_em() {
+        let d = decl("padding", Value::Length(1.0, Unit::Em));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".p(gpui::px(16"), "got: {}", code);
+    }
+
+    #[test]
+    fn map_font_size_rem() {
+        let d = decl("font-size", Value::Length(1.5, Unit::Rem));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".text_size(gpui::px(24"), "got: {}", code);
+    }
+
+    #[test]
+    fn map_width_vw() {
+        let d = decl("width", Value::Length(50.0, Unit::Vw));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".w(gpui::relative(0.5"), "got: {}", code);
+    }
+
+    #[test]
+    fn map_height_vh() {
+        let d = decl("height", Value::Length(100.0, Unit::Vh));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".h(gpui::relative(1.0"), "got: {}", code);
+    }
+
+    #[test]
+    fn map_margin_em_rem() {
+        let d1 = decl("margin-top", Value::Length(2.0, Unit::Em));
+        let d2 = decl("margin-bottom", Value::Length(1.0, Unit::Rem));
+        let code = map_declarations(&[d1, d2], &HashMap::new());
+        assert!(code.contains(".mt(gpui::px(32"), "got: {}", code);
+        assert!(code.contains(".mb(gpui::px(16"), "got: {}", code);
+    }
+
+    // ─── 新增属性映射 ───
+
+    #[test]
+    fn map_text_decoration_color() {
+        let d = decl("text-decoration-color", Value::Color(Color::rgb(255, 0, 0)));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".text_decoration_color(gpui::rgb(0xff0000ff))"), "got: {}", code);
+    }
+
+    #[test]
+    fn map_text_decoration_style_solid() {
+        let d = decl("text-decoration-style", Value::Keyword("solid".into()));
+        assert_eq!(map_declarations(&[d], &HashMap::new()), ".text_decoration_solid()");
+    }
+
+    #[test]
+    fn map_text_decoration_style_wavy() {
+        let d = decl("text-decoration-style", Value::Keyword("wavy".into()));
+        assert_eq!(map_declarations(&[d], &HashMap::new()), ".text_decoration_wavy()");
+    }
+
+    #[test]
+    fn map_scrollbar_width() {
+        let d = decl("scrollbar-width", Value::Length(8.0, Unit::Px));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".scrollbar_width(gpui::px(8"), "got: {}", code);
+    }
+
+    // ─── HSL→RGB 边界情况 ───
+
+    #[test]
+    fn hsl_to_rgb_blue() {
+        // hsl(240, 100%, 50%) → blue (0, 0, 255)
+        let (r, g, b) = hsl_to_rgb(240.0, 1.0, 0.5);
+        assert_eq!((r, g, b), (0, 0, 255));
+    }
+
+    #[test]
+    fn hsl_to_rgb_green() {
+        // hsl(120, 100%, 50%) → green (0, 255, 0)
+        let (r, g, b) = hsl_to_rgb(120.0, 1.0, 0.5);
+        assert_eq!((r, g, b), (0, 255, 0));
+    }
+
+    #[test]
+    fn hsl_to_rgb_gray() {
+        // hsl(0, 0%, 50%) → gray (128, 128, 128)
+        let (r, g, b) = hsl_to_rgb(0.0, 0.0, 0.5);
+        assert_eq!((r, g, b), (128, 128, 128));
+    }
+
+    #[test]
+    fn hsl_to_rgb_hue_wraparound() {
+        // hsl(480, 100%, 50%) == hsl(120, 100%, 50%) → green
+        let (r, g, b) = hsl_to_rgb(480.0, 1.0, 0.5);
+        assert_eq!((r, g, b), (0, 255, 0));
+    }
+
+    // ─── 不支持的属性产生 warning 但不 panic ───
+
+    #[test]
+    fn map_unsupported_property_returns_none() {
+        let d = decl("transform", Value::Keyword("scale(2)".into()));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert_eq!(code, "");
     }
 }

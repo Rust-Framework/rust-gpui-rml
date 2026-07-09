@@ -1,0 +1,71 @@
+/* CSS 三层样式优先级演示 — 页面级样式表（L2）
+ *
+ * 本文件通过 <style source="css_priority_case.css" /> 引入，
+ * 优先级：归一化属性 > 内联 style > 本文件（页面 CSS）> 全局 CSS
+ *
+ * :root 变量在构建期解析后内联到使用处，运行时主题切换由 rml::theme 查询。
+ */
+
+:root {
+    --accent-color: #0066cc;
+    --card-padding: 16px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+}
+
+/* L2 页面 CSS class —— 演示 CSS 变量在 class 中的使用 */
+.priority-box {
+    padding: var(--card-padding);
+    background: var(--surface);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+
+/* 用于优先级对比：padding=8px 作为基准，被 L3 style/归一化属性覆盖 */
+.style-override {
+    padding: 8px;
+    background: #fff3cd;
+    border: 1px solid #ffe08a;
+    border-radius: 4px;
+}
+
+/* CSS 变量在颜色 + 间距中的使用 */
+.var-demo {
+    padding: var(--spacing-md);
+    background: var(--accent-color);
+    color: #ffffff;
+    border-radius: 4px;
+}
+
+/* 复杂嵌套容器布局 */
+.nested-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-lg);
+    background: #fafafa;
+    border-radius: 6px;
+}
+
+.nested-row {
+    display: flex;
+    flex-direction: row;
+    gap: var(--spacing-sm);
+    align-items: center;
+}
+
+/* 动态样式：if 条件切换 class */
+.dynamic-active {
+    padding: 12px;
+    background: #d4edda;
+    border: 2px solid #28a745;
+    border-radius: 4px;
+}
+
+.dynamic-inactive {
+    padding: 12px;
+    background: #f8d7da;
+    border: 2px solid #dc3545;
+    border-radius: 4px;
+}

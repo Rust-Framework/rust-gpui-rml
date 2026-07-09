@@ -150,8 +150,13 @@ pub fn component_static_setter(name: &str, value: &str, tag: &str) -> Option<Str
         }
         "disabled" => Some(format!(".disabled({})", parse_bool(value))),
         "selected" => Some(format!(".selected({})", parse_bool(value))),
-        // 通用样式属性（仅 div 等支持，组件侧通过 Styled trait 也支持部分）
-        "class" | "id" | "style" | "src" | "type" | "value" => None,
+        // style 属性：内联 CSS 字符串，对所有组件生效（gpui-component 实现 Styled trait）
+        "style" => {
+            let code = crate::compiler::codegen::attribute::apply_inline_style(value);
+            if code.is_empty() { None } else { Some(code) }
+        }
+        // class/id 由 apply_css_styles 处理，src/type/value 由专属逻辑处理
+        "class" | "id" | "src" | "type" | "value" => None,
         // ref 属性已在构造器中处理（生成稳定 ID），此处跳过
         "ref" => None,
         _ => None,

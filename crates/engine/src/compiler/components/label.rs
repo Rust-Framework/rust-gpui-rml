@@ -3,7 +3,9 @@
 //! Label 构造器接受 label 文本作为参数：`Label::new(label: impl Into<SharedString>)`
 //! 不使用 ElementId。本模块从 `label="..."` 属性或文本子节点提取文本，生成构造调用。
 
+use crate::compiler::codegen::attribute::append_css_class_styles;
 use crate::compiler::{CodegenCtx, CodegenError};
+use crate::css::ParentInfo;
 use crate::parser::ast::{Attribute, Element, Node};
 
 /// 生成 Label 构造代码
@@ -15,6 +17,7 @@ pub fn gen_label(
     ctx: &CodegenCtx,
     _id_counter: &mut usize,
     loop_vars: &[String],
+    parents: &[ParentInfo],
 ) -> Result<String, CodegenError> {
     let resolved = "Label";
     let lv: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
@@ -51,6 +54,9 @@ pub fn gen_label(
         }
         code.push_str(&format!("rml_ui::Label::new({:?})", text));
     }
+
+    // CSS class 样式（基础层，被后续内联 style / 归一化属性覆盖）
+    append_css_class_styles(&mut code, elem, "Label", ctx.stylesheet.as_ref(), parents);
 
     // 2. 其他属性 → builder 方法（跳过 label，已用于构造器）
     for attr in &elem.attributes {
@@ -123,7 +129,7 @@ mod tests {
             vec![],
         );
         let mut id = 0;
-        let code = gen_label(&elem, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_label(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains("rml_ui::Label::new(\"Hello\")"));
     }
 
@@ -131,7 +137,7 @@ mod tests {
     fn gen_label_from_text_child() {
         let elem = make_element(vec![], vec![Node::Text("World".into())]);
         let mut id = 0;
-        let code = gen_label(&elem, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_label(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains("rml_ui::Label::new(\"World\")"));
     }
 
@@ -146,7 +152,7 @@ mod tests {
             vec![],
         );
         let mut id = 0;
-        let code = gen_label(&elem, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_label(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains("rml_ui::Label::new(self.title)"));
     }
 }

@@ -1,28 +1,31 @@
 //! 主题系统 —— `ThemeState` Global + `ThemeExt` 扩展
 //!
 //! 开发体验与 [`crate::i18n`] 完全对齐:
-//! - `cx.set_style("styles.css")` 加载全局样式 CSS 的 `:root` 颜色变量作为基础颜色
-//! - `cx.set_theme("dark")` 加载/切换主题(主题颜色覆盖基础颜色)
+//! - `cx.set_style("styles.css")` 加载全局样式 CSS 的 `:root` 变量作为基础值（颜色 + 长度 + 数字）
+//! - `cx.set_theme("dark")` 加载/切换主题(主题变量覆盖基础变量)
 //! - `cx.theme_color("--primary")` 取当前生效颜色(基础 + 主题)
 //! - `theme_color_static("--primary")` 供 `#[computed]` 等无 `App` 上下文场景使用
+//! - `rml::theme::length("--spacing")` / `rml::theme::number("--opacity")` 取非颜色变量
 //!
 //! 主题文件格式(`assets/themes/dark.css`):
 //! ```css
 //! :root {
 //!     --primary-color: #007bff;
 //!     --text-color: #333333;
+//!     --spacing: 8px;
+//!     --opacity: 0.5;
 //! }
 //! ```
-//! 仅解析 `:root` 块中的 `#hex` 颜色变量;非颜色变量被忽略。
+//! 解析 `:root` 块中的所有变量: `#hex` 识别为颜色, `Npx`/`Npt` 识别为长度, 纯数字识别为数字。
 //!
-//! `set_style` 加载的基础颜色作为默认值,`set_theme` 的主题颜色优先级更高:
-//! 主题中定义的变量覆盖基础颜色,主题中未定义的变量回退到基础颜色。
+//! `set_style` 加载的基础变量作为默认值,`set_theme` 的主题变量优先级更高:
+//! 主题中定义的变量覆盖基础变量,主题中未定义的变量回退到基础变量。
 
 use std::borrow::{Borrow, BorrowMut};
 use std::collections::HashMap;
 use std::sync::RwLock;
 
-use gpui::{App, AppContext, BorrowAppContext, Context, Global, Rgba, SharedString};
+use gpui::{App, AppContext, BorrowAppContext, Context, Global, Pixels, Rgba, SharedString};
 
 /// 线程内同步主题颜色快照,供 `#[computed]` 等无 `App` 上下文场景使用
 static ACTIVE_THEME_COLORS: RwLock<Option<HashMap<String, Rgba>>> = RwLock::new(None);
@@ -57,6 +60,59 @@ pub fn color(name: &str) -> Rgba {
     theme_color_static(name)
 }
 
+/// 运行时 CSS 变量值（支持主题切换）
+///
+/// `:root` 块中的变量按值类型分类:
+/// - `#hex` → `Color`（颜色变量,由 `color()` 查询）
+/// - `Npx`/`Npt` → `Length`（长度变量,由 `length()` 查询）
+/// - 纯数字 → `Number`（数字变量,由 `number()` 查询）
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ThemeVar {
+    /// 颜色变量 `--primary: #007bff`
+    Color(Rgba),
+    /// 长度变量 `--spacing: 8px`（已归一化为像素值）
+    Length(f32),
+    /// 数字变量 `--opacity: 0.5`
+    Number(f32),
+}
+
+/// 线程内同步主题变量快照,供 `#[computed]` 等无 `App` 上下文场景使用
+static ACTIVE_THEME_VARS: RwLock<Option<HashMap<String, ThemeVar>>> = RwLock::new(None);
+
+fn sync_active_vars(vars: &HashMap<String, ThemeVar>) {
+    if let Ok(mut guard) = ACTIVE_THEME_VARS.write() {
+        *guard = Some(vars.clone());
+    }
+}
+
+/// 无 `App` 上下文时取主题变量(依赖 `sync_active_vars` 维护的快照)
+pub fn theme_var_static(name: &str) -> Option<ThemeVar> {
+    ACTIVE_THEME_VARS
+        .read()
+        .ok()
+        .and_then(|guard| guard.as_ref()?.get(name).copied())
+}
+
+/// 运行时查询长度变量(供 codegen 生成的样式代码调用)
+///
+/// 未找到变量或变量非 `Length` 类型时返回 `px(0.0)`。
+pub fn length(name: &str) -> Pixels {
+    match theme_var_static(name) {
+        Some(ThemeVar::Length(n)) => gpui::px(n),
+        _ => gpui::px(0.0),
+    }
+}
+
+/// 运行时查询数字变量(供 codegen 生成的样式代码调用)
+///
+/// 未找到变量或变量非 `Number` 类型时返回 `0.0`。
+pub fn number(name: &str) -> f32 {
+    match theme_var_static(name) {
+        Some(ThemeVar::Number(n)) => n,
+        _ => 0.0,
+    }
+}
+
 /// 默认主题资源目录(相对 `assets/` 根)
 pub const DEFAULT_THEMES_DIR: &str = "assets/themes";
 
@@ -70,6 +126,12 @@ pub struct ThemeState {
     /// 当前生效颜色(base_colors + 主题颜色覆盖)
     colors: HashMap<String, Rgba>,
     themes: HashMap<String, HashMap<String, Rgba>>,
+    /// 全局基础非颜色变量(由 `set_style` 加载,作为主题变量的默认值)
+    base_vars: HashMap<String, ThemeVar>,
+    /// 当前生效非颜色变量(base_vars + 主题变量覆盖)
+    vars: HashMap<String, ThemeVar>,
+    /// 各主题的非颜色变量表(按主题名索引)
+    theme_var_sets: HashMap<String, HashMap<String, ThemeVar>>,
 }
 
 impl Default for ThemeState {
@@ -80,6 +142,9 @@ impl Default for ThemeState {
             base_colors: HashMap::new(),
             colors: HashMap::new(),
             themes: HashMap::new(),
+            base_vars: HashMap::new(),
+            vars: HashMap::new(),
+            theme_var_sets: HashMap::new(),
         }
     }
 }
@@ -99,14 +164,25 @@ impl ThemeState {
         self.colors.get(name).copied()
     }
 
+    /// 查询非颜色变量(合并 base + theme,theme 优先)
+    pub fn var(&self, name: &str) -> Option<ThemeVar> {
+        self.vars.get(name).copied()
+    }
+
     pub fn set_dir(&mut self, dir: impl Into<String>) {
         self.dir = dir.into();
     }
 
-    /// 设置全局基础颜色(由 `set_style` 调用),并重新合并当前主题颜色
+    /// 设置全局基础颜色(由 `set_style` 调用),并重新合并当前主题颜色与变量
     pub fn set_base_colors(&mut self, base: HashMap<String, Rgba>) {
         self.base_colors = base;
-        self.recompute_colors();
+        self.recompute();
+    }
+
+    /// 设置全局基础非颜色变量(由 `set_style` 调用),并重新合并当前主题变量
+    pub fn set_base_vars(&mut self, vars: HashMap<String, ThemeVar>) {
+        self.base_vars = vars;
+        self.recompute_vars();
     }
 
     /// 加载主题颜色表;若当前未设置主题或与当前主题同名,则激活
@@ -115,7 +191,16 @@ impl ThemeState {
         self.themes.insert(name.clone(), theme_colors.clone());
         if self.theme.is_empty() || self.theme == name {
             self.theme = name;
-            self.recompute_colors();
+            self.recompute();
+        }
+    }
+
+    /// 加载主题非颜色变量表;若当前主题同名,则激活
+    pub fn load_theme_vars(&mut self, name: impl Into<String>, theme_vars: HashMap<String, ThemeVar>) {
+        let name = name.into();
+        self.theme_var_sets.insert(name.clone(), theme_vars);
+        if self.theme == name {
+            self.recompute_vars();
         }
     }
 
@@ -124,7 +209,7 @@ impl ThemeState {
         let name = name.into();
         if self.themes.contains_key(&name) {
             self.theme = name;
-            self.recompute_colors();
+            self.recompute();
             true
         } else {
             false
@@ -140,6 +225,23 @@ impl ThemeState {
         }
         self.colors = merged;
         sync_active_theme(&self.colors);
+    }
+
+    /// 重新计算合并非颜色变量:base_vars 为底,当前主题变量覆盖
+    fn recompute_vars(&mut self) {
+        let theme_vars = self.theme_var_sets.get(&self.theme).cloned().unwrap_or_default();
+        let mut merged = self.base_vars.clone();
+        for (k, v) in theme_vars {
+            merged.insert(k, v);
+        }
+        self.vars = merged;
+        sync_active_vars(&self.vars);
+    }
+
+    /// 重新计算颜色与变量(主题切换/基础值变更时调用)
+    fn recompute(&mut self) {
+        self.recompute_colors();
+        self.recompute_vars();
     }
 }
 
@@ -173,10 +275,11 @@ impl ThemeExt for App {
         let theme = theme.as_ref().to_string();
         let dir = dir.as_ref().to_string();
         ensure_theme(self);
-        if let Ok(colors) = load_theme_colors_embedded(&theme, &dir) {
+        if let Ok((colors, vars)) = load_theme_vars_embedded(&theme, &dir) {
             self.update_global::<ThemeState, _>(|state, _| {
                 state.set_dir(&dir);
                 state.load_theme(&theme, colors);
+                state.load_theme_vars(&theme, vars);
             });
         }
     }
@@ -188,9 +291,10 @@ impl ThemeExt for App {
             .read_global(|state: &ThemeState, _| state.themes.contains_key(&theme));
         if !has_theme {
             let dir = self.read_global(|state: &ThemeState, _| state.dir().to_string());
-            if let Ok(colors) = load_theme_colors_embedded(&theme, &dir) {
+            if let Ok((colors, vars)) = load_theme_vars_embedded(&theme, &dir) {
                 self.update_global::<ThemeState, _>(|state, _| {
                     state.load_theme(&theme, colors);
+                    state.load_theme_vars(&theme, vars);
                 });
             }
         }
@@ -214,10 +318,11 @@ impl ThemeExt for App {
             }
         };
         // 无 :root 块时返回空(样式文件可仅含类规则,变量由主题文件提供)
-        let base_colors = parse_theme_css(css).unwrap_or_default();
+        let (base_colors, base_vars) = parse_theme_vars(css).unwrap_or_default();
         ensure_theme(self);
         self.update_global::<ThemeState, _>(|state, _| {
             state.set_base_colors(base_colors);
+            state.set_base_vars(base_vars);
         });
         self.refresh_windows();
     }
@@ -277,20 +382,47 @@ pub fn load_theme_colors_embedded(
     theme: &str,
     dir: &str,
 ) -> Result<HashMap<String, Rgba>, String> {
+    let (colors, _vars) = load_theme_vars_embedded(theme, dir)?;
+    Ok(colors)
+}
+
+/// 从嵌入资源加载并解析主题 CSS 全部变量(颜色 + 非颜色)
+///
+/// 返回 `(colors, vars)`:颜色变量为 `Rgba`,非颜色变量为 `ThemeVar`。
+pub fn load_theme_vars_embedded(
+    theme: &str,
+    dir: &str,
+) -> Result<(HashMap<String, Rgba>, HashMap<String, ThemeVar>), String> {
     // 嵌入资源 key 是相对 assets/ 根的路径,去掉 "assets/" 前缀
     let sub_dir = dir.strip_prefix("assets/").unwrap_or(dir);
     let path = format!("{}/{}.css", sub_dir.trim_end_matches('/'), theme);
     let css = crate::assets::load_str(&path)
         .ok_or_else(|| format!("theme asset not embedded: {}", path))?;
-    parse_theme_css(css)
+    parse_theme_vars(css)
 }
 
 /// 解析主题 CSS,提取 `:root` 块中的 `#hex` 颜色变量
 ///
-/// 仅识别 `--name: #hexvalue;` 形式的声明;其他内容(规则、非颜色变量)忽略。
+/// 仅识别 `--name: #hexvalue;` 形式的声明;非颜色变量忽略。
 /// 支持 `#rgb`、`#rrggbb`、`#rrggbbaa` 三种 hex 格式。
+///
+/// 内部委托 [`parse_theme_vars`],仅返回颜色部分(向后兼容)。
 pub fn parse_theme_css(css: &str) -> Result<HashMap<String, Rgba>, String> {
+    let (colors, _vars) = parse_theme_vars(css)?;
+    Ok(colors)
+}
+
+/// 解析主题 CSS,提取 `:root` 块中的所有变量(颜色 + 非颜色)
+///
+/// - `#hex` 值识别为颜色 → `HashMap<String, Rgba>`
+/// - `Npx`/`Npt` 值识别为长度 → `HashMap<String, ThemeVar::Length>`（pt 按 4/3 换算为 px）
+/// - 纯数字值识别为数字 → `HashMap<String, ThemeVar::Number>`
+/// - 其他值忽略
+pub fn parse_theme_vars(
+    css: &str,
+) -> Result<(HashMap<String, Rgba>, HashMap<String, ThemeVar>), String> {
     let mut colors = HashMap::new();
+    let mut vars = HashMap::new();
     let root_block = extract_root_block(css)
         .ok_or_else(|| "no :root block found in theme css".to_string())?;
     for decl in root_block.split(';') {
@@ -303,11 +435,35 @@ pub fn parse_theme_css(css: &str) -> Result<HashMap<String, Rgba>, String> {
             let value = decl[colon_idx + 1..].trim();
             if let Some(rgba) = parse_hex_color(value) {
                 colors.insert(name, rgba);
+            } else if let Some(v) = parse_theme_var_value(value) {
+                vars.insert(name, v);
             }
-            // 非颜色值忽略(主题变量仅支持颜色)
+            // 不识别的值忽略
         }
     }
-    Ok(colors)
+    Ok((colors, vars))
+}
+
+/// 解析非颜色变量值: `Npx`/`Npt` → Length, 纯数字 → Number
+fn parse_theme_var_value(s: &str) -> Option<ThemeVar> {
+    let s = s.trim();
+    // px 长度
+    if let Some(rest) = s.strip_suffix("px") {
+        if let Ok(n) = rest.trim().parse::<f32>() {
+            return Some(ThemeVar::Length(n));
+        }
+    }
+    // pt 长度(1pt = 4/3 px)
+    if let Some(rest) = s.strip_suffix("pt") {
+        if let Ok(n) = rest.trim().parse::<f32>() {
+            return Some(ThemeVar::Length(n * 4.0 / 3.0));
+        }
+    }
+    // 纯数字
+    if let Ok(n) = s.parse::<f32>() {
+        return Some(ThemeVar::Number(n));
+    }
+    None
 }
 
 /// 提取 `:root { ... }` 块内容
@@ -516,5 +672,148 @@ mod tests {
         assert!(state.color("--bg").unwrap().r < 0.5); // black from theme
         // 主题未定义的变量回退到基础颜色
         assert!(state.color("--accent").unwrap().r > 0.5); // red from base
+    }
+
+    // ─── ThemeVar / parse_theme_vars 测试 ───
+
+    #[test]
+    fn parse_theme_var_value_px() {
+        assert_eq!(parse_theme_var_value("8px"), Some(ThemeVar::Length(8.0)));
+        assert_eq!(parse_theme_var_value("0px"), Some(ThemeVar::Length(0.0)));
+        assert_eq!(parse_theme_var_value("12.5px"), Some(ThemeVar::Length(12.5)));
+    }
+
+    #[test]
+    fn parse_theme_var_value_pt() {
+        // 1pt = 4/3 px
+        let v = parse_theme_var_value("9pt").unwrap();
+        match v {
+            ThemeVar::Length(n) => assert!((n - 12.0).abs() < 1e-6),
+            _ => panic!("expected Length"),
+        }
+    }
+
+    #[test]
+    fn parse_theme_var_value_number() {
+        assert_eq!(parse_theme_var_value("0.5"), Some(ThemeVar::Number(0.5)));
+        assert_eq!(parse_theme_var_value("10"), Some(ThemeVar::Number(10.0)));
+    }
+
+    #[test]
+    fn parse_theme_var_value_rejects_unknown() {
+        assert_eq!(parse_theme_var_value("red"), None);
+        assert_eq!(parse_theme_var_value("1em"), None);
+        assert_eq!(parse_theme_var_value(""), None);
+    }
+
+    #[test]
+    fn parse_theme_vars_extracts_colors_and_vars() {
+        let css = r#"
+            :root {
+                --primary: #007bff;
+                --spacing: 8px;
+                --opacity: 0.5;
+            }
+        "#;
+        let (colors, vars) = parse_theme_vars(css).unwrap();
+        assert_eq!(colors.len(), 1);
+        assert!(colors.contains_key("--primary"));
+        assert_eq!(vars.len(), 2);
+        assert_eq!(vars.get("--spacing"), Some(&ThemeVar::Length(8.0)));
+        assert_eq!(vars.get("--opacity"), Some(&ThemeVar::Number(0.5)));
+    }
+
+    #[test]
+    fn parse_theme_vars_no_root_returns_err() {
+        let css = ".foo { color: red; }";
+        assert!(parse_theme_vars(css).is_err());
+    }
+
+    #[test]
+    fn parse_theme_css_still_works_via_delegation() {
+        let css = r#"
+            :root {
+                --primary: #007bff;
+                --spacing: 8px;
+            }
+        "#;
+        let colors = parse_theme_css(css).unwrap();
+        assert_eq!(colors.len(), 1);
+        assert!(colors.contains_key("--primary"));
+    }
+
+    // ─── ThemeState var 存储与查询测试 ───
+
+    #[test]
+    fn theme_state_set_base_vars_and_query() {
+        let mut state = ThemeState::default();
+        let mut base = HashMap::new();
+        base.insert("--spacing".to_string(), ThemeVar::Length(8.0));
+        base.insert("--opacity".to_string(), ThemeVar::Number(0.5));
+        state.set_base_vars(base);
+
+        assert_eq!(state.var("--spacing"), Some(ThemeVar::Length(8.0)));
+        assert_eq!(state.var("--opacity"), Some(ThemeVar::Number(0.5)));
+        assert_eq!(state.var("--undefined"), None);
+    }
+
+    #[test]
+    fn theme_state_load_theme_vars_overrides_base() {
+        let mut state = ThemeState::default();
+
+        // 基础变量
+        let mut base = HashMap::new();
+        base.insert("--spacing".to_string(), ThemeVar::Length(8.0));
+        base.insert("--opacity".to_string(), ThemeVar::Number(0.5));
+        state.set_base_vars(base);
+
+        // 主题变量(覆盖 --spacing,未定义 --opacity)
+        let mut dark_vars = HashMap::new();
+        dark_vars.insert("--spacing".to_string(), ThemeVar::Length(16.0));
+        state.load_theme_vars("dark", dark_vars);
+
+        // 未激活主题 → var 仍为基础值
+        assert_eq!(state.var("--spacing"), Some(ThemeVar::Length(8.0)));
+
+        // 激活主题(load_theme 同步激活)
+        let dark_colors: HashMap<String, Rgba> = HashMap::new();
+        state.load_theme("dark", dark_colors);
+
+        // 主题变量覆盖基础变量
+        assert_eq!(state.var("--spacing"), Some(ThemeVar::Length(16.0)));
+        // 主题未定义的变量回退到基础
+        assert_eq!(state.var("--opacity"), Some(ThemeVar::Number(0.5)));
+    }
+
+    #[test]
+    fn theme_state_switch_theme_updates_vars() {
+        let mut state = ThemeState::default();
+
+        let mut base = HashMap::new();
+        base.insert("--spacing".to_string(), ThemeVar::Length(8.0));
+        state.set_base_vars(base);
+
+        let dark_colors: HashMap<String, Rgba> = HashMap::new();
+        let mut dark_vars = HashMap::new();
+        dark_vars.insert("--spacing".to_string(), ThemeVar::Length(16.0));
+        state.load_theme("dark", dark_colors);
+        state.load_theme_vars("dark", dark_vars);
+
+        let light_colors: HashMap<String, Rgba> = HashMap::new();
+        let mut light_vars = HashMap::new();
+        light_vars.insert("--spacing".to_string(), ThemeVar::Length(4.0));
+        state.load_theme("light", light_colors);
+        state.load_theme_vars("light", light_vars);
+
+        // 当前主题为 dark
+        assert_eq!(state.var("--spacing"), Some(ThemeVar::Length(16.0)));
+
+        // 切换到 light
+        assert!(state.switch_theme("light"));
+        assert_eq!(state.var("--spacing"), Some(ThemeVar::Length(4.0)));
+
+        // 切换回 dark
+        assert!(state.switch_theme("dark"));
+        assert_eq!(state.var("--spacing"), Some(ThemeVar::Length(16.0)));
     }
 }

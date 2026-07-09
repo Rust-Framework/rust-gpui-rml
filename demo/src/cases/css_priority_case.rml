@@ -1,0 +1,101 @@
+<component>
+    <style source="css_priority_case.css" />
+    <CaseDocPage
+        title="CSS 三层样式优先级"
+        description="演示 RML 三层 CSS 架构（全局 CSS < 页面 CSS < 内联 style / 归一化属性）+ CSS 变量动态注入 + 复杂嵌套 + 动态样式切换。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <Card title="L1 全局 CSS（.button-row）">
+                <p>使用全局样式表 styles.css 中的 .button-row 类（display:flex; gap:8px）：</p>
+                <div class="button-row">
+                    <Button label="全局 CSS 1" />
+                    <Button label="全局 CSS 2" primary="" />
+                </div>
+            </Card>
+
+            <Card title="L2 页面 CSS（.priority-box + CSS 变量）">
+                <p>本页 &lt;style&gt; 定义的 .priority-box 类，padding 来自 var(--card-padding)：</p>
+                <div class="priority-box">
+                    <p>padding = var(--card-padding) = 16px</p>
+                    <p>background = var(--surface)，border = var(--border-color)</p>
+                </div>
+            </Card>
+
+            <Card title="L3 内联 style">
+                <p>style 属性直接设置 padding + background + border-radius：</p>
+                <div style="padding: 20px; background: #f0f0f0; border-radius: 6px;">
+                    <p>内联 style: padding=20px, bg=#f0f0f0, radius=6px</p>
+                </div>
+            </Card>
+
+            <Card title="L3 归一化属性">
+                <p>padding/gap/display/flex-direction 属性自动归一化为 GPUI 方法：</p>
+                <div padding="16px" gap="8px" display="flex" flex-direction="column" background="#e8f4fd">
+                    <p>归一化属性: padding=16px gap=8px</p>
+                    <div padding="8px" background="#ffffff">
+                        <p>嵌套: padding=8px bg=#ffffff</p>
+                    </div>
+                </div>
+            </Card>
+
+            <Card title="优先级对比（归一化属性 > style > CSS class）">
+                <p>三个元素都使用 .style-override 类（padding:8px），分别叠加不同覆盖层：</p>
+                <div class="nested-row">
+                    <div class="style-override">
+                        <p>仅 CSS class</p>
+                        <p>padding = 8px</p>
+                    </div>
+                    <div class="style-override" style="padding: 16px;">
+                        <p>class + style</p>
+                        <p>padding = 16px（style 覆盖 class）</p>
+                    </div>
+                    <div class="style-override" padding="24px">
+                        <p>class + 归一化属性</p>
+                        <p>padding = 24px（属性覆盖 class）</p>
+                    </div>
+                </div>
+            </Card>
+
+            <Card title="CSS 变量动态注入">
+                <p>var(--accent-color) 和 var(--spacing-md) 在 :root 中定义，构建期内联：</p>
+                <div class="var-demo">
+                    <p>background = var(--accent-color) = #0066cc</p>
+                    <p>padding = var(--spacing-md) = 16px</p>
+                </div>
+            </Card>
+
+            <Card title="复杂嵌套（div > div > Button + Tag + Icon + Label）">
+                <div class="nested-container">
+                    <div class="nested-row">
+                        <Button label="嵌套按钮" primary="" />
+                        <Tag>嵌套标签</Tag>
+                        <Icon name="Bell" />
+                    </div>
+                    <div class="nested-row" style="padding: 12px; background: #f5f5f5;">
+                        <Icon name="Search" />
+                        <Label>带内联 style 的行（padding=12px bg=#f5f5f5）</Label>
+                    </div>
+                    <div class="nested-row" padding="10px" gap="12px" background="#fff8e1">
+                        <Icon name="Star" />
+                        <Label>带归一化属性的行（padding=10px gap=12px）</Label>
+                    </div>
+                </div>
+            </Card>
+
+            <Card title="动态样式（if 条件切换 class）">
+                <p>当前状态：{status_label}</p>
+                <div class="button-row">
+                    <Button label="激活" on-click={on_activate} primary="" />
+                    <Button label="停用" on-click={on_deactivate} />
+                </div>
+                <div if={is_active} class="dynamic-active">
+                    <p>激活状态：绿色边框 + 浅绿背景</p>
+                </div>
+                <div if={!is_active} class="dynamic-inactive">
+                    <p>停用状态：红色边框 + 浅红背景</p>
+                </div>
+            </Card>
+        </template>
+    </CaseDocPage>
+</component>

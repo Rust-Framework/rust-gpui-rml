@@ -47,6 +47,8 @@ pub const COMMON_STATIC_PROPS: &[&str] = &[
     // StyledExt 字体权重（h_flex/v_flex 已废弃，改用 display="flex" + flex-direction）
     "font_thin", "font_extralight", "font_light", "font_normal", "font_medium",
     "font_semibold", "font_bold", "font_extrabold", "font_black",
+    // 内联 CSS 样式字符串（由 apply_inline_style 解析，对所有元素与组件生效）
+    "style",
 ];
 
 /// 通用绑定属性（来自 `component_bind_setter` 的通用 match 分支）

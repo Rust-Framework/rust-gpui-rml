@@ -8,7 +8,9 @@
 //!
 //! 通过 `vertical` / `dashed` 属性组合选择构造器。
 
+use crate::compiler::codegen::attribute::append_css_class_styles;
 use crate::compiler::{CodegenCtx, CodegenError};
+use crate::css::ParentInfo;
 use crate::parser::ast::{Attribute, Element};
 
 /// 生成 Separator 构造代码
@@ -23,6 +25,7 @@ pub fn gen_separator(
     ctx: &CodegenCtx,
     _id_counter: &mut usize,
     loop_vars: &[String],
+    parents: &[ParentInfo],
 ) -> Result<String, CodegenError> {
     let resolved = "Separator";
     let lv: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
@@ -50,6 +53,9 @@ pub fn gen_separator(
     };
 
     let mut code = format!("rml_ui::{}", ctor);
+
+    // CSS class 样式（基础层，被后续内联 style / 归一化属性覆盖）
+    append_css_class_styles(&mut code, elem, "Separator", ctx.stylesheet.as_ref(), parents);
 
     // 其他属性 → builder 方法（跳过 vertical/dashed，已用于构造器选择）
     for attr in &elem.attributes {
@@ -111,7 +117,7 @@ mod tests {
     fn gen_separator_default_horizontal() {
         let elem = make_element(vec![]);
         let mut id = 0;
-        let code = gen_separator(&elem, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_separator(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains("Separator::horizontal()"));
     }
 
@@ -123,7 +129,7 @@ mod tests {
             span: Span::empty(),
         }]);
         let mut id = 0;
-        let code = gen_separator(&elem, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_separator(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains("Separator::vertical()"));
     }
 
@@ -135,7 +141,7 @@ mod tests {
             span: Span::empty(),
         }]);
         let mut id = 0;
-        let code = gen_separator(&elem, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_separator(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains("Separator::horizontal_dashed()"));
     }
 
@@ -154,7 +160,7 @@ mod tests {
             },
         ]);
         let mut id = 0;
-        let code = gen_separator(&elem, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_separator(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains("Separator::vertical_dashed()"));
     }
 }

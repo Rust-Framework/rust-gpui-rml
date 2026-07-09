@@ -10,7 +10,9 @@
 //! - `name` 与 `path` 互斥，`name` 优先；两者都未提供时使用 `Icon::empty()`
 //! - `size="small"` 等通用属性走 `component_static_setter` 链
 
+use crate::compiler::codegen::attribute::append_css_class_styles;
 use crate::compiler::{CodegenCtx, CodegenError};
+use crate::css::ParentInfo;
 use crate::parser::ast::{Attribute, Element};
 use crate::tags;
 
@@ -20,6 +22,7 @@ pub fn gen_icon(
     ctx: &CodegenCtx,
     id_counter: &mut usize,
     loop_vars: &[String],
+    parents: &[ParentInfo],
 ) -> Result<String, CodegenError> {
     let resolved = "Icon";
     let lv: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
@@ -64,6 +67,9 @@ pub fn gen_icon(
     if !name_set && !path_set {
         code.push_str("rml_ui::Icon::empty()");
     }
+
+    // CSS class 样式（基础层，被后续内联 style / 归一化属性覆盖）
+    append_css_class_styles(&mut code, elem, "Icon", ctx.stylesheet.as_ref(), parents);
 
     // 2. 其他属性 → builder 方法（size/color 等走通用 setter）
     for attr in &elem.attributes {
@@ -149,7 +155,7 @@ mod tests {
             }],
             vec![],
         );
-        let code = gen_icon(&elem, &ctx(), &mut 0, &Vec::new()).unwrap();
+        let code = gen_icon(&elem, &ctx(), &mut 0, &Vec::new(), &[]).unwrap();
         assert!(code.contains("rml_ui::Icon::new(rml_ui::IconName::Settings)"));
     }
 
@@ -165,7 +171,7 @@ mod tests {
             }],
             vec![],
         );
-        let code = gen_icon(&elem, &ctx(), &mut 0, &Vec::new()).unwrap();
+        let code = gen_icon(&elem, &ctx(), &mut 0, &Vec::new(), &[]).unwrap();
         assert!(code.contains("rml_ui::Icon::empty().path(\"icons/foo.svg\")"));
     }
 
@@ -188,7 +194,7 @@ mod tests {
             ],
             vec![],
         );
-        let code = gen_icon(&elem, &ctx(), &mut 0, &Vec::new()).unwrap();
+        let code = gen_icon(&elem, &ctx(), &mut 0, &Vec::new(), &[]).unwrap();
         assert!(code.contains("rml_ui::Icon::new(rml_ui::IconName::Bell)"));
         // path 不应被生成（被 name 优先跳过）
         assert!(!code.contains("ignored.svg"));
@@ -206,7 +212,7 @@ mod tests {
             }],
             vec![],
         );
-        let code = gen_icon(&elem, &ctx(), &mut 0, &Vec::new()).unwrap();
+        let code = gen_icon(&elem, &ctx(), &mut 0, &Vec::new(), &[]).unwrap();
         assert!(code.contains("rml_ui::Icon::empty()"));
         // size 走通用 setter 链
         assert!(code.contains(".with_size(rml_ui::Size::Small)"));
@@ -231,7 +237,7 @@ mod tests {
             ],
             vec![],
         );
-        let code = gen_icon(&elem, &ctx(), &mut 0, &Vec::new()).unwrap();
+        let code = gen_icon(&elem, &ctx(), &mut 0, &Vec::new(), &[]).unwrap();
         assert!(code.contains("rml_ui::Icon::new(rml_ui::IconName::Settings)"));
         assert!(code.contains(".with_size(rml_ui::Size::Large)"));
     }
@@ -248,7 +254,7 @@ mod tests {
             }],
             vec![],
         );
-        let code = gen_icon(&elem, &ctx(), &mut 0, &Vec::new()).unwrap();
+        let code = gen_icon(&elem, &ctx(), &mut 0, &Vec::new(), &[]).unwrap();
         assert!(code.contains("rml_ui::Icon::new(self.icon_name)"));
     }
 }

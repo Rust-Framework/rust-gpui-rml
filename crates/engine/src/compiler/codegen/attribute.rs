@@ -118,8 +118,28 @@ pub(crate) fn apply_css_styles(
     css::styles_for_class_with_parents(sheet, tag, &class_value, id_value, parents)
 }
 
+/// 追加 CSS class 样式到 code（构造器之后、属性 setter 之前调用）
+///
+/// 封装 `stylesheet` 存在性检查 + `apply_css_styles` 调用 + 空字符串过滤，
+/// 供所有扩展组件 translator/gen 函数在构造器与 setter 循环之间统一调用。
+/// GPUI "last write wins"：class 先应用，setter 后应用 → setter 优先级更高。
+pub(crate) fn append_css_class_styles(
+    code: &mut String,
+    elem: &Element,
+    tag: &str,
+    sheet: Option<&css::StyleSheet>,
+    parents: &[css::ParentInfo],
+) {
+    if let Some(sheet) = sheet {
+        let style_code = apply_css_styles(elem, tag, sheet, parents);
+        if !style_code.is_empty() {
+            code.push_str(&style_code);
+        }
+    }
+}
+
 /// 解析 inline style 属性（如 `style="padding: 10px; color: red;"`）
-fn apply_inline_style(style_str: &str) -> String {
+pub(crate) fn apply_inline_style(style_str: &str) -> String {
     let wrapped = format!("* {{ {} }}", style_str);
     match css::parse(&wrapped) {
         Ok(sheet) => {

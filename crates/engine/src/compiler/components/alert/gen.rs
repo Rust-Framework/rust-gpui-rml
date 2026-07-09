@@ -16,8 +16,10 @@
 //!
 //! Alert 不实现 `ParentElement`，子节点仅文本作为 message；元素子节点被忽略。
 
+use crate::compiler::codegen::attribute::append_css_class_styles;
 use crate::compiler::codegen::gen_node;
 use crate::compiler::{CodegenCtx, CodegenError};
+use crate::css::ParentInfo;
 use crate::parser::ast::{Attribute, Directive, Element, EventHandler, Node};
 use crate::tags;
 
@@ -27,6 +29,7 @@ pub fn gen_alert(
     ctx: &CodegenCtx,
     id_counter: &mut usize,
     loop_vars: &[String],
+    parents: &[ParentInfo],
 ) -> Result<String, CodegenError> {
     let resolved = tags::normalize_component_tag(&elem.tag);
     let lv: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
@@ -85,6 +88,9 @@ pub fn gen_alert(
     }
 
     let mut code = ctor;
+
+    // CSS class 样式（基础层，被后续内联 style / 归一化属性覆盖）
+    append_css_class_styles(&mut code, elem, "Alert", ctx.stylesheet.as_ref(), parents);
 
     // 4. 处理其他属性
     for attr in &elem.attributes {
@@ -297,7 +303,7 @@ mod tests {
         // <Alert>消息</Alert> → Alert::new(id, "消息")
         let elem = make_element("Alert", vec![], vec![Node::Text("消息".into())]);
         let mut id = 0;
-        let code = gen_alert(&elem, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_alert(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains("rml_ui::Alert::new("));
         assert!(code.contains("\"rml_el\""));
         assert!(code.contains("\"消息\""));
@@ -316,7 +322,7 @@ mod tests {
             vec![Node::Text("提示".into())],
         );
         let mut id = 0;
-        let code = gen_alert(&elem, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_alert(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains("rml_ui::Alert::info("));
         assert!(code.contains("\"提示\""));
     }
@@ -333,7 +339,7 @@ mod tests {
             vec![Node::Text("成功".into())],
         );
         let mut id = 0;
-        let code = gen_alert(&elem, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_alert(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains("rml_ui::Alert::success("));
     }
 
@@ -357,7 +363,7 @@ mod tests {
             vec![],
         );
         let mut id = 0;
-        let code = gen_alert(&elem, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_alert(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         // 默认构造器（无 variant 关联属性）
         assert!(code.contains("rml_ui::Alert::new("));
         // .with_variant(AlertVariant::Warning)
@@ -391,7 +397,7 @@ mod tests {
             vec![Node::Text("消息".into())],
         );
         let mut id = 0;
-        let code = gen_alert(&elem, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_alert(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains("rml_ui::Alert::info("));
         assert!(code.contains(".title(\"标题\")"));
         assert!(code.contains(".banner()"));
@@ -410,7 +416,7 @@ mod tests {
             vec![Node::Text("child_msg".into())],
         );
         let mut id = 0;
-        let code = gen_alert(&elem, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_alert(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains("\"attr_msg\""));
         assert!(!code.contains("child_msg"));
     }
@@ -428,7 +434,7 @@ mod tests {
             vec![],
         );
         let mut id = 0;
-        let code = gen_alert(&elem, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_alert(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains("self.error_msg.clone()"));
     }
 
@@ -445,7 +451,7 @@ mod tests {
             vec![Node::Text("消息".into())],
         );
         let mut id = 0;
-        let code = gen_alert(&elem, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_alert(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".with_size(rml_ui::Size::Small)"));
     }
 
@@ -462,7 +468,7 @@ mod tests {
             vec![Node::Text("消息".into())],
         );
         let mut id = 0;
-        let code = gen_alert(&elem, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_alert(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".on_close(cx.listener("));
         assert!(code.contains("this.handle_close"));
         assert!(code.contains("rml_convert::from_gpui_click"));
@@ -483,7 +489,7 @@ mod tests {
             ..Default::default()
         };
         let mut id = 0;
-        let code = gen_alert(&elem, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_alert(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains("\"rml_ref:my_alert\""));
         assert!(!code.contains("rml_el"));
     }
@@ -492,7 +498,7 @@ mod tests {
     fn gen_alert_increments_id_counter() {
         let elem = make_element("Alert", vec![], vec![Node::Text("消息".into())]);
         let mut id = 5;
-        let code = gen_alert(&elem, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_alert(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains("5usize"));
         assert_eq!(id, 6);
     }
@@ -517,7 +523,7 @@ mod tests {
             vec![Node::Text("消息".into())],
         );
         let mut id = 0;
-        let code = gen_alert(&elem, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_alert(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".icon(rml_ui::Icon::new(rml_ui::IconName::Bell))"));
     }
 }

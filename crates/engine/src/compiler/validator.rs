@@ -34,7 +34,7 @@ pub fn validate(
     registry: &TranslatorRegistry,
     user_components: &HashMap<String, UserComponentInfo>,
 ) -> Result<(), ValidationError> {
-    validate_node(node, registry, &mut ValidationCtx::default(), user_components)
+    validate_node(node, registry, &mut ValidationCtx::default(), user_components, 0)
 }
 
 #[derive(Default)]
@@ -47,9 +47,12 @@ fn validate_node(
     registry: &TranslatorRegistry,
     ctx: &mut ValidationCtx,
     user_components: &HashMap<String, UserComponentInfo>,
+    depth: usize,
 ) -> Result<(), ValidationError> {
     match node {
-        Node::Element(elem) => validate_element(elem, registry, ctx, user_components),
+        Node::Element(elem) => {
+            validate_element(elem, registry, ctx, user_components, depth)
+        }
         Node::Text(_) | Node::Interpolation { .. } | Node::MixedText(_) => Ok(()),
     }
 }
@@ -59,7 +62,12 @@ fn validate_element(
     registry: &TranslatorRegistry,
     ctx: &mut ValidationCtx,
     user_components: &HashMap<String, UserComponentInfo>,
+    depth: usize,
 ) -> Result<(), ValidationError> {
+    // 校验 <style> 元素的合法使用
+    if elem.tag == "style" {
+        validate_style_element(elem, depth)?;
+    }
     // 校验指令
     let mut has_model = false;
 
@@ -196,7 +204,50 @@ fn validate_element(
 
     // 递归校验子节点
     for child in &elem.children {
-        validate_node(child, registry, ctx, user_components)?;
+        validate_node(child, registry, ctx, user_components, depth + 1)?;
+    }
+
+    Ok(())
+}
+
+/// 校验 `<style>` 元素的合法使用
+///
+/// 规则：
+/// 1. 必须包含 `source` 静态属性（不支持 bind 形式）
+/// 2. 不能有子节点（自闭合或空）
+/// 3. 必须是根元素的直接子节点（depth == 1），不能嵌套在其他元素或 `<template slot>` 内
+fn validate_style_element(elem: &Element, depth: usize) -> Result<(), ValidationError> {
+    // 规则 3：必须是根元素的直接子节点
+    if depth != 1 {
+        return Err(ValidationError {
+            message: "`<style>` 必须是根元素的直接子节点，不能嵌套在其他元素或 `<template slot>` 内部".into(),
+        });
+    }
+
+    // 规则 1：必须有 source 静态属性
+    let has_static_source = elem.attributes.iter().any(|attr| {
+        matches!(attr, Attribute::Static { name, .. } if name == "source")
+    });
+    let has_bind_source = elem.attributes.iter().any(|attr| {
+        matches!(attr, Attribute::Bind { name, .. } if name == "source")
+    });
+    if has_bind_source {
+        return Err(ValidationError {
+            message: "`<style>` 的 `source` 属性必须是静态字符串（如 `source=\"index.css\"`），不支持绑定形式"
+                .into(),
+        });
+    }
+    if !has_static_source {
+        return Err(ValidationError {
+            message: "`<style>` 元素必须包含 `source` 属性（如 `<style source=\"index.css\" />`）".into(),
+        });
+    }
+
+    // 规则 2：不能有子节点
+    if !elem.children.is_empty() {
+        return Err(ValidationError {
+            message: "`<style>` 元素不能包含子节点，请使用自闭合形式 `<style source=\"...\" />`".into(),
+        });
     }
 
     Ok(())

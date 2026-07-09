@@ -7,7 +7,9 @@
 //! - 构造器无 ElementId（`DescriptionList::new()`），ref 指令静默忽略
 //! - 子节点有两种类型：`<description>` → `.child(...)`，`<separator>` → `.separator()`
 
+use crate::compiler::codegen::attribute::append_css_class_styles;
 use crate::compiler::{CodegenCtx, CodegenError};
+use crate::css::ParentInfo;
 use crate::parser::ast::{Attribute, Element, Node};
 use crate::tags;
 
@@ -23,9 +25,13 @@ pub fn gen_description_list(
     ctx: &CodegenCtx,
     id_counter: &mut usize,
     loop_vars: &[String],
+    parents: &[ParentInfo],
 ) -> Result<String, CodegenError> {
     // 1. 构造器（无 ElementId，ref 指令静默忽略）
     let mut code = String::from("rml_ui::DescriptionList::new()");
+
+    // CSS class 样式（基础层，被后续内联 style / 归一化属性覆盖）
+    append_css_class_styles(&mut code, elem, "DescriptionList", ctx.stylesheet.as_ref(), parents);
 
     // 2. 属性 → setter（先调 description_list 专用 setter，未命中回退到公共 setter）
     let lv: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
@@ -161,7 +167,7 @@ mod tests {
         let elem = make_element("descriptions", vec![], vec![]);
         let mut id = 0;
         let code =
-            gen_description_list(&elem, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+            gen_description_list(&elem, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains("rml_ui::DescriptionList::new()"));
     }
 
@@ -171,7 +177,7 @@ mod tests {
         let elem = make_element("DescriptionList", vec![], vec![]);
         let mut id = 0;
         let code =
-            gen_description_list(&elem, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+            gen_description_list(&elem, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains("rml_ui::DescriptionList::new()"));
     }
 
@@ -189,7 +195,7 @@ mod tests {
         );
         let mut id = 0;
         let code =
-            gen_description_list(&elem, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+            gen_description_list(&elem, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".layout(gpui::Axis::Vertical)"));
         assert!(code.contains(".columns(2)"));
         assert!(code.contains(".bordered(false)"));
@@ -209,7 +215,7 @@ mod tests {
         );
         let mut id = 0;
         let code =
-            gen_description_list(&elem, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+            gen_description_list(&elem, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".label_width(gpui::px(200.))"));
     }
 
@@ -226,7 +232,7 @@ mod tests {
         );
         let list = make_element("descriptions", vec![], vec![Node::Element(desc)]);
         let mut id = 0;
-        let code = gen_description_list(&list, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_description_list(&list, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".child("));
         assert!(code.contains("rml_ui::DescriptionItem::new(\"Name\")"));
         assert!(code.contains(".value(\"John\")"));
@@ -238,7 +244,7 @@ mod tests {
         let sep = make_element("separator", vec![], vec![]);
         let list = make_element("descriptions", vec![], vec![Node::Element(sep)]);
         let mut id = 0;
-        let code = gen_description_list(&list, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_description_list(&list, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".separator()"));
     }
 
@@ -248,7 +254,7 @@ mod tests {
         let sep = make_element("DescriptionSeparator", vec![], vec![]);
         let list = make_element("DescriptionList", vec![], vec![Node::Element(sep)]);
         let mut id = 0;
-        let code = gen_description_list(&list, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_description_list(&list, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".separator()"));
     }
 
@@ -286,7 +292,7 @@ mod tests {
             ],
         );
         let mut id = 0;
-        let code = gen_description_list(&list, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_description_list(&list, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         // 应有两个 .child( 和一个 .separator()
         assert_eq!(code.matches(".child(").count(), 2);
         assert_eq!(code.matches(".separator()").count(), 1);
@@ -305,7 +311,7 @@ mod tests {
         );
         let mut id = 0;
         let code =
-            gen_description_list(&elem, Some("my_list"), id, &ctx(), &mut id, &Vec::new()).unwrap();
+            gen_description_list(&elem, Some("my_list"), id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains("rml_ui::DescriptionList::new()"));
         // 不应包含 ref id
         assert!(!code.contains("rml_ref"));
@@ -317,7 +323,7 @@ mod tests {
         let div = make_element("div", vec![], vec![]);
         let list = make_element("descriptions", vec![], vec![Node::Element(div)]);
         let mut id = 0;
-        let result = gen_description_list(&list, None, id, &ctx(), &mut id, &Vec::new());
+        let result = gen_description_list(&list, None, id, &ctx(), &mut id, &Vec::new(), &[]);
         assert!(result.is_err());
         assert!(result
             .unwrap_err()
@@ -338,7 +344,7 @@ mod tests {
         );
         let mut id = 0;
         let code =
-            gen_description_list(&elem, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+            gen_description_list(&elem, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".with_size(rml_ui::Size::Small)"));
         assert!(code.contains(".layout(gpui::Axis::Vertical)"));
     }
@@ -356,7 +362,7 @@ mod tests {
         );
         let mut id = 0;
         let code =
-            gen_description_list(&elem, None, id, &ctx(), &mut id, &Vec::new()).unwrap();
+            gen_description_list(&elem, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".columns(self.col_count)"));
         assert!(code.contains(".bordered(self.show_border)"));
     }

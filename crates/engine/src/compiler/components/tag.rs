@@ -5,8 +5,10 @@
 //!
 //! 其他属性（size/disabled/compact 等）走通用 setter。
 
+use crate::compiler::codegen::attribute::append_css_class_styles;
 use crate::compiler::codegen::gen_node;
 use crate::compiler::{CodegenCtx, CodegenError};
+use crate::css::ParentInfo;
 use crate::parser::ast::{Attribute, Element};
 use crate::tags;
 
@@ -16,6 +18,7 @@ pub fn gen_tag(
     ctx: &CodegenCtx,
     id_counter: &mut usize,
     loop_vars: &[String],
+    parents: &[ParentInfo],
 ) -> Result<String, CodegenError> {
     // 1. 扫描 variant 属性，决定构造器
     let mut ctor = "rml_ui::Tag::new()".to_string();
@@ -29,6 +32,9 @@ pub fn gen_tag(
     }
 
     let mut code = ctor;
+
+    // CSS class 样式（基础层，被后续内联 style / 归一化属性覆盖）
+    append_css_class_styles(&mut code, elem, "Tag", ctx.stylesheet.as_ref(), parents);
 
     // 2. 处理其他属性（跳过 variant 属性，已用于构造器）
     let resolved = tags::normalize_component_tag(&elem.tag);
@@ -123,7 +129,7 @@ mod tests {
     fn gen_tag_default() {
         let elem = make_element("Tag", vec![], vec![]);
         let mut id = 0;
-        let code = gen_tag(&elem, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_tag(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains("rml_ui::Tag::new()"));
     }
 
@@ -139,7 +145,7 @@ mod tests {
             vec![],
         );
         let mut id = 0;
-        let code = gen_tag(&elem, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_tag(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains("rml_ui::Tag::primary()"));
         // 确保没有重复的 .primary() 调用
         assert!(!code.contains(".primary()"));
@@ -157,7 +163,7 @@ mod tests {
             vec![],
         );
         let mut id = 0;
-        let code = gen_tag(&elem, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_tag(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains("rml_ui::Tag::danger()"));
     }
 
@@ -180,7 +186,7 @@ mod tests {
             vec![],
         );
         let mut id = 0;
-        let code = gen_tag(&elem, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_tag(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains("rml_ui::Tag::primary()"));
         assert!(code.contains(".with_size(rml_ui::Size::Small)"));
     }
@@ -204,7 +210,7 @@ mod tests {
             vec![],
         );
         let mut id = 0;
-        let code = gen_tag(&elem, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_tag(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains("rml_ui::Tag::primary()"));
         assert!(code.contains(".outline()"));
     }

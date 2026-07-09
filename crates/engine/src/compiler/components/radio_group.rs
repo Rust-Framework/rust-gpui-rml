@@ -22,8 +22,10 @@
 //! `on_click` 签名为 `Fn(&usize, &mut Window, &mut App)`（选中索引），
 //! 由 `component_event_setter` 中 RadioGroup 专属分支处理。
 
+use crate::compiler::codegen::attribute::append_css_class_styles;
 use crate::compiler::codegen::gen_node;
 use crate::compiler::{CodegenCtx, CodegenError};
+use crate::css::ParentInfo;
 use crate::parser::ast::{Attribute, Directive, Element};
 
 /// 生成 RadioGroup 构造代码
@@ -32,6 +34,7 @@ pub fn gen_radio_group(
     ctx: &CodegenCtx,
     id_counter: &mut usize,
     loop_vars: &[String],
+    parents: &[ParentInfo],
 ) -> Result<String, CodegenError> {
     let resolved = "RadioGroup";
     let lv: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
@@ -69,6 +72,9 @@ pub fn gen_radio_group(
     };
 
     let mut code = ctor;
+
+    // CSS class 样式（基础层，被后续内联 style / 归一化属性覆盖）
+    append_css_class_styles(&mut code, elem, "RadioGroup", ctx.stylesheet.as_ref(), parents);
 
     // 3. 处理其他属性（跳过 horizontal/layout/vertical，已用于构造器选择）
     for attr in &elem.attributes {
@@ -147,7 +153,7 @@ mod tests {
     fn gen_radio_group_default_vertical() {
         let elem = make_element(vec![], vec![]);
         let mut id = 0;
-        let code = gen_radio_group(&elem, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_radio_group(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains("rml_ui::RadioGroup::vertical("));
         assert!(!code.contains("horizontal("));
     }
@@ -163,7 +169,7 @@ mod tests {
             vec![],
         );
         let mut id = 0;
-        let code = gen_radio_group(&elem, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_radio_group(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains("rml_ui::RadioGroup::horizontal("));
         assert!(!code.contains("vertical("));
     }
@@ -179,7 +185,7 @@ mod tests {
             vec![],
         );
         let mut id = 0;
-        let code = gen_radio_group(&elem, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_radio_group(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains("rml_ui::RadioGroup::horizontal("));
     }
 
@@ -194,7 +200,7 @@ mod tests {
             vec![],
         );
         let mut id = 0;
-        let code = gen_radio_group(&elem, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_radio_group(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".selected_index(Some(2usize))"));
     }
 
@@ -210,7 +216,7 @@ mod tests {
             vec![],
         );
         let mut id = 0;
-        let code = gen_radio_group(&elem, &ctx(), &mut id, &Vec::new()).unwrap();
+        let code = gen_radio_group(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         // 不应出现 .layout(...) setter 调用
         assert!(!code.contains(".layout("));
     }

@@ -5,7 +5,7 @@
 //! 薄包装 `compiler::code_editor::gen_code_editor`，并应用 setter + CSS。
 
 use super::super::{ComponentCategory, IRmlTranslator, PrintError, PrinterCtx, TranslatorMetadata};
-use crate::compiler::codegen::attribute::apply_css_styles;
+use crate::compiler::codegen::attribute::append_css_class_styles;
 use crate::compiler::setters::{
     component_bind_setter, component_event_setter, component_static_setter,
 };
@@ -50,6 +50,9 @@ impl IRmlTranslator for CodeEditorTranslator {
             id_counter,
             loop_vars,
         )?;
+
+        // CSS class 样式（基础层，被后续内联 style / 归一化属性覆盖）
+        append_css_class_styles(&mut code, elem, tag, ctx.stylesheet.as_ref(), parents);
 
         let lv: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
         let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
@@ -99,12 +102,6 @@ impl IRmlTranslator for CodeEditorTranslator {
             }
         }
 
-        if let Some(sheet) = &ctx.stylesheet {
-            let style_code = apply_css_styles(elem, tag, sheet, parents);
-            if !style_code.is_empty() {
-                code.push_str(&style_code);
-            }
-        }
         Ok((code, false))
     }
 
