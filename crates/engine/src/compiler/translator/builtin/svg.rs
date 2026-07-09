@@ -1,4 +1,8 @@
-//! `<div>` translator
+//! `<svg>` translator —— 映射到 GPUI 原生 `gpui::svg()`
+//!
+//! GPUI `svg()` 构造器无参数，`Svg` 实现了 `Styled` trait。
+//! `path` 属性通过 `.path(impl Into<SharedString>)` 链式调用设置，
+//! `color` 走归一化样式属性（`.text_color()`），`width`/`height` 走 `.w()`/`.h()`。
 
 use super::{BuiltinMeta, BuiltinTranslator, ComponentCategory, IRmlTranslator};
 use crate::compiler::{CodegenCtx, CodegenError};
@@ -6,19 +10,19 @@ use crate::css::ParentInfo;
 use crate::parser::ast::Element;
 
 const META: &BuiltinMeta = &BuiltinMeta {
-    tag: "div",
-    display_name: "Div",
-    category: ComponentCategory::Layout,
-    ctor: "gpui::div()",
-    is_container: true,
+    tag: "svg",
+    display_name: "Svg",
+    category: ComponentCategory::Primitive,
+    ctor: "gpui::svg()",
+    is_container: false,
     is_self_closing: true,
     is_styled: true,
 };
 
 #[derive(Debug)]
-pub struct DivTranslator;
+pub struct SvgTranslator;
 
-impl IRmlTranslator for DivTranslator {
+impl IRmlTranslator for SvgTranslator {
     fn tag(&self) -> &'static str {
         META.tag
     }

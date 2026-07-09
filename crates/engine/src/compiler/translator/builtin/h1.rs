@@ -12,6 +12,7 @@ const META: &BuiltinMeta = &BuiltinMeta {
     ctor: "gpui::div().text_size(gpui::px(32.)).font_weight(gpui::FontWeight::BOLD)",
     is_container: true,
     is_self_closing: true,
+    is_styled: true,
 };
 
 #[derive(Debug)]

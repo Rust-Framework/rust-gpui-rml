@@ -74,17 +74,22 @@ fn map_declaration(decl: &Declaration, vars: &HashMap<String, Value>) -> Option<
         // ─── Flexbox ───
         "display" => match &value {
             Value::Keyword(k) if k == "flex" => Some("flex()".into()),
+            Value::Keyword(k) if k == "block" => Some("block()".into()),
+            Value::Keyword(k) if k == "grid" => Some("grid()".into()),
             Value::Keyword(k) if k == "none" => Some("hidden()".into()),
             _ => None,
         },
         "flex-direction" => match &value {
             Value::Keyword(k) if k == "row" => Some("flex_row()".into()),
             Value::Keyword(k) if k == "column" => Some("flex_col()".into()),
+            Value::Keyword(k) if k == "row-reverse" => Some("flex_row_reverse()".into()),
+            Value::Keyword(k) if k == "column-reverse" => Some("flex_col_reverse()".into()),
             _ => None,
         },
         "flex-wrap" => match &value {
             Value::Keyword(k) if k == "wrap" => Some("flex_wrap()".into()),
             Value::Keyword(k) if k == "nowrap" => Some("flex_nowrap()".into()),
+            Value::Keyword(k) if k == "wrap-reverse" => Some("flex_wrap_reverse()".into()),
             _ => None,
         },
         "justify-content" => match &value {
@@ -92,6 +97,8 @@ fn map_declaration(decl: &Declaration, vars: &HashMap<String, Value>) -> Option<
             Value::Keyword(k) if k == "flex-start" || k == "start" => Some("justify_start()".into()),
             Value::Keyword(k) if k == "flex-end" || k == "end" => Some("justify_end()".into()),
             Value::Keyword(k) if k == "space-between" => Some("justify_between()".into()),
+            Value::Keyword(k) if k == "space-around" => Some("justify_around()".into()),
+            Value::Keyword(k) if k == "space-evenly" => Some("justify_evenly()".into()),
             _ => None,
         },
         "align-items" => match &value {
@@ -99,6 +106,7 @@ fn map_declaration(decl: &Declaration, vars: &HashMap<String, Value>) -> Option<
             Value::Keyword(k) if k == "flex-start" || k == "start" => Some("items_start()".into()),
             Value::Keyword(k) if k == "flex-end" || k == "end" => Some("items_end()".into()),
             Value::Keyword(k) if k == "stretch" => Some("items_stretch()".into()),
+            Value::Keyword(k) if k == "baseline" => Some("items_baseline()".into()),
             _ => None,
         },
         "flex" => match &value {
@@ -135,13 +143,219 @@ fn map_declaration(decl: &Declaration, vars: &HashMap<String, Value>) -> Option<
             _ => None,
         },
         "overflow-x" => match &value {
-            Value::Keyword(k) if k == "hidden" => Some("overflow_hidden()".into()),
-            Value::Keyword(k) if k == "scroll" || k == "auto" => Some("overflow_x_scrollbar()".into()),
+            Value::Keyword(k) if k == "hidden" => Some("overflow_x_hidden()".into()),
+            Value::Keyword(k) if k == "scroll" || k == "auto" => Some("overflow_x_scroll()".into()),
             _ => None,
         },
         "overflow-y" => match &value {
-            Value::Keyword(k) if k == "hidden" => Some("overflow_hidden()".into()),
-            Value::Keyword(k) if k == "scroll" || k == "auto" => Some("overflow_y_scrollbar()".into()),
+            Value::Keyword(k) if k == "hidden" => Some("overflow_y_hidden()".into()),
+            Value::Keyword(k) if k == "scroll" || k == "auto" => Some("overflow_y_scroll()".into()),
+            _ => None,
+        },
+
+        // ─── 定位 ───
+        "position" => match &value {
+            Value::Keyword(k) if k == "absolute" => Some("absolute()".into()),
+            Value::Keyword(k) if k == "relative" => Some("relative()".into()),
+            _ => None,
+        },
+        "top" => length_or_percentage_method("top", &value),
+        "right" => length_or_percentage_method("right", &value),
+        "bottom" => length_or_percentage_method("bottom", &value),
+        "left" => length_or_percentage_method("left", &value),
+        "inset" => length_or_percentage_method("inset", &value),
+
+        // ─── 阴影 ───
+        "box-shadow" => match &value {
+            Value::Keyword(k) => match k.as_str() {
+                "none" => Some("shadow_none()".into()),
+                "2xs" => Some("shadow_2xs()".into()),
+                "xs" => Some("shadow_xs()".into()),
+                "sm" => Some("shadow_sm()".into()),
+                "md" => Some("shadow_md()".into()),
+                "lg" => Some("shadow_lg()".into()),
+                "xl" => Some("shadow_xl()".into()),
+                "2xl" => Some("shadow_2xl()".into()),
+                _ => None,
+            },
+            _ => None,
+        },
+
+        // ─── cursor ───
+        "cursor" => match &value {
+            Value::Keyword(k) => match k.as_str() {
+                "default" => Some("cursor_default()".into()),
+                "pointer" => Some("cursor_pointer()".into()),
+                "text" => Some("cursor_text()".into()),
+                "move" => Some("cursor_move()".into()),
+                "not-allowed" => Some("cursor_not_allowed()".into()),
+                "context-menu" => Some("cursor_context_menu()".into()),
+                "crosshair" => Some("cursor_crosshair()".into()),
+                "vertical-text" => Some("cursor_vertical_text()".into()),
+                "alias" => Some("cursor_alias()".into()),
+                "copy" => Some("cursor_copy()".into()),
+                "no-drop" => Some("cursor_no_drop()".into()),
+                "grab" => Some("cursor_grab()".into()),
+                "grabbing" => Some("cursor_grabbing()".into()),
+                "ew-resize" => Some("cursor_ew_resize()".into()),
+                "ns-resize" => Some("cursor_ns_resize()".into()),
+                "nesw-resize" => Some("cursor_nesw_resize()".into()),
+                "nwse-resize" => Some("cursor_nwse_resize()".into()),
+                "col-resize" => Some("cursor_col_resize()".into()),
+                "row-resize" => Some("cursor_row_resize()".into()),
+                "n-resize" => Some("cursor_n_resize()".into()),
+                "e-resize" => Some("cursor_e_resize()".into()),
+                "s-resize" => Some("cursor_s_resize()".into()),
+                "w-resize" => Some("cursor_w_resize()".into()),
+                _ => None,
+            },
+            _ => None,
+        },
+
+        // ─── visibility ───
+        "visibility" => match &value {
+            Value::Keyword(k) if k == "visible" => Some("visible()".into()),
+            Value::Keyword(k) if k == "hidden" => Some("invisible()".into()),
+            _ => None,
+        },
+
+        // ─── 文本截断 ───
+        "text-overflow" => match &value {
+            Value::Keyword(k) if k == "ellipsis" => Some("text_ellipsis()".into()),
+            _ => None,
+        },
+        "line-clamp" => match &value {
+            Value::Number(n) => Some(format!("line_clamp({}usize)", *n as usize)),
+            _ => None,
+        },
+        "truncate" => match &value {
+            Value::Keyword(k) if k == "true" => Some("truncate()".into()),
+            _ => None,
+        },
+
+        // ─── 文本装饰 ───
+        "text-decoration" => match &value {
+            Value::Keyword(k) => match k.as_str() {
+                "underline" => Some("underline()".into()),
+                "line-through" => Some("line_through()".into()),
+                "none" => Some("text_decoration_none()".into()),
+                _ => None,
+            },
+            _ => None,
+        },
+        // ─── 字体风格 ───
+        "font-style" => match &value {
+            Value::Keyword(k) => match k.as_str() {
+                "italic" => Some("italic()".into()),
+                "normal" => Some("not_italic()".into()),
+                _ => None,
+            },
+            _ => None,
+        },
+        // ─── align-self ───
+        "align-self" => match &value {
+            Value::Keyword(k) => match k.as_str() {
+                "start" => Some("self_start()".into()),
+                "flex-start" => Some("self_flex_start()".into()),
+                "end" => Some("self_end()".into()),
+                "flex-end" => Some("self_flex_end()".into()),
+                "center" => Some("self_center()".into()),
+                "stretch" => Some("self_stretch()".into()),
+                "baseline" => Some("self_baseline()".into()),
+                _ => None,
+            },
+            _ => None,
+        },
+        // ─── align-content ───
+        "align-content" => match &value {
+            Value::Keyword(k) => match k.as_str() {
+                "normal" => Some("content_normal()".into()),
+                "center" => Some("content_center()".into()),
+                "start" | "flex-start" => Some("content_start()".into()),
+                "end" | "flex-end" => Some("content_end()".into()),
+                "space-between" => Some("content_between()".into()),
+                "space-around" => Some("content_around()".into()),
+                "space-evenly" => Some("content_evenly()".into()),
+                "stretch" => Some("content_stretch()".into()),
+                _ => None,
+            },
+            _ => None,
+        },
+        // ─── border 细化 ───
+        "border-x" => shorthand_border(&value, vars, "x"),
+        "border-y" => shorthand_border(&value, vars, "y"),
+        "border-style" => match &value {
+            Value::Keyword(k) if k == "dashed" => Some("border_dashed()".into()),
+            _ => None,
+        },
+        // ─── 圆角细化（4 角）───
+        "border-top-left-radius" => length_method("rounded_tl", &value),
+        "border-top-right-radius" => length_method("rounded_tr", &value),
+        "border-bottom-right-radius" => length_method("rounded_br", &value),
+        "border-bottom-left-radius" => length_method("rounded_bl", &value),
+        // ─── flex 分项 ───
+        "flex-grow" => match &value {
+            Value::Number(n) => Some(format!("flex_grow({:?})", n)),
+            _ => None,
+        },
+        "flex-shrink" => match &value {
+            Value::Number(n) => Some(format!("flex_shrink({:?})", n)),
+            _ => None,
+        },
+        "flex-basis" => length_or_percentage_method("flex_basis", &value),
+        // ─── aspect-ratio ───
+        "aspect-ratio" => match &value {
+            Value::Keyword(k) if k == "square" => Some("aspect_square()".into()),
+            Value::Number(n) => Some(format!("aspect_ratio({:?})", n)),
+            _ => None,
+        },
+
+        // ─── CSS Grid ───
+        "grid-template-columns" => match &value {
+            Value::Number(n) => Some(format!("grid_cols({}u16)", *n as u16)),
+            _ => None,
+        },
+        "grid-template-rows" => match &value {
+            Value::Number(n) => Some(format!("grid_rows({}u16)", *n as u16)),
+            _ => None,
+        },
+        "grid-column" => match &value {
+            // grid-column: span <N>
+            Value::List(items) if items.len() == 2 => {
+                if let (Value::Keyword(k), Value::Number(n)) = (&items[0], &items[1]) {
+                    if k == "span" {
+                        return Some(format!("col_span({}u16)", *n as u16));
+                    }
+                }
+                None
+            }
+            _ => None,
+        },
+        "grid-row" => match &value {
+            Value::List(items) if items.len() == 2 => {
+                if let (Value::Keyword(k), Value::Number(n)) = (&items[0], &items[1]) {
+                    if k == "span" {
+                        return Some(format!("row_span({}u16)", *n as u16));
+                    }
+                }
+                None
+            }
+            _ => None,
+        },
+        "grid-column-start" => match &value {
+            Value::Number(n) => Some(format!("col_start({}i16)", *n as i16)),
+            _ => None,
+        },
+        "grid-column-end" => match &value {
+            Value::Number(n) => Some(format!("col_end({}i16)", *n as i16)),
+            _ => None,
+        },
+        "grid-row-start" => match &value {
+            Value::Number(n) => Some(format!("row_start({}i16)", *n as i16)),
+            _ => None,
+        },
+        "grid-row-end" => match &value {
+            Value::Number(n) => Some(format!("row_end({}i16)", *n as i16)),
             _ => None,
         },
 
@@ -579,9 +793,108 @@ mod tests {
 
     #[test]
     fn map_unsupported_property_skipped() {
-        let d = decl("cursor", Value::Keyword("pointer".into()));
+        // transform 仍未映射，应被静默跳过
+        let d = decl("transform", Value::Keyword("rotate(45deg)".into()));
         let code = map_declarations(&[d], &HashMap::new());
         assert!(code.is_empty());
+    }
+
+    #[test]
+    fn map_position_absolute() {
+        let d = decl("position", Value::Keyword("absolute".into()));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert_eq!(code, ".absolute()");
+    }
+
+    #[test]
+    fn map_position_relative() {
+        let d = decl("position", Value::Keyword("relative".into()));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert_eq!(code, ".relative()");
+    }
+
+    #[test]
+    fn map_top_px() {
+        let d = decl("top", Value::Length(10.0, Unit::Px));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".top(gpui::px(10"));
+    }
+
+    #[test]
+    fn map_left_percent() {
+        let d = decl("left", Value::Length(50.0, Unit::Percent));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".left(gpui::relative(0.5))"));
+    }
+
+    #[test]
+    fn map_inset_px() {
+        let d = decl("inset", Value::Length(8.0, Unit::Px));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".inset(gpui::px(8"));
+    }
+
+    #[test]
+    fn map_box_shadow_md() {
+        let d = decl("box-shadow", Value::Keyword("md".into()));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert_eq!(code, ".shadow_md()");
+    }
+
+    #[test]
+    fn map_box_shadow_none() {
+        let d = decl("box-shadow", Value::Keyword("none".into()));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert_eq!(code, ".shadow_none()");
+    }
+
+    #[test]
+    fn map_cursor_pointer() {
+        let d = decl("cursor", Value::Keyword("pointer".into()));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert_eq!(code, ".cursor_pointer()");
+    }
+
+    #[test]
+    fn map_cursor_not_allowed() {
+        let d = decl("cursor", Value::Keyword("not-allowed".into()));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert_eq!(code, ".cursor_not_allowed()");
+    }
+
+    #[test]
+    fn map_visibility_hidden() {
+        let d = decl("visibility", Value::Keyword("hidden".into()));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert_eq!(code, ".invisible()");
+    }
+
+    #[test]
+    fn map_visibility_visible() {
+        let d = decl("visibility", Value::Keyword("visible".into()));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert_eq!(code, ".visible()");
+    }
+
+    #[test]
+    fn map_text_overflow_ellipsis() {
+        let d = decl("text-overflow", Value::Keyword("ellipsis".into()));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert_eq!(code, ".text_ellipsis()");
+    }
+
+    #[test]
+    fn map_line_clamp_three() {
+        let d = decl("line-clamp", Value::Number(3.0));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".line_clamp(3usize)"));
+    }
+
+    #[test]
+    fn map_truncate_true() {
+        let d = decl("truncate", Value::Keyword("true".into()));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert_eq!(code, ".truncate()");
     }
 
     #[test]
@@ -595,7 +908,22 @@ mod tests {
     fn map_overflow_x_scroll() {
         let d = decl("overflow-x", Value::Keyword("auto".into()));
         let code = map_declarations(&[d], &HashMap::new());
-        assert!(code.contains(".overflow_x_scrollbar()"), "expected overflow_x_scrollbar, got: {}", code);
+        assert!(code.contains(".overflow_x_scroll()"), "expected overflow_x_scroll, got: {}", code);
+    }
+
+    #[test]
+    fn map_overflow_x_hidden() {
+        // 单轴 hidden 不应污染另一轴：生成 overflow_x_hidden() 而非 overflow_hidden()
+        let d = decl("overflow-x", Value::Keyword("hidden".into()));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert_eq!(code, ".overflow_x_hidden()");
+    }
+
+    #[test]
+    fn map_overflow_y_hidden() {
+        let d = decl("overflow-y", Value::Keyword("hidden".into()));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert_eq!(code, ".overflow_y_hidden()");
     }
 
     #[test]
@@ -710,5 +1038,203 @@ mod tests {
         ]));
         let code = map_declarations(&[d], &HashMap::new());
         assert!(code.is_empty(), "expected no border for width=0, got: {}", code);
+    }
+
+    // ─── P1 新增映射 ───
+
+    #[test]
+    fn map_display_block() {
+        let d = decl("display", Value::Keyword("block".into()));
+        assert_eq!(map_declarations(&[d], &HashMap::new()), ".block()");
+    }
+
+    #[test]
+    fn map_display_grid() {
+        let d = decl("display", Value::Keyword("grid".into()));
+        assert_eq!(map_declarations(&[d], &HashMap::new()), ".grid()");
+    }
+
+    #[test]
+    fn map_text_decoration_underline() {
+        let d = decl("text-decoration", Value::Keyword("underline".into()));
+        assert_eq!(map_declarations(&[d], &HashMap::new()), ".underline()");
+    }
+
+    #[test]
+    fn map_text_decoration_line_through() {
+        let d = decl("text-decoration", Value::Keyword("line-through".into()));
+        assert_eq!(map_declarations(&[d], &HashMap::new()), ".line_through()");
+    }
+
+    #[test]
+    fn map_text_decoration_none() {
+        let d = decl("text-decoration", Value::Keyword("none".into()));
+        assert_eq!(map_declarations(&[d], &HashMap::new()), ".text_decoration_none()");
+    }
+
+    #[test]
+    fn map_font_style_italic() {
+        let d = decl("font-style", Value::Keyword("italic".into()));
+        assert_eq!(map_declarations(&[d], &HashMap::new()), ".italic()");
+    }
+
+    #[test]
+    fn map_font_style_normal() {
+        let d = decl("font-style", Value::Keyword("normal".into()));
+        assert_eq!(map_declarations(&[d], &HashMap::new()), ".not_italic()");
+    }
+
+    #[test]
+    fn map_align_self_center() {
+        let d = decl("align-self", Value::Keyword("center".into()));
+        assert_eq!(map_declarations(&[d], &HashMap::new()), ".self_center()");
+    }
+
+    #[test]
+    fn map_align_self_flex_start() {
+        let d = decl("align-self", Value::Keyword("flex-start".into()));
+        assert_eq!(map_declarations(&[d], &HashMap::new()), ".self_flex_start()");
+    }
+
+    #[test]
+    fn map_align_content_between() {
+        let d = decl("align-content", Value::Keyword("space-between".into()));
+        assert_eq!(map_declarations(&[d], &HashMap::new()), ".content_between()");
+    }
+
+    #[test]
+    fn map_align_content_stretch() {
+        let d = decl("align-content", Value::Keyword("stretch".into()));
+        assert_eq!(map_declarations(&[d], &HashMap::new()), ".content_stretch()");
+    }
+
+    #[test]
+    fn map_border_x_shorthand() {
+        let d = decl("border-x", Value::Length(1.0, Unit::Px));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".border_x_1()"), "expected border_x_1, got: {}", code);
+    }
+
+    #[test]
+    fn map_border_y_shorthand() {
+        let d = decl("border-y", Value::Length(2.0, Unit::Px));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".border_y_2()"), "expected border_y_2, got: {}", code);
+    }
+
+    #[test]
+    fn map_border_style_dashed() {
+        let d = decl("border-style", Value::Keyword("dashed".into()));
+        assert_eq!(map_declarations(&[d], &HashMap::new()), ".border_dashed()");
+    }
+
+    #[test]
+    fn map_border_style_solid_skipped() {
+        let d = decl("border-style", Value::Keyword("solid".into()));
+        assert_eq!(map_declarations(&[d], &HashMap::new()), "");
+    }
+
+    #[test]
+    fn map_border_top_left_radius() {
+        let d = decl("border-top-left-radius", Value::Length(4.0, Unit::Px));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".rounded_tl(gpui::px(4"), "got: {}", code);
+    }
+
+    #[test]
+    fn map_border_bottom_right_radius() {
+        let d = decl("border-bottom-right-radius", Value::Length(8.0, Unit::Px));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".rounded_br(gpui::px(8"), "got: {}", code);
+    }
+
+    #[test]
+    fn map_flex_grow() {
+        let d = decl("flex-grow", Value::Number(2.0));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".flex_grow(2"), "got: {}", code);
+    }
+
+    #[test]
+    fn map_flex_shrink() {
+        let d = decl("flex-shrink", Value::Number(0.0));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".flex_shrink(0"), "got: {}", code);
+    }
+
+    #[test]
+    fn map_flex_basis_px() {
+        let d = decl("flex-basis", Value::Length(100.0, Unit::Px));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".flex_basis(gpui::px(100"), "got: {}", code);
+    }
+
+    #[test]
+    fn map_aspect_ratio_number() {
+        let d = decl("aspect-ratio", Value::Number(1.6));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".aspect_ratio(1.6"), "got: {}", code);
+    }
+
+    #[test]
+    fn map_aspect_ratio_square() {
+        let d = decl("aspect-ratio", Value::Keyword("square".into()));
+        assert_eq!(map_declarations(&[d], &HashMap::new()), ".aspect_square()");
+    }
+
+    // ─── P2 CSS Grid ───
+
+    #[test]
+    fn map_grid_template_columns() {
+        let d = decl("grid-template-columns", Value::Number(3.0));
+        assert_eq!(map_declarations(&[d], &HashMap::new()), ".grid_cols(3u16)");
+    }
+
+    #[test]
+    fn map_grid_template_rows() {
+        let d = decl("grid-template-rows", Value::Number(2.0));
+        assert_eq!(map_declarations(&[d], &HashMap::new()), ".grid_rows(2u16)");
+    }
+
+    #[test]
+    fn map_grid_column_span() {
+        let d = decl("grid-column", Value::List(vec![
+            Value::Keyword("span".into()),
+            Value::Number(2.0),
+        ]));
+        assert_eq!(map_declarations(&[d], &HashMap::new()), ".col_span(2u16)");
+    }
+
+    #[test]
+    fn map_grid_row_span() {
+        let d = decl("grid-row", Value::List(vec![
+            Value::Keyword("span".into()),
+            Value::Number(3.0),
+        ]));
+        assert_eq!(map_declarations(&[d], &HashMap::new()), ".row_span(3u16)");
+    }
+
+    #[test]
+    fn map_grid_column_start() {
+        let d = decl("grid-column-start", Value::Number(1.0));
+        assert_eq!(map_declarations(&[d], &HashMap::new()), ".col_start(1i16)");
+    }
+
+    #[test]
+    fn map_grid_column_end() {
+        let d = decl("grid-column-end", Value::Number(4.0));
+        assert_eq!(map_declarations(&[d], &HashMap::new()), ".col_end(4i16)");
+    }
+
+    #[test]
+    fn map_grid_row_start() {
+        let d = decl("grid-row-start", Value::Number(2.0));
+        assert_eq!(map_declarations(&[d], &HashMap::new()), ".row_start(2i16)");
+    }
+
+    #[test]
+    fn map_grid_row_end() {
+        let d = decl("grid-row-end", Value::Number(5.0));
+        assert_eq!(map_declarations(&[d], &HashMap::new()), ".row_end(5i16)");
     }
 }

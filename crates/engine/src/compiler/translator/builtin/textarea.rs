@@ -15,6 +15,7 @@ const META: &BuiltinMeta = &BuiltinMeta {
     ctor: "gpui::div()",
     is_container: false,
     is_self_closing: false,
+    is_styled: true,
 };
 
 #[derive(Debug)]

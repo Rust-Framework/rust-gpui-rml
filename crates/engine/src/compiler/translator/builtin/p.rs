@@ -12,6 +12,7 @@ const META: &BuiltinMeta = &BuiltinMeta {
     ctor: "gpui::div().text_sm().text_color(rml_core::theme::color(\"--text-muted\"))",
     is_container: true,
     is_self_closing: true,
+    is_styled: true,
 };
 
 #[derive(Debug)]

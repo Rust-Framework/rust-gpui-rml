@@ -38,7 +38,30 @@ pub fn is_style_attr(name: &str) -> bool {
         "justify-content" | "align-items" | "flex" | "gap" |
         "min-width" | "max-width" | "min-height" | "max-height" |
         // 视觉效果
-        "opacity" | "overflow" | "overflow-x" | "overflow-y"
+        "opacity" | "overflow" | "overflow-x" | "overflow-y" |
+        // 定位
+        "position" | "top" | "right" | "bottom" | "left" | "inset" |
+        // 阴影
+        "box-shadow" |
+        // cursor
+        "cursor" |
+        // visibility
+        "visibility" |
+        // 文本截断
+        "text-overflow" | "line-clamp" | "truncate" |
+        // P1 文本装饰 / 字体风格 / 对齐
+        "text-decoration" | "font-style" | "align-self" | "align-content" |
+        // P1 border 细化 / 圆角细化
+        "border-x" | "border-y" | "border-style" |
+        "border-top-left-radius" | "border-top-right-radius" |
+        "border-bottom-right-radius" | "border-bottom-left-radius" |
+        // P1 flex 分项 / 尺寸
+        "flex-grow" | "flex-shrink" | "flex-basis" | "aspect-ratio" |
+        // P2 CSS Grid
+        "grid-template-columns" | "grid-template-rows" |
+        "grid-column" | "grid-row" |
+        "grid-column-start" | "grid-column-end" |
+        "grid-row-start" | "grid-row-end"
     )
 }
 
@@ -149,6 +172,25 @@ mod tests {
         assert!(is_style_attr("overflow"));
         assert!(is_style_attr("overflow_x"));
         assert!(is_style_attr("overflow_y"));
+    }
+
+    #[test]
+    fn is_style_attr_recognizes_p0_additions() {
+        // 定位
+        assert!(is_style_attr("position"));
+        assert!(is_style_attr("top"));
+        assert!(is_style_attr("right"));
+        assert!(is_style_attr("bottom"));
+        assert!(is_style_attr("left"));
+        assert!(is_style_attr("inset"));
+        // 阴影 / cursor / visibility
+        assert!(is_style_attr("box_shadow"));
+        assert!(is_style_attr("cursor"));
+        assert!(is_style_attr("visibility"));
+        // 文本截断
+        assert!(is_style_attr("text_overflow"));
+        assert!(is_style_attr("line_clamp"));
+        assert!(is_style_attr("truncate"));
     }
 
     #[test]
@@ -380,13 +422,188 @@ mod tests {
     #[test]
     fn apply_overflow_y_scroll() {
         let code = apply_style_attr("overflow_y", "scroll").unwrap();
-        assert_eq!(code, ".overflow_y_scrollbar()");
+        assert_eq!(code, ".overflow_y_scroll()");
     }
 
     #[test]
     fn apply_overflow_x_auto() {
         let code = apply_style_attr("overflow_x", "auto").unwrap();
-        assert_eq!(code, ".overflow_x_scrollbar()");
+        assert_eq!(code, ".overflow_x_scroll()");
+    }
+
+    #[test]
+    fn apply_overflow_x_hidden() {
+        let code = apply_style_attr("overflow_x", "hidden").unwrap();
+        assert_eq!(code, ".overflow_x_hidden()");
+    }
+
+    #[test]
+    fn apply_overflow_y_hidden() {
+        let code = apply_style_attr("overflow_y", "hidden").unwrap();
+        assert_eq!(code, ".overflow_y_hidden()");
+    }
+
+    // ─── apply_style_attr: P0 新增（定位/阴影/cursor/visibility/文本截断） ───
+
+    #[test]
+    fn apply_position_absolute() {
+        let code = apply_style_attr("position", "absolute").unwrap();
+        assert_eq!(code, ".absolute()");
+    }
+
+    #[test]
+    fn apply_position_relative() {
+        let code = apply_style_attr("position", "relative").unwrap();
+        assert_eq!(code, ".relative()");
+    }
+
+    #[test]
+    fn apply_top_px() {
+        let code = apply_style_attr("top", "10px").unwrap();
+        assert!(code.contains(".top(gpui::px(10"));
+    }
+
+    #[test]
+    fn apply_left_percent() {
+        let code = apply_style_attr("left", "50%").unwrap();
+        assert!(code.contains(".left(gpui::relative(0.5))"));
+    }
+
+    #[test]
+    fn apply_inset_px() {
+        let code = apply_style_attr("inset", "8px").unwrap();
+        assert!(code.contains(".inset(gpui::px(8"));
+    }
+
+    #[test]
+    fn apply_box_shadow_lg() {
+        let code = apply_style_attr("box_shadow", "lg").unwrap();
+        assert_eq!(code, ".shadow_lg()");
+    }
+
+    #[test]
+    fn apply_box_shadow_none() {
+        let code = apply_style_attr("box_shadow", "none").unwrap();
+        assert_eq!(code, ".shadow_none()");
+    }
+
+    #[test]
+    fn apply_cursor_pointer() {
+        let code = apply_style_attr("cursor", "pointer").unwrap();
+        assert_eq!(code, ".cursor_pointer()");
+    }
+
+    #[test]
+    fn apply_cursor_not_allowed() {
+        let code = apply_style_attr("cursor", "not-allowed").unwrap();
+        assert_eq!(code, ".cursor_not_allowed()");
+    }
+
+    #[test]
+    fn apply_visibility_hidden() {
+        let code = apply_style_attr("visibility", "hidden").unwrap();
+        assert_eq!(code, ".invisible()");
+    }
+
+    #[test]
+    fn apply_visibility_visible() {
+        let code = apply_style_attr("visibility", "visible").unwrap();
+        assert_eq!(code, ".visible()");
+    }
+
+    #[test]
+    fn apply_text_overflow_ellipsis() {
+        let code = apply_style_attr("text_overflow", "ellipsis").unwrap();
+        assert_eq!(code, ".text_ellipsis()");
+    }
+
+    #[test]
+    fn apply_line_clamp_two() {
+        let code = apply_style_attr("line_clamp", "2").unwrap();
+        assert!(code.contains(".line_clamp(2usize)"));
+    }
+
+    #[test]
+    fn apply_truncate_true() {
+        let code = apply_style_attr("truncate", "true").unwrap();
+        assert_eq!(code, ".truncate()");
+    }
+
+    // ─── apply_style_attr: P1 新增（文本装饰/字体/对齐/border/flex/尺寸） ───
+
+    #[test]
+    fn apply_display_block() {
+        assert_eq!(apply_style_attr("display", "block").unwrap(), ".block()");
+    }
+
+    #[test]
+    fn apply_display_grid() {
+        assert_eq!(apply_style_attr("display", "grid").unwrap(), ".grid()");
+    }
+
+    #[test]
+    fn apply_text_decoration_underline() {
+        assert_eq!(apply_style_attr("text_decoration", "underline").unwrap(), ".underline()");
+    }
+
+    #[test]
+    fn apply_font_style_italic() {
+        assert_eq!(apply_style_attr("font_style", "italic").unwrap(), ".italic()");
+    }
+
+    #[test]
+    fn apply_align_self_center() {
+        assert_eq!(apply_style_attr("align_self", "center").unwrap(), ".self_center()");
+    }
+
+    #[test]
+    fn apply_align_content_between() {
+        assert_eq!(apply_style_attr("align_content", "space-between").unwrap(), ".content_between()");
+    }
+
+    #[test]
+    fn apply_border_x_shorthand() {
+        let code = apply_style_attr("border_x", "1px").unwrap();
+        assert!(code.contains(".border_x_1()"), "got: {}", code);
+    }
+
+    #[test]
+    fn apply_border_style_dashed() {
+        assert_eq!(apply_style_attr("border_style", "dashed").unwrap(), ".border_dashed()");
+    }
+
+    #[test]
+    fn apply_border_top_left_radius() {
+        let code = apply_style_attr("border_top_left_radius", "4px").unwrap();
+        assert!(code.contains(".rounded_tl("), "got: {}", code);
+    }
+
+    #[test]
+    fn apply_flex_grow() {
+        let code = apply_style_attr("flex_grow", "2").unwrap();
+        assert!(code.contains(".flex_grow(2"), "got: {}", code);
+    }
+
+    #[test]
+    fn apply_aspect_ratio_square() {
+        assert_eq!(apply_style_attr("aspect_ratio", "square").unwrap(), ".aspect_square()");
+    }
+
+    #[test]
+    fn is_style_attr_recognizes_p1_additions() {
+        assert!(is_style_attr("text_decoration"));
+        assert!(is_style_attr("font_style"));
+        assert!(is_style_attr("align_self"));
+        assert!(is_style_attr("align_content"));
+        assert!(is_style_attr("border_x"));
+        assert!(is_style_attr("border_y"));
+        assert!(is_style_attr("border_style"));
+        assert!(is_style_attr("border_top_left_radius"));
+        assert!(is_style_attr("border_bottom_right_radius"));
+        assert!(is_style_attr("flex_grow"));
+        assert!(is_style_attr("flex_shrink"));
+        assert!(is_style_attr("flex_basis"));
+        assert!(is_style_attr("aspect_ratio"));
     }
 
     // ─── apply_style_attr: 错误路径 ───
@@ -404,7 +621,7 @@ mod tests {
 
     #[test]
     fn apply_unsupported_property_returns_none() {
-        // mapper.rs 不支持 cursor 属性，应返回 None
-        assert!(apply_style_attr("cursor", "pointer").is_none());
+        // mapper.rs 不支持 transform 属性，应返回 None
+        assert!(apply_style_attr("transform", "rotate(45deg)").is_none());
     }
 }

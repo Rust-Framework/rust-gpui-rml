@@ -24,6 +24,8 @@ pub struct BuiltinMeta {
     pub is_container: bool,
     /// 是否为 void / 自闭合标签
     pub is_self_closing: bool,
+    /// 是否实现 GPUI `Styled` trait（anchored/deferred 等非 Styled 元素为 false）
+    pub is_styled: bool,
 }
 
 impl BuiltinMeta {
@@ -53,7 +55,7 @@ impl IRmlTranslator for BuiltinTranslator {
         loop_vars: &[String],
         parents: &[ParentInfo],
     ) -> Result<(String, bool), CodegenError> {
-        builtin_engine::translate(elem, ctx, id_counter, loop_vars, parents, self.meta)
+        builtin_engine::translate(elem, ctx, id_counter, loop_vars, parents, self.meta.ctor, self.meta.is_styled)
     }
 
     fn to_rml(&self, elem: &Element, ctx: &PrinterCtx) -> Result<String, super::PrintError> {
@@ -70,13 +72,17 @@ pub mod builtin_engine {
     use super::*;
 
     /// AST → Rust 代码
+    ///
+    /// `ctor` 为元素构造器调用代码字符串（如 `"gpui::div()"` 或 `"gpui::img(\"foo.png\")"`），
+    /// 允许调用方传入动态构造器（如 `<img>` 需将 `src` 属性作为构造参数）。
     pub fn translate(
         elem: &Element,
         ctx: &CodegenCtx,
         id_counter: &mut usize,
         loop_vars: &[String],
         parents: &[ParentInfo],
-        meta: &BuiltinMeta,
+        ctor: &str,
+        is_styled: bool,
     ) -> Result<(String, bool), CodegenError> {
         let tag = &elem.tag;
 
@@ -96,7 +102,7 @@ pub mod builtin_engine {
         let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
 
         // 1. 生成元素构造调用
-        let mut code = String::from(meta.ctor);
+        let mut code = String::from(ctor);
 
         // 2. ref / key 指令或事件处理器：生成 .id()
         let ref_name: Option<&str> = elem.directives.iter().find_map(|d| match d {
@@ -128,11 +134,13 @@ pub mod builtin_engine {
             code.push_str(&format!(".id((\"rml_el\", {}usize))", id_val));
         }
 
-        // 2b. 应用 CSS 样式（class/id 属性匹配全局样式表）
-        if let Some(sheet) = &ctx.stylesheet {
-            let style_code = apply_css_styles(elem, tag, sheet, parents);
-            if !style_code.is_empty() {
-                code.push_str(&style_code);
+        // 2b. 应用 CSS 样式（class/id 属性匹配全局样式表）—— 非 Styled 元素跳过
+        if is_styled {
+            if let Some(sheet) = &ctx.stylesheet {
+                let style_code = apply_css_styles(elem, tag, sheet, parents);
+                if !style_code.is_empty() {
+                    code.push_str(&style_code);
+                }
             }
         }
 
@@ -140,6 +148,13 @@ pub mod builtin_engine {
         for attr in &elem.attributes {
             match attr {
                 Attribute::Static { name, value, .. } => {
+                    // 非 Styled 元素跳过 style 内联样式 + 归一化样式属性
+                    if !is_styled
+                        && (name == "style"
+                            || crate::compiler::codegen::style_attr::is_style_attr(name))
+                    {
+                        continue;
+                    }
                     code.push_str(&apply_static_attr(name, value));
                 }
                 Attribute::Bind { name, expr, .. } => {

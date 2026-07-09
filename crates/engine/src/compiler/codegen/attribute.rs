@@ -23,7 +23,39 @@ pub(crate) fn apply_static_attr(name: &str, value: &str) -> String {
         "ref" => String::new(),
         "style" => apply_inline_style(value),
         "src" | "href" => String::new(),
+        // svg 专用：path 设置 SVG path 数据，由 gpui::svg().path(impl Into<SharedString>) 处理
+        "path" => format!(".path({:?})", value),
         "type" => String::new(),
+        // anchored 专用：anchor 定位角（8 变体）
+        "anchor" => match value {
+            "top-left" => ".anchor(gpui::Anchor::TopLeft)".to_string(),
+            "top-right" => ".anchor(gpui::Anchor::TopRight)".to_string(),
+            "bottom-left" => ".anchor(gpui::Anchor::BottomLeft)".to_string(),
+            "bottom-right" => ".anchor(gpui::Anchor::BottomRight)".to_string(),
+            "top-center" => ".anchor(gpui::Anchor::TopCenter)".to_string(),
+            "bottom-center" => ".anchor(gpui::Anchor::BottomCenter)".to_string(),
+            "left-center" => ".anchor(gpui::Anchor::LeftCenter)".to_string(),
+            "right-center" => ".anchor(gpui::Anchor::RightCenter)".to_string(),
+            _ => {
+                eprintln!(
+                    "[rml warning] unknown anchor value `{}`, expected one of: \
+                     top-left, top-right, bottom-left, bottom-right, top-center, \
+                     bottom-center, left-center, right-center",
+                    value
+                );
+                String::new()
+            }
+        },
+        // anchored 专用：offset 偏移量 "x,y"（如 "10px,5px"）
+        "offset" => parse_point_method("offset", value),
+        // anchored 专用：snap_to_window 布尔
+        "snap-to-window" => {
+            if value == "true" {
+                ".snap_to_window()".to_string()
+            } else {
+                String::new()
+            }
+        }
         // 已废弃的 Tailwind 式散落属性：输出 deprecation warning 并丢弃
         "h_flex" | "v_flex" | "h_full" | "w_full" | "min_w_0" | "min_h_0" => {
             eprintln!(
@@ -151,4 +183,42 @@ pub(crate) fn apply_bind_attr(
             String::new()
         }
     }
+}
+
+/// 解析 "x,y" 坐标字符串为 `.method_name(gpui::point(gpui::px(x), gpui::px(y)))` 调用
+///
+/// 支持格式：`"10px,20px"` / `"10,20"` / `"10px 20px"`
+fn parse_point_method(method_name: &str, value: &str) -> String {
+    let parts: Vec<&str> = value
+        .split([',', ' '])
+        .filter(|s| !s.trim().is_empty())
+        .collect();
+    if parts.len() != 2 {
+        eprintln!(
+            "[rml warning] invalid point value `{}` for {}, expected \"x,y\" (e.g. \"10px,20px\")",
+            value, method_name
+        );
+        return String::new();
+    }
+    let x = parse_px_value(parts[0].trim());
+    let y = parse_px_value(parts[1].trim());
+    match (x, y) {
+        (Some(xv), Some(yv)) => format!(
+            ".{}(gpui::point(gpui::px({}), gpui::px({})))",
+            method_name, xv, yv
+        ),
+        _ => {
+            eprintln!(
+                "[rml warning] invalid point component in `{}` for {}",
+                value, method_name
+            );
+            String::new()
+        }
+    }
+}
+
+/// 解析 "10px" / "10" / "10.5" 为 f32 值
+fn parse_px_value(s: &str) -> Option<f32> {
+    let s = s.trim().trim_end_matches("px").trim();
+    s.parse::<f32>().ok()
 }

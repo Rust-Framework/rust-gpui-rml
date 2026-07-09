@@ -6,9 +6,11 @@
 pub mod meta;
 
 pub mod a;
+pub mod anchored;
 pub mod br;
 pub mod button;
 pub mod code;
+pub mod deferred;
 pub mod div;
 pub mod h1;
 pub mod h2;
@@ -23,6 +25,7 @@ pub mod li;
 pub mod ol;
 pub mod p;
 pub mod span;
+pub mod svg;
 pub mod textarea;
 pub mod ul;
 
@@ -51,8 +54,11 @@ pub fn register_all(registry: &mut TranslatorRegistry) {
     registry.register(ol::OlTranslator);
     registry.register(li::LiTranslator);
     registry.register(img::ImgTranslator);
+    registry.register(svg::SvgTranslator);
     registry.register(a::ATranslator);
     registry.register(label::LabelTranslator);
     registry.register(br::BrTranslator);
     registry.register(code::CodeTranslator);
+    registry.register(anchored::AnchoredTranslator);
+    registry.register(deferred::DeferredTranslator);
 }

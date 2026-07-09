@@ -12,6 +12,7 @@ const META: &BuiltinMeta = &BuiltinMeta {
     ctor: "gpui::div().hidden()",
     is_container: false,
     is_self_closing: true,
+    is_styled: true,
 };
 
 #[derive(Debug)]

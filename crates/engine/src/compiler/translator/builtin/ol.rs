@@ -12,6 +12,7 @@ const META: &BuiltinMeta = &BuiltinMeta {
     ctor: "gpui::div().flex().flex_col()",
     is_container: true,
     is_self_closing: true,
+    is_styled: true,
 };
 
 #[derive(Debug)]
