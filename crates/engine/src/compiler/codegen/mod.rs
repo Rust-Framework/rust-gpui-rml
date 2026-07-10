@@ -39,7 +39,7 @@ pub(crate) mod window;
 
 use crate::compiler::{CodegenCtx, CodegenError};
 
-pub use model::{collect_model_converters, collect_model_fields, collect_model_input_handlers};
+pub use model::{collect_model_converters, collect_model_fields, collect_model_input_handlers, collect_slider_fields, extract_field_converter};
 pub use node::{gen_node, GenResult};
 pub(crate) use text::{gen_expr_code, try_gen_i18n_call};
 
@@ -96,6 +96,9 @@ pub fn codegen(root: &crate::parser::ast::Node, ctx: &CodegenCtx) -> Result<Stri
 
     // InputState 惰性初始化方法
     out.push_str(&observable::gen_input_state_impl(ctx));
+
+    // SliderState 惰性初始化方法（C3：Slider StateBridge）
+    out.push_str(&observable::gen_slider_state_impl(ctx));
 
     // 生命周期钩子自动联动（#[on_loaded]/#[on_unloaded] → impl ILifecycle）
     out.push_str(&lifecycle::gen_lifecycle_impl(ctx));

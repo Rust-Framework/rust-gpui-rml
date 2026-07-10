@@ -144,6 +144,14 @@ pub mod group_box_case;
 pub mod pagination_case;
 #[path = "radio_case.rml.rs"]
 pub mod radio_case;
+#[path = "stepper_case.rml.rs"]
+pub mod stepper_case;
+#[path = "rating_case.rml.rs"]
+pub mod rating_case;
+#[path = "otp_input_case.rml.rs"]
+pub mod otp_input_case;
+#[path = "virtual_list_case.rml.rs"]
+pub mod virtual_list_case;
 
 // P0-1：用户组件事件绑定 demo
 #[path = "user_component_event_case.rml.rs"]
@@ -152,3 +160,7 @@ pub mod user_component_event_case;
 // P0-2：content 绑定 demo（IVisual/AnyElement/ToString）
 #[path = "content_binding_case.rml.rs"]
 pub mod content_binding_case;
+
+// 基础能力补齐：焦点事件 demo
+#[path = "focus_event_case.rml.rs"]
+pub mod focus_event_case;

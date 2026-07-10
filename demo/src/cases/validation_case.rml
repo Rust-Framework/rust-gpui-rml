@@ -1,21 +1,21 @@
 <component>
     <CaseDocPage
         title={t("case.validation.title")}
-        description="表单验证案例演示 RML 的 model 双向绑定与 #[validate] 验证规则。input model=&#123;field&#125; 自动同步字段，#[validate(range(min,max))] 在数值超范围时显示红框，#[computed] 方法实现自定义验证逻辑。"
+        description="表单验证案例演示 RML 的 value 双向绑定与 #[validate] 验证规则。input value=&#123;field&#125; 自动同步字段，#[validate(range(min,max))] 在数值超范围时显示红框，#[computed] 方法实现自定义验证逻辑。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
             <Card title="表单字段">
                 <p>姓名（必填）：</p>
-                <input model={name} placeholder="输入姓名" />
+                <input value={name} placeholder="输入姓名" />
                 <p>当前姓名：{name}（有效：{name_valid}）</p>
 
                 <p>年龄（0-150，#[validate] 自动验证）：</p>
-                <input model={age} placeholder="输入年龄" />
+                <input value={age} placeholder="输入年龄" />
                 <p>当前年龄：{age}</p>
 
                 <p>邮箱（自定义 #[computed] 验证）：</p>
-                <input model={email} placeholder="输入邮箱" />
+                <input value={email} placeholder="输入邮箱" />
                 <p>当前邮箱：{email}（有效：{email_valid}）</p>
             </Card>
 

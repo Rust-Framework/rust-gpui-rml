@@ -65,7 +65,7 @@ fn gen_impl_i_model(struct_name: &Ident, fields: &Fields) -> TokenStream {
 /// `RmlState` 统一承载框架运行时所需的全部状态：
 /// - 字段版本追踪（`HashMap<String, AtomicU64>`，替代旧每字段一个 AtomicU64 的设计）
 /// - `#[computed]` 缓存
-/// - `<input model={field}>` 双向绑定所需的 `InputState` entity 暂存与正向同步版本
+/// - `<input value={field}>` 双向绑定所需的 `InputState` entity 暂存与正向同步版本
 /// - 字段校验错误状态
 /// - `on_loaded` 一次性初始化守卫
 /// - 窗口句柄（由 `#[window]` 使用）

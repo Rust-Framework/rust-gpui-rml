@@ -43,6 +43,15 @@ pub(crate) fn apply_static_attr(name: &str, value: &str) -> String {
         // svg 专用：path 设置 SVG path 数据，由 gpui::svg().path(impl Into<SharedString>) 处理
         "path" => format!(".path({:?})", value),
         "type" => String::new(),
+        // focusable：使 StatefulInteractiveElement 可接收焦点，配合 on-focus/on-blur 使用
+        // GPUI focusable() 不接受参数
+        "focusable" => {
+            if value == "true" || value.is_empty() {
+                ".focusable()".to_string()
+            } else {
+                String::new()
+            }
+        }
         // anchored 专用：anchor 定位角（8 变体）
         "anchor" => match value {
             "top-left" => ".anchor(gpui::Anchor::TopLeft)".to_string(),

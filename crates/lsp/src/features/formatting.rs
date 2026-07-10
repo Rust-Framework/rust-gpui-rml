@@ -235,15 +235,6 @@ fn format_directive(d: &Directive, out: &mut String) {
             out.push_str(expr);
             out.push('}');
         }
-        Directive::Model { field, converter, .. } => {
-            out.push_str("model={");
-            out.push_str(field);
-            if let Some(c) = converter {
-                out.push_str(" | ");
-                out.push_str(c);
-            }
-            out.push('}');
-        }
         Directive::Show { expr, .. } => {
             out.push_str("show={");
             out.push_str(expr);

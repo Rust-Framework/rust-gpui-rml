@@ -83,8 +83,8 @@ impl ILifecycle for InputCase {
             ("on_enter", "事件", "回车按下回调（InputEvent::PressEnter）"),
             ("on_focus", "事件", "获得焦点回调（InputEvent::Focus）"),
             ("on_blur", "事件", "失去焦点回调（InputEvent::Blur）"),
-            ("model", "字段引用（指令）", "双向绑定到 pub 字段（仅小写 <input> 标签支持，见 two_way_case 演示）"),
-            ("placeholder", "字符串", "占位文本（仅小写 <input model={...}> 支持；PascalCase Input 需在 on_loaded 中通过 InputState builder 配置）"),
+            ("value", "绑定属性", "双向绑定到 pub 字段（仅小写 <input> 标签支持，见 two_way_case 演示）"),
+            ("placeholder", "字符串", "占位文本（仅小写 <input value={...}> 支持；PascalCase Input 需在 on_loaded 中通过 InputState builder 配置）"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

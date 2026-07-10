@@ -16,10 +16,11 @@
 use super::super::{ComponentCategory, IRmlTranslator, PrintError, PrinterCtx, TranslatorMetadata};
 use crate::compiler::codegen::attribute::append_css_class_styles;
 use crate::compiler::codegen::gen_node;
-use crate::compiler::{CodegenCtx, CodegenError};
 use crate::compiler::setters::{
     component_bind_setter, component_event_setter, component_static_setter,
 };
+use crate::compiler::twoway;
+use crate::compiler::{CodegenCtx, CodegenError};
 use crate::css::ParentInfo;
 use crate::parser::ast::{Attribute, Directive, Element, Node};
 use crate::tags;
@@ -116,6 +117,11 @@ fn gen_stateless_body(
     let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
     let mut label_set_by_attr = false;
 
+    // 双向绑定检测：checked={field} / value={field} / selected_index={field}
+    // 若检测到，生成合并 on_click 回调（自动回写 + 用户回调），并跳过属性循环中的 on_click
+    let twoway_on_click = twoway::detect_twoway_binding(elem, &resolved)
+        .and_then(|(field, spec, user_handler)| twoway::gen_twoway_on_click(spec, &field, user_handler));
+
     for attr in &elem.attributes {
         match attr {
             Attribute::Static { name, value, .. } => {
@@ -139,11 +145,20 @@ fn gen_stateless_body(
                 }
             }
             Attribute::Event { name, handler, .. } => {
+                // 双向绑定接管 on_click 时跳过正常 event setter
+                if name == "on_click" && twoway_on_click.is_some() {
+                    continue;
+                }
                 if let Some(setter) = component_event_setter(name, handler, &resolved) {
                     code.push_str(&setter);
                 }
             }
         }
+    }
+
+    // 注入双向绑定的合并 on_click 回调
+    if let Some(on_click_code) = twoway_on_click {
+        code.push_str(&on_click_code);
     }
 
     let canonical = tags::canonical_tag(&resolved);

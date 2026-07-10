@@ -146,21 +146,6 @@ fn emit_directive_token(
             emit_keyword_token("html", directive_span, source, result);
             check_binding_expr_emit(expr, directive_span, source, meta, result);
         }
-        Directive::Model { field, .. } => {
-            emit_keyword_token("model", directive_span, source, result);
-            // model 字段：VARIABLE + DEFINITION + MODIFICATION（若已解析）
-            let (is_valid, ident) = check_ident_validity(field, meta);
-            if let Some(ident) = ident {
-                let ident_span = find_ident_in(directive_span, source, &ident)
-                    .unwrap_or(directive_span);
-                let (tt, mods) = if is_valid {
-                    (token_type::VARIABLE, token_modifier::DEFINITION | token_modifier::MODIFICATION)
-                } else {
-                    (token_type::PROPERTY, token_modifier::DEPRECATED | token_modifier::MODIFICATION)
-                };
-                result.tokens.push(SpannedSemanticToken::new(ident_span, tt, mods));
-            }
-        }
         Directive::Each { clause, .. } => {
             emit_keyword_token("each", directive_span, source, result);
             // each 迭代变量：VARIABLE + DECLARATION
@@ -214,9 +199,6 @@ fn emit_directive_token(
         Directive::Html { expr, .. } => {
             check_binding_expr(expr, elem_span_from_directive(directive), meta, &mut result.diagnostics);
         }
-        Directive::Model { field, .. } => {
-            check_binding_expr(field, elem_span_from_directive(directive), meta, &mut result.diagnostics);
-        }
         _ => {}
     }
 }
@@ -229,7 +211,6 @@ fn directive_span(d: &Directive) -> Span {
         | Directive::ElseIf { span, .. }
         | Directive::Each { span, .. }
         | Directive::Key { span, .. }
-        | Directive::Model { span, .. }
         | Directive::Show { span, .. }
         | Directive::Once { span }
         | Directive::Html { span, .. }
@@ -595,18 +576,4 @@ mod tests {
         assert!(has_declaration, "expected VARIABLE+DECLARATION for 'item'");
     }
 
-    #[test]
-    fn bind_emits_model_with_modification() {
-        let source = r#"<input model={name} />"#;
-        let root = rust_rml_engine::parser::parse(source).unwrap();
-        let meta = meta_with_fields(&["name"], &[]);
-        let result = bind(&root, source, Some(&meta));
-        // model 字段 → VARIABLE + DEFINITION + MODIFICATION
-        let has_modification = result.tokens.iter().any(|t| {
-            t.token_type == token_type::VARIABLE
-                && (t.token_modifiers & token_modifier::MODIFICATION) != 0
-                && (t.token_modifiers & token_modifier::DEFINITION) != 0
-        });
-        assert!(has_modification, "expected VARIABLE+DEFINITION+MODIFICATION for model 'name'");
-    }
 }

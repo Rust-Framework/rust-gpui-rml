@@ -144,7 +144,7 @@ fn gen_validator_numeric_field_generates_valid_with_view_call() {
     let ctx = make_ctx_with_validator("age", "i32", "AgeValidator");
     let source = r#"
 <component>
-    <input model={age} placeholder="年龄" />
+    <input value={age} placeholder="年龄" />
 </component>
 "#;
     let code = compile(source, &ctx).expect("compile failed").code;
@@ -180,7 +180,7 @@ fn gen_validator_string_field_generates_valid_with_view_call() {
     let ctx = make_ctx_with_validator("email", "String", "EmailValidator");
     let source = r#"
 <component>
-    <input model={email} placeholder="邮箱" />
+    <input value={email} placeholder="邮箱" />
 </component>
 "#;
     let code = compile(source, &ctx).expect("compile failed").code;
@@ -217,7 +217,7 @@ fn gen_validator_calls_message_and_handles_pass() {
     let ctx = make_ctx_with_validator("age", "i32", "PassValidator");
     let source = r#"
 <component>
-    <input model={age} placeholder="年龄" />
+    <input value={age} placeholder="年龄" />
 </component>
 "#;
     let code = compile(source, &ctx).expect("compile failed").code;
@@ -253,7 +253,7 @@ fn gen_validator_calls_message_and_handles_fail() {
     let ctx = make_ctx_with_validator("age", "i32", "FailValidator");
     let source = r#"
 <component>
-    <input model={age} placeholder="年龄" />
+    <input value={age} placeholder="年龄" />
 </component>
 "#;
     let code = compile(source, &ctx).expect("compile failed").code;
@@ -292,7 +292,7 @@ fn gen_validator_for_bool_falls_back_to_default() {
     let ctx = make_ctx_with_validator("enabled", "bool", "BoolValidator");
     let source = r#"
 <component>
-    <input model={enabled} placeholder="启用" />
+    <input value={enabled} placeholder="启用" />
 </component>
 "#;
     let code = compile(source, &ctx).expect("compile failed").code;

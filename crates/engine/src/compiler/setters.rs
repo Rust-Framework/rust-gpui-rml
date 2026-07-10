@@ -43,6 +43,16 @@ pub fn component_static_setter(name: &str, value: &str, tag: &str) -> Option<Str
     if let Some(s) = super::tooltip::static_setter(name, value, tag) {
         return Some(s);
     }
+    // Rating: color="red" → .color(cx.theme().red)，设置星标激活色
+    // 必须在 apply_style_attr 之前处理，避免被 CSS color 属性拦截生成 .text_color()
+    if tag == "Rating" && name == "color" {
+        return Some(format!(".color(cx.theme().{})", value));
+    }
+    // OtpInput: groups="2" → .groups(2usize)
+    // length/masked/default_value 由 OtpInputTranslator 注入 state_ctor，不生成 setter
+    if let Some(s) = super::components::otp_input::setters::static_setter(name, value, tag) {
+        return Some(s);
+    }
     // 归一化样式属性：对所有扩展组件生效（gpui-component 实现 Styled trait）
     // 复用 css::mapper 单一映射源，避免双轨制
     if let Some(s) = crate::compiler::codegen::style_attr::apply_style_attr(name, value) {
@@ -95,6 +105,9 @@ pub fn component_static_setter(name: &str, value: &str, tag: &str) -> Option<Str
         // Radio tab_index/tab_stop
         "tab_index" if tag == "Radio" => Some(format!(".tab_index({})", value)),
         "tab_stop" if tag == "Radio" => Some(format!(".tab_stop({})", parse_bool(value))),
+        // Rating: value="3" → .value(3usize), max="5" → .max(5usize)
+        "value" if tag == "Rating" => Some(format!(".value({}usize)", value)),
+        "max" if tag == "Rating" => Some(format!(".max({}usize)", value)),
         // Sizable 尺寸：size="xsmall" / size="small" / size="large"
         // medium/default 为组件原生默认（Size::Medium 由 #[default] 指定），
         // 遵循原生写法不生成 .with_size() 调用，避免冗余加工。
@@ -224,6 +237,16 @@ pub fn component_bind_setter(
     if let Some(s) =
         super::components::description_list::setters::bind_setter(name, expr_str, loop_vars, computed, tag)
     {
+        return Some(s);
+    }
+    // OtpInput: groups={count} → .groups(self.count)
+    if let Some(s) = super::components::otp_input::setters::bind_setter(
+        name,
+        expr_str,
+        loop_vars,
+        computed,
+        tag,
+    ) {
         return Some(s);
     }
     // Breadcrumb 的 items 属性 → .items(Vec<BreadcrumbItem>.clone())
@@ -453,6 +476,33 @@ pub fn component_event_setter(name: &str, handler: &EventHandler, tag: &str) -> 
                             ".on_click(cx.listener(move |this, idx: &usize, _window, cx| {{\n                    \
                              let p0 = {}.clone();\n                    \
                              this.{}(p0, idx, cx);\n                }}))",
+                            arg, method
+                        ))
+                    }
+                };
+            }
+
+            // Rating 的 on_click 闭包参数是新的评分值（&usize），而非 ClickEvent。
+            // 用户方法签名约定：`fn on_rating_change(&mut self, value: &usize, cx: &mut Context<Self>)`
+            if tag == "Rating" {
+                return match handler {
+                    EventHandler::ClosureField(_) => None,
+                    EventHandler::Ident(_) | EventHandler::MethodName(_) => Some(format!(
+                        ".on_click(cx.listener(move |this, value: &usize, _window, cx| {{\n                    \
+                         this.{}(value, cx);\n                }}))",
+                        method
+                    )),
+                    EventHandler::WithArgs(_, args) if args.is_empty() => Some(format!(
+                        ".on_click(cx.listener(move |this, value: &usize, _window, cx| {{\n                    \
+                         this.{}(value, cx);\n                }}))",
+                        method
+                    )),
+                    EventHandler::WithArgs(_, args) => {
+                        let arg = &args[0];
+                        Some(format!(
+                            ".on_click(cx.listener(move |this, value: &usize, _window, cx| {{\n                    \
+                             let p0 = {}.clone();\n                    \
+                             this.{}(p0, value, cx);\n                }}))",
                             arg, method
                         ))
                     }

@@ -23,6 +23,7 @@
 
 use crate::compiler::codegen::attribute::append_css_class_styles;
 use crate::compiler::codegen::gen_node;
+use crate::compiler::twoway;
 use crate::compiler::{CodegenCtx, CodegenError};
 use crate::css::ParentInfo;
 use crate::parser::ast::{Attribute, Directive, Element};
@@ -73,6 +74,10 @@ pub fn gen_radio_group(
     append_css_class_styles(&mut code, elem, "RadioGroup", ctx.stylesheet.as_ref(), parents);
 
     // 3. 处理其他属性（跳过 layout，已用于构造器选择）
+    // 双向绑定检测：selected_index={field} → 自动双向（on_click &usize 回写）
+    let twoway_on_click = twoway::detect_twoway_binding(elem, resolved)
+        .and_then(|(field, spec, user_handler)| twoway::gen_twoway_on_click(spec, &field, user_handler));
+
     for attr in &elem.attributes {
         match attr {
             Attribute::Static { name, value, .. } => {
@@ -96,6 +101,10 @@ pub fn gen_radio_group(
                 }
             }
             Attribute::Event { name, handler, .. } => {
+                // 双向绑定接管 on_click 时跳过正常 event setter
+                if name == "on_click" && twoway_on_click.is_some() {
+                    continue;
+                }
                 if let Some(s) =
                     crate::compiler::setters::component_event_setter(name, handler, resolved)
                 {
@@ -103,6 +112,11 @@ pub fn gen_radio_group(
                 }
             }
         }
+    }
+
+    // 注入双向绑定的合并 on_click 回调
+    if let Some(on_click_code) = twoway_on_click {
+        code.push_str(&on_click_code);
     }
 
     // 4. 子节点：<Radio> → .child(Radio::new(...))，文本 → .child(Radio::new(...).label(...))

@@ -48,13 +48,6 @@ pub fn print_element(
                 }
             }
             Directive::Show { expr, .. } => out.push_str(&format!(" show={{{}}}", expr)),
-            Directive::Model { field, converter, .. } => {
-                if let Some(conv) = converter {
-                    out.push_str(&format!(" model={{{} | {}}}", field, conv));
-                } else {
-                    out.push_str(&format!(" model={{{}}}", field));
-                }
-            }
             Directive::Once { .. } => out.push_str(" once"),
             Directive::Html { expr, .. } => out.push_str(&format!(" html={{{}}}", expr)),
             Directive::Ref { name, .. } => out.push_str(&format!(" ref=\"{}\"", name)),

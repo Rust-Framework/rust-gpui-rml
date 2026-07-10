@@ -5,7 +5,7 @@
         <h1>{t("login.title")}</h1>
         <p>{t("login.hint")}</p>
         <div class="login-form">
-            <input model={username} placeholder={t("login.username")} />
+            <input value={username} placeholder={t("login.username")} />
             <Button label={t("login.submit")} variant="primary" on-click={on_login} />
         </div>
     </div>

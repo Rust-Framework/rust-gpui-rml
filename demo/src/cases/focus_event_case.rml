@@ -1,0 +1,36 @@
+<component>
+    <CaseDocPage
+        title={t("case.focus_event.title")}
+        description="on-focus/on-blur 是 RML 的焦点事件。GPUI 中 on_focus/on_blur 是 Context 级 API（非元素方法），RML 编译器自动创建 FocusHandle、注册监听器（cx.on_focus().detach()）、并通过 .track_focus(&handle) 关联元素。RML 侧构造 FocusEvent::default() 传给用户方法。元素需添加 focusable 属性才能接收焦点。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <Card title="焦点事件计数器">
+                <p>获得焦点次数：{focus_count}</p>
+                <p>失去焦点次数：{blur_count}</p>
+                <div display="flex" flex-direction="column" gap="8px">
+                    <p class="hint">点击下方区域使其获得焦点，点击区域外使其失去焦点：</p>
+                    <div
+                        focusable=""
+                        on-focus={on_focus}
+                        on-blur={on_blur}
+                        display="flex"
+                        flex-direction="row"
+                        align-items="center"
+                        justify-content="center"
+                        width="100%"
+                        height="80px"
+                        background="#f5f5f5"
+                        border="1px solid #d9d9d9"
+                        border-radius="4px">
+                        <p>可聚焦区域</p>
+                    </div>
+                </div>
+            </Card>
+        </template>
+
+        <template slot="api">
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+        </template>
+    </CaseDocPage>
+</component>

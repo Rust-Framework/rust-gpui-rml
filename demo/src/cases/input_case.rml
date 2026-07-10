@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.input.title")}
-        description="Input 是 RML 的文本输入组件，标签为 PascalCase Input。Stateful 模式，通过 ref 指令惰性创建 InputState Entity，由 __rml_populate_refs 注入到对应的 ElementRef 字段。disabled/size/selected 通过 RML 组件属性设置，on_change/on_enter/on_focus/on_blur 通过 cx.subscribe 订阅 InputEvent 触发。placeholder 需在 InputState builder 上配置（PascalCase Input 不支持 placeholder 属性）。小写 input 标签支持 model 指令实现双向绑定，详见 two_way_case 演示。"
+        description="Input 是 RML 的文本输入组件，标签为 PascalCase Input。Stateful 模式，通过 ref 指令惰性创建 InputState Entity，由 __rml_populate_refs 注入到对应的 ElementRef 字段。disabled/size/selected 通过 RML 组件属性设置，on_change/on_enter/on_focus/on_blur 通过 cx.subscribe 订阅 InputEvent 触发。placeholder 需在 InputState builder 上配置（PascalCase Input 不支持 placeholder 属性）。小写 input 标签支持 value={field} 自动双向绑定，详见 two_way_case 演示。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
@@ -62,7 +62,7 @@
         <template slot="api">
             <h3>Input</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-            <p>另：size 属性来自 Sizable trait，disabled/selected 等通用属性对所有 Stateless/Stateful 组件生效。PascalCase Input 与小写 input 是两种不同路径：前者走 component codegen（ref 指令 + cx.subscribe 事件），后者走 model codegen（双向同步 + on_input/on_change 事件）。小写 input 的 model 双向绑定演示见 two_way_case。</p>
+            <p>另：size 属性来自 Sizable trait，disabled/selected 等通用属性对所有 Stateless/Stateful 组件生效。PascalCase Input 与小写 input 是两种不同路径：前者走 component codegen（ref 指令 + cx.subscribe 事件），后者走 value 双向绑定 codegen（双向同步 + on_input/on_change 事件）。小写 input 的 value 双向绑定演示见 two_way_case。</p>
         </template>
     </CaseDocPage>
 </component>

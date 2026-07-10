@@ -1,6 +1,6 @@
 //! Phase B-3 集成测试：验证双向绑定 codegen 生成的代码
 //!
-//! 验证 `<input model={field}>` 生成的代码包含：
+//! 验证 `<input value={field}>` 生成的代码包含：
 //! - `__rml_get_or_init_input_state` 调用（多 Input 惰性初始化，传引用给 Input::new）
 //! - `cx.subscribe` + `InputEvent::Change` 反向绑定（detach 保持订阅存活）
 //! - `InputState::set_value` 正向同步（初始值 + 版本号对比）
@@ -36,17 +36,17 @@ fn make_ctx_with_field_types() -> CodegenCtx {
     }
 }
 
-const RML_SOURCE_WITH_MODEL: &str = r#"
+const RML_SOURCE_WITH_VALUE_BIND: &str = r#"
 <component>
-    <input model={name} placeholder="姓名" />
-    <input model={count} placeholder="计数" />
+    <input value={name} placeholder="姓名" />
+    <input value={count} placeholder="计数" />
 </component>
 "#;
 
 #[test]
 fn gen_model_input_uses_get_or_init_input_state() {
     let ctx = make_ctx_with_field_types();
-    let code = compile(RML_SOURCE_WITH_MODEL, &ctx).expect("compile failed").code;
+    let code = compile(RML_SOURCE_WITH_VALUE_BIND, &ctx).expect("compile failed").code;
 
     // 验证生成代码使用 __rml_get_or_init_input_state（不再使用 self.input_state）
     assert!(
@@ -69,7 +69,7 @@ fn gen_model_input_uses_get_or_init_input_state() {
 #[test]
 fn gen_model_input_generates_type_conversion_for_i32() {
     let ctx = make_ctx_with_field_types();
-    let code = compile(RML_SOURCE_WITH_MODEL, &ctx).expect("compile failed").code;
+    let code = compile(RML_SOURCE_WITH_VALUE_BIND, &ctx).expect("compile failed").code;
 
     // i32 字段应生成 match value.parse::<i32>() { Ok(v) => ..., Err(_) => ... }
     assert!(
@@ -95,7 +95,7 @@ fn gen_model_input_generates_type_conversion_for_i32() {
 #[test]
 fn gen_model_input_generates_to_string_for_string() {
     let ctx = make_ctx_with_field_types();
-    let code = compile(RML_SOURCE_WITH_MODEL, &ctx).expect("compile failed").code;
+    let code = compile(RML_SOURCE_WITH_VALUE_BIND, &ctx).expect("compile failed").code;
 
     // String 字段反向绑定应生成 value.to_string() 转换代码
     assert!(
@@ -113,7 +113,7 @@ fn gen_model_input_generates_to_string_for_string() {
 #[test]
 fn gen_model_input_includes_bump_version_and_notify() {
     let ctx = make_ctx_with_field_types();
-    let code = compile(RML_SOURCE_WITH_MODEL, &ctx).expect("compile failed").code;
+    let code = compile(RML_SOURCE_WITH_VALUE_BIND, &ctx).expect("compile failed").code;
 
     // 反向绑定应包含 bump_version 和 notify
     assert!(
@@ -126,7 +126,7 @@ fn gen_model_input_includes_bump_version_and_notify() {
 #[test]
 fn gen_input_state_impl_generates_helper_method() {
     let ctx = make_ctx_with_field_types();
-    let code = compile(RML_SOURCE_WITH_MODEL, &ctx).expect("compile failed").code;
+    let code = compile(RML_SOURCE_WITH_VALUE_BIND, &ctx).expect("compile failed").code;
 
     // 验证生成了 __rml_get_or_init_input_state 方法
     assert!(
@@ -152,7 +152,7 @@ fn gen_input_state_impl_generates_helper_method() {
 #[test]
 fn gen_model_input_supports_multiple_inputs() {
     let ctx = make_ctx_with_field_types();
-    let code = compile(RML_SOURCE_WITH_MODEL, &ctx).expect("compile failed").code;
+    let code = compile(RML_SOURCE_WITH_VALUE_BIND, &ctx).expect("compile failed").code;
 
     // 验证两个 input 都生成了独立的 __rml_get_or_init_input_state 调用
     let count_calls = code.matches("__rml_get_or_init_input_state").count();
@@ -173,7 +173,7 @@ fn gen_model_input_supports_multiple_inputs() {
 #[test]
 fn gen_model_input_preserves_placeholder_attribute() {
     let ctx = make_ctx_with_field_types();
-    let code = compile(RML_SOURCE_WITH_MODEL, &ctx).expect("compile failed").code;
+    let code = compile(RML_SOURCE_WITH_VALUE_BIND, &ctx).expect("compile failed").code;
 
     // placeholder 作为 Some("...") 参数传入 __rml_get_or_init_input_state
     assert!(
@@ -211,7 +211,7 @@ fn gen_model_input_floating_point_types() {
     };
     let source = r#"
 <component>
-    <input model={score} />
+    <input value={score} />
 </component>
 "#;
     let code = compile(source, &ctx).expect("compile failed").code;
@@ -235,7 +235,7 @@ fn gen_model_input_floating_point_types() {
 #[test]
 fn gen_input_state_impl_includes_subscribe() {
     let ctx = make_ctx_with_field_types();
-    let code = compile(RML_SOURCE_WITH_MODEL, &ctx).expect("compile failed").code;
+    let code = compile(RML_SOURCE_WITH_VALUE_BIND, &ctx).expect("compile failed").code;
 
     // 应使用 cx.subscribe 订阅 InputEvent::Change
     assert!(
@@ -261,7 +261,7 @@ fn gen_input_state_impl_includes_subscribe() {
 #[test]
 fn gen_input_state_impl_includes_set_value() {
     let ctx = make_ctx_with_field_types();
-    let code = compile(RML_SOURCE_WITH_MODEL, &ctx).expect("compile failed").code;
+    let code = compile(RML_SOURCE_WITH_VALUE_BIND, &ctx).expect("compile failed").code;
 
     // 应使用 set_value 进行正向同步（初始值 + 版本号变化时）
     assert!(
@@ -287,7 +287,7 @@ fn gen_input_state_impl_includes_set_value() {
 #[test]
 fn gen_input_state_impl_includes_version_tracking() {
     let ctx = make_ctx_with_field_types();
-    let code = compile(RML_SOURCE_WITH_MODEL, &ctx).expect("compile failed").code;
+    let code = compile(RML_SOURCE_WITH_VALUE_BIND, &ctx).expect("compile failed").code;
 
     // 应使用 __rml_state.input_state_versions 追踪同步版本
     assert!(
@@ -312,7 +312,7 @@ fn gen_input_state_impl_includes_version_tracking() {
 #[test]
 fn gen_field_assign_generates_error_handling_for_i32() {
     let ctx = make_ctx_with_field_types();
-    let code = compile(RML_SOURCE_WITH_MODEL, &ctx).expect("compile failed").code;
+    let code = compile(RML_SOURCE_WITH_VALUE_BIND, &ctx).expect("compile failed").code;
 
     // i32 应生成 match parse + Err 分支 + 错误消息
     assert!(
@@ -332,7 +332,7 @@ fn gen_field_assign_generates_error_handling_for_i32() {
 #[test]
 fn gen_field_assign_preserves_old_value_on_error() {
     let ctx = make_ctx_with_field_types();
-    let code = compile(RML_SOURCE_WITH_MODEL, &ctx).expect("compile failed").code;
+    let code = compile(RML_SOURCE_WITH_VALUE_BIND, &ctx).expect("compile failed").code;
 
     // Err 分支不应包含 this.count = ...（不覆盖原值）
     // 提取 i32 的 Err 分支内容验证
@@ -353,7 +353,7 @@ fn gen_field_assign_preserves_old_value_on_error() {
 #[test]
 fn gen_model_input_applies_red_border_to_input() {
     let ctx = make_ctx_with_field_types();
-    let code = compile(RML_SOURCE_WITH_MODEL, &ctx).expect("compile failed").code;
+    let code = compile(RML_SOURCE_WITH_VALUE_BIND, &ctx).expect("compile failed").code;
 
     // 应检查 __rml_state.field_errors 获取错误状态
     assert!(
@@ -383,7 +383,7 @@ fn gen_model_input_applies_red_border_to_input() {
 #[test]
 fn gen_model_input_includes_tooltip_closure() {
     let ctx = make_ctx_with_field_types();
-    let code = compile(RML_SOURCE_WITH_MODEL, &ctx).expect("compile failed").code;
+    let code = compile(RML_SOURCE_WITH_VALUE_BIND, &ctx).expect("compile failed").code;
 
     // 应包含 tooltip 闭包 + Tooltip::new + build + into_any_element
     assert!(
@@ -407,7 +407,7 @@ fn gen_model_input_includes_tooltip_closure() {
 #[test]
 fn gen_input_state_impl_clears_error_on_forward_sync() {
     let ctx = make_ctx_with_field_types();
-    let code = compile(RML_SOURCE_WITH_MODEL, &ctx).expect("compile failed").code;
+    let code = compile(RML_SOURCE_WITH_VALUE_BIND, &ctx).expect("compile failed").code;
 
     // 正向同步部分（set_value 后）应清除错误状态
     let forward_section = code.split("state.set_value(value, window, cx)").nth(1).unwrap_or("");
@@ -422,7 +422,7 @@ fn gen_input_state_impl_clears_error_on_forward_sync() {
 
 #[test]
 fn model_with_converter_generates_convert_back_call() {
-    // model={price | Currency} 应生成 Currency.convert_back(&value.to_string()) 调用
+    // value={price | Currency} 应生成 Currency.convert_back(&value.to_string()) 调用
     let ctx = CodegenCtx {
         view_struct_name: "TestView".to_string(),
         view_module_path: "test".to_string(),
@@ -445,7 +445,7 @@ fn model_with_converter_generates_convert_back_call() {
     };
     let source = r#"
 <component>
-    <input model={price | Currency} />
+    <input value={price | Currency} />
 </component>
 "#;
     let code = compile(source, &ctx).expect("compile failed").code;
@@ -481,7 +481,7 @@ fn model_with_converter_generates_convert_back_call() {
 fn model_without_converter_keeps_parse_behavior() {
     // 无 converter 的数字字段仍走 parse 路径
     let ctx = make_ctx_with_field_types();
-    let code = compile(RML_SOURCE_WITH_MODEL, &ctx).expect("compile failed").code;
+    let code = compile(RML_SOURCE_WITH_VALUE_BIND, &ctx).expect("compile failed").code;
 
     // i32 字段仍走 match value.parse::<i32>()
     assert!(
@@ -498,7 +498,7 @@ fn model_without_converter_keeps_parse_behavior() {
 
 #[test]
 fn model_with_converter_generates_forward_convert_call() {
-    // model={price | Currency} 正向同步（VM→UI）应生成 Currency.convert(&self.price) 调用，
+    // value={price | Currency} 正向同步（VM→UI）应生成 Currency.convert(&self.price) 调用，
     // 而非裸 to_string()——否则输入框会显示 "1500" 而非 "¥1500.00"。
     let ctx = CodegenCtx {
         view_struct_name: "TestView".to_string(),
@@ -522,7 +522,7 @@ fn model_with_converter_generates_forward_convert_call() {
     };
     let source = r#"
 <component>
-    <input model={price | Currency} />
+    <input value={price | Currency} />
 </component>
 "#;
     let code = compile(source, &ctx).expect("compile failed").code;
@@ -545,11 +545,11 @@ fn model_with_converter_generates_forward_convert_call() {
 
 #[test]
 fn on_input_handler_injected_into_subscribe_callback() {
-    // <input model={name} on-input={handle_input} /> 应在 cx.subscribe 回调内注入 handler 调用
+    // <input value={name} on-input={handle_input} /> 应在 cx.subscribe 回调内注入 handler 调用
     let ctx = make_ctx_with_field_types();
     let source = r#"
 <component>
-    <input model={name} on-input={handle_input} />
+    <input value={name} on-input={handle_input} />
 </component>
 "#;
     let code = compile(source, &ctx).expect("compile failed").code;
@@ -573,7 +573,7 @@ fn on_change_handler_separate_from_on_input() {
     let ctx = make_ctx_with_field_types();
     let source = r#"
 <component>
-    <input model={count} on-change={handle_change} />
+    <input value={count} on-change={handle_change} />
 </component>
 "#;
     let code = compile(source, &ctx).expect("compile failed").code;
@@ -593,5 +593,78 @@ fn on_change_handler_separate_from_on_input() {
     assert!(
         !code.contains("convert::input("),
         "未声明 on-input 时不应生成 InputEvent 构造"
+    );
+}
+
+#[test]
+fn value_bind_generates_twoway_input_state() {
+    let ctx = make_ctx_with_field_types();
+    let code = compile(RML_SOURCE_WITH_VALUE_BIND, &ctx).expect("compile failed").code;
+
+    assert!(
+        code.contains("__rml_get_or_init_input_state"),
+        "value={{field}} 应自动生成 __rml_get_or_init_input_state 调用，实际：\n{}",
+        code
+    );
+    assert!(
+        code.contains("Input::new(&self.__rml_get_or_init_input_state"),
+        "value={{field}} 应生成 Input::new 引用，实际：\n{}",
+        code
+    );
+}
+
+#[test]
+fn value_bind_with_converter_generates_twoway_converter() {
+    let ctx = make_ctx_with_field_types();
+    let source = r#"
+<component>
+    <input value={price | Currency} />
+</component>
+"#;
+    let code = compile(source, &ctx).expect("compile failed").code;
+
+    assert!(
+        code.contains("Currency.convert(&self.price).into()"),
+        "value={{field | Converter}} 应生成正向 convert 调用，实际：\n{}",
+        code
+    );
+    assert!(
+        code.contains("Currency.convert_back(&value.to_string())"),
+        "value={{field | Converter}} 应生成反向 convert_back 调用，实际：\n{}",
+        code
+    );
+}
+
+#[test]
+fn value_bind_with_on_input_handler_injected() {
+    let ctx = make_ctx_with_field_types();
+    let source = r#"
+<component>
+    <input value={name} on-input={handle_input} />
+</component>
+"#;
+    let code = compile(source, &ctx).expect("compile failed").code;
+
+    assert!(
+        code.contains("this.handle_input(&__rml_input_ev, cx)"),
+        "value={{field}} + on-input 应注入 handler 调用，实际：\n{}",
+        code
+    );
+}
+
+#[test]
+fn textarea_value_bind_generates_twoway_input_state() {
+    let ctx = make_ctx_with_field_types();
+    let source = r#"
+<component>
+    <textarea value={name} placeholder="详情" />
+</component>
+"#;
+    let code = compile(source, &ctx).expect("compile failed").code;
+
+    assert!(
+        code.contains("__rml_get_or_init_input_state"),
+        "textarea value={{field}} 应自动生成双向绑定代码，实际：\n{}",
+        code
     );
 }

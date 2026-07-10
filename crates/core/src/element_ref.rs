@@ -31,7 +31,7 @@ use gpui::{Entity, WeakEntity};
 /// ```
 ///
 /// ```html
-/// <input ref="username_input" model={user_name} />
+/// <input ref="username_input" value={user_name} />
 /// ```
 pub struct ElementRef<T> {
     handle: Option<Entity<T>>,

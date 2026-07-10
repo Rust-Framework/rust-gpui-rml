@@ -62,12 +62,14 @@ pub fn gen_once_element(
     let substituted = apply_substitution(&elem_code, &field_refs, &computed, &var_name);
 
     // 6. 生成快照代码（不经过替换）
-    let snapshot = generate_snapshot(&field_refs, &computed);
+    let alias = expr::current_self_alias().unwrap_or("self");
+    let snapshot = generate_snapshot(&field_refs, &computed, alias);
 
     // 7. 拼装最终代码块
     let code = format!(
-        "{{\n                let {var} = self.__rml_state.once_get_or_init({key:?}, || {{\n                    ({snap})\n                }});\n                {code}\n            }}",
+        "{{\n                let {var} = {alias}.__rml_state.once_get_or_init({key:?}, || {{\n                    ({snap})\n                }});\n                {code}\n            }}",
         var = var_name,
+        alias = alias,
         key = cache_key,
         snap = snapshot,
         code = substituted
@@ -97,7 +99,7 @@ fn collect_element_fields(elem: &Element, loop_vars: &[&str], fields: &mut Vec<S
     }
     let effective_refs: Vec<&str> = effective_vars.iter().map(|s| s.as_str()).collect();
 
-    // 指令：if/show/each iterable 用原始 loop_vars，model.field 直接收集
+    // 指令：if/show/each iterable 用原始 loop_vars
     for d in &elem.directives {
         match d {
             Directive::If { expr: c, .. } | Directive::Show { expr: c, .. } => {
@@ -105,9 +107,6 @@ fn collect_element_fields(elem: &Element, loop_vars: &[&str], fields: &mut Vec<S
             }
             Directive::Each { clause, .. } => {
                 fields.extend(expr::collect_fields(&clause.iterable, loop_vars));
-            }
-            Directive::Model { field, .. } => {
-                fields.push(field.clone());
             }
             Directive::Html { expr, .. } => {
                 // html 表达式在 each 作用域内求值，用 effective_refs 跳过循环变量
@@ -256,14 +255,14 @@ fn is_ident_byte(b: u8) -> bool {
 /// computed 方法用 `self.X().clone()`（可能返回引用，需 clone 得到 owned 值）。
 /// 普通字段用 `self.X.clone()`。
 /// 单元素元组需尾随逗号 `(x,)` 才是元组而非括号表达式。
-fn generate_snapshot(field_refs: &[String], computed: &[&str]) -> String {
+fn generate_snapshot(field_refs: &[String], computed: &[&str], alias: &str) -> String {
     let parts: Vec<String> = field_refs
         .iter()
         .map(|field| {
             if computed.contains(&field.as_str()) {
-                format!("self.{}().clone()", field)
+                format!("{}.{}().clone()", alias, field)
             } else {
-                format!("self.{}.clone()", field)
+                format!("{}.{}.clone()", alias, field)
             }
         })
         .collect();
@@ -376,7 +375,7 @@ mod tests {
     #[test]
     fn snapshot_single_regular_field() {
         let fields = vec!["count".to_string()];
-        let result = generate_snapshot(&fields, &[]);
+        let result = generate_snapshot(&fields, &[], "self");
         // 单元素返回 `expr,`（带尾随逗号），由外层 `({snap})` 形成 1-tuple
         assert_eq!(result, "self.count.clone(),");
     }
@@ -384,22 +383,29 @@ mod tests {
     #[test]
     fn snapshot_single_computed_method() {
         let fields = vec!["total".to_string()];
-        let result = generate_snapshot(&fields, &["total"]);
+        let result = generate_snapshot(&fields, &["total"], "self");
         assert_eq!(result, "self.total().clone(),");
     }
 
     #[test]
     fn snapshot_multiple_fields() {
         let fields = vec!["count".to_string(), "name".to_string()];
-        let result = generate_snapshot(&fields, &[]);
+        let result = generate_snapshot(&fields, &[], "self");
         assert_eq!(result, "self.count.clone(), self.name.clone()");
     }
 
     #[test]
     fn snapshot_mixed_fields() {
         let fields = vec!["count".to_string(), "total".to_string()];
-        let result = generate_snapshot(&fields, &["total"]);
+        let result = generate_snapshot(&fields, &["total"], "self");
         assert_eq!(result, "self.count.clone(), self.total().clone()");
+    }
+
+    #[test]
+    fn snapshot_with_slot_alias() {
+        let fields = vec!["count".to_string()];
+        let result = generate_snapshot(&fields, &[], "__rml_self_ref");
+        assert_eq!(result, "__rml_self_ref.count.clone(),");
     }
 
     // ─── collect_element_fields ───
@@ -454,8 +460,8 @@ mod tests {
     }
 
     #[test]
-    fn collect_model_directive() {
-        let fields = collect_fields_from_rml(r#"<input model={text} />"#);
+    fn collect_value_bind() {
+        let fields = collect_fields_from_rml(r#"<input value={text} />"#);
         assert_eq!(fields, vec!["text"]);
     }
 

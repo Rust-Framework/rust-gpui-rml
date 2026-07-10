@@ -19,7 +19,7 @@ pub struct TwoWayCase {
     #[validate(range(min = 0, max = 150))]
     pub age: i32,
     /// B-2 demo：货币双向绑定字段。
-    /// `model={price | Currency}` 正向走 `Currency.convert(&self.price)` 显示 `¥1500.00`，
+    /// `value={price | Currency}` 正向走 `Currency.convert(&self.price)` 显示 `¥1500.00`，
     /// 反向走 `Currency.convert_back(&value)` 解析 `¥1500.00` → `1500.0`。
     pub price: f64,
     /// B-3 demo：oninput 触发次数（逐键 +1，与 onchange 的失焦/回车触发互补）。
@@ -44,11 +44,11 @@ impl ILifecycle for TwoWayCase {
     fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         let (cols, rows) = build_api_table(&[
-            ("model", "字段引用", "双向绑定到 pub 字段"),
+            ("value", "绑定属性", "双向绑定到 pub 字段"),
             ("#[validate]", "属性", "数值范围验证（如 range）"),
             ("placeholder", "字符串", "占位提示"),
             ("#[computed]", "方法", "依赖字段自动重算"),
-            ("converter (|)", "IConverter", "model={price | Currency} 双向转换"),
+            ("converter (|)", "IConverter", "value={price | Currency} 双向转换"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;
@@ -81,7 +81,7 @@ impl TwoWayCase {
         include_str!("two_way_case.rml.rs").to_string()
     }
 
-    /// B-3 demo：oninput 在 model 反向同步后触发，逐键递增计数。
+    /// B-3 demo：oninput 在 value 反向同步后触发，逐键递增计数。
     #[command]
     pub fn on_name_input(&mut self, _ev: &InputEvent, cx: &mut Context<Self>) {
         self.input_event_count += 1;

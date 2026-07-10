@@ -69,11 +69,8 @@ fn validate_element(
         validate_style_element(elem, depth)?;
     }
     // 校验指令
-    let mut has_model = false;
-
     for d in &elem.directives {
         match d {
-            Directive::Model { .. } => has_model = true,
             Directive::Ref { name, .. } => {
                 if !ctx.ref_names.insert(name.clone()) {
                     return Err(ValidationError {
@@ -85,16 +82,6 @@ fn validate_element(
             // Phase B-2 会补全 else 必须紧跟 if 的语义校验、each 子句校验等
             Directive::If { .. } | Directive::Each { .. } | Directive::Else { .. } | Directive::ElseIf { .. } | Directive::Once { .. }
             | Directive::Html { .. } | Directive::Key { .. } | Directive::Show { .. } => {}
-        }
-    }
-
-    // model 只能用于 input/textarea
-    if has_model {
-        let tag = elem.tag.as_str();
-        if tag != "input" && tag != "textarea" {
-            return Err(ValidationError {
-                message: format!("`model` directive can only be used on <input>/<textarea>, got <{}>", tag),
-            });
         }
     }
 

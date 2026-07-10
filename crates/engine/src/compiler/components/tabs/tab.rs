@@ -31,7 +31,7 @@ use crate::parser::ast::{Attribute, Directive, Element, Node};
 ///
 /// 当前提取的模式：
 /// - `self.__rml_state.get_or_init_ref(...)` → ref-based 组件 lazy init
-/// - `self.__rml_get_or_init_input_state(...)` → `<input model={field}>` 双向绑定 InputState 初始化
+/// - `self.__rml_get_or_init_input_state(...)` → `<input value={field}>` 双向绑定 InputState 初始化
 ///
 /// - `var_prefix`：提取的变量名前缀（如 `__rml_entity_` 或 `__rml_slot_demo_entity_``），
 ///   避免多 slot 场景变量名冲突

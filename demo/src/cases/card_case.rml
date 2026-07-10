@@ -26,10 +26,10 @@
                 </Card>
             </Card>
 
-            <Card title="动态绑定(model 双向绑定 + hoverable 切换)">
-                <p>输入标题和内容，点击按钮切换 hoverable，观察 Card 实时变化（演示 model 双向绑定）：</p>
-                <input model={card_title} placeholder="输入卡片标题" />
-                <input model={card_body} placeholder="输入卡片内容" />
+            <Card title="动态绑定(value 双向绑定 + hoverable 切换)">
+                <p>输入标题和内容，点击按钮切换 hoverable，观察 Card 实时变化（演示 value 双向绑定）：</p>
+                <input value={card_title} placeholder="输入卡片标题" />
+                <input value={card_body} placeholder="输入卡片内容" />
                 <p>当前 hoverable: {hoverable}</p>
                 <div class="button-row">
                     <Button label="切换 hoverable" variant="primary" on-click={on_toggle_hoverable} />

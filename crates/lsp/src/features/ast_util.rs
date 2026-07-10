@@ -178,7 +178,7 @@ fn skip_ws(bytes: &[u8], mut pos: usize, bound: usize) -> usize {
     pos
 }
 
-/// 遍历元素所有指令携带的表达式（If/Show/Key/Html/Model/Each.iterable）
+/// 遍历元素所有指令携带的表达式（If/Show/Key/Html/Each.iterable）
 ///
 /// 指令本身无独立 span 字段，无法精确定位光标在哪个指令上。
 /// symbol 分类时遍历所有指令表达式，靠表达式内容匹配符号名。
@@ -192,7 +192,6 @@ pub fn directive_expr(d: &Directive) -> Option<&str> {
         Directive::If { expr, .. } | Directive::ElseIf { expr, .. } | Directive::Show { expr, .. } | Directive::Key { expr, .. } | Directive::Html { expr, .. } => {
             Some(expr)
         }
-        Directive::Model { field, .. } => Some(field),
         Directive::Each { clause: each, .. } => Some(&each.iterable),
         _ => None,
     }
@@ -244,10 +243,6 @@ mod tests {
         assert_eq!(directive_expr(&Directive::Show { expr: "visible".into(), span: Span::empty() }), Some("visible"));
         assert_eq!(directive_expr(&Directive::Key { expr: "id".into(), span: Span::empty() }), Some("id"));
         assert_eq!(directive_expr(&Directive::Html { expr: "raw".into(), span: Span::empty() }), Some("raw"));
-        assert_eq!(
-            directive_expr(&Directive::Model { field: "name".into(), converter: None, span: Span::empty() }),
-            Some("name")
-        );
         assert_eq!(
             directive_expr(&Directive::Each {
                 clause: EachClause {

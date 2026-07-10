@@ -49,7 +49,7 @@ pub struct ValidationRuleSet {
     pub validator_type: Option<String>,
 }
 
-/// `<input model={field} oninput={fn} onchange={fn} />` 的 handler 映射（Phase B-3）
+/// `<input value={field} on-input={fn} on-change={fn} />` 的 handler 映射（Phase B-3）
 ///
 /// 由 `collect_model_input_handlers` 从 AST 收集，codegen 在 `gen_input_state_impl`
 /// 的 `cx.subscribe` 回调内，model 反向同步之后、`cx.notify()` 之前调用 handler。
@@ -145,15 +145,18 @@ pub struct CodegenCtx {
     /// codegen 的 `gen_field_assign_expr` 据此在 parse 成功后、赋值前
     /// 生成规则校验链（range/length/required/regex/custom）。
     pub field_validations: HashMap<String, ValidationRuleSet>,
-    /// RML 中声明 `model={field}` 的字段名（双向绑定 input 专用）
+    /// RML 中声明 `value={field}` 的字段名（双向绑定 input/textarea/Input/TextInput 专用）
     pub model_fields: Vec<String>,
-    /// `model={field | Converter}` 的 converter 映射（Phase B-2：双向绑定 convert_back）
+
+    /// RML 中声明 `<Slider value={field}>` 的字段名（C3：Slider StateBridge 双向绑定）
+    pub slider_fields: Vec<String>,
+    /// `value={field | Converter}` 的 converter 映射（Phase B-2：双向绑定 convert_back）
     ///
     /// key 为字段名，value 为 converter 类型名（如 "Currency"）。
     /// codegen 的 `gen_field_assign_expr` 据此在反向绑定时调用
     /// `ConverterName::default().convert_back(&value)` 替代裸 `parse`。
     pub model_converters: HashMap<String, String>,
-    /// `<input model={field} oninput={fn} onchange={fn} />` 的 handler 映射（Phase B-3）
+    /// `<input value={field} on-input={fn} on-change={fn} />` 的 handler 映射（Phase B-3）
     ///
     /// 由 `collect_model_input_handlers` 从 AST 收集。codegen 的 `gen_input_state_impl`
     /// 据此在 `cx.subscribe` 回调内、model 反向同步之后、`cx.notify()` 之前调用用户 handler。
@@ -296,6 +299,7 @@ pub fn compile(source: &str, ctx: &CodegenCtx) -> Result<CompileOutput, CompileE
     ctx.model_fields = super::codegen::collect_model_fields(&root);
     ctx.model_converters = super::codegen::collect_model_converters(&root);
     ctx.model_input_handlers = super::codegen::collect_model_input_handlers(&root);
+    ctx.slider_fields = super::codegen::collect_slider_fields(&root);
     let code = super::codegen::codegen(&root, &ctx)?;
     Ok(CompileOutput {
         code,

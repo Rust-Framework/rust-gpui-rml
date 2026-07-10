@@ -1,0 +1,37 @@
+<component>
+    <CaseDocPage
+        title={t("case.virtual_list.title")}
+        description="VirtualList 是 RML 的虚拟列表组件，标签为 PascalCase VirtualList 或 kebab-case virtual-list。构造器为函数 v_virtual_list/h_virtual_list（非 VirtualList::new），由 VirtualListTranslator 特化处理。direction 属性选择 v/h 构造器，item-sizes 作为函数参数传入（Rc&lt;Vec&lt;Size&lt;Pixels&gt;&gt;&gt;），slot=render 注入渲染闭包。闭包签名为 Fn(&amp;mut V, Range&lt;usize&gt;, &amp;mut Window, &amp;mut Context&lt;V&gt;) -&gt; Vec&lt;R&gt;。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <Card title="垂直虚拟列表（1000 项）">
+                <p>使用 v_virtual_list 渲染 1000 项，每项固定高度 40px，支持滚动：</p>
+                <virtual-list direction="vertical" item-sizes={item_sizes} width="100%" height="400px">
+                    <template slot="render" each={i in range}>
+                        <div display="flex" align-items="center" padding="0 12px" height="40px" style="border-bottom: 1px solid #e8e8e8">
+                            Item {i}: {items[i]}
+                        </div>
+                    </template>
+                </virtual-list>
+            </Card>
+
+            <Card title="水平虚拟列表（1000 项）">
+                <p>使用 direction="horizontal" 切换 h_virtual_list，每项宽度 800px：</p>
+                <virtual-list direction="horizontal" item-sizes={item_sizes} width="100%" height="60px">
+                    <template slot="render" each={i in range}>
+                        <div display="flex" align-items="center" justify-content="center" width="800px" height="60px" style="border-right: 1px solid #e8e8e8">
+                            {items[i]}
+                        </div>
+                    </template>
+                </virtual-list>
+            </Card>
+        </template>
+
+        <template slot="api">
+            <h3>VirtualList</h3>
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+            <p>注：direction 为静态属性（选择 v/h 构造器），item-sizes 为绑定属性（Rc&lt;Vec&lt;Size&lt;Pixels&gt;&gt;&gt;），slot="render" 必须使用 each=&#123;i in range&#125; 声明循环变量。VirtualList 实现 Styled trait，支持所有样式属性。</p>
+        </template>
+    </CaseDocPage>
+</component>

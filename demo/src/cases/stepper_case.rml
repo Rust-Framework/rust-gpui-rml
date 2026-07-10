@@ -1,0 +1,65 @@
+<component>
+    <CaseDocPage
+        title={t("case.stepper.title")}
+        description="Stepper 是 RML 的步骤指示器组件，标签为 PascalCase Stepper。StatelessWithItems 组件，构造器接受 ElementId。子节点为 step-item（或 StepperItem），支持 icon 属性和文本子节点。支持 selected-index、direction、text-center 等属性，on-click 事件签名为 Fn(&amp;usize, ...)（步骤索引）。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <Card title="基础用法">
+                <p>点击步骤切换 <code>selected-index</code>：</p>
+                <Stepper selected-index={current_step} on-click={on_step_click}>
+                    <step-item>填写信息</step-item>
+                    <step-item>确认信息</step-item>
+                    <step-item>完成</step-item>
+                </Stepper>
+                <p>当前步骤：{current_step}</p>
+            </Card>
+
+            <Card title="带图标的步骤">
+                <p>使用 <code>icon</code> 属性为每个步骤设置图标：</p>
+                <Stepper selected-index={current_step} on-click={on_step_click}>
+                    <step-item icon="Check">账号</step-item>
+                    <step-item icon="Bell">邮箱</step-item>
+                    <step-item icon="Check">完成</step-item>
+                </Stepper>
+            </Card>
+
+            <Card title="垂直布局">
+                <p><code>direction="vertical"</code> 设置垂直步骤条：</p>
+                <div style="width: 300px;">
+                    <Stepper selected-index={current_step} direction="vertical" on-click={on_step_click}>
+                        <step-item>第一步</step-item>
+                        <step-item>第二步</step-item>
+                        <step-item>第三步</step-item>
+                    </Stepper>
+                </div>
+            </Card>
+
+            <Card title="文本居中">
+                <p><code>text-center</code> 使步骤文本居中对齐：</p>
+                <Stepper selected-index="1" text-center="">
+                    <step-item>开始</step-item>
+                    <step-item>进行中</step-item>
+                    <step-item>结束</step-item>
+                </Stepper>
+            </Card>
+
+            <Card title="静态属性">
+                <p>使用静态数值属性（无绑定）：</p>
+                <Stepper selected-index="2">
+                    <step-item>步骤一</step-item>
+                    <step-item>步骤二</step-item>
+                    <step-item>步骤三</step-item>
+                    <step-item>步骤四</step-item>
+                </Stepper>
+                <p>注：静态属性的 Stepper 不会自动更新，需要绑定字段做状态管理。</p>
+            </Card>
+        </template>
+
+        <template slot="api">
+            <h3>Stepper</h3>
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+            <p>另：<code>on-click</code> 事件签名为 <code>Fn(&amp;usize, &amp;mut Window, &amp;mut App)</code>（步骤索引），不是 ClickEvent。</p>
+        </template>
+    </CaseDocPage>
+</component>

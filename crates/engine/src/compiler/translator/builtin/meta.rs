@@ -102,6 +102,15 @@ pub mod builtin_engine {
         // 1. 生成元素构造调用
         let mut code = String::from(ctor);
 
+        // 1b. 焦点事件预处理：GPUI on_focus/on_blur 是 Context 级 API，
+        // 需在元素链前生成 FocusHandle 创建 + 监听器注册代码，
+        // 元素链上用 .track_focus(&handle) 关联。
+        let focus_key = format!("focus_{}", *id_counter);
+        let focus_setup = crate::compiler::event::gen_focus_event_setup(elem, &focus_key);
+        if focus_setup.is_some() {
+            *id_counter += 1;
+        }
+
         // 2. ref / key 指令或事件处理器：生成 .id()
         let ref_name: Option<&str> = elem.directives.iter().find_map(|d| match d {
             Directive::Ref { name, .. } => Some(name.as_str()),
@@ -163,6 +172,11 @@ pub mod builtin_engine {
                     code.push_str(&crate::compiler::event::apply_event(name, handler, ctx));
                 }
             }
+        }
+
+        // 3b. 焦点事件：在元素链上添加 .track_focus(&handle)
+        if let Some((_, handle_var)) = &focus_setup {
+            code.push_str(&format!(".track_focus(&{})", handle_var));
         }
 
         // 4. 处理子节点
@@ -359,6 +373,12 @@ pub mod builtin_engine {
             i += 1;
         }
 
+        // 4b. 焦点事件：将预处理代码与元素链包装为块表达式
+        // 在 if/show/each 之前包装，使预处理仅在元素实际渲染时执行
+        if let Some((pre, _)) = &focus_setup {
+            code = format!("{{\n    {}\n    {}\n}}", pre, code);
+        }
+
         // 5. 处理 if / show 指令
         let if_cond: Option<String> = elem.directives.iter().find_map(|d| match d {
             Directive::If { expr: c, .. } => Some(c.clone()),
@@ -445,7 +465,7 @@ pub mod builtin_engine {
             }
         }
 
-        // 指令（排除已在 codegen 中内部处理的 ref/key/html 等，保留 if/show/each/once/model）
+        // 指令（排除已在 codegen 中内部处理的 ref/key/html 等，保留 if/show/each/once）
         for d in &elem.directives {
             match d {
                 Directive::If { expr, .. } => out.push_str(&format!(" if={{{}}}", expr)),
@@ -463,13 +483,6 @@ pub mod builtin_engine {
                     }
                 }
                 Directive::Show { expr, .. } => out.push_str(&format!(" show={{{}}}", expr)),
-                Directive::Model { field, converter, .. } => {
-                    if let Some(conv) = converter {
-                        out.push_str(&format!(" model={{{} | {}}}", field, conv));
-                    } else {
-                        out.push_str(&format!(" model={{{}}}", field));
-                    }
-                }
                 Directive::Once { .. } => out.push_str(" once"),
                 Directive::Html { expr, .. } => out.push_str(&format!(" html={{{}}}", expr)),
                 Directive::Ref { name, .. } => out.push_str(&format!(" ref=\"{}\"", name)),

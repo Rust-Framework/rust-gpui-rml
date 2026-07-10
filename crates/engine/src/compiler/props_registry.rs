@@ -42,6 +42,8 @@ pub const COMMON_STATIC_PROPS: &[&str] = &[
     "size",
     // 状态
     "compact", "loading", "disabled", "selected",
+    // 焦点：focusable="" / focusable="true" → .focusable()，使元素可接收 on-focus/on-blur
+    "focusable",
     // StyledExt 字体权重（h_flex/v_flex 已废弃，改用 display="flex" + flex-direction）
     "font_thin", "font_extralight", "font_light", "font_normal", "font_medium",
     "font_semibold", "font_bold", "font_extrabold", "font_black",
@@ -59,6 +61,8 @@ pub const COMMON_BIND_PROPS: &[&str] = &[
 /// 声明式 `on-click`（kebab-case），normalize 后内部 `on_click`（snake_case）。
 pub const COMMON_EVENT_PROPS: &[&str] = &[
     "on_click",
+    "on_focus",
+    "on_blur",
 ];
 
 /// 归一化样式属性（对所有元素与组件生效，由 `style_attr::apply_style_attr` 处理）
@@ -186,6 +190,17 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
     // layout="horizontal"/"vertical" 控制 vertical/horizontal 构造器选择
     // on_click 签名为 Fn(&usize, ...)，需专属代码生成
     ("RadioGroup", &["selected_index", "layout", "on_click"]),
+    // Stepper：.vertical()/.selected_index(usize)/.text_center(bool)/.disabled(bool)
+    // direction="vertical" → .vertical()，on_click 签名为 Fn(&usize, ...)（步骤索引）
+    ("Stepper", &["selected_index", "direction", "text_center", "on_click"]),
+    // StepperItem：.icon(impl Into<Icon>)/.disabled(bool)，实现 ParentElement
+    ("StepperItem", &["icon"]),
+    // Rating：星级评分，value/max 为数值，on_click 签名为 Fn(&usize, ...)（评分值）
+    ("Rating", &["value", "max", "color", "on_click"]),
+    // OtpInput：OTP 输入，length/masked/default_value 注入 state_ctor，on_change/on_focus/on_blur 走事件订阅
+    ("OtpInput", &["length", "groups", "masked", "default_value", "on_change", "on_focus", "on_blur"]),
+    // VirtualList：direction 选择 v/h 构造器，item-sizes 作为函数参数，slot="render" 注入闭包
+    ("VirtualList", &["direction", "item_sizes", "on_scroll"]),
 ];
 
 /// 查询组件的所有已注册属性（通用 + 专用）

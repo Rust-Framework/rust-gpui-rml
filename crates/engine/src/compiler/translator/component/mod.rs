@@ -17,16 +17,19 @@ pub mod description_list;
 pub mod icon;
 pub mod kbd;
 pub mod label;
+pub mod otp_input;
 pub mod popover;
 pub mod radio_group;
 pub mod separator;
 pub mod stateful;
 pub mod stateless;
+pub mod stepper;
 pub mod tab_bar;
 pub mod table;
 pub mod tabs;
 pub mod tag;
 pub mod tree;
+pub mod virtual_list;
 
 use super::{ComponentCategory, IRmlTranslator, PrinterCtx, TranslatorMetadata};
 use crate::compiler::codegen::attribute::apply_css_styles;
@@ -111,6 +114,9 @@ pub fn register_all(registry: &mut crate::compiler::translator::TranslatorRegist
     tag::register(registry);
     alert::register(registry);
     radio_group::register(registry);
+    stepper::register(registry);
+    otp_input::register(registry);
+    virtual_list::register(registry);
     activity_bar::register(registry);
     registry.register(ComponentTranslator);
 }

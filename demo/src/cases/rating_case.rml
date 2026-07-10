@@ -1,0 +1,52 @@
+<component>
+    <CaseDocPage
+        title={t("case.rating.title")}
+        description="Rating 是 RML 的星级评分组件，标签为 PascalCase Rating。Stateless 组件，构造器接受 ElementId。支持 value（当前评分）、max（最大星数）、color（激活色，主题色名）、size、disabled 等属性。on-click 事件签名为 Fn(&amp;usize, ...)（评分值），不是 ClickEvent。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <Card title="基础用法">
+                <p>点击星标切换评分，value 绑定 <code>rating_value</code>：</p>
+                <Rating value={rating_value} max="5" on-click={on_rating_change} />
+                <p>当前评分：{rating_value}</p>
+            </Card>
+
+            <Card title="10 星上限">
+                <p>使用 <code>max="10"</code> 设置 10 星评分：</p>
+                <Rating value={rating_value} max="10" on-click={on_rating_change} />
+                <p>当前评分：{rating_value} / 10</p>
+            </Card>
+
+            <Card title="禁用状态">
+                <p><code>disabled={is_readonly}</code> 禁用评分交互：</p>
+                <Rating value={rating_value} max="5" disabled={is_readonly} />
+            </Card>
+
+            <Card title="自定义颜色">
+                <p><code>color="red"</code> 使用主题红色作为激活色：</p>
+                <Rating value="3" max="5" color="red" />
+                <p><code>color="green"</code>：</p>
+                <Rating value="4" max="5" color="green" />
+            </Card>
+
+            <Card title="尺寸变体">
+                <p><code>size="small"</code>：</p>
+                <Rating value="3" max="5" size="small" />
+                <p><code>size="large"</code>：</p>
+                <Rating value="4" max="5" size="large" />
+            </Card>
+
+            <Card title="静态属性">
+                <p>使用静态数值属性（无绑定）：</p>
+                <Rating value="2" max="5" />
+                <p>注：静态属性的 Rating 不会自动更新，需要绑定字段做状态管理。</p>
+            </Card>
+        </template>
+
+        <template slot="api">
+            <h3>Rating</h3>
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+            <p>另：<code>on-click</code> 事件签名为 <code>Fn(&amp;usize, &amp;mut Window, &amp;mut App)</code>（评分值），不是 ClickEvent。</p>
+        </template>
+    </CaseDocPage>
+</component>

@@ -1,0 +1,48 @@
+<component>
+    <CaseDocPage
+        title={t("case.otp_input.title")}
+        description="OtpInput 是 RML 的 OTP 验证码输入组件，标签为 PascalCase OtpInput 或 kebab-case otp-input。Stateful 组件，构造器 OtpInput::new(&Entity<OtpState>)。length/masked/default_value 属性由 OtpInputTranslator 注入 state_ctor 闭包，不生成 setter。on-change/on-focus/on-blur 通过 cx.subscribe 订阅 InputEvent 实现。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <Card title="基础用法">
+                <p>6 位 OTP 输入，on-change 绑定 on_otp_change：</p>
+                <OtpInput ref="otp_input" length="6" on-change={on_otp_change} />
+                <p>当前值：{otp_value}</p>
+            </Card>
+
+            <Card title="分组输入">
+                <p>groups="2" 将 6 位分为 2 组（组间间隔更大）：</p>
+                <OtpInput length="6" groups="2" />
+            </Card>
+
+            <Card title="掩码显示">
+                <p>masked 属性启用掩码（密码样式）：</p>
+                <OtpInput length="6" masked="" />
+            </Card>
+
+            <Card title="默认值">
+                <p>default-value 设置初始值：</p>
+                <OtpInput length="6" default-value="123456" />
+            </Card>
+
+            <Card title="4 位 OTP">
+                <p>length="4" 设置 4 位验证码：</p>
+                <OtpInput length="4" groups="2" />
+            </Card>
+
+            <Card title="尺寸变体">
+                <p>size="small"：</p>
+                <OtpInput length="6" size="small" />
+                <p>size="large"：</p>
+                <OtpInput length="6" size="large" />
+            </Card>
+        </template>
+
+        <template slot="api">
+            <h3>OtpInput</h3>
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+            <p>注：length/masked/default-value 由 OtpInputTranslator 注入 state_ctor 闭包，不参与 setter 分发。on-change/on-focus/on-blur 通过 cx.subscribe 订阅 InputEvent 实现，参数为 &amp;OtpState。</p>
+        </template>
+    </CaseDocPage>
+</component>

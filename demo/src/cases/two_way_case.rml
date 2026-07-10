@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.two_way.title")}
-        description="双向绑定案例演示 RML 的 model 属性。通过 model=&#123;field&#125; 将 input 与 pub 字段绑定，输入变化自动回写字段，字段变化自动触发 computed 重算与重渲。核心概念：input model=&#123;field&#125; 实现双向绑定；#[validate(range(min,max))] 标注数值验证规则；验证失败时框架自动显示红框 + tooltip。"
+        description="双向绑定案例演示 RML 的 value 自动双向绑定。通过 value=&#123;field&#125; 将 input 与 pub 字段绑定，输入变化自动回写字段，字段变化自动触发 computed 重算与重渲。核心概念：input value=&#123;field&#125; 实现双向绑定；#[validate(range(min,max))] 标注数值验证规则；验证失败时框架自动显示红框 + tooltip。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
@@ -9,25 +9,25 @@
                 <div class="demo-section">
                     <h3>文本双向绑定</h3>
                     <p>输入姓名，下方文案实时更新：</p>
-                    <input model={name} placeholder={t("demo.name_placeholder")} on-input={on_name_input} />
+                    <input value={name} placeholder={t("demo.name_placeholder")} on-input={on_name_input} />
                     <p>当前姓名：{name}</p>
                 </div>
                 <div class="demo-section">
                     <h3>数值双向绑定</h3>
                     <p>输入年龄（0-150），下方文案实时更新：</p>
-                    <input model={age} placeholder={t("demo.age_placeholder")} on-change={on_age_change} />
+                    <input value={age} placeholder={t("demo.age_placeholder")} on-change={on_age_change} />
                     <p>当前年龄：{age}</p>
                 </div>
                 <div class="demo-section">
                     <h3>验证失败场景</h3>
                     <p>输入超范围值（如 200 或 -5），观察输入框红框 + tooltip：</p>
-                    <input model={age} placeholder="输入 200 测试验证" />
+                    <input value={age} placeholder="输入 200 测试验证" />
                     <p>{profile_summary}</p>
                 </div>
                 <div class="demo-section">
                     <h3>转换器双向绑定（B-2）</h3>
-                    <p><code>model=&#123;price | Currency&#125;</code> 正向经 <code>Currency.convert</code> 显示 <code>¥1500.00</code>，反向经 <code>convert_back</code> 解析回 <code>f64</code>：</p>
-                    <input model={price | Currency} placeholder="输入 ¥1500.00 测试转换" />
+                    <p><code>value=&#123;price | Currency&#125;</code> 正向经 <code>Currency.convert</code> 显示 <code>¥1500.00</code>，反向经 <code>convert_back</code> 解析回 <code>f64</code>：</p>
+                    <input value={price | Currency} placeholder="输入 ¥1500.00 测试转换" />
                     <p>{price_raw}</p>
                 </div>
                 <div class="demo-section">

@@ -244,3 +244,112 @@ pub(super) fn gen_input_state_impl(ctx: &CodegenCtx) -> String {
     out.push_str("}\n");
     out
 }
+
+/// 生成 SliderState 惰性初始化 + 双向同步方法（C3：Slider StateBridge）
+///
+/// 生成 `__rml_get_or_init_slider_state(field, window, cx) -> Entity<SliderState>`：
+/// - 首次调用：创建 SliderState，设置初始值，订阅 SliderEvent::Change 反向回写
+/// - 后续调用：版本检查 → 正向同步（VM 字段变更 → SliderState.set_value）
+///
+/// 与 InputState 的差异：
+/// - 值类型为 f32（经 `as f32` 转换），非 SharedString
+/// - 事件为 `SliderEvent::Change(SliderValue)`，需从 SliderValue 提取 f32
+/// - 无校验、无 on_input/on_change handler
+pub(super) fn gen_slider_state_impl(ctx: &CodegenCtx) -> String {
+    let view_name = &ctx.view_struct_name;
+    let slider_fields: Vec<String> = ctx.slider_fields.clone();
+
+    if slider_fields.is_empty() {
+        return String::new();
+    }
+
+    // 正向同步臂：field → f32 值
+    let mut forward_arms = String::new();
+    for field in &slider_fields {
+        let ty = ctx.field_types.get(field).map(|s| s.as_str()).unwrap_or("f32");
+        let expr = numeric_forward_expr(field, ty);
+        forward_arms.push_str(&format!("            \"{}\" => {},\n", field, expr));
+    }
+
+    // 反向同步臂：SliderValue → field 赋值
+    let mut reverse_arms = String::new();
+    for field in &slider_fields {
+        let ty = ctx.field_types.get(field).map(|s| s.as_str()).unwrap_or("f32");
+        let cast = numeric_cast_expr(ty);
+        reverse_arms.push_str(&format!(
+            "                \"{}\" => {{ this.{} = v{}; this.__rml_bump_version({:?}); }}\n",
+            field, field, cast, field,
+        ));
+    }
+
+    let mut out = String::new();
+    out.push_str("#[allow(dead_code, non_snake_case, unused_variables)]\n");
+    out.push_str(&format!("impl {} {{\n", view_name));
+    out.push_str("    fn __rml_get_or_init_slider_state(\n");
+    out.push_str("        &mut self,\n");
+    out.push_str("        field: &'static str,\n");
+    out.push_str("        window: &mut gpui::Window,\n");
+    out.push_str("        cx: &mut gpui::Context<Self>,\n");
+    out.push_str("    ) -> gpui::Entity<rml_ui::SliderState> {\n");
+    out.push_str("        if !self.__rml_state.slider_states.contains_key(field) {\n");
+    out.push_str("            let entity = cx.new(|_cx| rml_ui::SliderState::new());\n");
+    out.push_str("            let initial_value: f32 = match field {\n");
+    out.push_str(&forward_arms);
+    out.push_str("                _ => 0.0,\n");
+    out.push_str("            };\n");
+    out.push_str("            entity.update(cx, |state, cx| state.set_value(rml_ui::SliderValue::Single(initial_value), window, cx));\n");
+    out.push_str("            cx.subscribe(&entity, move |this, _state_entity, event, cx| {\n");
+    out.push_str("                match event {\n");
+    out.push_str("                    rml_ui::SliderEvent::Change(value) => {\n");
+    out.push_str("                        let v = match value {\n");
+    out.push_str("                            rml_ui::SliderValue::Single(v) => *v,\n");
+    out.push_str("                            _ => return,\n");
+    out.push_str("                        };\n");
+    out.push_str("                        match field {\n");
+    out.push_str(&reverse_arms);
+    out.push_str("                            _ => {}\n");
+    out.push_str("                        }\n");
+    out.push_str("                        let __rml_ver = this.__rml_get_version(field);\n");
+    out.push_str("                        this.__rml_state.slider_state_versions.insert(field.to_string(), __rml_ver);\n");
+    out.push_str("                        cx.notify();\n");
+    out.push_str("                    }\n");
+    out.push_str("                    _ => {}\n");
+    out.push_str("                }\n");
+    out.push_str("            }).detach();\n");
+    out.push_str("            let __rml_ver = self.__rml_get_version(field);\n");
+    out.push_str("            self.__rml_state.slider_state_versions.insert(field.to_string(), __rml_ver);\n");
+    out.push_str("            self.__rml_state.slider_states.insert(field.to_string(), entity);\n");
+    out.push_str("        }\n");
+    out.push_str("        let entity = self.__rml_state.slider_states.get(field).unwrap().clone();\n");
+    out.push_str("        let current_version = self.__rml_get_version(field);\n");
+    out.push_str("        let last_synced = self.__rml_state.slider_state_versions.get(field).copied().unwrap_or(0);\n");
+    out.push_str("        if current_version != last_synced {\n");
+    out.push_str("            let value: f32 = match field {\n");
+    out.push_str(&forward_arms);
+    out.push_str("                _ => 0.0,\n");
+    out.push_str("            };\n");
+    out.push_str("            entity.update(cx, |state, cx| state.set_value(rml_ui::SliderValue::Single(value), window, cx));\n");
+    out.push_str("            self.__rml_state.slider_state_versions.insert(field.to_string(), current_version);\n");
+    out.push_str("        }\n");
+    out.push_str("        entity\n");
+    out.push_str("    }\n");
+    out.push_str("}\n");
+    out
+}
+
+/// 生成数值字段的正向同步表达式：`self.field as f32`
+fn numeric_forward_expr(field: &str, ty: &str) -> String {
+    match ty {
+        "f32" | "f64" => format!("self.{} as f32", field),
+        "i32" | "u32" | "i64" | "u64" | "isize" | "usize" => format!("self.{} as f32", field),
+        _ => format!("self.{} as f32", field),
+    }
+}
+
+/// 生成数值类型转换后缀：` as i32` / ` as f32` / 空（f32 无需转换）
+fn numeric_cast_expr(ty: &str) -> String {
+    match ty {
+        "f32" => String::new(),
+        _ => format!(" as {}", ty),
+    }
+}

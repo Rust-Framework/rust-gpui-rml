@@ -343,6 +343,8 @@
 
   "case.ref.title": "Ref Directive",
 
+  "case.focus_event.title": "Focus/Blur Events",
+
   "case.icon.title": "Icon",
 
   "case.kbd.title": "Kbd",
@@ -363,7 +365,13 @@
 
   "case.pagination.title": "Pagination",
 
-  "case.radio.title": "Radio & RadioGroup"
+  "case.radio.title": "Radio & RadioGroup",
+
+  "case.stepper.title": "Stepper",
+
+  "case.rating.title": "Rating",
+  "case.otp_input.title": "OtpInput",
+  "case.virtual_list.title": "VirtualList"
 
 }
 

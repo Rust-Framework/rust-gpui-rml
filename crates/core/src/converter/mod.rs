@@ -8,7 +8,7 @@
 //! 在 `.rml` 中用 `|` 管道符：
 //! ```html
 //! <p>{price | PriceConverter}</p>
-//! <input model={price | PriceConverter} />
+//! <input value={price | PriceConverter} />
 //! <p>{value | Trim | UpperCase}</p>
 //! ```
 //!

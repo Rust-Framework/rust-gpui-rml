@@ -60,7 +60,7 @@ pub enum Attribute {
         /// 属性名+值的字节区间（LSP 跳转定位用）
         span: Span,
     },
-    /// 绑定属性 `value={field}`
+    /// 绑定属性 `value={field}`（双向能力由属性语义自动推断）
     Bind {
         name: String,
         expr: String,
@@ -93,13 +93,6 @@ pub enum Directive {
     Each { clause: EachClause, span: Span },
     /// `key={expr}` 列表项唯一标识
     Key { expr: String, span: Span },
-    /// `model={field}` 或 `model={field | Converter}` 双向绑定
-    Model {
-        field: String,
-        /// 可选 converter 名（`| Converter` 语法），codegen 反向绑定时调用 `Converter::convert_back`
-        converter: Option<String>,
-        span: Span,
-    },
     /// `show={cond}` 显示/隐藏
     Show { expr: String, span: Span },
     /// `once` 仅首次渲染

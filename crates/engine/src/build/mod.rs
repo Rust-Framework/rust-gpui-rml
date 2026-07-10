@@ -319,6 +319,7 @@ impl Builder {
                 field_types: struct_meta.field_types.clone(),
                 field_validations: struct_meta.field_validations.clone(),
                 model_fields: Vec::new(),
+                slider_fields: Vec::new(),
                 model_converters: Default::default(),
                 model_input_handlers: Default::default(),
                 user_components: user_components.clone(),

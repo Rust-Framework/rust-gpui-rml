@@ -50,6 +50,9 @@ pub fn canonical_tag(tag: &str) -> String {
         "description" => "DescriptionItem".to_string(),
         "separator" => "DescriptionSeparator".to_string(),
         "breadcrumb" => "Breadcrumb".to_string(),
+        "stepper" => "Stepper".to_string(),
+        // step-item 经 normalize_component_tag 转为 StepItem，需映射为 StepperItem
+        "StepItem" => "StepperItem".to_string(),
         // kebab-case 形式（tab-bar / tab-item）由 normalize_component_tag 自动转为 PascalCase
         _ => normalized,
     }
@@ -495,6 +498,38 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             kind: ComponentKind::Stateless,
             container: true,
         }),
+        // Stepper：步骤指示器，子节点为 <StepperItem> / <step-item>
+        // 构造器 Stepper::new(id)，.vertical()/.selected_index()/.text_center()/.item(StepperItem)
+        "Stepper" | "stepper" => Some(ComponentTag {
+            ctor_path: "rml_ui::Stepper",
+            kind: ComponentKind::StatelessWithItems,
+            container: false,
+        }),
+        // Rating：Stateless 星级评分，构造器 Rating::new(id)
+        // on_click 闭包参数为 &usize（评分值），非 ClickEvent，由 setters.rs 专属处理
+        "Rating" => Some(ComponentTag {
+            ctor_path: "rml_ui::Rating",
+            kind: ComponentKind::Stateless,
+            container: false,
+        }),
+        // OtpInput：Stateful OTP 输入，构造器 OtpInput::new(&Entity<OtpState>)
+        // OtpState::new(length, w, c) 需 length 参数，由 OtpInputTranslator 从 length 属性注入
+        // masked / default_value 也注入 state_ctor 闭包
+        "OtpInput" | "otp-input" => Some(ComponentTag {
+            ctor_path: "rml_ui::OtpInput",
+            kind: ComponentKind::Stateful {
+                state_field: "otp_state",
+                state_ctor: "|w, c| rml_ui::OtpState::new(6usize, w, c)",
+            },
+            container: false,
+        }),
+        // VirtualList：虚拟列表，构造器 v_virtual_list/h_virtual_list 函数
+        // 由 VirtualListTranslator 特化处理 slot="render" 闭包注入 + item-sizes 参数
+        "VirtualList" | "virtual-list" => Some(ComponentTag {
+            ctor_path: "rml_ui::v_virtual_list",
+            kind: ComponentKind::Stateless,
+            container: false,
+        }),
         _ => None,
     }
 }
@@ -512,11 +547,13 @@ pub fn is_item_builder_tag(tag: &str) -> bool {
         tag,
         "AccordionItem" | "item" | "Tab" | "tab" | "Column" | "column"
             | "DescriptionItem" | "description" | "DescriptionSeparator" | "separator"
+            | "StepperItem" | "step-item"
     ) || normalize_component_tag(tag) == "AccordionItem"
         || normalize_component_tag(tag) == "Tab"
         || normalize_component_tag(tag) == "Column"
         || normalize_component_tag(tag) == "DescriptionItem"
         || normalize_component_tag(tag) == "DescriptionSeparator"
+        || normalize_component_tag(tag) == "StepperItem"
 }
 
 /// 判断标签是否为菜单容器（ContextMenu / DropdownMenu / MenuBar / AppMenuBar / menu）

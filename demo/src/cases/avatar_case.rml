@@ -47,9 +47,9 @@
             </div>
 
             <div class="demo-section">
-                <h3>动态绑定（model + computed + if）</h3>
-                <p>input 通过 model={name} 双向绑定姓名字段，点击按钮循环切换尺寸，观察头像实时变化。此案例演示 RML 数据驱动的核心能力：model 双向绑定 + computed 计算属性 + if 条件渲染。</p>
-                <input model={name} placeholder="输入姓名" />
+                <h3>动态绑定（value + computed + if）</h3>
+                <p>input 通过 value={name} 双向绑定姓名字段，点击按钮循环切换尺寸，观察头像实时变化。此案例演示 RML 数据驱动的核心能力：value 双向绑定 + computed 计算属性 + if 条件渲染。</p>
+                <input value={name} placeholder="输入姓名" />
                 <p>当前姓名：{name} | 当前尺寸：{size_label}</p>
                 <div class="avatar-row">
                     <div if={size_index % 3 == 0}>

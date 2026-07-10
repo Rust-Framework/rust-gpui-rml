@@ -34,9 +34,14 @@
 use crate::parser::ast::EventHandler;
 use crate::tags;
 
-/// 检测属性是否为 Input 事件（仅 Input / TextInput / CodeEditor 支持）
+/// 检测属性是否为 Input 事件（Input / TextInput / CodeEditor / OtpInput 支持）
 pub fn is_input_event(name: &str, tag: &str) -> bool {
     let canonical = tags::canonical_tag(tag);
+    // OtpInput 支持 on_change/on_focus/on_blur（OtpState: EventEmitter<InputEvent>），
+    // 但不支持 on_enter（OtpState 不发射 PressEnter 事件）
+    if canonical == "OtpInput" {
+        return matches!(name, "on_change" | "on_focus" | "on_blur");
+    }
     if canonical != "Input" && canonical != "TextInput" && canonical != "CodeEditor" {
         return false;
     }
@@ -65,19 +70,19 @@ pub fn gen_input_event_subscribe(
     let (event_pattern, call_expr) = match event_name {
         "on_change" => (
             "if let rml_ui::InputEvent::Change = event",
-            "this.{method}(entity.read(cx), cx)",
+            "this.{method}(&entity, cx)",
         ),
         "on_enter" => (
             "if let rml_ui::InputEvent::PressEnter { .. } = event",
-            "this.{method}(entity.read(cx), cx)",
+            "this.{method}(&entity, cx)",
         ),
         "on_focus" => (
             "if let rml_ui::InputEvent::Focus = event",
-            "this.{method}(entity.read(cx), cx)",
+            "this.{method}(&entity, cx)",
         ),
         "on_blur" => (
             "if let rml_ui::InputEvent::Blur = event",
-            "this.{method}(entity.read(cx), cx)",
+            "this.{method}(&entity, cx)",
         ),
         _ => return String::new(),
     };
@@ -85,14 +90,19 @@ pub fn gen_input_event_subscribe(
     let call_expr = call_expr.replace("{method}", method);
     let subscribe_key = format!("{}:{}", ref_key, event_name);
 
+    // 使用 current_self_alias 支持 slot 闭包（slot 内 self 不可用，需用 __rml_self_ref）
+    // RmlState::is_event_subscribed / mark_event_subscribed 均为 &self（Mutex 内部可变性）
+    let self_prefix = crate::compiler::expr::current_self_alias().unwrap_or("self");
+
     format!(
-        "if !self.__rml_state.is_event_subscribed({subscribe_key:?}) {{\n            \
+        "if !{self_prefix}.__rml_state.is_event_subscribed({subscribe_key:?}) {{\n            \
          cx.subscribe(&__rml_entity, |this, entity, event, cx| {{\n                \
          {event_pattern} {{\n                    \
          {call_expr};\n                \
          }}\n            }}).detach();\n            \
-         self.__rml_state.mark_event_subscribed({subscribe_key:?}.to_string());\n        \
+         {self_prefix}.__rml_state.mark_event_subscribed({subscribe_key:?}.to_string());\n        \
          }}",
+        self_prefix = self_prefix,
         subscribe_key = subscribe_key,
         event_pattern = event_pattern,
         call_expr = call_expr,
@@ -131,7 +141,7 @@ mod tests {
         assert!(code.contains("\"input_state:on_change\""), "code: {}", code);
         assert!(code.contains("cx.subscribe(&__rml_entity"), "code: {}", code);
         assert!(code.contains("InputEvent::Change"), "code: {}", code);
-        assert!(code.contains("this.on_input_change(entity.read(cx), cx)"), "code: {}", code);
+        assert!(code.contains("this.on_input_change(&entity, cx)"), "code: {}", code);
         assert!(code.contains("detach()"), "code: {}", code);
         assert!(code.contains("mark_event_subscribed"), "code: {}", code);
     }
@@ -142,7 +152,7 @@ mod tests {
         let code = gen_input_event_subscribe("text_state", "on_enter", &handler);
         assert!(code.contains("\"text_state:on_enter\""), "code: {}", code);
         assert!(code.contains("InputEvent::PressEnter"), "code: {}", code);
-        assert!(code.contains("this.handle_enter(entity.read(cx), cx)"), "code: {}", code);
+        assert!(code.contains("this.handle_enter(&entity, cx)"), "code: {}", code);
     }
 
     #[test]

@@ -2,7 +2,7 @@
 //!
 //! - `<` 后 → 标签补全
 //! - 标签内属性名位置 → 属性补全（区分 static/bind/event）
-//! - `{...}` / `model={...}` 内 → 绑定路径补全
+//! - `{...}` / `value={...}` 内 → 绑定路径补全
 //! - `onclick="..."` 内 → 命令补全
 
 use lsp_types::{CompletionItem, CompletionItemKind, CompletionResponse, InsertTextFormat};

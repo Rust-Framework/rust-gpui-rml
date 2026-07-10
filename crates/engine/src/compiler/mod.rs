@@ -28,6 +28,7 @@ pub mod setters;
 pub mod source_map;
 pub mod style_directive;
 pub mod tooltip;
+pub mod twoway;
 pub mod translator;
 pub mod validator;
 

@@ -10,14 +10,18 @@ pub mod collapsible;
 pub mod group_box;
 pub mod link;
 pub mod menu;
+pub mod otp_input;
 pub mod pagination;
 pub mod radio;
+pub mod rating;
 pub mod skeleton;
 pub mod spinner;
 pub mod status_bar;
+pub mod stepper;
 pub mod tab;
 pub mod table;
 pub mod tree;
+pub mod virtual_list;
 
 pub use activity_bar::{
     ActivityAct, ActivityBar, ActivityPanel, IActivityAct, IActivityPanel, VisualActivityPanel,
@@ -43,7 +47,11 @@ pub use tree::Tree;
 pub use collapsible::Collapsible;
 pub use group_box::{GroupBox, GroupBoxVariants};
 pub use link::Link;
+pub use otp_input::{OtpInput, OtpState};
 pub use pagination::Pagination;
 pub use radio::{Radio, RadioGroup};
+pub use rating::Rating;
 pub use skeleton::Skeleton;
 pub use spinner::Spinner;
+pub use stepper::{Stepper, StepperItem};
+pub use virtual_list::{VirtualList, VirtualListScrollHandle};

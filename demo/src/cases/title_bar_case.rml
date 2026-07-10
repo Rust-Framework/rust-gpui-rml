@@ -14,9 +14,9 @@
                 </div>
             </Card>
 
-            <Card title="动态绑定(model 双向绑定)">
-                <p>输入标题文本,观察 TitleBar 中央内容实时更新(演示 model 双向绑定):</p>
-                <input model={title} placeholder="输入标题文本" />
+            <Card title="动态绑定(value 双向绑定)">
+                <p>输入标题文本,观察 TitleBar 中央内容实时更新(演示 value 双向绑定):</p>
+                <input value={title} placeholder="输入标题文本" />
                 <p>当前标题: {title}</p>
                 <div class="button-row">
                     <Button label="重置标题" on-click={on_reset_title} />

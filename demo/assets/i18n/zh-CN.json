@@ -344,6 +344,8 @@
 
   "case.ref.title": "ref 指令 Ref",
 
+  "case.focus_event.title": "焦点事件 Focus/Blur",
+
   "case.icon.title": "图标 Icon",
 
   "case.kbd.title": "键盘按键 Kbd",
@@ -364,7 +366,13 @@
 
   "case.pagination.title": "分页 Pagination",
 
-  "case.radio.title": "单选 Radio & RadioGroup"
+  "case.radio.title": "单选 Radio & RadioGroup",
+
+  "case.stepper.title": "步骤指示器 Stepper",
+
+  "case.rating.title": "星级评分 Rating",
+  "case.otp_input.title": "OTP 输入 OtpInput",
+  "case.virtual_list.title": "虚拟列表 VirtualList"
 
 }
 

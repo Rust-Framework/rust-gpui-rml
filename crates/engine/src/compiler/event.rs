@@ -14,7 +14,7 @@
 //! 详见文档 §5.4 事件绑定与 §10.6 代码生成。
 
 use crate::compiler::{expr, CodegenCtx};
-use crate::parser::ast::EventHandler;
+use crate::parser::ast::{Attribute, Element, EventHandler};
 
 /// 检测当前是否在 slot 闭包上下文内（self_alias == "__rml_self_ref"）
 ///
@@ -71,7 +71,7 @@ pub fn event_binding(name: &str) -> Option<(&'static str, &'static str, &'static
         )),
         // 以下事件 GPUI 不直接提供对应类型，Phase B-2 由 codegen 直接构造 RML 事件
         // 暂不绑定（返回 None）
-        "on_input" | "on_change" | "on_submit" | "on_focus" | "on_blur" | "on_load" | "on_resize" | "on_scroll" => None,
+        "on_input" | "on_change" | "on_submit" | "on_load" | "on_resize" | "on_scroll" => None,
         _ => None,
     }
 }
@@ -79,6 +79,11 @@ pub fn event_binding(name: &str) -> Option<(&'static str, &'static str, &'static
 /// 判断事件是否为悬停类型（需要特殊处理 &bool 回调）
 pub fn is_hover_event(name: &str) -> bool {
     matches!(name, "on_hover" | "on_mouse_enter" | "on_mouse_leave")
+}
+
+/// 判断事件是否为焦点类型（GPUI 回调无事件参数，3 参数闭包）
+pub fn is_focus_event(name: &str) -> bool {
+    matches!(name, "on_focus" | "on_blur")
 }
 
 /// P0-1：根据事件名返回对应的 handler 类型名（如 "ClickHandler"）
@@ -100,6 +105,11 @@ pub fn apply_event(name: &str, handler: &EventHandler, _ctx: &CodegenCtx) -> Str
     // on_hover 特殊处理：GPUI on_hover 回调接收 &bool 而非 &EventType
     if is_hover_event(name) {
         return apply_hover_event(name, handler);
+    }
+
+    // on_focus/on_blur 特殊处理：GPUI 回调签名为 Fn(&mut Window, &mut App)（无事件参数）
+    if is_focus_event(name) {
+        return apply_focus_event(name, handler);
     }
 
     // on_action 特殊处理：值为逗号分隔的 `ActionType:method` 对
@@ -431,6 +441,142 @@ pub fn apply_hover_event(name: &str, handler: &EventHandler) -> String {
     }
 }
 
+/// 生成 on-focus/on-blur 事件绑定代码
+///
+/// GPUI 的 `on_focus`/`on_blur` 是 `Context<T>` 级 API（非元素 builder 方法），
+/// 不能用 `.on_focus(...)` 形式。焦点事件由 `gen_focus_event_setup` 生成预处理代码，
+/// 元素链上用 `.track_focus(&handle)` 关联 FocusHandle。
+///
+/// 此函数返回空字符串，实际处理在 `meta.rs` 中通过 `gen_focus_event_setup` 完成。
+pub fn apply_focus_event(_name: &str, _handler: &EventHandler) -> String {
+    String::new()
+}
+
+/// 生成焦点事件预处理代码
+///
+/// GPUI 的 `on_focus`/`on_blur` 是 `Context<T>` 级 API，需要：
+/// 1. 创建/获取 `FocusHandle`（缓存在 `RmlState.focus_handles`）
+/// 2. 通过 `cx.on_focus(&handle, _window, listener).detach()` 注册监听器
+/// 3. 元素链上用 `.track_focus(&handle)` 关联
+///
+/// 此函数生成步骤 1-2 的预处理代码，返回 `(预处理代码, handle 变量名)`。
+/// 步骤 3 由 `meta.rs` 在元素链上添加 `.track_focus(&handle)`。
+///
+/// `dedup_key` 用作 `focus_handles` 和 `subscribed_events` 的键，格式如 `"focus_0"`。
+pub fn gen_focus_event_setup(
+    elem: &Element,
+    dedup_key: &str,
+) -> Option<(String, String)> {
+    let on_focus_handler = elem.attributes.iter().find_map(|attr| {
+        if let Attribute::Event { name, handler, .. } = attr {
+            if name == "on_focus" { Some(handler) } else { None }
+        } else {
+            None
+        }
+    });
+    let on_blur_handler = elem.attributes.iter().find_map(|attr| {
+        if let Attribute::Event { name, handler, .. } = attr {
+            if name == "on_blur" { Some(handler) } else { None }
+        } else {
+            None
+        }
+    });
+
+    if on_focus_handler.is_none() && on_blur_handler.is_none() {
+        return None;
+    }
+
+    let slot = in_slot_context();
+    let self_prefix = if slot { "__rml_self_ref" } else { "self" };
+    let handle_var = format!("__rml_focus_handle_{}", dedup_key);
+
+    let mut pre = format!(
+        "let {} = {}.__rml_state.get_or_init_focus_handle({:?}, cx);",
+        handle_var, self_prefix, dedup_key
+    );
+
+    // 注册 on_focus 监听器
+    if let Some(handler) = on_focus_handler {
+        let subscribe_key = format!("{}:on_focus", dedup_key);
+        let body = focus_listener_body(handler);
+        pre.push_str(&format!(
+            "\n    if !{}.__rml_state.is_event_subscribed({:?}) {{\n        \
+             {}.__rml_state.mark_event_subscribed({:?}.to_string());\n        \
+             cx.on_focus(&{}, _window, |this, _w, cx| {{\n            \
+             {}\n        \
+             }}).detach();\n    \
+             }}",
+            self_prefix, subscribe_key,
+            self_prefix, subscribe_key,
+            handle_var,
+            body
+        ));
+    }
+
+    // 注册 on_blur 监听器
+    if let Some(handler) = on_blur_handler {
+        let subscribe_key = format!("{}:on_blur", dedup_key);
+        let body = focus_listener_body(handler);
+        pre.push_str(&format!(
+            "\n    if !{}.__rml_state.is_event_subscribed({:?}) {{\n        \
+             {}.__rml_state.mark_event_subscribed({:?}.to_string());\n        \
+             cx.on_blur(&{}, _window, |this, _w, cx| {{\n            \
+             {}\n        \
+             }}).detach();\n    \
+             }}",
+            self_prefix, subscribe_key,
+            self_prefix, subscribe_key,
+            handle_var,
+            body
+        ));
+    }
+
+    Some((pre, handle_var))
+}
+
+/// 生成焦点事件监听器闭包体
+///
+/// `cx.on_focus`/`cx.on_blur` 的 listener 签名为 `FnMut(&mut T, &mut Window, &mut Context<T>)`，
+/// 闭包内 `this` 为 `&mut Self`，`cx` 为 `&mut Context<Self>`。
+fn focus_listener_body(handler: &EventHandler) -> String {
+    match handler {
+        EventHandler::ClosureField(field) => {
+            format!(
+                "if let Some(__rml_h) = &this.{} {{\n                \
+                 let rml_ev = rml_core::events::FocusEvent::default();\n                \
+                 __rml_h(&rml_ev, _w, cx);\n            \
+                 }}",
+                field
+            )
+        }
+        EventHandler::Ident(method) | EventHandler::MethodName(method) => {
+            format!(
+                "let rml_ev = rml_core::events::FocusEvent::default();\n                \
+                 this.{}(&rml_ev, cx);",
+                method
+            )
+        }
+        EventHandler::WithArgs(method, args) => {
+            if args.is_empty() {
+                format!(
+                    "let rml_ev = rml_core::events::FocusEvent::default();\n                \
+                     this.{}(&rml_ev, cx);",
+                    method
+                )
+            } else {
+                // Phase B-1 简化：仅支持单参数
+                let arg = &args[0];
+                format!(
+                    "let p0 = {}.clone();\n                \
+                     let rml_ev = rml_core::events::FocusEvent::default();\n                \
+                     this.{}(p0, &rml_ev, cx);",
+                    arg, method
+                )
+            }
+        }
+    }
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 //  单元测试
 // ──────────────────────────────────────────────────────────────────────────
@@ -603,8 +749,33 @@ mod tests {
     fn apply_event_unsupported_returns_empty() {
         let handler = EventHandler::Ident("handler".into());
         assert_eq!(apply_event("on_input", &handler, &ctx()), "");
-        assert_eq!(apply_event("on_blur", &handler, &ctx()), "");
         assert_eq!(apply_event("on_custom", &handler, &ctx()), "");
+    }
+
+    // ─── 焦点事件（on_focus/on_blur）───
+    // GPUI 的 on_focus/on_blur 是 Context 级 API，apply_focus_event 返回空字符串。
+    // 实际处理由 gen_focus_event_setup 完成（预处理代码 + .track_focus）。
+
+    #[test]
+    fn apply_event_on_focus_returns_empty() {
+        let handler = EventHandler::Ident("on_focus".into());
+        let code = apply_event("on_focus", &handler, &ctx());
+        assert_eq!(code, "");
+    }
+
+    #[test]
+    fn apply_event_on_blur_returns_empty() {
+        let handler = EventHandler::MethodName("handle_blur".into());
+        let code = apply_event("on_blur", &handler, &ctx());
+        assert_eq!(code, "");
+    }
+
+    #[test]
+    fn is_focus_event_basic() {
+        assert!(is_focus_event("on_focus"));
+        assert!(is_focus_event("on_blur"));
+        assert!(!is_focus_event("on_click"));
+        assert!(!is_focus_event("on_hover"));
     }
 
     // ─── ClosureField（用户组件事件回调字段）───

@@ -5,7 +5,7 @@
 //!
 //! - 字段版本追踪（替代旧 `__rml_<field>_version: AtomicU64` 每字段一个的设计）
 //! - `#[computed]` 缓存
-//! - `<input model={field}>` 双向绑定所需的 `InputState` entity 暂存与正向同步版本
+//! - `<input value={field}>` 双向绑定所需的 `InputState` entity 暂存与正向同步版本
 //! - 字段校验错误状态
 //! - `on_loaded` 一次性初始化守卫
 //! - 窗口句柄（供 `IWindow::handle` / 对话框 `close` 使用）
@@ -20,7 +20,7 @@ use std::sync::Mutex;
 
 use gpui::{AnyWindowHandle, AppContext, Entity, SharedString};
 
-use crate::InputState;
+use crate::{InputState, SliderState};
 
 /// 组件运行时状态容器
 ///
@@ -33,7 +33,7 @@ pub struct RmlState {
     /// `#[computed]` 方法结果缓存（按方法名 + 依赖版本号键控）
     pub computed_cache: rml_core::computed_cache::ComputedCache,
 
-    /// `<input model={field}>` 绑定的 `InputState` entity，按字段名索引
+    /// `<input value={field}>` 绑定的 `InputState` entity，按字段名索引
     ///
     /// 惰性初始化：首次 `__rml_get_or_init_input_state(field)` 时创建并订阅。
     pub input_states: HashMap<String, Entity<InputState>>,
@@ -42,6 +42,14 @@ pub struct RmlState {
     ///
     /// render 时对比 `get_version(field)` 与此值，不同则调用 `InputState::set_value`。
     pub input_state_versions: HashMap<String, u64>,
+
+    /// `<Slider value={field}>` 绑定的 `SliderState` entity，按字段名索引
+    ///
+    /// 惰性初始化：首次 `__rml_get_or_init_slider_state(field)` 时创建并订阅。
+    pub slider_states: HashMap<String, Entity<SliderState>>,
+
+    /// 每个字段上次正向同步到 `SliderState` 的版本号
+    pub slider_state_versions: HashMap<String, u64>,
 
     /// 字段校验错误状态
     ///
@@ -74,7 +82,11 @@ pub struct RmlState {
     /// 设计说明：`AnyElement` 内部为 `ArenaBox`，arena 每帧 reset，不可跨帧缓存。
     /// 因此 `once` 不能缓存元素本身，而是缓存元素的数据依赖（字段值），
     /// 后续渲染用快照数据重建元素，达到"冻结首次渲染状态"的语义。
-    pub once_cache: HashMap<&'static str, Box<dyn std::any::Any + Send + Sync>>,
+    ///
+    /// 使用 `Mutex` 提供内部可变性，使 `once_get_or_init` 只需 `&self`，
+    /// 从而在 slot 闭包（仅有 `&self`）内也能使用 `once` 指令。
+    /// `Mutex` 而非 `RefCell` 以满足 `Sync` 约束（`RmlState: Send + Sync`）。
+    pub once_cache: Mutex<HashMap<&'static str, Box<dyn std::any::Any + Send + Sync>>>,
 
     /// `ref` 指令的元素实体缓存
     ///
@@ -100,6 +112,18 @@ pub struct RmlState {
     /// 设计说明：用 `Mutex` 而非 `RefCell` 以满足 `Sync` 约束，
     /// `Mutex<HashSet<String>>` 是 `Send + Sync`，保持 `RmlState: Send + Sync`。
     pub subscribed_events: Mutex<HashSet<String>>,
+
+    /// `on-focus`/`on-blur` 事件的 FocusHandle 缓存
+    ///
+    /// GPUI 的 on_focus/on_blur 是 Context 级 API（非元素 builder 方法），
+    /// 需要 FocusHandle 引用来注册监听器。FocusHandle 在首次渲染时创建并缓存，
+    /// 后续渲染复用同一 handle，用 `.track_focus(&handle)` 关联到元素。
+    ///
+    /// key 为编译期生成的唯一标识（`focus_0`、`focus_1`、...）。
+    ///
+    /// 使用 `Mutex` 提供内部可变性，使 `get_or_init_focus_handle` 只需 `&self`，
+    /// 从而在 slot 闭包（仅有 `&self` via `__rml_self_ref`）内也能使用。
+    pub focus_handles: Mutex<HashMap<String, gpui::FocusHandle>>,
 }
 
 impl RmlState {
@@ -141,18 +165,25 @@ impl RmlState {
     ///
     /// 约束：`T: 'static + Send + Sync + Clone`。`Clone` 是因为每次渲染都需要一份
     /// 独立的快照值（元素构建过程可能 move 字段）。
+    ///
+    /// 签名为 `&self`（通过 `Mutex` 内部可变性），使 slot 闭包内也能调用。
     pub fn once_get_or_init<T: 'static + Send + Sync + Clone>(
-        &mut self,
+        &self,
         key: &'static str,
         init: impl FnOnce() -> T,
     ) -> T {
-        if let Some(boxed) = self.once_cache.get(key) {
+        let cache = self.once_cache.lock().unwrap();
+        if let Some(boxed) = cache.get(key) {
             if let Some(v) = boxed.downcast_ref::<T>() {
                 return v.clone();
             }
         }
+        drop(cache);
         let v = init();
-        self.once_cache.insert(key, Box::new(v.clone()));
+        self.once_cache
+            .lock()
+            .unwrap()
+            .insert(key, Box::new(v.clone()));
         v
     }
 
@@ -220,5 +251,30 @@ impl RmlState {
         if let Ok(mut set) = self.subscribed_events.lock() {
             set.insert(key);
         }
+    }
+
+    /// 获取或初始化焦点事件所需的 `FocusHandle`
+    ///
+    /// GPUI 的 `on_focus`/`on_blur` 是 `Context<T>` 级 API，需要 `&FocusHandle` 参数。
+    /// 首次调用时通过 `cx.focus_handle()` 创建并缓存到 `focus_handles`，
+    /// 后续渲染复用同一 handle，用 `.track_focus(&handle)` 关联到元素。
+    ///
+    /// 签名为 `&self`（通过 `Mutex` 内部可变性），使 slot 闭包内也能调用。
+    pub fn get_or_init_focus_handle(
+        &self,
+        key: &str,
+        cx: &mut gpui::App,
+    ) -> gpui::FocusHandle {
+        let cache = self.focus_handles.lock().unwrap();
+        if let Some(handle) = cache.get(key) {
+            return handle.clone();
+        }
+        drop(cache);
+        let handle = cx.focus_handle();
+        self.focus_handles
+            .lock()
+            .unwrap()
+            .insert(key.to_string(), handle.clone());
+        handle
     }
 }

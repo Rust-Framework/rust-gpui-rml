@@ -305,7 +305,7 @@ mod tests {
         assert!(code.contains("is_event_subscribed"));
         assert!(code.contains("cx.subscribe(&__rml_entity"));
         assert!(code.contains("InputEvent::Change"));
-        assert!(code.contains("this.on_editor_change(entity.read(cx), cx)"));
+        assert!(code.contains("this.on_editor_change(&entity, cx)"));
         assert!(code.contains("detach()"));
         assert!(code.contains("mark_event_subscribed"));
         assert!(code.contains("Input::new(&__rml_entity)"));

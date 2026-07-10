@@ -61,7 +61,7 @@ pub use gpui_component::{
     radio::Radio,
     select::Select,
     separator::Separator,
-    slider::{Slider, SliderState},
+    slider::{Slider, SliderEvent, SliderState, SliderValue},
     switch::Switch,
     tag::Tag,
     tooltip::Tooltip,
@@ -89,9 +89,10 @@ pub use components::{
     Collapsible, DefaultTableDelegate, DialogAction, DialogButtonProps, DialogClose, DialogContent,
     DialogDescription, DialogFooter, DialogHeader, DialogTitle, FooterTemplate, GroupBox,
     GroupBoxVariants, HeaderTemplate, IActivityAct, IActivityPanel, Link, MenuBar,
-    NativeStatusBar, Pagination, RadioGroup, StatusBarAlign, Skeleton, Spinner, Tab,
-    TabBar, TabItem, Tabs, Table, TableColumn, TableDelegate, TableRow, TabVariant, Tree,
-    VisualActivityPanel, configure_menu_bar_popup, menu_bar_button,
+    NativeStatusBar, OtpInput, OtpState, Pagination, RadioGroup, Rating, StatusBarAlign, Skeleton, Spinner, Stepper,
+    StepperItem, Tab, TabBar, TabItem, Tabs, Table, TableColumn, TableDelegate, TableRow,
+    TabVariant, Tree, VisualActivityPanel, VirtualList, VirtualListScrollHandle,
+    configure_menu_bar_popup, menu_bar_button,
 };
 
 pub use state::RmlState;

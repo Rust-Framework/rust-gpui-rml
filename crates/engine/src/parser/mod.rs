@@ -229,16 +229,6 @@ impl Parser {
                         span: attr.span,
                     }),
                 },
-                "model" => {
-                    if let AttrValue::Binding(expr) = attr.value {
-                        let (field, converter) = if let Some((f, c)) = expr.split_once('|') {
-                            (f.trim().to_string(), Some(c.trim().to_string()))
-                        } else {
-                            (expr, None)
-                        };
-                        directives.push(Directive::Model { field, converter, span: attr.span });
-                    }
-                }
                 "show" => {
                     if let AttrValue::Binding(expr) = attr.value {
                         directives.push(Directive::Show { expr, span: attr.span });
@@ -721,40 +711,6 @@ mod tests {
                     assert_eq!(iterable, "items");
                 }
                 other => panic!("expected Each, got {:?}", other),
-            },
-            other => panic!("expected Element, got {:?}", other),
-        }
-    }
-
-    #[test]
-    fn parse_model_directive_simple_field() {
-        let root = parse(r#"<input model={name}></input>"#).unwrap();
-        match root {
-            Node::Element(e) => {
-                assert_eq!(e.directives.len(), 1);
-                match &e.directives[0] {
-                    Directive::Model { field, converter, .. } => {
-                        assert_eq!(field, "name");
-                        assert_eq!(converter, &None);
-                    }
-                    other => panic!("expected Model, got {:?}", other),
-                }
-            }
-            other => panic!("expected Element, got {:?}", other),
-        }
-    }
-
-    #[test]
-    fn parse_model_directive_with_converter() {
-        // model={field | Converter} → Model { field, Some("Converter") }
-        let root = parse(r#"<input model={price | Currency}></input>"#).unwrap();
-        match root {
-            Node::Element(e) => match &e.directives[0] {
-                Directive::Model { field, converter, .. } => {
-                    assert_eq!(field, "price");
-                    assert_eq!(converter.as_deref(), Some("Currency"));
-                }
-                other => panic!("expected Model, got {:?}", other),
             },
             other => panic!("expected Element, got {:?}", other),
         }

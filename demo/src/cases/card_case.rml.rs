@@ -36,7 +36,7 @@ impl ILifecycle for CardCase {
     fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         self.card_title = "动态卡片".into();
-        self.card_body = "这是通过 model 双向绑定控制的卡片内容。".into();
+        self.card_body = "这是通过 value 双向绑定控制的卡片内容。".into();
         self.hoverable = true;
         let (cols, rows) = build_api_table(&[
             ("title", "字符串", "卡片标题"),

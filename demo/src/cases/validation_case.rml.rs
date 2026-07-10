@@ -40,7 +40,7 @@ impl ILifecycle for ValidationCase {
         self.age = 25;
         self.email = "user@example.com".into();
         let (cols, rows) = build_api_table(&[
-            ("model={field}", "指令", "双向绑定 input 到 pub 字段"),
+            ("value={field}", "绑定属性", "双向绑定 input 到 pub 字段"),
             ("#[validate(range(min,max))]", "属性", "数值范围验证，失败显示红框"),
             ("#[computed]", "方法", "基于字段计算派生值"),
         ]);

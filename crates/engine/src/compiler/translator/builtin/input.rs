@@ -1,12 +1,14 @@
 //! `<input>` translator
 //!
-//! 原生 `<input>` 支持 `model={field}` 双向绑定；无 model 时退化为普通 div 占位。
+//! 原生 `<input>` 支持 `value={field}` 自动双向绑定（复用 InputState 双向同步机制）。
+//! 无双向绑定时退化为普通 div 占位。
 
 use super::{BuiltinMeta, BuiltinTranslator, ComponentCategory, IRmlTranslator};
 use crate::compiler::codegen::binding::gen_model_input;
+use crate::compiler::codegen::extract_field_converter;
 use crate::compiler::{CodegenCtx, CodegenError};
 use crate::css::ParentInfo;
-use crate::parser::ast::{Directive, Element};
+use crate::parser::ast::{Attribute, Element};
 
 const META: &BuiltinMeta = &BuiltinMeta {
     tag: "input",
@@ -33,10 +35,15 @@ impl IRmlTranslator for InputTranslator {
         loop_vars: &[String],
         parents: &[ParentInfo],
     ) -> Result<(String, bool), CodegenError> {
-        if let Some(field) = elem.directives.iter().find_map(|d| match d {
-            Directive::Model { field: f, .. } => Some(f.clone()),
-            _ => None,
+        // value={field} bind 属性自动双向绑定
+        if let Some(expr) = elem.attributes.iter().find_map(|attr| {
+            if let Attribute::Bind { name, expr, .. } = attr {
+                (name == "value").then(|| expr.clone())
+            } else {
+                None
+            }
         }) {
+            let (field, _) = extract_field_converter(&expr);
             let code = gen_model_input(elem, ctx, id_counter, field, parents)?;
             return Ok((code, false));
         }

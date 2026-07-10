@@ -52,7 +52,7 @@ fn make_ctx_with_range_validation() -> CodegenCtx {
 
 const RML_SOURCE_WITH_AGE: &str = r#"
 <component>
-    <input model={age} placeholder="年龄" />
+    <input value={age} placeholder="年龄" />
 </component>
 "#;
 
@@ -133,7 +133,7 @@ fn length_validation_generates_len_check() {
     };
     let source = r#"
 <component>
-    <input model={name} placeholder="姓名" />
+    <input value={name} placeholder="姓名" />
 </component>
 "#;
     let code = compile(source, &ctx).expect("compile failed").code;
@@ -187,7 +187,7 @@ fn required_validation_generates_empty_check() {
     };
     let source = r#"
 <component>
-    <input model={name} placeholder="姓名" />
+    <input value={name} placeholder="姓名" />
 </component>
 "#;
     let code = compile(source, &ctx).expect("compile failed").code;
@@ -243,7 +243,7 @@ fn regex_validation_generates_pattern_match() {
     };
     let source = r#"
 <component>
-    <input model={email} placeholder="邮箱" />
+    <input value={email} placeholder="邮箱" />
 </component>
 "#;
     let code = compile(source, &ctx).expect("compile failed").code;
@@ -302,7 +302,7 @@ fn custom_validation_generates_function_call() {
     };
     let source = r#"
 <component>
-    <input model={phone} placeholder="手机号" />
+    <input value={phone} placeholder="手机号" />
 </component>
 "#;
     let code = compile(source, &ctx).expect("compile failed").code;
@@ -362,7 +362,7 @@ fn multiple_rules_executed_in_order() {
     };
     let source = r#"
 <component>
-    <input model={name} placeholder="姓名" />
+    <input value={name} placeholder="姓名" />
 </component>
 "#;
     let code = compile(source, &ctx).expect("compile failed").code;

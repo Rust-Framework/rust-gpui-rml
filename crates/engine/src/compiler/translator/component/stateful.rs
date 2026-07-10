@@ -11,6 +11,8 @@
 
 use super::super::{ComponentCategory, IRmlTranslator, PrintError, PrinterCtx, TranslatorMetadata};
 use crate::compiler::codegen::attribute::append_css_class_styles;
+use crate::compiler::codegen::binding::{gen_model_input, gen_model_slider};
+use crate::compiler::codegen::extract_field_converter;
 use crate::compiler::setters::{
     component_bind_setter, component_event_setter, component_static_setter,
 };
@@ -31,7 +33,7 @@ impl IRmlTranslator for StatefulComponentTranslator {
 
     fn matches(&self, elem: &Element) -> bool {
         let canonical = tags::canonical_tag(&elem.tag);
-        if matches!(canonical.as_str(), "Tree" | "CodeEditor") {
+        if matches!(canonical.as_str(), "Tree" | "CodeEditor" | "OtpInput") {
             return false;
         }
         matches!(
@@ -50,6 +52,40 @@ impl IRmlTranslator for StatefulComponentTranslator {
     ) -> Result<(String, bool), CodegenError> {
         let tag = &elem.tag;
         let resolved = tags::normalize_component_tag(tag);
+        let canonical = tags::canonical_tag(tag);
+
+        // C2: InputStateBridge — Input/TextInput/NumberInput + value={field} → gen_model_input
+        // 复用小写 <input> 的 InputState 双向同步机制（正向版本追踪 + 反向事件订阅）
+        if matches!(canonical.as_str(), "Input" | "TextInput" | "NumberInput") {
+            if let Some(expr) = elem.attributes.iter().find_map(|attr| {
+                if let Attribute::Bind { name, expr, .. } = attr {
+                    (name == "value").then(|| expr.clone())
+                } else {
+                    None
+                }
+            }) {
+                let (field, _) = extract_field_converter(&expr);
+                let code = gen_model_input(elem, ctx, _id_counter, field, parents)?;
+                return Ok((code, false));
+            }
+        }
+
+        // C3: Slider StateBridge — Slider + value={field} → gen_model_slider
+        // 正向同步（VM 字段 → SliderState.set_value）+ 反向同步（SliderEvent::Change → VM 字段）
+        if canonical == "Slider" {
+            if let Some(expr) = elem.attributes.iter().find_map(|attr| {
+                if let Attribute::Bind { name, expr, .. } = attr {
+                    (name == "value").then(|| expr.clone())
+                } else {
+                    None
+                }
+            }) {
+                let (field, _) = extract_field_converter(&expr);
+                let code = gen_model_slider(elem, ctx, _id_counter, field, parents)?;
+                return Ok((code, false));
+            }
+        }
+
         let component = tags::component_lookup_resolved(tag)
             .ok_or_else(|| CodegenError {
                 message: format!("unknown component: <{}>", tag),
@@ -117,7 +153,7 @@ impl IRmlTranslator for StatefulComponentTranslator {
 /// 生成通用 Stateful 组件构造表达式
 ///
 /// 返回形如 `({ let __rml_entity = ...; ... Input::new(&__rml_entity) })` 的代码。
-fn gen_stateful_body(
+pub(crate) fn gen_stateful_body(
     elem: &Element,
     component: &tags::ComponentTag,
     ref_name: Option<&str>,
@@ -164,8 +200,9 @@ fn gen_stateful_body(
             })
             .collect::<Vec<_>>()
             .join(" ");
+        // .clone() 确保 Fn 闭包内可重复使用 Entity 句柄（slot 场景下 __rml_slot_demo_entity_N 不会被 move）
         Ok(format!(
-            "({{ let __rml_entity = {entity_expr}; {subscribe_code} {}::new(&__rml_entity) }})",
+            "({{ let __rml_entity = ({entity_expr}).clone(); {subscribe_code} {}::new(&__rml_entity) }})",
             component.ctor_path
         ))
     } else if let Some(name) = ref_name {

@@ -15,7 +15,7 @@ use crate::cases::common::{build_api_table, CaseDocPage};
 #[component]
 #[derive(Default)]
 pub struct AvatarCase {
-    /// model 双向绑定的姓名字段，配合 input + Avatar name={name} 实时联动
+    /// value 双向绑定的姓名字段，配合 input + Avatar name={name} 实时联动
     pub name: String,
     /// 尺寸循环索引（0/1/2 → small/medium/large），配合 if 指令演示条件渲染
     pub size_index: u8,
