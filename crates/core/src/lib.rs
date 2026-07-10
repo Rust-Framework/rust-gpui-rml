@@ -16,6 +16,7 @@ pub use url;
 pub mod ability;
 pub mod assets;
 pub mod binding;
+pub mod content;
 pub mod context;
 pub mod i18n;
 pub mod observable;

@@ -240,9 +240,20 @@ pub fn component_bind_setter(
     }
 
     match name {
-        // content={expr}：直接嵌入表达式作为 child（与原生 div 的 content 分支一致）
-        // 表达式可引用 _window/cx，不经 component_bind_rust_expr 解析
-        "content" => Some(format!(".child({})", expr_str)),
+        // content={expr}：通过 IntoContent trait 统一转换为 child
+        // 支持 IntoElement（String/SharedString/AnyElement）、ToString（i32/bool 等）、IVisual（&dyn IVisual 等）
+        // 表达式经 component_bind_rust_expr 处理：slot 上下文中 self. 替换为 __rml_self_ref.，
+        // _window/cx 作为 scope_vars 识别为 render 方法作用域变量（不加 self. 前缀）
+        "content" => {
+            let mut scope_vars: Vec<&str> = loop_vars.iter().copied().collect();
+            for v in ["_window", "cx"] {
+                if !scope_vars.contains(&v) {
+                    scope_vars.push(v);
+                }
+            }
+            let code = component_bind_rust_expr(expr_str, &scope_vars, computed);
+            Some(format!(".child(rml_core::content::into_content({}, _window, cx))", code))
+        }
         "value" => {
             let rust_expr = component_bind_rust_expr(expr_str, loop_vars, computed);
             Some(format!(".value({}.clone())", rust_expr))
@@ -505,5 +516,33 @@ pub fn parse_bool(value: &str) -> &'static str {
         "true"
     } else {
         "false"
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn content_bind_setter_wraps_with_into_content() {
+        let code = component_bind_setter("content", "self.title", &[], &[], "Button").unwrap();
+        assert_eq!(
+            code,
+            ".child(rml_core::content::into_content(self.title, _window, cx))"
+        );
+    }
+
+    #[test]
+    fn content_bind_setter_preserves_complex_expr() {
+        let code = component_bind_setter("content", "self.counter + 1", &[], &[], "Button").unwrap();
+        assert!(code.contains("into_content("));
+        assert!(code.contains("self.counter + 1"));
+    }
+
+    #[test]
+    fn content_bind_setter_works_for_any_component() {
+        // content 绑定对所有组件标签生效（非 Button 专用）
+        let code = component_bind_setter("content", "self.name", &[], &[], "Tag").unwrap();
+        assert!(code.contains("into_content(self.name"));
     }
 }

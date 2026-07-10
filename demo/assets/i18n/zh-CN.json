@@ -68,6 +68,8 @@
 
   "case.user_event.title": "用户组件事件绑定",
 
+  "case.content_binding.title": "Content 绑定",
+
   "case.button.primary": "主要按钮",
 
   "case.button.ghost": "幽灵按钮",

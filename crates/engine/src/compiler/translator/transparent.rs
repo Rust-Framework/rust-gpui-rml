@@ -1,6 +1,7 @@
 //! `<component>` 透明容器 translator
 //!
-//! `<component content={expr} />` 直接嵌入表达式，不创建元素包装。
+//! `<component content={expr} />` 通过 `IntoContent` trait 将表达式值转为 `AnyElement` 嵌入，
+//! 支持 IntoElement/ToString/IVisual 三类输入。不创建元素包装。
 //! 支持 `each` 指令：`<component each={s in status} content={s.render(_window, cx)} />`。
 
 use super::{ComponentCategory, IRmlTranslator, PrinterCtx, TranslatorMetadata};
@@ -76,7 +77,10 @@ impl IRmlTranslator for ComponentTranslator {
         }
 
         let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
-        let code = gen_expr_code(&expr, &scope_vars, &computed);
+        let raw = gen_expr_code(&expr, &scope_vars, &computed);
+        // 通过 IntoContent trait 统一转换：支持 IntoElement/ToString/IVisual
+        // 表达式可引用 render 方法作用域内的 _window/cx
+        let code = format!("rml_core::content::into_content({}, _window, cx)", raw);
 
         if let Some(clause) = each_clause {
             let iter_expr = if loop_vars.iter().any(|lv| {

@@ -1,0 +1,42 @@
+<component>
+    <CaseDocPage
+        title={t("case.content_binding.title")}
+        description="content 绑定通过 IntoContent trait 统一转换为 child 元素。支持三类输入：IntoElement（String/SharedString/AnyElement）、ToString（i32/bool 等数值）、IVisual（Box&lt;dyn IVisual&gt; trait 对象）。codegen 生成 .child(rml_core::content::into_content(expr, _window, cx))，由编译器按表达式类型选择 impl。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <Card title="ToString 绑定（i32 / bool）">
+                <p>以下 content 绑定 i32 字段 count（当前值：{count}）：</p>
+                <div class="content-box" content={self.count} />
+                <p>以下 content 绑定 bool 字段 active（当前值：{active}）：</p>
+                <div class="content-box" content={self.active} />
+                <div class="button-row">
+                    <Button label="count +1" variant="primary" on-click={on_inc} />
+                    <Button label="toggle active" on-click={on_toggle} />
+                </div>
+            </Card>
+
+            <Card title="IntoElement 绑定（String / SharedString）">
+                <p>以下 content 绑定 String 字段 message：</p>
+                <div class="content-box" content={self.message.clone()} />
+                <p>以下 content 绑定 SharedString 字段 title：</p>
+                <div class="content-box" content={self.title.clone()} />
+            </Card>
+
+            <Card title="AnyElement 绑定（方法返回值）">
+                <p>以下 content 绑定方法 render_badge，返回 AnyElement：</p>
+                <div content={self.render_badge(_window, cx)} />
+            </Card>
+
+            <Card title="IVisual 绑定（Box<dyn IVisual>）">
+                <p>以下 content 绑定方法 make_visual，返回 Box&lt;dyn IVisual&gt;，调用 IVisual::render：</p>
+                <div content={self.make_visual()} />
+            </Card>
+        </template>
+
+        <template slot="api">
+            <h3>content 绑定支持的类型</h3>
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+        </template>
+    </CaseDocPage>
+</component>

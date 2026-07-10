@@ -154,7 +154,7 @@ pub(crate) fn apply_inline_style(style_str: &str) -> String {
 
 /// 应用绑定属性（{field} 形式）
 ///
-/// - `content={expr}`：直接嵌入表达式作为 child（支持 AnyElement/impl IntoElement）
+/// - `content={expr}`：通过 `IntoContent` trait 转换为 child（支持 IntoElement/ToString/IVisual）
 /// - `value={expr}`：格式化为文本 child
 /// - `class`/`id`：由 `apply_css_styles` 处理 static 形式，bind 形式输出 warning
 /// - `style={expr}`：输出 warning（bind 形式不支持，应使用 static `style="..."`）
@@ -167,9 +167,20 @@ pub(crate) fn apply_bind_attr(
     computed: &[&str],
 ) -> String {
     match name {
-        // content={expr}：直接嵌入表达式作为 child（支持 AnyElement/impl IntoElement）
-        // 表达式可引用 _window/cx（render 方法作用域内可用），不经 gen_expr_code 解析
-        "content" => format!(".child({})", expr),
+        // content={expr}：通过 IntoContent trait 统一转换
+        // 支持 IntoElement（String/SharedString/AnyElement）、ToString（i32/bool 等）、IVisual（&dyn IVisual 等）
+        // 表达式经 gen_expr_code 处理：slot 上下文中 self. 替换为 __rml_self_ref.，
+        // _window/cx 作为 scope_vars 识别为 render 方法作用域变量（不加 self. 前缀）
+        "content" => {
+            let mut scope_vars: Vec<&str> = loop_vars.iter().copied().collect();
+            for v in ["_window", "cx"] {
+                if !scope_vars.contains(&v) {
+                    scope_vars.push(v);
+                }
+            }
+            let code = gen_expr_code(expr, &scope_vars, computed);
+            format!(".child(rml_core::content::into_content({}, _window, cx))", code)
+        }
         "value" => format!(".child(format!(\"{{}}\", {}))", gen_expr_code(expr, loop_vars, computed)),
         // class/id 的 static 形式由 apply_css_styles 处理；bind 形式静默丢弃
         "class" | "id" => String::new(),
@@ -241,4 +252,33 @@ fn parse_point_method(method_name: &str, value: &str) -> String {
 fn parse_px_value(s: &str) -> Option<f32> {
     let s = s.trim().trim_end_matches("px").trim();
     s.parse::<f32>().ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn content_bind_wraps_with_into_content() {
+        let code = apply_bind_attr("content", "self.title", &[], &[]);
+        assert_eq!(
+            code,
+            ".child(rml_core::content::into_content(self.title, _window, cx))"
+        );
+    }
+
+    #[test]
+    fn content_bind_preserves_complex_expr() {
+        let code = apply_bind_attr("content", "self.counter + 1", &[], &[]);
+        assert!(code.contains("into_content("));
+        assert!(code.contains("self.counter + 1"));
+        assert!(code.contains("_window, cx"));
+    }
+
+    #[test]
+    fn content_bind_supports_window_cx_scope_vars() {
+        // content 表达式可引用 _window/cx（不经 gen_expr_code 解析）
+        let code = apply_bind_attr("content", "self.render_card(_window, cx)", &[], &[]);
+        assert!(code.contains("self.render_card(_window, cx)"));
+    }
 }
