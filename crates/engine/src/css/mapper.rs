@@ -124,6 +124,15 @@ fn map_declaration(decl: &Declaration, vars: &HashMap<String, Value>) -> Option<
                 "flex_grow({:?}).flex_shrink_0().flex_basis(gpui::px(0.))",
                 n
             )),
+            // `flex: none` → grow=0, shrink=0, basis=auto
+            Value::Keyword(k) if k == "none" => Some("flex_grow_0().flex_shrink_0()".into()),
+            // `flex: auto` → grow=1, shrink=1, basis=auto
+            Value::Keyword(k) if k == "auto" => {
+                Some("flex_grow(1.0).flex_shrink(1.0)".into())
+            }
+            // flex shorthand: <grow> <shrink>? <basis>?
+            // e.g. `flex: 1 1 420px`, `flex: 0 0 auto`, `flex: 1 1 0%`
+            Value::List(parts) => flex_shorthand_list(parts),
             _ => None,
         },
         "min-width" => match &value {
@@ -494,6 +503,52 @@ fn length_or_percentage_method(method: &str, value: &Value) -> Option<String> {
         Value::Length(n, Unit::Percent) => Some(format!("{}(gpui::relative({:?}))", method, n / 100.0)),
         _ => length_method(method, value),
     }
+}
+
+/// flex 简写列表解析（如 `1 1 420px`、`0 0 auto`）。
+///
+/// CSS 语法 `<grow> <shrink>? <basis>?`：
+/// - 第一个数字 → flex-grow
+/// - 第二个数字 → flex-shrink
+/// - 长度/百分比/`auto` → flex-basis
+fn flex_shorthand_list(parts: &[Value]) -> Option<String> {
+    let mut grow: Option<f32> = None;
+    let mut shrink: Option<f32> = None;
+    let mut basis_code: Option<String> = None;
+    let mut has_basis = false;
+
+    for part in parts {
+        match part {
+            Value::Number(n) => {
+                if grow.is_none() {
+                    grow = Some(*n);
+                } else if shrink.is_none() {
+                    shrink = Some(*n);
+                }
+            }
+            Value::Length(_, _) => {
+                has_basis = true;
+                basis_code = length_or_percentage_method("flex_basis", part);
+            }
+            Value::Keyword(k) if k == "auto" => {
+                has_basis = true;
+                // basis=auto 是 GPUI 默认值，无需调用
+            }
+            _ => {}
+        }
+    }
+
+    let g = grow.unwrap_or(1.0);
+    let s = shrink.unwrap_or(1.0);
+
+    let mut result = format!("flex_grow({:?}).flex_shrink({:?})", g, s);
+    if !has_basis {
+        // 无 basis → CSS 数字简写默认 basis=0
+        result.push_str(".flex_basis(gpui::px(0.))");
+    } else if let Some(code) = basis_code {
+        result.push_str(&format!(".{}", code));
+    }
+    Some(result)
 }
 
 /// 颜色值 → GPUI 调用
@@ -946,6 +1001,77 @@ mod tests {
         let d = decl("flex", Value::Number(3.5));
         let code = map_declarations(&[d], &HashMap::new());
         assert!(code.contains(".flex_grow(3.5"));
+    }
+
+    #[test]
+    fn map_flex_shorthand_three_values() {
+        // `flex: 1 1 420px` → grow=1, shrink=1, basis=420px
+        let d = decl(
+            "flex",
+            Value::List(vec![
+                Value::Number(1.0),
+                Value::Number(1.0),
+                Value::Length(420.0, Unit::Px),
+            ]),
+        );
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".flex_grow(1"));
+        assert!(code.contains(".flex_shrink(1"));
+        assert!(code.contains(".flex_basis(gpui::px(420"))
+    }
+
+    #[test]
+    fn map_flex_shorthand_auto_basis() {
+        // `flex: 0 0 auto` → grow=0, shrink=0, basis=auto（不生成 flex_basis 调用）
+        let d = decl(
+            "flex",
+            Value::List(vec![
+                Value::Number(0.0),
+                Value::Number(0.0),
+                Value::Keyword("auto".into()),
+            ]),
+        );
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".flex_grow(0"));
+        assert!(code.contains(".flex_shrink(0"));
+        assert!(!code.contains(".flex_basis("));
+    }
+
+    #[test]
+    fn map_flex_shorthand_percentage_basis() {
+        // `flex: 1 1 0%` → grow=1, shrink=1, basis=relative(0)
+        let d = decl(
+            "flex",
+            Value::List(vec![
+                Value::Number(1.0),
+                Value::Number(1.0),
+                Value::Length(0.0, Unit::Percent),
+            ]),
+        );
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".flex_grow(1"));
+        assert!(code.contains(".flex_shrink(1"));
+        assert!(code.contains(".flex_basis(gpui::relative(0.0))"));
+    }
+
+    #[test]
+    fn map_flex_keyword_none() {
+        // `flex: none` → grow=0, shrink=0
+        let d = decl("flex", Value::Keyword("none".into()));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".flex_grow_0()"));
+        assert!(code.contains(".flex_shrink_0()"));
+        assert!(!code.contains(".flex_basis("));
+    }
+
+    #[test]
+    fn map_flex_keyword_auto() {
+        // `flex: auto` → grow=1, shrink=1
+        let d = decl("flex", Value::Keyword("auto".into()));
+        let code = map_declarations(&[d], &HashMap::new());
+        assert!(code.contains(".flex_grow(1.0)"));
+        assert!(code.contains(".flex_shrink(1.0)"));
+        assert!(!code.contains(".flex_basis("));
     }
 
     #[test]

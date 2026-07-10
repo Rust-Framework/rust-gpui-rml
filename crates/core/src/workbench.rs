@@ -17,6 +17,7 @@ use std::any::Any;
 use std::sync::Arc;
 
 use crate::contribution::{IContribution, IVisual};
+use crate::value::IValue;
 use gpui::SharedString;
 
 /// Uri 类型：复用 `url::Url`。
@@ -44,6 +45,45 @@ pub trait IWorkbench: IContribution + IVisual {
 
     /// 向此工作台设置数据（类型擦除值，业务按 key 自行 downcast）。
     fn set(&self, key: SharedString, value: Box<dyn Any + Send + Sync>);
+
+    /// 此工作台对应的 Tab 是否允许关闭（显示关闭按钮）。
+    /// 默认 `true`；欢迎页等常驻 Tab 可 override 返回 `false`。
+    fn closable(&self) -> bool {
+        true
+    }
+}
+
+/// 工作台能力扩展 trait —— 让 `dyn IValue` 可查询 `IWorkbench` 能力。
+///
+/// 与 `VisualAbilityExt`/`ContributionAbilityExt` 模式一致。
+/// 业务自定义工作台类型后，需调用 `register_workbench_ability::<T>()` 注册，
+/// `as_workbench()` 查询即可生效，从而读取 `closable()` 等工作台专属信息。
+pub trait WorkbenchAbilityExt {
+    /// 若此值实现了 `IWorkbench`，返回引用；否则 `None`。
+    fn as_workbench(&self) -> Option<&dyn IWorkbench>;
+}
+
+#[allow(unsafe_code)]
+impl WorkbenchAbilityExt for dyn IValue {
+    fn as_workbench(&self) -> Option<&dyn IWorkbench> {
+        let erased = crate::ability::query::<dyn IWorkbench>(self)?;
+        Some(unsafe { crate::ability::restore::<dyn IWorkbench>(erased) })
+    }
+}
+
+/// 为实现 `IWorkbench` 的类型注册能力 cast 函数。
+///
+/// `#[contribute]` 宏不自动注册此能力，业务需在初始化时手动调用。
+/// 调用后，`as_workbench()` 查询生效，`TabWindowShell` 可据此读取 `closable()`。
+#[allow(unsafe_code)]
+pub fn register_workbench_ability<T: IWorkbench + 'static>() {
+    crate::ability::register::<T, dyn IWorkbench>(|c| {
+        let any: &dyn Any = c;
+        any.downcast_ref::<T>().map(|s| {
+            let wb: &dyn IWorkbench = s;
+            unsafe { crate::ability::erase(wb) }
+        })
+    });
 }
 
 /// 工作台管理器：资源的打开/关闭/查询。

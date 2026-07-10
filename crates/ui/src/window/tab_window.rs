@@ -26,11 +26,13 @@ use gpui_component::{
     button::{Button, ButtonRounded, ButtonVariants as _},
     h_flex,
     resizable::{h_resizable, resizable_panel, v_resizable, ResizableState},
+    scroll::ScrollableElement as _,
     v_flex, TITLE_BAR_HEIGHT,
 };
 use rml_core::contribution::{ContributionAbilityExt, VisualAbilityExt};
 use rml_core::slot::{ISlotScope, NullSlotScope, SlotRenderer};
 use rml_core::value::IValue;
+use rml_core::workbench::WorkbenchAbilityExt;
 use crate::components::tab::{TabItem, TabVariant, Tabs};
 use smallvec::SmallVec;
 
@@ -763,7 +765,8 @@ impl RenderOnce for TabWindowShell {
             for (ix, value) in self.tabs.iter().enumerate() {
                 let c = Arc::clone(value);
                 let title = c.as_contribution().map(|c| c.name()).unwrap_or_default();
-                let item = TabItem::new().title(title).closable(true).body(move |window, cx| {
+                let closable = c.as_workbench().map(|w| w.closable()).unwrap_or(true);
+                let item = TabItem::new().title(title).closable(closable).body(move |window, cx| {
                     if let Some(visual) = c.as_visual() {
                         visual.render(window, cx)
                     } else {
@@ -840,6 +843,15 @@ impl RenderOnce for TabWindowShell {
             .child(title_row)
             .child(render_window_controls(window, cx));
 
+        let body_scroll_handle: gpui::ScrollHandle = window
+            .use_keyed_state(
+                "tab-window-body-scroll",
+                cx,
+                |_, _| gpui::ScrollHandle::default(),
+            )
+            .read(cx)
+            .clone();
+
         let body = resizable_panel()
             .flex_1()
             .child(
@@ -848,11 +860,19 @@ impl RenderOnce for TabWindowShell {
                     .flex_1()
                     .min_h_0()
                     .size_full()
-                    .overflow_y_scroll()
-                    .when_some(selected_body, |this, body_fn| {
-                        this.child(body_fn(window, cx))
-                    })
-                    .children(self.children),
+                    .relative()
+                    .child(
+                        div()
+                            .id("tab-window-scroll-area")
+                            .size_full()
+                            .overflow_y_scroll()
+                            .track_scroll(&body_scroll_handle)
+                            .when_some(selected_body, |this, body_fn| {
+                                this.child(body_fn(window, cx))
+                            })
+                            .children(self.children),
+                    )
+                    .vertical_scrollbar(&body_scroll_handle),
             );
 
         // center_col：v_resizable 始终包含 body；bottom 展开时进 v_resizable，

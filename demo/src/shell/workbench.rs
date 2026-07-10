@@ -1,4 +1,4 @@
-﻿//! Workbench 实现 —— IWorkbench 实例与 LSP 工厂。
+//! Workbench 实现 —— IWorkbench 实例与 LSP 工厂。
 //!
 //! - `CaseWorkbench` / `LspWorkbench`：`IWorkbench + IContribution + IVisual`
 //!   三 trait impl，供 MainWindow 经 `as_visual()` 渲染。
@@ -17,7 +17,7 @@ use rust_rml_client::LanguageClient;
 use rml_core::contribution::{
     register_contribution_ability, register_visual_ability, IContribution, IVisual,
 };
-use rml_core::workbench::{IWorkbench, IWorkbenchProvider, Uri};
+use rml_core::workbench::{IWorkbench, IWorkbenchProvider, Uri, register_workbench_ability};
 
 use crate::lsp::CodeEditorTab;
 use crate::shell::case_view_model::CaseViewModel;
@@ -33,8 +33,10 @@ pub(crate) fn register_workbench_abilities() {
     ABILITY_REGISTERED.call_once(|| {
         register_contribution_ability::<CaseWorkbench>();
         register_visual_ability::<CaseWorkbench>();
+        register_workbench_ability::<CaseWorkbench>();
         register_contribution_ability::<LspWorkbench>();
         register_visual_ability::<LspWorkbench>();
+        register_workbench_ability::<LspWorkbench>();
     });
 }
 
@@ -76,6 +78,11 @@ impl IWorkbench for CaseWorkbench {
     fn close(&self) {}
     fn activate(&self) {}
     fn set(&self, _key: SharedString, _value: Box<dyn Any + Send + Sync>) {}
+
+    /// 欢迎页常驻 Tab，不可关闭。
+    fn closable(&self) -> bool {
+        self.uri != "rml://welcome"
+    }
 }
 
 // ──────────────────────────────────────────────────────────────────────────

@@ -620,7 +620,6 @@ impl RenderOnce for Tabs {
                 |this| this.rounded(self.variant.tab_bar_radius(self.size, cx)),
             )
             .paddings(paddings)
-            .refine_style(&self.style)
             .when_some(content_width_rc.clone(), |this, cw_rc| {
                 // 独立测量层：absolute 出流 + opacity:0，
                 // 始终 flex_shrink_0 测量自然内容宽度，不受 is_overflow 压缩影响。
@@ -834,10 +833,13 @@ impl RenderOnce for Tabs {
 
         // WPF TabControl 模式：当存在 body 时，垂直堆叠 header + body
         // bordered 包裹 header + body 整体（而非仅 header）
+        // self.style（含用户 inline style + 归一化属性）应用到最外层元素，
+        // 确保用户 style 作用于整个组件而非仅 tab strip。
         match body_element {
             Some(body) => v_flex()
                 .size_full()
                 .items_stretch()
+                .refine_style(&self.style)
                 .when(self.bordered, |this| {
                     this.border_1().border_color(cx.theme().border)
                 })
@@ -850,7 +852,7 @@ impl RenderOnce for Tabs {
                         .child(body),
                 )
                 .into_any_element(),
-            None => header.into_any_element(),
+            None => header.refine_style(&self.style).into_any_element(),
         }
     }
 }
