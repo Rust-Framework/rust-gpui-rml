@@ -62,6 +62,7 @@ pub fn event_setter(name: &str, handler: &EventHandler, _tag: &str) -> Option<St
             let method = match handler {
                 EventHandler::Ident(m) | EventHandler::MethodName(m) => m,
                 EventHandler::WithArgs(m, _) => m,
+                EventHandler::ClosureField(_) => "",
             };
             Some(format!(
                 ".on_toggle_click(cx.listener(move |this, open_ixs: &[usize], _window, cx| {{\n                    \

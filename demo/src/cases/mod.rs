@@ -144,3 +144,7 @@ pub mod group_box_case;
 pub mod pagination_case;
 #[path = "radio_case.rml.rs"]
 pub mod radio_case;
+
+// P0-1：用户组件事件绑定 demo
+#[path = "user_component_event_case.rml.rs"]
+pub mod user_component_event_case;

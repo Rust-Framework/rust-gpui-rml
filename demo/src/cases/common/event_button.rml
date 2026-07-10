@@ -1,0 +1,5 @@
+<component>
+    <div class="event-button" on-click={self.on_click}>
+        {label}
+    </div>
+</component>

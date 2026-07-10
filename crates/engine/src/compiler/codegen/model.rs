@@ -84,6 +84,7 @@ fn collect_model_input_handlers_recursive(
                 let method = match handler {
                     EventHandler::Ident(m) | EventHandler::MethodName(m) => m.clone(),
                     EventHandler::WithArgs(m, _) => m.clone(),
+                    EventHandler::ClosureField(_) => String::new(),
                 };
                 match name.as_str() {
                     "on_input" => entry.on_input = Some(method),

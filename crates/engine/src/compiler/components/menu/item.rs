@@ -224,6 +224,7 @@ fn gen_onclick_closure(elem: &Element, ctx: &CodegenCtx) -> Result<String, Codeg
     let method = match handler {
         EventHandler::Ident(m) | EventHandler::MethodName(m) => m.clone(),
         EventHandler::WithArgs(m, _) => m.clone(),
+        EventHandler::ClosureField(_) => String::new(),
     };
     let _ = ctx;
     Ok(format!(

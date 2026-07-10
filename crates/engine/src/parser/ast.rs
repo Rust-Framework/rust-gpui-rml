@@ -128,6 +128,13 @@ pub enum EventHandler {
     MethodName(String),
     /// `onclick={fn, {expr}, 'literal'}` 带参数
     WithArgs(String, Vec<String>),
+    /// `onclick={self.on_click}` 闭包字段引用（P0-1：用户组件事件绑定）
+    ///
+    /// 用户组件 .rml 模板内应用注入的事件回调字段。codegen 生成
+    /// `.on_click(cx.listener(move |this, ev, _w, cx| {
+    ///     if let Some(h) = &this.<field> { h(ev, _w, cx.deref_mut()); }
+    /// }))`。
+    ClosureField(String),
 }
 
 impl fmt::Display for Node {

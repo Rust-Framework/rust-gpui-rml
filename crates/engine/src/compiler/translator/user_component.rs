@@ -115,9 +115,11 @@ fn gen_user_component_body(
     id_counter: &mut usize,
     loop_vars: &[String],
 ) -> Result<String, CodegenError> {
+    let slot = crate::compiler::event::in_slot_context();
+    let self_ref = if slot { "__rml_self_ref" } else { "self" };
     let entity_expr = format!(
-        "self.{}.as_ref().expect(\"init {} in on_loaded\").clone()",
-        info.entity_field, info.struct_name
+        "{}.{}.as_ref().expect(\"init {} in on_loaded\").clone()",
+        self_ref, info.entity_field, info.struct_name
     );
 
     // 生成属性赋值代码（Phase 1.3：用户组件属性传参）
@@ -146,7 +148,11 @@ fn gen_user_component_body(
     // 有 slot 内容时，捕获父视图 Entity，让 slot 闭包可通过 __rml_self_ref 引用父视图数据。
     // Entity<Self>: Send + Sync + 'static（不依赖 T 的 Send/Sync），可被 move 闭包捕获。
     if has_slots {
-        code.push_str("    let __rml_self_entity = cx.entity();\n");
+        if slot {
+            code.push_str("    let __rml_self_entity = __rml_self_entity.clone();\n");
+        } else {
+            code.push_str("    let __rml_self_entity = cx.entity();\n");
+        }
     }
 
     // 属性注入（在 slot 处理前）
@@ -219,14 +225,15 @@ fn gen_user_component_body(
     Ok(code)
 }
 
-/// 为用户组件属性生成赋值代码（Phase 1.3）
+/// 为用户组件属性生成赋值代码（Phase 1.3 + P0-1：事件绑定）
 ///
-/// 根据 `info.field_types` 生成类型转换代码，注入到子组件 entity。
+/// 根据 `info.field_types` / `info.event_fields` 生成类型转换代码，注入到子组件 entity。
 ///
 /// - 静态属性 `title="..."` → `__rml_entity.update(cx, |this, _cx| { this.title = "...".into(); });`
 /// - 绑定属性 `sample={sample}` → `{ let __rml_value_sample = self.sample(); __rml_entity.update(cx, |this, _cx| { this.sample = (__rml_value_sample).into(); }); }`
 ///   （在 update 闭包外计算表达式值，避免 cx.t(...) 等引用 cx 的表达式与 update(cx, ...) 借用冲突）
-/// - 事件属性：跳过（Phase 1 不处理用户组件事件）
+/// - 事件属性 `on-click={handler}`（P0-1）：若 `info.event_fields` 含此字段名，
+///   生成闭包并注入到子组件事件回调字段；否则跳过。
 /// - 非组件属性（ref/class/id/style/slot）：跳过（由其他路径处理）
 /// - 未在 field_types 中登记的属性：跳过（留待 Phase 4 编译期校验）
 fn gen_prop_assign(
@@ -235,6 +242,15 @@ fn gen_prop_assign(
     ctx: &CodegenCtx,
     loop_vars: &[String],
 ) -> Result<Option<String>, CodegenError> {
+    // P0-1：事件属性处理 —— 若为事件回调字段，生成闭包注入
+    if let Attribute::Event { name, handler, .. } = attr {
+        if info.event_fields.contains_key(name) {
+            return gen_event_handler_assign(name, handler, ctx);
+        }
+        // 非事件回调字段的事件属性：跳过
+        return Ok(None);
+    }
+
     let (name, attr_value): (&str, PropValue) = match attr {
         Attribute::Static { name, value, .. } => (name.as_str(), PropValue::Static(value)),
         Attribute::Bind { name, expr, .. } => (name.as_str(), PropValue::Bind(expr)),
@@ -274,6 +290,93 @@ fn gen_prop_assign(
             )))
         }
     }
+}
+
+/// P0-1：为用户组件事件回调字段生成闭包注入代码
+///
+/// 父视图 `<MyComp on-click={handle_click} />` 时，生成：
+/// ```text
+/// {
+///     let __rml_handler_on_click: rml_core::event::ClickHandler = Box::new({
+///         let __rml_self_entity = cx.entity();
+///         move |ev: &gpui::ClickEvent, _window: &mut gpui::Window, _app: &mut gpui::App| {
+///             __rml_self_entity.update(_app, |this, cx| {
+///                 let rml_ev = rml_convert::from_gpui_click(ev);
+///                 this.handle_click(&rml_ev, cx);
+///                 if rml_ev.is_propagation_stopped() { cx.stop_propagation(); }
+///             });
+///         }
+///     });
+///     __rml_entity.update(cx, |this, _cx| { this.on_click = Some(__rml_handler_on_click); });
+/// }
+/// ```
+///
+/// 仅支持标准事件（click/mouse/key 等），hover 事件暂不支持用户组件回调注入。
+/// handler 仅支持 Ident/MethodName（无参数），WithArgs 暂不支持。
+fn gen_event_handler_assign(
+    event_name: &str,
+    handler: &crate::parser::ast::EventHandler,
+    _ctx: &CodegenCtx,
+) -> Result<Option<String>, CodegenError> {
+    use crate::compiler::event::{event_binding, is_hover_event};
+    use crate::parser::ast::EventHandler;
+
+    // hover 事件暂不支持用户组件回调注入（签名不同：&bool 而非 &EventType）
+    if is_hover_event(event_name) {
+        return Ok(None);
+    }
+
+    // 查询 GPUI 事件类型与转换函数
+    let (gpui_type, _on_method, convert_expr) = match event_binding(event_name) {
+        Some(b) => b,
+        None => return Ok(None),
+    };
+
+    // 取 handler 方法名（仅支持 Ident/MethodName，WithArgs 暂不支持）
+    let method = match handler {
+        EventHandler::Ident(m) | EventHandler::MethodName(m) => m.as_str(),
+        EventHandler::WithArgs(_, _) => {
+            // 带参数的 handler 暂不支持用户组件回调注入
+            return Ok(None);
+        }
+        EventHandler::ClosureField(_) => {
+            // 父视图绑定不应是 ClosureField（ClosureField 用于 .rml 模板内应用）
+            return Ok(None);
+        }
+    };
+
+    // 查询 handler 类型名（如 ClickHandler），用于闭包类型标注
+    let handler_type = crate::compiler::event::handler_type_for_event(event_name);
+    let type_annotation = match handler_type {
+        Some(t) => format!(": rml_core::event::{}", t),
+        None => String::new(),
+    };
+
+    let handler_var = format!("__rml_handler_{}", event_name);
+
+    let code = format!(
+        "{{\n    \
+         let {handler_var}{type_annotation} = Box::new({{\n        \
+         let __rml_self_entity = cx.entity();\n        \
+         move |ev: &{gpui_type}, _window: &mut gpui::Window, _app: &mut gpui::App| {{\n            \
+         __rml_self_entity.update(_app, |this, cx| {{\n                \
+         let rml_ev = {convert_expr};\n                \
+         this.{method}(&rml_ev, cx);\n                \
+         if rml_ev.is_propagation_stopped() {{ cx.stop_propagation(); }}\n            \
+         }});\n        \
+         }}\n    \
+         }});\n    \
+         __rml_entity.update(cx, |this, _cx| {{ this.{event_name} = Some({handler_var}); }});\n\
+         }}",
+        handler_var = handler_var,
+        type_annotation = type_annotation,
+        gpui_type = gpui_type,
+        convert_expr = convert_expr,
+        method = method,
+        event_name = event_name,
+    );
+
+    Ok(Some(code))
 }
 
 /// 静态属性值
@@ -404,6 +507,7 @@ mod tests {
             slots: vec![],
             field_types: ft,
             computed_methods: vec![],
+            event_fields: HashMap::new(),
         }
     }
 
@@ -636,6 +740,128 @@ mod tests {
         assert!(
             !code.contains("__rml_entity.update"),
             "event attributes should be skipped, got: {}",
+            code
+        );
+    }
+
+    // ─── P0-1：用户组件事件绑定 ───
+
+    #[test]
+    fn test_event_handler_injection_on_click() {
+        let mut info = make_info("MyButton", &[]);
+        info.event_fields
+            .insert("on_click".into(), "ClickHandler".into());
+        let elem = make_element(
+            "MyButton",
+            vec![event_attr("on_click", "handle_click")],
+            vec![],
+        );
+        let code = gen(&info, &elem, &CodegenCtx::default());
+        assert!(
+            code.contains("__rml_handler_on_click"),
+            "expected handler var, got: {}",
+            code
+        );
+        assert!(
+            code.contains("rml_core::event::ClickHandler"),
+            "expected ClickHandler type annotation, got: {}",
+            code
+        );
+        assert!(
+            code.contains("this.handle_click("),
+            "expected parent method call, got: {}",
+            code
+        );
+        assert!(
+            code.contains("this.on_click = Some(__rml_handler_on_click)"),
+            "expected field injection, got: {}",
+            code
+        );
+    }
+
+    #[test]
+    fn test_event_handler_injection_on_key_down() {
+        let mut info = make_info("MyInput", &[]);
+        info.event_fields
+            .insert("on_key_down".into(), "KeyDownHandler".into());
+        let elem = make_element(
+            "MyInput",
+            vec![event_attr("on_key_down", "on_key")],
+            vec![],
+        );
+        let code = gen(&info, &elem, &CodegenCtx::default());
+        assert!(
+            code.contains("gpui::KeyDownEvent"),
+            "expected KeyDownEvent type, got: {}",
+            code
+        );
+        assert!(
+            code.contains("this.on_key("),
+            "expected parent method call, got: {}",
+            code
+        );
+        assert!(
+            code.contains("this.on_key_down = Some(__rml_handler_on_key_down)"),
+            "expected field injection, got: {}",
+            code
+        );
+    }
+
+    #[test]
+    fn test_event_handler_injection_with_ident_handler() {
+        let mut info = make_info("MyButton", &[]);
+        info.event_fields
+            .insert("on_click".into(), "ClickHandler".into());
+        // Ident handler（非 MethodName）
+        let elem = make_element(
+            "MyButton",
+            vec![Attribute::Event {
+                name: "on_click".into(),
+                handler: EventHandler::Ident("on_click_handler".into()),
+                span: Span::empty(),
+            }],
+            vec![],
+        );
+        let code = gen(&info, &elem, &CodegenCtx::default());
+        assert!(
+            code.contains("this.on_click_handler("),
+            "expected Ident method call, got: {}",
+            code
+        );
+    }
+
+    #[test]
+    fn test_event_handler_not_in_event_fields_skipped() {
+        // 事件属性不在 event_fields 中：跳过（不生成注入代码）
+        let info = make_info("MyComp", &[("title", "SharedString")]);
+        let elem = make_element(
+            "MyComp",
+            vec![event_attr("on_click", "handle_click")],
+            vec![],
+        );
+        let code = gen(&info, &elem, &CodegenCtx::default());
+        assert!(
+            !code.contains("__rml_handler_on_click"),
+            "non-event-field attribute should be skipped, got: {}",
+            code
+        );
+    }
+
+    #[test]
+    fn test_event_handler_hover_not_supported() {
+        // hover 事件暂不支持用户组件回调注入
+        let mut info = make_info("MyComp", &[]);
+        info.event_fields
+            .insert("on_hover".into(), "HoverHandler".into());
+        let elem = make_element(
+            "MyComp",
+            vec![event_attr("on_hover", "handle_hover")],
+            vec![],
+        );
+        let code = gen(&info, &elem, &CodegenCtx::default());
+        assert!(
+            !code.contains("__rml_handler_on_hover"),
+            "hover events should not be injected, got: {}",
             code
         );
     }

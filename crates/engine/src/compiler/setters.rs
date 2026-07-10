@@ -364,6 +364,7 @@ pub fn component_event_setter(name: &str, handler: &EventHandler, tag: &str) -> 
         let method = match handler {
             EventHandler::Ident(m) | EventHandler::MethodName(m) => m,
             EventHandler::WithArgs(m, _) => m,
+            EventHandler::ClosureField(_) => "",
         };
         return Some(format!(
             ".on_select_rc(std::rc::Rc::new({{\n                    \
@@ -382,12 +383,14 @@ pub fn component_event_setter(name: &str, handler: &EventHandler, tag: &str) -> 
             let method = match handler {
                 EventHandler::Ident(m) | EventHandler::MethodName(m) => m,
                 EventHandler::WithArgs(m, _) => m,
+                EventHandler::ClosureField(_) => "",
             };
 
             // Pagination 的 on_click 闭包参数是新的页码（&usize），而非 ClickEvent。
             // 用户方法签名约定：`fn on_page_change(&mut self, page: &usize, cx: &mut Context<Self>)`
             if tag == "Pagination" {
                 return match handler {
+                    EventHandler::ClosureField(_) => None,
                     EventHandler::Ident(_) | EventHandler::MethodName(_) => Some(format!(
                         ".on_click(cx.listener(move |this, page: &usize, _window, cx| {{\n                    \
                          this.{}(page, cx);\n                }}))",
@@ -414,6 +417,7 @@ pub fn component_event_setter(name: &str, handler: &EventHandler, tag: &str) -> 
             // 用户方法签名约定：`fn on_radio_change(&mut self, idx: &usize, cx: &mut Context<Self>)`
             if tag == "RadioGroup" {
                 return match handler {
+                    EventHandler::ClosureField(_) => None,
                     EventHandler::Ident(_) | EventHandler::MethodName(_) => Some(format!(
                         ".on_click(cx.listener(move |this, idx: &usize, _window, cx| {{\n                    \
                          this.{}(idx, cx);\n                }}))",
@@ -442,6 +446,7 @@ pub fn component_event_setter(name: &str, handler: &EventHandler, tag: &str) -> 
 
             if is_bool_event {
                 match handler {
+                    EventHandler::ClosureField(_) => None,
                     EventHandler::Ident(_) | EventHandler::MethodName(_) => Some(format!(
                         ".on_click(cx.listener(move |this, checked: &bool, _window, cx| {{\n                    \
                          this.{}(checked, cx);\n                }}))",
@@ -464,6 +469,7 @@ pub fn component_event_setter(name: &str, handler: &EventHandler, tag: &str) -> 
                 }
             } else {
                 match handler {
+                    EventHandler::ClosureField(_) => None,
                     EventHandler::Ident(_) | EventHandler::MethodName(_) => Some(format!(
                         ".on_click(cx.listener(move |this, _ev: &gpui::ClickEvent, _window, cx| {{\n                    \
                          let rml_ev = rml_convert::from_gpui_click(_ev);\n                    \

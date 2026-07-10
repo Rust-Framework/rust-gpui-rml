@@ -164,6 +164,7 @@ pub fn event_setter(name: &str, handler: &EventHandler, tag: &str) -> Option<Str
     let method = match handler {
         EventHandler::Ident(m) | EventHandler::MethodName(m) => m,
         EventHandler::WithArgs(m, _) => m,
+        EventHandler::ClosureField(_) => "",
     };
     match name {
         "on_click" | "on_close" | "on_close_others" | "on_promote" => Some(format!(

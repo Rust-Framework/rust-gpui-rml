@@ -7,7 +7,11 @@
 #[path = "case_doc_page.rml.rs"]
 mod case_doc_page;
 
+#[path = "event_button.rml.rs"]
+mod event_button;
+
 pub use case_doc_page::CaseDocPage;
+pub use event_button::EventButton;
 
 use rml_ui::{TableColumn, TableRow};
 

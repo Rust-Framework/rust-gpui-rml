@@ -88,6 +88,12 @@ pub struct UserComponentInfo {
     /// 由 build.rs 从 `StructMetadata.computed_methods` 拷贝。codegen 在处理绑定属性时
     /// 据此区分 `self.rml_sample()`（方法调用）与 `self.title`（字段访问）。
     pub computed_methods: Vec<String>,
+    /// 事件回调字段名 → handler 类型名（P0-1：用户组件事件绑定）
+    ///
+    /// 由 build.rs 从 `StructMetadata.event_fields` 拷贝。key 为字段名（如 "on_click"），
+    /// value 为 handler 类型名（如 "ClickHandler"）。`gen_prop_assign` 在父视图
+    /// `<MyComp on-click={handler} />` 时据此生成闭包并注入到子组件字段。
+    pub event_fields: HashMap<String, String>,
 }
 
 /// 代码生成上下文

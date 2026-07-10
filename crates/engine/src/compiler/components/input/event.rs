@@ -59,6 +59,7 @@ pub fn gen_input_event_subscribe(
     let method = match handler {
         EventHandler::Ident(m) | EventHandler::MethodName(m) => m,
         EventHandler::WithArgs(m, _) => m,
+        EventHandler::ClosureField(_) => "",
     };
 
     let (event_pattern, call_expr) = match event_name {

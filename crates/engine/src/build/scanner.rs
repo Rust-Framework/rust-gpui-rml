@@ -75,6 +75,13 @@ pub struct StructMetadata {
     /// build.rs 据此填充 `UserComponentInfo.slots`，供 codegen 在父视图中
     /// 分离 `<template slot="x">` 子节点并校验 slot 名合法性。
     pub slots: Vec<String>,
+    /// 事件回调字段名 → handler 类型名（P0-1：用户组件事件绑定）
+    ///
+    /// 由 scanner 扫描 `pub on_click: Option<rml_core::event::ClickHandler>` 等字段提取，
+    /// key 为字段名（如 "on_click"），value 为 handler 类型名（如 "ClickHandler"）。
+    /// build.rs 据此填充 `UserComponentInfo.event_fields`，供 `gen_prop_assign`
+    /// 在父视图 `<MyComp on-click={handler} />` 时生成闭包并注入到子组件字段。
+    pub event_fields: HashMap<String, String>,
     /// 所有 `#[command]` 标注方法名（供 LSP 命令补全/诊断）
     pub commands: Vec<String>,
     /// 生命周期钩子（Phase B-3：`#[on_loaded]`/`#[on_unloaded]` 自动联动）
@@ -174,7 +181,16 @@ pub fn parse_struct_metadata(source: &str) -> HashMap<String, StructMetadata> {
                     let ty = &f.ty;
                     let ty_str = quote!(#ty).to_string();
                     let cleaned = ty_str.split_whitespace().collect::<String>();
-                    meta.field_types.insert(name_str.clone(), cleaned);
+                    meta.field_types.insert(name_str.clone(), cleaned.clone());
+
+                    // P0-1：检测事件回调字段（Option<rml_core::event::XxxHandler>）
+                    // 字段名需以 on_ 开头，类型为 Option<...XxxHandler>。
+                    // 提取 handler 类型名（如 ClickHandler），供 gen_prop_assign 生成闭包注入。
+                    if name_str.starts_with("on_") {
+                        if let Some(handler_type) = parse_event_handler_field_type(&cleaned) {
+                            meta.event_fields.insert(name_str.clone(), handler_type.to_string());
+                        }
+                    }
 
                     // Phase B-3.2：解析 #[validate(...)] 属性
                     for attr in &f.attrs {
@@ -403,6 +419,26 @@ fn parse_component_slots(attrs: &[syn::Attribute]) -> Vec<String> {
         }
     }
     Vec::new()
+}
+
+/// 从字段类型字符串提取事件 handler 类型名（P0-1：用户组件事件绑定）
+///
+/// 识别 `Option<rml_core::event::ClickHandler>` / `Option<rml::event::ClickHandler>` 等
+/// 类型别名形式，返回 handler 类型名（如 "ClickHandler"）。
+///
+/// 不识别 `Option<Box<dyn Fn(...) + Send + Sync + 'static>>` 完整 trait object 形式，
+/// 用户应使用 `rml_core::event::ClickHandler` 等类型别名声明事件回调字段。
+fn parse_event_handler_field_type(cleaned: &str) -> Option<&str> {
+    let inner = cleaned
+        .strip_prefix("Option<")
+        .and_then(|s| s.strip_suffix('>'))?;
+    // 取最后一段路径（如 rml_core::event::ClickHandler → ClickHandler）
+    let last_segment = inner.rsplit("::").next()?;
+    if last_segment.ends_with("Handler") {
+        Some(last_segment)
+    } else {
+        None
+    }
 }
 
 /// `#[component(slots = [...])]` 参数解析结构
@@ -1114,5 +1150,93 @@ impl PlainCase {
         let m = meta.get("PlainCase").unwrap();
         assert!(!m.has_manual_lifecycle_impl);
         assert!(!m.lifecycle_hooks.has_any());
+    }
+
+    // ─── P0-1：事件回调字段扫描 ───
+
+    #[test]
+    fn parse_event_handler_field_type_click() {
+        assert_eq!(
+            parse_event_handler_field_type("Option<rml_core::event::ClickHandler>"),
+            Some("ClickHandler")
+        );
+    }
+
+    #[test]
+    fn parse_event_handler_field_type_short_path() {
+        assert_eq!(
+            parse_event_handler_field_type("Option<rml::event::KeyDownHandler>"),
+            Some("KeyDownHandler")
+        );
+    }
+
+    #[test]
+    fn parse_event_handler_field_type_bare_alias() {
+        assert_eq!(
+            parse_event_handler_field_type("Option<ClickHandler>"),
+            Some("ClickHandler")
+        );
+    }
+
+    #[test]
+    fn parse_event_handler_field_type_rejects_non_handler() {
+        assert_eq!(parse_event_handler_field_type("Option<i32>"), None);
+        assert_eq!(parse_event_handler_field_type("Option<String>"), None);
+        assert_eq!(
+            parse_event_handler_field_type("Option<Box<dynFn(&ClickEvent)>>"),
+            None
+        );
+    }
+
+    #[test]
+    fn parse_event_handler_field_type_rejects_non_option() {
+        assert_eq!(parse_event_handler_field_type("ClickHandler"), None);
+        assert_eq!(parse_event_handler_field_type("rml_core::event::ClickHandler"), None);
+    }
+
+    #[test]
+    fn scans_event_fields_from_component_struct() {
+        let source = r#"
+#[component]
+#[derive(Default)]
+pub struct MyButton {
+    pub title: SharedString,
+    pub on_click: Option<rml_core::event::ClickHandler>,
+    pub on_key_down: Option<rml::event::KeyDownHandler>,
+    pub not_event: Option<i32>,
+    pub on_hover: Option<rml_core::event::HoverHandler>,
+}
+        "#;
+        let meta = parse_struct_metadata(source);
+        let m = meta.get("MyButton").unwrap();
+        assert_eq!(
+            m.event_fields.get("on_click"),
+            Some(&"ClickHandler".to_string())
+        );
+        assert_eq!(
+            m.event_fields.get("on_key_down"),
+            Some(&"KeyDownHandler".to_string())
+        );
+        assert_eq!(
+            m.event_fields.get("on_hover"),
+            Some(&"HoverHandler".to_string())
+        );
+        // not_event 不是 Handler 类型，不应被收集
+        assert!(!m.event_fields.contains_key("not_event"));
+    }
+
+    #[test]
+    fn scans_event_fields_ignores_non_on_prefix() {
+        let source = r#"
+#[component]
+#[derive(Default)]
+pub struct MyComp {
+    pub callback: Option<rml_core::event::ClickHandler>,
+}
+        "#;
+        let meta = parse_struct_metadata(source);
+        let m = meta.get("MyComp").unwrap();
+        // 字段名不以 on_ 开头，即使类型是 Handler 也不收集
+        assert!(m.event_fields.is_empty());
     }
 }

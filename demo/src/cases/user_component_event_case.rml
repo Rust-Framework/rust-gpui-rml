@@ -1,0 +1,23 @@
+<component>
+    <CaseDocPage
+        title={t("case.user_event.title")}
+        description="用户组件可通过声明 Option<ClickHandler> 字段暴露事件回调。父视图用 on-click={handler} 绑定时，codegen 将父方法包装为闭包并注入到子组件字段。模板内用 on-click={self.on_click} 将回调应用到内部元素。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <div class="demo-section">
+                <h3>自定义按钮组件 EventButton</h3>
+                <p>EventButton 声明了 on_click 事件回调字段，点击下方按钮触发计数。</p>
+                <div class="button-row">
+                    <EventButton label="点击我" on-click={on_button_click} />
+                </div>
+                <p>点击次数：{click_count}</p>
+            </div>
+        </template>
+
+        <template slot="api">
+            <h3>EventButton</h3>
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+        </template>
+    </CaseDocPage>
+</component>

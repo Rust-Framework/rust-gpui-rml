@@ -220,6 +220,7 @@ fn gen_on_close_setter(handler: &EventHandler) -> Option<String> {
     let method = match handler {
         EventHandler::Ident(m) | EventHandler::MethodName(m) => m,
         EventHandler::WithArgs(m, _) => m,
+        EventHandler::ClosureField(_) => "",
     };
     match handler {
         EventHandler::Ident(_) | EventHandler::MethodName(_) => Some(format!(
@@ -228,6 +229,7 @@ fn gen_on_close_setter(handler: &EventHandler) -> Option<String> {
              this.{}(&rml_ev, cx);\n                }}))",
             method
         )),
+        EventHandler::ClosureField(_) => None,
         EventHandler::WithArgs(_, args) if args.is_empty() => Some(format!(
             ".on_close(cx.listener(move |this, _ev: &gpui::ClickEvent, _window, cx| {{\n                    \
              let rml_ev = rml_convert::from_gpui_click(_ev);\n                    \

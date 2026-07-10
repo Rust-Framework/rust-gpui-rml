@@ -330,10 +330,18 @@ fn parse_each_expr(expr: &str, line: usize, column: usize) -> Result<EachClause,
 }
 
 /// 解析事件处理器：`fn` 或 `fn, {expr}, 'literal'`
+///
+/// 另支持 `self.<field>` 形式（P0-1：用户组件事件绑定），识别为 `ClosureField`，
+/// 用于在用户组件 .rml 模板内引用注入的事件回调字段。
 fn parse_event_handler(expr: &str) -> EventHandler {
     let parts: Vec<&str> = expr.split(',').map(|s| s.trim()).collect();
     if parts.len() == 1 {
-        return EventHandler::Ident(parts[0].to_string());
+        let s = parts[0];
+        // P0-1：识别 `self.<field>` 为闭包字段引用
+        if let Some(field) = s.strip_prefix("self.") {
+            return EventHandler::ClosureField(field.to_string());
+        }
+        return EventHandler::Ident(s.to_string());
     }
     let method = parts[0].to_string();
     let args: Vec<String> = parts[1..]
@@ -1008,6 +1016,16 @@ mod tests {
         match h {
             EventHandler::WithArgs(_, args) => assert_eq!(args[0], "complex.expr"),
             other => panic!("expected WithArgs, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_event_handler_closure_field() {
+        // `self.on_click` → ClosureField("on_click")
+        let h = parse_event_handler("self.on_click");
+        match h {
+            EventHandler::ClosureField(field) => assert_eq!(field, "on_click"),
+            other => panic!("expected ClosureField, got {:?}", other),
         }
     }
 

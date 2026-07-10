@@ -21,7 +21,7 @@ use crate::parser::ast::EventHandler;
 /// slot 闭包内 cx 类型为 `&mut gpui::App`（非 `&mut Context<Self>`），
 /// `cx.listener` 不可用，需改用 entity 捕获模式：
 /// `__rml_self_entity.update(cx, |this, cx| { ... })`
-fn in_slot_context() -> bool {
+pub(crate) fn in_slot_context() -> bool {
     expr::current_self_alias() == Some("__rml_self_ref")
 }
 
@@ -81,6 +81,15 @@ pub fn is_hover_event(name: &str) -> bool {
     matches!(name, "on_hover" | "on_mouse_enter" | "on_mouse_leave")
 }
 
+/// P0-1：根据事件名返回对应的 handler 类型名（如 "ClickHandler"）
+///
+/// 用于 `gen_event_handler_assign` 生成闭包类型标注，确保类型推导正确。
+/// 返回 None 表示事件不支持用户组件回调注入（如 hover 事件）。
+pub fn handler_type_for_event(event_name: &str) -> Option<&'static str> {
+    let gpui_type = event_binding(event_name)?.0;
+    rml_core::event::handler_type_name(gpui_type)
+}
+
 /// 生成事件绑定代码
 ///
 /// 标准事件：`.on_click(cx.listener(move |this, ev: &gpui::ClickEvent, _window, cx| { ... }))`
@@ -107,6 +116,38 @@ pub fn apply_event(name: &str, handler: &EventHandler, _ctx: &CodegenCtx) -> Str
     let slot = in_slot_context();
 
     match handler {
+        // P0-1：用户组件事件回调字段应用
+        // 生成 .on_click(cx.listener(move |this, ev, _w, cx| {
+        //     if let Some(h) = &this.<field> { h(ev, _w, &mut **cx); }
+        // }))
+        // `&mut **cx` 将 `&mut Context<Self>` 转换为 `&mut App`（Context<Self>: DerefMut<Target = App>）。
+        EventHandler::ClosureField(field) => {
+            if slot {
+                format!(
+                    ".{on_method}({{\n    \
+                     let __rml_evt_entity = __rml_self_entity.clone();\n    \
+                     move |ev: &{gpui_type}, _window: &mut gpui::Window, cx: &mut gpui::App| {{\n        \
+                     __rml_evt_entity.update(cx, |this, cx| {{\n            \
+                     if let Some(__rml_h) = &this.{field} {{\n                \
+                     __rml_h(ev, _window, cx);\n            \
+                     }}\n        \
+                     }});\n    }}\n}})",
+                    on_method = on_method,
+                    gpui_type = gpui_type,
+                    field = field,
+                )
+            } else {
+                format!(
+                    ".{on_method}(cx.listener(move |this, ev: &{gpui_type}, _window, cx| {{\n                    \
+                     if let Some(__rml_h) = &this.{field} {{\n                        \
+                     __rml_h(ev, _window, &mut **cx);\n                    \
+                     }}\n                }}))",
+                    on_method = on_method,
+                    gpui_type = gpui_type,
+                    field = field,
+                )
+            }
+        }
         EventHandler::Ident(method) | EventHandler::MethodName(method) => {
             if slot {
                 format!(
@@ -206,6 +247,8 @@ pub fn apply_action_event(handler: &EventHandler) -> String {
     let value = match handler {
         EventHandler::Ident(s) | EventHandler::MethodName(s) => s.as_str(),
         EventHandler::WithArgs(s, _) => s.as_str(),
+        // P0-1：on-action 不支持闭包字段引用
+        EventHandler::ClosureField(_) => return String::new(),
     };
 
     let slot = in_slot_context();
@@ -242,6 +285,74 @@ pub fn apply_action_event(handler: &EventHandler) -> String {
     parts.join(" ")
 }
 
+/// P0-1：生成 on-hover/on-mouse-enter/on-mouse-leave 闭包字段绑定代码
+///
+/// 与 `apply_hover_event` 同模式，但调用 `this.<field>` 闭包字段而非 command 方法。
+/// on_mouse_enter/on_mouse_leave 应用条件过滤（仅 is_hovering == true / false 时触发）。
+fn apply_hover_closure_field(name: &str, field: &str) -> String {
+    let condition = match name {
+        "on_mouse_enter" => Some("is_hovering"),
+        "on_mouse_leave" => Some("!is_hovering"),
+        _ => None,
+    };
+
+    let slot = in_slot_context();
+
+    let body = if let Some(cond) = condition {
+        if slot {
+            format!(
+                "if {} {{\n            \
+                 if let Some(__rml_h) = &this.{} {{\n                \
+                 __rml_h(is_hovering, _window, cx);\n            \
+                 }}\n        \
+                 }}",
+                cond, field
+            )
+        } else {
+            format!(
+                "if {} {{\n                    \
+                 if let Some(__rml_h) = &this.{} {{\n                        \
+                 __rml_h(is_hovering, _window, &mut **cx);\n                    \
+                 }}\n                \
+                 }}",
+                cond, field
+            )
+        }
+    } else if slot {
+        format!(
+            "if let Some(__rml_h) = &this.{} {{\n            \
+             __rml_h(is_hovering, _window, cx);\n        \
+             }}",
+            field
+        )
+    } else {
+        format!(
+            "if let Some(__rml_h) = &this.{} {{\n                    \
+             __rml_h(is_hovering, _window, &mut **cx);\n                \
+             }}",
+            field
+        )
+    };
+
+    if slot {
+        format!(
+            ".on_hover({{\n    \
+             let __rml_evt_entity = __rml_self_entity.clone();\n    \
+             move |is_hovering: &bool, _window: &mut gpui::Window, cx: &mut gpui::App| {{\n        \
+             __rml_evt_entity.update(cx, |this, cx| {{\n            \
+             {}\n        \
+             }});\n    }}\n}})",
+            body
+        )
+    } else {
+        format!(
+            ".on_hover(cx.listener(move |this, is_hovering: &bool, _window, cx| {{\n                    \
+             {}\n                }}))",
+            body
+        )
+    }
+}
+
 /// 生成 on-hover/on-mouse-enter/on-mouse-leave 事件绑定代码
 ///
 /// GPUI `on_hover` 回调签名为 `Fn(&bool, &mut Window, &mut App)`，
@@ -250,9 +361,15 @@ pub fn apply_action_event(handler: &EventHandler) -> String {
 /// - `on-mouse-enter`：仅 `is_hovering == true` 时触发
 /// - `on-mouse-leave`：仅 `is_hovering == false` 时触发
 pub fn apply_hover_event(name: &str, handler: &EventHandler) -> String {
+    // P0-1：闭包字段引用（用户组件事件回调）
+    if let EventHandler::ClosureField(field) = handler {
+        return apply_hover_closure_field(name, field);
+    }
+
     let method = match handler {
         EventHandler::Ident(m) | EventHandler::MethodName(m) => m,
         EventHandler::WithArgs(m, _) => m,
+        EventHandler::ClosureField(_) => unreachable!(),
     };
 
     // on_mouse_enter/on_mouse_leave 需要条件过滤
@@ -488,6 +605,39 @@ mod tests {
         assert_eq!(apply_event("on_input", &handler, &ctx()), "");
         assert_eq!(apply_event("on_blur", &handler, &ctx()), "");
         assert_eq!(apply_event("on_custom", &handler, &ctx()), "");
+    }
+
+    // ─── ClosureField（用户组件事件回调字段）───
+
+    #[test]
+    fn apply_event_closure_field_on_click() {
+        let handler = EventHandler::ClosureField("on_click".into());
+        let code = apply_event("on_click", &handler, &ctx());
+        assert!(code.starts_with(".on_click("));
+        assert!(code.contains("gpui::ClickEvent"));
+        assert!(code.contains("if let Some(__rml_h) = &this.on_click"));
+        assert!(code.contains("__rml_h(ev, _window, &mut **cx)"));
+        assert!(code.contains("cx.listener"));
+    }
+
+    #[test]
+    fn apply_event_closure_field_on_key_down() {
+        let handler = EventHandler::ClosureField("on_key_down".into());
+        let code = apply_event("on_key_down", &handler, &ctx());
+        assert!(code.starts_with(".on_key_down("));
+        assert!(code.contains("gpui::KeyDownEvent"));
+        assert!(code.contains("if let Some(__rml_h) = &this.on_key_down"));
+    }
+
+    #[test]
+    fn apply_event_closure_field_no_stop_propagation() {
+        // ClosureField 不注入 stop_propagation 检查（由回调自身控制）
+        let handler = EventHandler::ClosureField("on_click".into());
+        let code = apply_event("on_click", &handler, &ctx());
+        assert!(
+            !code.contains("is_propagation_stopped"),
+            "ClosureField 不应注入 stop_propagation 检查"
+        );
     }
 
     // ─── stop_propagation 检查注入 ───

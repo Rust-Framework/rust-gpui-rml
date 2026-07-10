@@ -419,6 +419,7 @@ pub(crate) fn gen_tab_window_wrapper(
                 let method = match handler {
                     EventHandler::Ident(m) | EventHandler::MethodName(m) => m.as_str(),
                     EventHandler::WithArgs(m, _) => m.as_str(),
+                    EventHandler::ClosureField(_) => "",
                 };
                 code.push_str(&format!(
                     ".on_tab_click({{\n                    \
@@ -434,6 +435,7 @@ pub(crate) fn gen_tab_window_wrapper(
                 let method = match handler {
                     EventHandler::Ident(m) | EventHandler::MethodName(m) => m.as_str(),
                     EventHandler::WithArgs(m, _) => m.as_str(),
+                    EventHandler::ClosureField(_) => "",
                 };
                 code.push_str(&format!(
                     ".on_tab_close({{\n                    \
@@ -449,6 +451,7 @@ pub(crate) fn gen_tab_window_wrapper(
                 let method = match handler {
                     EventHandler::Ident(m) | EventHandler::MethodName(m) => m.as_str(),
                     EventHandler::WithArgs(m, _) => m.as_str(),
+                    EventHandler::ClosureField(_) => "",
                 };
                 code.push_str(&format!(
                     ".on_tab_close_all({{\n                    \
@@ -464,6 +467,7 @@ pub(crate) fn gen_tab_window_wrapper(
                 let method = match handler {
                     EventHandler::Ident(m) | EventHandler::MethodName(m) => m.as_str(),
                     EventHandler::WithArgs(m, _) => m.as_str(),
+                    EventHandler::ClosureField(_) => "",
                 };
                 code.push_str(&format!(
                     ".on_tab_close_others({{\n                    \
@@ -479,6 +483,7 @@ pub(crate) fn gen_tab_window_wrapper(
                 let method = match handler {
                     EventHandler::Ident(m) | EventHandler::MethodName(m) => m.as_str(),
                     EventHandler::WithArgs(m, _) => m.as_str(),
+                    EventHandler::ClosureField(_) => "",
                 };
                 code.push_str(&format!(
                     ".on_chrome_toggle({{\n                    \

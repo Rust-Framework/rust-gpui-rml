@@ -199,6 +199,7 @@ impl Builder {
                         slots: meta.slots.clone(),
                         field_types: meta.field_types.clone(),
                         computed_methods: meta.computed_methods.clone(),
+                        event_fields: meta.event_fields.clone(),
                     },
                 )
             })

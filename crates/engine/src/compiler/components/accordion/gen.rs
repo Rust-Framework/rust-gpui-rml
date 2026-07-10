@@ -154,6 +154,7 @@ pub fn gen_accordion(
                 let method = match handler {
                     EventHandler::Ident(m) | EventHandler::MethodName(m) => m.clone(),
                     EventHandler::WithArgs(m, _) => m.clone(),
+                    EventHandler::ClosureField(_) => String::new(),
                 };
                 format!(
                     ".on_toggle_click(cx.listener(move |this, open_ixs: &[usize], _window, cx| {{\n                    \

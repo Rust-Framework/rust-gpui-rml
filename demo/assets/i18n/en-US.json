@@ -66,6 +66,8 @@
 
   "case.button.title": "Button variants",
 
+  "case.user_event.title": "User Component Events",
+
   "case.button.primary": "Primary",
 
   "case.button.ghost": "Ghost",
