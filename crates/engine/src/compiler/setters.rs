@@ -252,7 +252,15 @@ pub fn component_bind_setter(
                 }
             }
             let code = component_bind_rust_expr(expr_str, &scope_vars, computed);
-            Some(format!(".child(rml_core::content::into_content({}, _window, cx))", code))
+            let final_code = if crate::compiler::codegen::attribute::needs_borrow_for_content(
+                &code,
+                &scope_vars,
+            ) {
+                format!("&{}", code)
+            } else {
+                code
+            };
+            Some(format!(".child(rml_core::content::into_content({}, _window, cx))", final_code))
         }
         "value" => {
             let rust_expr = component_bind_rust_expr(expr_str, loop_vars, computed);
@@ -526,9 +534,10 @@ mod tests {
     #[test]
     fn content_bind_setter_wraps_with_into_content() {
         let code = component_bind_setter("content", "self.title", &[], &[], "Button").unwrap();
+        // 简单字段访问自动添加 & 前缀
         assert_eq!(
             code,
-            ".child(rml_core::content::into_content(self.title, _window, cx))"
+            ".child(rml_core::content::into_content(&self.title, _window, cx))"
         );
     }
 
@@ -537,12 +546,29 @@ mod tests {
         let code = component_bind_setter("content", "self.counter + 1", &[], &[], "Button").unwrap();
         assert!(code.contains("into_content("));
         assert!(code.contains("self.counter + 1"));
+        assert!(!code.contains("&self.counter"));
     }
 
     #[test]
     fn content_bind_setter_works_for_any_component() {
         // content 绑定对所有组件标签生效（非 Button 专用）
         let code = component_bind_setter("content", "self.name", &[], &[], "Tag").unwrap();
-        assert!(code.contains("into_content(self.name"));
+        assert!(code.contains("into_content(&self.name"));
+    }
+
+    #[test]
+    fn content_bind_setter_no_borrow_for_method_call() {
+        // 方法调用不加 & 前缀（返回 owned 值）
+        let code = component_bind_setter("content", "self.make_badge()", &[], &[], "Button").unwrap();
+        assert!(code.contains("into_content(self.make_badge()"));
+        assert!(!code.contains("&self.make_badge"));
+    }
+
+    #[test]
+    fn content_bind_setter_no_borrow_for_loop_var() {
+        // 循环变量不加 & 前缀
+        let code = component_bind_setter("content", "item", &["item"], &[], "Button").unwrap();
+        assert!(code.contains("into_content(item,"));
+        assert!(!code.contains("&item"));
     }
 }

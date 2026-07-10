@@ -6,7 +6,6 @@
 
 use super::{ComponentCategory, IRmlTranslator, PrinterCtx, TranslatorMetadata};
 use crate::compiler::codegen::gen_expr_code;
-use crate::compiler::expr;
 use crate::compiler::{CodegenCtx, CodegenError};
 use crate::css::ParentInfo;
 use crate::parser::ast::{Attribute, Directive, Element};
@@ -78,28 +77,19 @@ impl IRmlTranslator for ComponentTranslator {
 
         let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
         let raw = gen_expr_code(&expr, &scope_vars, &computed);
+        // 简单字段访问添加 & 前缀，避免 move 非 Copy 字段
+        let final_code = if crate::compiler::codegen::attribute::needs_borrow_for_content(&raw, &scope_vars) {
+            format!("&{}", raw)
+        } else {
+            raw
+        };
         // 通过 IntoContent trait 统一转换：支持 IntoElement/ToString/IVisual
-        // 表达式可引用 render 方法作用域内的 _window/cx
-        let code = format!("rml_core::content::into_content({}, _window, cx)", raw);
+        let code = format!("rml_core::content::into_content({}, _window, cx)", final_code);
 
         if let Some(clause) = each_clause {
-            let iter_expr = if loop_vars.iter().any(|lv| {
-                clause.iterable == *lv || clause.iterable.starts_with(&format!("{}.", lv))
-            }) {
-                clause.iterable.clone()
-            } else if computed.contains(&clause.iterable.as_str()) {
-                format!(
-                    "{}.{}()",
-                    expr::current_self_alias().unwrap_or("self"),
-                    clause.iterable
-                )
-            } else {
-                format!(
-                    "{}.{}",
-                    expr::current_self_alias().unwrap_or("self"),
-                    clause.iterable
-                )
-            };
+            // 使用 gen_expr_code 处理 iterable，正确处理 self. 前缀和 slot 上下文别名替换
+            let loop_vars_ref: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
+            let iter_expr = gen_expr_code(&clause.iterable, &loop_vars_ref, &computed);
             return Ok((
                 format!("{iter_expr}.iter().map(|{}| {{ {} }})", clause.item, code),
                 true,

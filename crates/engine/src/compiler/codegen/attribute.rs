@@ -14,6 +14,23 @@ use crate::tags;
 
 use super::text::gen_expr_code;
 
+/// 判断 content 绑定表达式是否为简单字段访问，需要 `&` 前缀以借用而非移动
+///
+/// `render(&self)` 中无法 move 非 Copy 字段（如 `String`/`SharedString`），
+/// codegen 对简单字段访问自动添加 `&` 前缀，由 `IntoContent for &T` blanket impl 接管。
+///
+/// 简单字段访问：仅含字母数字、下划线、点号，不含括号（排除方法调用）和运算符。
+/// 循环变量（来自 `.iter()`，已是 `&T`）和作用域变量（`_window`/`cx`）不加前缀。
+pub(crate) fn needs_borrow_for_content(code: &str, scope_vars: &[&str]) -> bool {
+    if scope_vars.contains(&code) {
+        return false;
+    }
+    !code.is_empty()
+        && !code.contains('(')
+        && !code.contains(')')
+        && code.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '.')
+}
+
 /// 应用静态属性（class/id/style/src/href/type 等字面量属性）
 ///
 /// 未知属性输出 warning 并返回空字符串（不生成错误代码）。
@@ -179,7 +196,12 @@ pub(crate) fn apply_bind_attr(
                 }
             }
             let code = gen_expr_code(expr, &scope_vars, computed);
-            format!(".child(rml_core::content::into_content({}, _window, cx))", code)
+            let final_code = if needs_borrow_for_content(&code, &scope_vars) {
+                format!("&{}", code)
+            } else {
+                code
+            };
+            format!(".child(rml_core::content::into_content({}, _window, cx))", final_code)
         }
         "value" => format!(".child(format!(\"{{}}\", {}))", gen_expr_code(expr, loop_vars, computed)),
         // class/id 的 static 形式由 apply_css_styles 处理；bind 形式静默丢弃
@@ -261,9 +283,10 @@ mod tests {
     #[test]
     fn content_bind_wraps_with_into_content() {
         let code = apply_bind_attr("content", "self.title", &[], &[]);
+        // 简单字段访问自动添加 & 前缀（由 IntoContent for &T blanket impl 接管）
         assert_eq!(
             code,
-            ".child(rml_core::content::into_content(self.title, _window, cx))"
+            ".child(rml_core::content::into_content(&self.title, _window, cx))"
         );
     }
 
@@ -272,6 +295,7 @@ mod tests {
         let code = apply_bind_attr("content", "self.counter + 1", &[], &[]);
         assert!(code.contains("into_content("));
         assert!(code.contains("self.counter + 1"));
+        assert!(!code.contains("&self.counter"));
         assert!(code.contains("_window, cx"));
     }
 
@@ -280,5 +304,22 @@ mod tests {
         // content 表达式可引用 _window/cx（不经 gen_expr_code 解析）
         let code = apply_bind_attr("content", "self.render_card(_window, cx)", &[], &[]);
         assert!(code.contains("self.render_card(_window, cx)"));
+        // 方法调用（含括号）不加 & 前缀
+        assert!(!code.contains("&self.render_card"));
+    }
+
+    #[test]
+    fn content_bind_no_borrow_for_loop_vars() {
+        // 循环变量已是 &T（来自 .iter()），不加 & 前缀
+        let code = apply_bind_attr("content", "item", &["item"], &[]);
+        assert!(code.contains("into_content(item,"));
+        assert!(!code.contains("&item"));
+    }
+
+    #[test]
+    fn content_bind_borrow_for_nested_field() {
+        // 嵌套字段访问也加 & 前缀
+        let code = apply_bind_attr("content", "self.user.name", &[], &[]);
+        assert!(code.contains("into_content(&self.user.name,"));
     }
 }

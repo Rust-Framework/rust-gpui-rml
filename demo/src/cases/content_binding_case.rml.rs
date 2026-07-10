@@ -26,6 +26,11 @@ impl IVisual for CounterBadge {
     }
 }
 
+/// 演示 each 指令遍历结构体列表，绑定字段 content
+pub struct Person {
+    pub name: String,
+}
+
 #[contribute(
     host_id = "demo.shell",
     id = "binding.content",
@@ -40,10 +45,14 @@ pub struct ContentBindingCase {
     pub count: i32,
     /// bool → ToString 绑定
     pub active: bool,
-    /// String → IntoElement 绑定
+    /// String → IntoElement 绑定（自动 & 借用，无需 .clone()）
     pub message: String,
-    /// SharedString → IntoElement 绑定
+    /// SharedString → IntoElement 绑定（自动 & 借用，无需 .clone()）
     pub title: SharedString,
+    /// Vec<String> → each 指令遍历，循环变量为 &String
+    pub names: Vec<String>,
+    /// Vec<Person> → each 指令遍历，绑定 item.name 字段
+    pub people: Vec<Person>,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
     pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
@@ -65,6 +74,17 @@ impl ILifecycle for ContentBindingCase {
         self.active = true;
         self.message = "来自 String 字段的文本".to_string();
         self.title = SharedString::from("SharedString 标题");
+        self.names = vec![
+            "Rust".to_string(),
+            "GPUI".to_string(),
+            "RML".to_string(),
+            "MVVM".to_string(),
+        ];
+        self.people = vec![
+            Person { name: "Alice".to_string() },
+            Person { name: "Bob".to_string() },
+            Person { name: "Charlie".to_string() },
+        ];
         let (cols, rows) = build_api_table(&[
             ("content={i32}", "ToString", "数值格式化为文本"),
             ("content={bool}", "ToString", "布尔格式化为文本"),
@@ -72,6 +92,8 @@ impl ILifecycle for ContentBindingCase {
             ("content={SharedString}", "IntoElement", "共享字符串作为文本元素"),
             ("content={AnyElement}", "IntoElement", "方法返回 AnyElement"),
             ("content={Box<dyn IVisual>}", "IVisual", "调用 IVisual::render"),
+            ("content={&T} (self.field)", "&T blanket impl", "自动 & 借用，Clone 委托值类型"),
+            ("content={item} (each 循环)", "&T blanket impl", "循环变量已是 &T，直接转换"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

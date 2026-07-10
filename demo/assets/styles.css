@@ -66,6 +66,22 @@
     margin: 4px 0;
 }
 
+.tag-list {
+    display: flex;
+    flex-direction: row;
+    gap: 6px;
+    flex-wrap: wrap;
+    padding: 4px 0;
+}
+
+.tag-list > * {
+    padding: 4px 10px;
+    background: var(--color-primary);
+    color: #ffffff;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
 .alert-col {
     display: flex;
     flex-direction: column;
