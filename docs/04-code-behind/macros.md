@@ -391,7 +391,7 @@ pub struct MyView {
 
 ```html
 <!-- .rml 中用 ref 关联 -->
-<input ref="username_input" model={user_name} />
+<input ref="username_input" value={user_name} />
 <button ref="submit_btn" on-click={submit}>提交</button>
 ```
 
@@ -502,7 +502,7 @@ match value.parse::<i32>() {
 }
 ```
 
-> ⚠️ `#[validate]` 仅对 `<input model={field}>` 双向绑定生效。单向绑定的 `value={field}` 不触发校验（仅展示，不回写）。
+> ⚠️ `#[validate]` 仅对双向绑定的表单字段生效（如 `<input value={field}>`）。单向显示的 `value={expression}` 不触发校验（仅展示，不回写）。
 
 ### IValidate 接口式校验
 

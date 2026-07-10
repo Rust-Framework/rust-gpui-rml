@@ -193,7 +193,7 @@ impl SearchView {
 <div class="search-view">
     <input
         ref="search_input"
-        model={query}
+        value={query}
         placeholder="搜索..."
     />
 </div>

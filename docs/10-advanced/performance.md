@@ -68,7 +68,7 @@ impl MainWindow {
 
 ### 双向绑定的性能特征
 
-`<input model={field}>` 的双向绑定基于 `Entity<InputState>` + `cx.subscribe`，其性能开销分层：
+`<input value={field}>` 的双向绑定基于 `Entity<InputState>` + `cx.subscribe`，其性能开销分层：
 
 | 操作 | 时机 | 开销 | 备注 |
 |---|---|---|---|
@@ -88,9 +88,9 @@ impl MainWindow {
 
 **性能瓶颈场景**：
 
-- **大量 `<input model={field}>`**：每个绑定创建独立 `Entity<InputState>` + 订阅，N 个输入框 = N 个 entity + N 个订阅。对于 10+ 输入框的表单，首次 render 会有明显开销
+- **大量 `<input value={field}>`**：每个绑定创建独立 `Entity<InputState>` + 订阅，N 个输入框 = N 个 entity + N 个订阅。对于 10+ 输入框的表单，首次 render 会有明显开销
 - **高频输入**：每次按键触发 `InputEvent::Change` → 反向闭包 → `cx.notify()` → 全量 render 重建。对于复杂界面，考虑防抖
-- **`#[command]` 修改 model 绑定字段**：触发正向同步 `set_value`，虽然 `emit_events=false` 避免循环，但仍有字符串拷贝开销
+- **`#[command]` 修改双向绑定字段**：触发正向同步 `set_value`，虽然 `emit_events=false` 避免循环，但仍有字符串拷贝开销
 
 ### 校验规则执行开销
 
@@ -142,11 +142,11 @@ pub email: String,
 
 ```rust
 // ❌ 反例：高频输入触发全量 render
-<input model={search_text} />
+<input value={search_text} />
 // 每次按键 → InputEvent::Change → cx.notify() → render 重建
 
-// ✅ 正例：防抖搜索（model 同步 + 防抖触发搜索）
-<input model={search_text} />
+// ✅ 正例：防抖搜索（value 双向同步 + 防抖触发搜索）
+<input value={search_text} />
 <button on-click={perform_search}>搜索</button>
 // 用户点击按钮才触发搜索，而非每次输入
 ```

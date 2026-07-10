@@ -295,7 +295,7 @@ pub fn completed_count(&self) -> usize {
 
 - **标签映射**：8 种 HTML 标签的使用
 - **标准属性**：`class`、`type`、`placeholder`
-- **数据绑定**：`model`、`checked`、动态 `class`
+- **数据绑定**：`value={field}` 双向绑定、`checked`、动态 `class`
 - **事件绑定**：无参命令、带参命令、方法名绑定
 - **指令**：`if`、`each`、`key`
 - **插值**：字段访问、方法调用、计算属性、三元表达式

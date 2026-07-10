@@ -201,7 +201,7 @@ progress 缓存依赖 completed_count，传递失效
 
 ## 3.6.5 双向绑定的实现
 
-`model` 指令在编译期生成两个方向的代码：
+`value={field}` 双向绑定在编译期生成两个方向的代码：
 
 ### 正向：ViewModel → UI
 

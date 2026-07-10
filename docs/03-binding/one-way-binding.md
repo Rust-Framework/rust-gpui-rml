@@ -81,10 +81,10 @@ pub struct UserProfile {
 
 ```html
 <input value={user_name} />
-<input value={format!("¥{:.2}", price)} />
+<div>{format!("¥{:.2}", price)}</div>
 ```
 
-⚠️ **注意**：`value={field}` 是单向绑定，输入框的值会显示 `field`，但用户输入不会更新 `field`。要实现输入同步，需要用 `model={field}` 双向绑定。
+> ℹ️ `value={field}` 绑定到表单组件（`<input>` / `<Input>` / `<Slider>` 等）的 `pub` 可变字段时自动启用双向绑定。若绑定目标为计算表达式（如 `format!(...)`），则为单向显示。详见 [3.3 双向绑定](./two-way-binding.md)。
 
 ### disabled / checked 绑定
 
@@ -245,19 +245,23 @@ pub fn greeting(&self) -> SharedString {
 
 ## 3.2.8 单向绑定的限制
 
-### 不能在 View 中修改 ViewModel
+### 计算表达式不可回写
+
+`value={expression}` 绑定计算表达式时为单向显示，用户输入不会回写：
 
 ```html
-<!-- ❌ 单向绑定是只读的 -->
-<input value={user_name} />  <!-- 用户输入不会更新 user_name -->
+<!-- 单向：显示格式化值，用户输入不会更新 price -->
+<div>{format!("¥{:.2}", price)}</div>
 ```
 
-要实现双向同步，必须用 `model` 指令：
+表单组件绑定 `pub` 可变字段时自动双向绑定，无需额外声明：
 
 ```html
-<!-- ✅ 双向绑定 -->
-<input model={user_name} />
+<!-- 双向：输入回写 user_name 字段 -->
+<input value={user_name} />
 ```
+
+详见 [3.3 双向绑定](./two-way-binding.md)。
 
 ### 不能在插值中调用命令
 
@@ -317,6 +321,6 @@ cargo rml-expand views::counter
 - **表达式绑定**：`{field + 1}`、`{field.method()}` 等
 - **列表项绑定**：在 `each` 内访问迭代变量字段
 
-记住：单向绑定是只读的，ViewModel 变化时 View 更新，但 View 不能修改 ViewModel。要实现双向同步，用 `model` 指令。
+记住：单向绑定是只读的，ViewModel 变化时 View 更新，但 View 不能修改 ViewModel。表单组件绑定 `pub` 可变字段时自动双向同步（详见 [3.3 双向绑定](./two-way-binding.md)）。
 
 下一节 → [3.3 双向绑定](./two-way-binding.md)

@@ -11,7 +11,7 @@
 | 方向     | 语法                  | 数据流              | 适用场景     |
 | ------ | ------------------- | ---------------- | -------- |
 | 单向绑定   | `{field}`           | ViewModel → View | 显示数据     |
-| 双向绑定   | `model={field}`     | ViewModel ↔ View | 表单输入     |
+| 双向绑定   | `value={field}` / `checked={field}` | ViewModel ↔ View | 表单输入     |
 | 一次性绑定  | `<span once>{x}</span>` | ViewModel → View（仅首次） | 初始化快照    |
 
 ### 维度二：绑定源
@@ -161,7 +161,7 @@ pub fn increment(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
 | 维度       | WPF                  | **RML**              |
 | -------- | -------------------- | -------------------- |
 | 绑定语法     | `{Binding FieldName}` | `{field}`            |
-| 绑定方向     | `Mode=OneWay/TwoWay` | `model={field}` 区分双向 |
+| 绑定方向     | `Mode=OneWay/TwoWay` | `value={field}` 自动推断双向 |
 | 计算属性     | 无原生支持，需写 Converter   | `#[computed]` 一等公民   |
 | 值转换器     | `IValueConverter`    | `Converter` trait    |
 | 编译期检查    | 无（运行时反射）             | **有（编译期路径检查）**       |

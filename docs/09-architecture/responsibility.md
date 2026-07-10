@@ -39,7 +39,7 @@ RML 的核心价值是**关注点分离**。如果开发者把业务逻辑塞进
 
 - 描述 UI 的层级结构（`div`、`ul`、`button`…）
 - 通过属性配置控件（`class`、`type`、`placeholder`…）
-- 通过指令控制流（`if`、`each`、`model`、`show`…）
+- 通过指令控制流（`if`、`each`、`show`…）
 - 通过插值显示数据（`{title}`、`{user.name}`…）
 - 通过 `on*` 绑定事件到命令
 
@@ -256,9 +256,9 @@ impl User {
   ViewModel 的 #[computed]，模板可读性接近纯 HTML，设计师可直接编辑。
 -->
 <form class="login-form" onsubmit={login}>
-  <!-- model={email} 是双向绑定：输入回写 ViewModel，ViewModel 变更同步到 value -->
-  <input type="email" model={email} placeholder="邮箱" />
-  <input type="password" model={password} placeholder="密码" />
+  <!-- value={email} 是双向绑定：输入回写 ViewModel，ViewModel 变更同步到 value -->
+  <input type="email" value={email} placeholder="邮箱" />
+  <input type="password" value={password} placeholder="密码" />
   <!-- if={error} 条件渲染：error 为 None 时此节点不存在，而非 display:none -->
   <p if={error} class="error">{error}</p>
   <!-- disabled={is_loading} 是单向绑定：ViewModel 状态驱动 UI 禁用态 -->

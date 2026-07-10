@@ -232,7 +232,7 @@ impl DataView {
 
 ## 6.4.5 双向绑定属性
 
-组件可以实现双向绑定，让父视图通过 `model` 指令绑定：
+组件可以实现双向绑定，让父视图通过 `value={field}` / `checked={field}` 绑定：
 
 ### 实现双向绑定
 
@@ -264,7 +264,7 @@ impl TwoWayBinding for Counter {
 ```html
 <div>
     <p>当前值: {my_count}</p>
-    <Counter model={my_count} min={0} max={100} />
+    <Counter value={my_count} min={0} max={100} />
 </div>
 ```
 

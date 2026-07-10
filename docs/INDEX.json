@@ -130,7 +130,7 @@
             {
               "id": "two-way-binding",
               "title": "双向绑定",
-              "summary": "model 指令的双向数据流",
+              "summary": "value={field} 自动双向绑定的数据流",
               "readingTime": 10,
               "difficulty": "intermediate"
             },

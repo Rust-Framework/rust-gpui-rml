@@ -277,8 +277,8 @@ pub struct SubmitEvent {
 
 ```html
 <form onsubmit={handle_submit}>
-    <input name="username" model={username} />
-    <input name="password" type="password" model={password} />
+    <input name="username" value={username} />
+    <input name="password" type="password" value={password} />
     <button type="submit">登录</button>
 </form>
 ```

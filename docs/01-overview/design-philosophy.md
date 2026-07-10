@@ -100,7 +100,7 @@ counter.rml.rs   ← 工程师编辑：状态、命令、生命周期
 - 标准 HTML 属性：`class`、`id`、`style`、`placeholder`、`type`
 - 标准事件模型：`on-click`、`oninput`、`onkeydown`
 
-任何写过 HTML 的开发者，打开 `.rml` 文件的第一秒就能读懂结构。RML 不发明新语法，只通过极简指令（`if`、`each`、`model`）扩展能力，且**无任何框架前缀**。
+任何写过 HTML 的开发者，打开 `.rml` 文件的第一秒就能读懂结构。RML 不发明新语法，只通过极简指令（`if`、`each`、`show`）扩展能力，且**无任何框架前缀**。
 
 ## 1.1.4 设计哲学的取舍
 

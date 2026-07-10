@@ -126,7 +126,7 @@ RML 框架并非「无 observable 方案」——当前已落地一套**显式�
 - **mutation 检测**：`#[command]` 宏通过 `syn::visit::Visit` 检测 `self.x =`/`+=`/`push`/`clear` 等，在每个修改语句后注入 `self.__rml_bump_version("x");`，方法末尾注入 `cx.notify();`（[command.rs:99-137](file:///e:/GitCode/RF/rust-gpui-rml/crates/macros/src/command.rs)）
 - **`cx.notify()` 触发**：GPUI 对整个 Entity 触发 `Render::render` 重渲（全量重渲）
 - **`#[computed]` 缓存**：方法重命名为 `__rml_computed_<name>`，codegen 包装层通过 `__rml_computed_deps_version` 比较依赖字段版本号和，命中缓存跳过重算（[observable.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/codegen/observable.rs)）
-- **双向绑定**：`<input model={field}>` codegen 生成 `__rml_get_or_init_input_state`——首次 render 创建 `Entity<InputState>` + `cx.subscribe(&entity, ..)`，反向回调 parse → validate → assign → bump；正向靠版本号 diff 触发 `set_value`
+- **双向绑定**：`<input value={field}>` codegen 生成 `__rml_get_or_init_input_state`——首次 render 创建 `Entity<InputState>` + `cx.subscribe(&entity, ..)`，反向回调 parse → validate → assign → bump；正向靠版本号 diff 触发 `set_value`
 - **`Subscription::detach()`**：因 `Subscription` 非 `Sync`，存储会破坏 `Entity<T>: Send+Sync`，故订阅 `.detach()` 后生命周期绑定到 Entity（[component.rs:78-80 注释](file:///e:/GitCode/RF/rust-gpui-rml/crates/macros/src/component.rs)）
 
 **关键特性**：
@@ -187,7 +187,7 @@ RML 的目标开发者是**「同时熟悉 Rust 与前端/WPF 的工程师」**�
 | 方案 | 心智契合度 | 说明 |
 |---|---|---|
 | **React setState** | ⚠️ Rust 工程师有距离 | Rust 工程师熟悉 mutation + 编译期检查；React 的「不可变 + 闭包 + hooks 规则」与 Rust 直觉有距离。`useEffect` 依赖数组、`useCallback` 记忆化、stale closure 等概念在 Rust 中无对应物 |
-| **Vue reactive** | ✅ Mutation-driven 最贴近 | Vue 的 `state.count++` 直接 mutation 与 Rust `self.count += 1` 心智一致。`v-model` 与 RML `model={field}` 一致 |
+| **Vue reactive** | ✅ Mutation-driven 最贴近 | Vue 的 `state.count++` 直接 mutation 与 Rust `self.count += 1` 心智一致。`v-model` 与 RML `value={field}` 一致 |
 | **WPF DP** | ✅ XAML 工程师熟悉 | WPF 工程师熟悉 XAML + DataContext + Binding；RML 的 `.rml` + ViewModel + `{field}` 与之一致。`ICommand`/`IValueConverter`/`ValidationRule` 词汇被 RML 直接继承 |
 | **RML 版本号** | ✅ Vue 心智 + WPF 词汇 | `self.count += 1` 自动触发 UI = Vue mutation-driven；`#[command]`/`#[computed]`/`#[validate]` = WPF 词汇。**对 Vue+WPF 双背景开发者最友好** |
 
@@ -195,7 +195,7 @@ RML 的目标开发者是**「同时熟悉 Rust 与前端/WPF 的工程师」**�
 
 - React 的 setState 心智与 Rust 字段赋值直觉有距离——Rust 工程师写 `self.count += 1` 时不会主动想到「这需要 setState 包装」
 - Vue 的 mutation-driven 与 Rust mutation 心智完全一致——`state.count++` 与 `self.count += 1` 是同一种心智
-- WPF 的 XAML + DataContext + Binding + ICommand 心智被 RML 直接继承——`{field}` 单向、`model={field}` 双向、`#[command]`、`#[computed]`、`#[validate]` 都是 WPF 词汇
+- WPF 的 XAML + DataContext + Binding + ICommand 心智被 RML 直接继承——`{field}` 单向、`value={field}` 双向、`#[command]`、`#[computed]`、`#[validate]` 都是 WPF 词汇
 - RML 的版本号机制对开发者**完全透明**——开发者写 `self.count += 1`，宏自动注入 bump + notify，开发者无需感知版本号存在
 
 ### 9.8.3.4 维度四：框架设计哲学契合度
@@ -302,7 +302,7 @@ RML 的设计哲学（[design-philosophy.md](file:///e:/GitCode/RF/rust-gpui-rml
 
 1. **GPUI 渲染模型要求显式触发**：GPUI 不会自动检测 Entity 内部状态变化，必须通过 `cx.notify()` 显式触发重渲。这意味着「observable 解决方案」在 GPUI 中**不可省略**——必须有某种机制把「字段变更」转化为「`cx.notify()` 调用」。
 
-2. **RML 版本号机制已实现该转化**：`#[command]` 宏通过 `syn::visit::Visit` 自动注入 `bump_version` + `cx.notify()`，开发者写 `self.count += 1` 即自动触发 UI 刷新。这就是 RML 的 observable 解决方案。
+2. **RML 版本号机制实现该转化**：`#[command]` 宏通过 `syn::visit::Visit` 自动注入 `bump_version` + `cx.notify()`，开发者写 `self.count += 1` 即自动触发 UI 刷新。这就是 RML 的 observable 解决方案。
 
 3. **替代方案在 Rust 中不可行**：
    - Vue 的 Proxy 在 Rust 中无对应物
@@ -344,7 +344,7 @@ RML 的设计哲学（[design-philosophy.md](file:///e:/GitCode/RF/rust-gpui-rml
 
 2. **WPF 的「设计理念」适合**（[rml-iteration-architecture-analysis.md §3.2](file:///e:/GitCode/RF/rust-gpui-rml/.trae/documents/rml-iteration-architecture-analysis.md)）：
    - **XAML + 代码后置**：RML `.rml` + `.rml.rs` 直接继承
-   - **DataContext + Binding**：RML ViewModel + `{field}`/`model={field}` 直接继承
+   - **DataContext + Binding**：RML ViewModel + `{field}`/`value={field}` 直接继承
    - **ICommand**：RML `#[command]` + `RelayCommand` 直接继承（[command.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/core/src/command.rs)）
    - **IValueConverter**：RML `IConverter` + `|` 管道符直接继承（[converter/trait_def.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/core/src/converter/trait_def.rs)）
    - **ValidationRule**：RML `#[validate(range/length/regex/custom)]` + `IValidate` 直接继承
@@ -360,8 +360,8 @@ RML 的设计哲学（[design-philosophy.md](file:///e:/GitCode/RF/rust-gpui-rml
 
 - WPF 的 **DP 反射实现机制**：不适合（Rust 无反射）
 - WPF 的 **INPC 事件通知机制**：不适合（`Send+Sync` 冲突）
-- WPF 的 **属性变更通知语义**：适合（RML 已用版本号机制实现等效语义）
-- WPF 的 **MVVM 设计理念**：适合（RML 已全面继承）
+- WPF 的 **属性变更通知语义**：适合（RML 用版本号机制实现等效语义）
+- WPF 的 **MVVM 设计理念**：适合（RML 完整继承）
 
 ### 9.8.5.4 推荐的演进方向
 

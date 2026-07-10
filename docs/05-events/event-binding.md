@@ -130,7 +130,7 @@ pub fn delete_item(&mut self, id: u64, _: &ClickEvent, cx: &mut ViewContext<Self
 
 ```html
 <input
-    model={search_text}
+    value={search_text}
     oninput={on_search_input}
     placeholder="搜索..."
 />
@@ -140,7 +140,7 @@ pub fn delete_item(&mut self, id: u64, _: &ClickEvent, cx: &mut ViewContext<Self
 
 ```html
 <input
-    model={new_todo}
+    value={new_todo}
     onkeydown={on_enter_key}
     placeholder="按回车添加"
 />
@@ -246,7 +246,7 @@ pub fn on_enter_key(&mut self, ev: &KeyDownEvent, cx: &mut ViewContext<Self>) {
 ```
 
 ```html
-<input onkeydown={on_enter_key} model={input_text} />
+<input onkeydown={on_enter_key} value={input_text} />
 ```
 
 ### 模式四：事件转发

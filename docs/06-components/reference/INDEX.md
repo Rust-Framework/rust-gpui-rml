@@ -58,7 +58,7 @@
 
 | 文档 | 标签范围 | 说明 |
 |------|----------|------|
-| [builtin-html.md](./builtin-html.md) | `div` / `span` / `p` / `h1`–`h6` / `button` / `input` / `textarea` / `ul` / `ol` / `li` / `img` / `a` / `label` / `br` | 基础轨；`input`/`textarea` 支持 `model` 双向绑定 |
+| [builtin-html.md](./builtin-html.md) | `div` / `span` / `p` / `h1`–`h6` / `button` / `input` / `textarea` / `ul` / `ol` / `li` / `img` / `a` / `label` / `br` | 基础轨；`input`/`textarea` 支持 `value={field}` 双向绑定 |
 
 ## 阅读顺序建议
 

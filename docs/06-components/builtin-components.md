@@ -79,7 +79,7 @@ RML 组件来自两个互不混淆的层次：
 | `div` / `span` / `p` | 容器与文本 |
 | `h1`–`h6` | 标题（内置字号） |
 | `button` | 基础 `div()` 占位，**无** Button 组件样式 |
-| `input` / `textarea` | 支持 `model={field}` 双向绑定 → `rml_ui::Input` |
+| `input` / `textarea` | 支持 `value={field}` 自动双向绑定 → `rml_ui::Input` |
 | `ul` / `ol` / `li` | 列表布局 |
 | `img` / `a` / `label` / `br` | 基础占位 |
 
@@ -102,7 +102,7 @@ RML 组件来自两个互不混淆的层次：
 | 需求 | 正确写法 | 错误写法 |
 |------|----------|----------|
 | 带样式的按钮 | `<Button primary="" on-click={...}>` | `<button variant="primary">` |
-| 双向文本输入 | `<input model={name}>` | `<Input model={name}>` |
+| 双向文本输入 | `<input value={name}>` 或 `<Input value={name}>` | `<input model={name}>` |
 | 状态栏 MVVM | `<status_bar items={status_items}>` | `<StatusBar items={...}>` |
 | 案例树 | `<Tree on_activate={...}>` + Rust 初始化 `case_tree_state` | `<Tree items={...}>` |
 | 模态框 | `<dialog>` + `open(window, cx)` | `<Modal>`（未注册） |

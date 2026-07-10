@@ -102,7 +102,7 @@ impl IConverter for StatusConverter {
 ### 双向绑定 + 转换器
 
 ```html
-<input model={price | PriceConverter} />
+<input value={price | PriceConverter} />
 ```
 
 双向绑定时，codegen 生成：
@@ -237,7 +237,7 @@ impl PaymentView {
 <!-- view.rml -->
 <div class="payment-form">
     <label>金额：</label>
-    <input model={amount | CurrencyConverter} placeholder="¥0.00" />
+    <input value={amount | CurrencyConverter} placeholder="¥0.00" />
     <p if={error.is_some()} class="error">{error}</p>
     <button on-click={submit}>提交</button>
 
@@ -248,7 +248,7 @@ impl PaymentView {
 也可直接使用内置的 `Currency` 转换器，效果等价：
 
 ```html
-<input model={amount | Currency} placeholder="¥0.00" />
+<input value={amount | Currency} placeholder="¥0.00" />
 ```
 
 ## 3.5.10 小结
@@ -256,7 +256,7 @@ impl PaymentView {
 值转换器是绑定路径上的"过滤器"：
 
 - **定义**：实现 `IConverter` trait，提供 `convert`（正向）和 `convert_back`（反向）
-- **使用**：在绑定中用 `|` 管道符，如 `{value | Converter}` 或 `model={field | Converter}`
+- **使用**：在绑定中用 `|` 管道符，如 `{value | Converter}` 或 `value={field | Converter}`
 - **无需注册**：转换器是零字段 struct，codegen 直接以类型名生成调用
 - **复用**：转换器是独立 struct，可在多个 ViewModel 中复用
 - **缓存**：转换器无缓存，适合轻量级转换

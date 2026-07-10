@@ -50,7 +50,7 @@ RML 通过极简指令扩展能力，**无任何框架前缀**：
 | ------ | ------------- | -------------- | ------------------------ |
 | 条件渲染   | `v-if`        | `{cond && <div/>}` | **`if={cond}`**          |
 | 列表渲染   | `v-for`       | `{items.map(...)}` | **`each={item in items}`** |
-| 双向绑定   | `v-model`     | `value + onChange` | **`model={field}`**      |
+| 双向绑定   | `v-model`     | `value + onChange` | **`value={field}`**      |
 | 显示/隐藏  | `v-show`      | `style={{display}}` | **`show={cond}`**        |
 | 事件绑定   | `@click`      | `onClick`      | **`on-click={fn}`**       |
 | 插值     | `{{ var }}`   | `{var}`        | **`{var}`**              |

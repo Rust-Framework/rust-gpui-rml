@@ -410,7 +410,7 @@ pub struct SearchResult {
 <div class="search-view">
     <div class="search-input-area">
         <input
-            model={search_text}
+            value={search_text}
             oninput={on_search_input}
             placeholder="搜索..."
         />

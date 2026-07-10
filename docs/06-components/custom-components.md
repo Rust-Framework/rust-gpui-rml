@@ -275,7 +275,7 @@ pub fn handle_reach_max(&mut self, cx: &mut Context<Self>) {
 
 ## 6.2.6 组件的双向绑定
 
-组件可以通过 `model` 指令实现双向绑定：
+组件可以通过 `value={field}` / `checked={field}` 实现双向绑定：
 
 ```rust
 #[derive(IModel)]
@@ -290,7 +290,7 @@ pub struct Counter {
 ### 在父视图中双向绑定
 
 ```html
-<Counter model={my_count} min={0} max={10} />
+<Counter value={my_count} min={0} max={10} />
 ```
 
 ### 实现双向绑定
@@ -534,7 +534,7 @@ impl SearchBox {
 <!-- components/search_box.rml -->
 <div class="search-box">
     <input
-        model={query}
+        value={query}
         oninput={on_input}
         placeholder={placeholder}
         class="search-input"

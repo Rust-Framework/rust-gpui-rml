@@ -128,10 +128,10 @@ pub fn on_panel_change(&mut self, id: &SharedString, cx: &mut Context<Self>) {
 
 ### 3.4 双向绑定（input）
 
-ViewModel 普通字段 + RML `model` 指令：
+ViewModel 普通字段 + RML `value={field}` 自动双向绑定：
 
 ```html
-<input model={name} placeholder={t("demo.name_placeholder")} />
+<input value={name} placeholder={t("demo.name_placeholder")} />
 ```
 
 ```rust
@@ -244,7 +244,6 @@ impl ILifecycle for MainWindow {
 |------|------|------|
 | CaseHost / 子组件 panic | 未 `cx.new` 子 Entity | `on_loaded` 中 `get_or_insert_with` |
 | Shell 数据不刷新 | 未使用 `#[contributehost]` | 标注 host 窗口；框架自动 subscribe |
-| `<Input model>` 编译失败 | `model` 只能用于小写 `input` | 改用 `<input model={...}>` |
 | 用了未注册标签 | 如 `<Modal>` | 查 [reference/INDEX.md](../06-components/reference/INDEX.md) |
 
 完整清单见 [避坑清单](../11-cookbook/pitfall-checklist.md)。

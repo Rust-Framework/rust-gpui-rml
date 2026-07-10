@@ -190,7 +190,7 @@ pub fn gen_lifecycle_impl(ctx: &CodegenCtx) -> String {
 
 **目标**：让 `.rml` 中的 `|` 管道符真正生效，codegen 生成 `ConverterName.convert(&expr)` 调用。
 
-**执行期复核结论**：codegen 早已实现，本步骤仅做验证与文档化。
+**复核结论**：codegen 支持 `|` 管道符，本步骤仅做验证与文档化。
 
 **已验证事实**：
 

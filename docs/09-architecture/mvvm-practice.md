@@ -32,17 +32,17 @@ RML 的 MVVM 不是口号，而是被编译器和绑定引擎强制约束的运�
 
 ### MVVM 能力矩阵
 
-RML 的 MVVM 支持已覆盖 WPF XAML 的核心数据绑定与命令能力。下表是当前已实现能力的快速索引，每项均可直接用于生产代码：
+RML 的 MVVM 能力矩阵如下，每项均可直接用于生产代码：
 
 | 能力 | 语法 | 行为概述 | 参考章节 |
 |---|---|---|---|
 | 单向绑定 | `{field}` / `attr={expr}` | ViewModel 字段变化经 `bump_version` 触发正向同步 | [3.2 单向绑定](../03-binding/one-way-binding.md) |
-| 双向绑定 | `<input model={field}>` | 基于 `Entity<InputState>` 的双向数据流 + 版本号循环防护 | [3.3 双向绑定](../03-binding/two-way-binding.md) |
-| 转换器绑定 | `model={field \| Converter}` | `IConverter::convert()` 正向格式化 + `convert_back()` 反向解析 | [3.5 值转换器](../03-binding/converter.md) |
+| 双向绑定 | `<input value={field}>` | 基于 `Entity<InputState>` 的双向数据流 + 版本号循环防护 | [3.3 双向绑定](../03-binding/two-way-binding.md) |
+| 转换器绑定 | `value={field \| Converter}` | `IConverter::convert()` 正向格式化 + `convert_back()` 反向解析 | [3.5 值转换器](../03-binding/converter.md) |
 | 计算属性 | `#[computed]` | 依赖字段版本号追踪 + `ComputedCache` 自动缓存与失效 | [3.4 计算属性](../03-binding/computed.md) |
 | 命令方法 | `#[command]` + `on-click={method}` | 强类型直接调用，宏自动注入 `bump_version` + `cx.notify()` | [4.4 命令系统](../04-code-behind/command-system.md) |
 | 声明式命令 | `<menu-item command={field} />` | 对齐 WPF `ICommand`，经 `can_execute`/`execute` 动态调度 | [4.4.12 声明式命令绑定](../04-code-behind/command-system.md) |
-| 事件处理 | `oninput={fn}` / `onchange={fn}` | handler 注入 `cx.subscribe` 回调，与 `model` 反向同步协作 | [3.3.6 oninput/onchange](../03-binding/two-way-binding.md) |
+| 事件处理 | `oninput={fn}` / `onchange={fn}` | handler 注入 `cx.subscribe` 回调，与双向绑定反向同步协作 | [3.3.6 oninput/onchange](../03-binding/two-way-binding.md) |
 | 事件冒泡控制 | `ev.stop_propagation()` | 事件流 `apply_event` 分支注入 stop 标志 | [5.4 事件流](../05-events/event-flow.md) |
 | 字段校验 | `#[validate(range/length/required/regex/custom)]` | 校验链 + `__rml_state.field_errors` 自动管理 | [4.5 状态管理](../04-code-behind/state-management.md) |
 | 防抖节流 | `#[command(debounce = "300ms")]` | 函数局部 `AtomicU64` 计时器，无全局状态 | [5.5 防抖与节流](../05-events/debounce-throttle.md) |
@@ -310,7 +310,7 @@ impl SearchViewModel {
 
 ```html
 <div class="search">
-  <input ref="input" model={query} oninput={on_input} placeholder="搜索…" />
+  <input ref="input" value={query} oninput={on_input} placeholder="搜索…" />
   <p if={is_searching}>搜索中…</p>
   <p if={error} class="error">{error}</p>
   <ul if={has_results}>

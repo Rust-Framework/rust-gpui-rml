@@ -38,7 +38,7 @@ Rust 的学习曲线不应成为桌面 UI 开发的门槛。RML 的目标是**�
 
 ### Web 前端工程师
 
-你已经熟悉 HTML、CSS、JavaScript，或许还用过 Vue 或 React。RML 对你而言几乎没有语法学习成本——`.rml` 就是 HTML 的超集，`{ }` 插值对应 Vue 的 mustache，`model` 指令对应 `v-model`，`if`/`each` 指令对应 `v-if`/`v-for`。你需要补的是 **Rust 所有权与生命周期**的基础概念，以及 GPUI 的 Entity 模型。
+你已经熟悉 HTML、CSS、JavaScript，或许还用过 Vue 或 React。RML 对你而言几乎没有语法学习成本——`.rml` 就是 HTML 的超集，`{ }` 插值对应 Vue 的 mustache，`value={field}` 自动双向绑定对应 `v-model`，`if`/`each` 指令对应 `v-if`/`v-for`。你需要补的是 **Rust 所有权与生命周期**的基础概念，以及 GPUI 的 Entity 模型。
 
 - **推荐路径**：第 1 章 → 第 2 章 → 第 3 章 → 第 11 章迁移指南
 - **重点章节**：第 4 章（理解 ViewModel 与 Rust 命令系统）、第 9 章（架构最佳实践）

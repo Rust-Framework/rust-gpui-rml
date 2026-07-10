@@ -15,7 +15,7 @@
 
 ```html
 <!-- .rml 中用 ref 命名元素 -->
-<input ref="username_input" model={user_name} />
+<input ref="username_input" value={user_name} />
 <button ref="submit_btn" on-click={submit}>提交</button>
 ```
 
@@ -228,7 +228,7 @@ pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
 ### 场景二：编程式提交
 
 ```html
-<input ref="search_input" model={search_text} onkeydown={on_key_down} />
+<input ref="search_input" value={search_text} onkeydown={on_key_down} />
 ```
 
 ```rust
@@ -314,7 +314,7 @@ pub fn send_message(&mut self, _: &ClickEvent, cx: &mut ViewContext<Self>) {
 
 ### 选择建议
 
-- **优先用数据绑定**：能用 `{field}` 或 `model={field}` 解决的，不要用 `ElementRef`
+- **优先用数据绑定**：能用 `{field}` 或 `value={field}` 解决的，不要用 `ElementRef`
 - **命令式操作用 ElementRef**：聚焦、滚动、编程式触发等场景
 - **避免滥用**：不要用 `ElementRef` 替代数据绑定
 
@@ -439,7 +439,7 @@ async fn authenticate(username: &str, password: &str) -> Result<(), AuthError> {
 
     <input
         ref="username_input"
-        model={username}
+        value={username}
         placeholder="用户名"
         onkeydown={on_key_down}
     />
@@ -447,7 +447,7 @@ async fn authenticate(username: &str, password: &str) -> Result<(), AuthError> {
     <input
         ref="password_input"
         type="password"
-        model={password}
+        value={password}
         placeholder="密码"
         onkeydown={on_key_down}
     />

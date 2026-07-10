@@ -159,7 +159,7 @@ RML 完全对标 WPF 的 MVVM 模式。理解数据流是理解 RML 的关键。
 1. **用户交互** → View 触发事件 → ViewModel 的 `#[command]` 方法
 2. **命令执行** → ViewModel 修改状态 → 调用 `cx.notify()`
 3. **状态变更** → 绑定系统通知 View → 重新渲染受影响的部分
-4. **双向绑定** → `model` 指令自动把输入回写到 ViewModel 字段
+4. **双向绑定** → `value={field}` 自动把输入回写到 ViewModel 字段
 
 ```rust
 // ViewModel 修改状态后必须调用 cx.notify() 触发重绘
