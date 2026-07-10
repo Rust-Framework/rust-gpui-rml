@@ -233,7 +233,7 @@ mod tests {
         assert!(result.is_err(), "expected error for standalone else");
         let err = result.unwrap_err();
         assert!(
-            err.message.contains("`else` 指令必须紧跟在 `if` 指令之后"),
+            err.message.contains("`else` 指令必须紧跟在 `if` 或 `else-if` 之后"),
             "expected standalone else error, got: {}",
             err.message
         );
@@ -247,7 +247,7 @@ mod tests {
         assert!(result.is_err(), "expected error for non-adjacent else");
         let err = result.unwrap_err();
         assert!(
-            err.message.contains("`else` 指令必须紧跟在 `if` 指令之后"),
+            err.message.contains("`else` 指令必须紧跟在 `if` 或 `else-if` 之后"),
             "expected standalone else error, got: {}",
             err.message
         );
@@ -264,7 +264,7 @@ mod tests {
         assert!(result.is_err(), "expected error for if/else with each");
         let err = result.unwrap_err();
         assert!(
-            err.message.contains("`if`/`else` 配对不支持 `each`"),
+            err.message.contains("`if`/`else-if`/`else` 链不支持 `each`"),
             "expected if/else+each rejection, got: {}",
             err.message
         );
@@ -321,7 +321,7 @@ mod tests {
         assert!(result.is_err(), "expected error for orphan else");
         let err = result.unwrap_err();
         assert!(
-            err.message.contains("`else` 指令必须紧跟在 `if` 指令之后"),
+            err.message.contains("`else` 指令必须紧跟在 `if` 或 `else-if` 之后"),
             "expected orphan else error, got: {}",
             err.message
         );
@@ -652,6 +652,136 @@ mod tests {
             code.contains(".when(!true, |d| d.invisible())"),
             "expected .when(!true, |d| d.invisible()) for literal, got: {}",
             code
+        );
+    }
+
+    // ─── else-if 链式条件：核心场景 ───
+
+    #[test]
+    fn else_if_chain_generates_else_if() {
+        // <div><div if={a}>A</div><div else-if={b}>B</div><div else>C</div></div>
+        let root = parser::parse(
+            r#"<div><div if={a}>A</div><div else-if={b}>B</div><div else>C</div></div>"#,
+        )
+        .unwrap();
+        let (code, _) = gen(&root).expect("codegen should succeed");
+        assert!(
+            code.contains("if self.a {"),
+            "expected if self.a, got: {}",
+            code
+        );
+        assert!(
+            code.contains(" else if self.b {"),
+            "expected else if self.b, got: {}",
+            code
+        );
+        assert!(
+            code.contains(" else {"),
+            "expected else branch, got: {}",
+            code
+        );
+        // 三个分支都应出现
+        assert!(code.contains("A") && code.contains("B") && code.contains("C"),
+            "expected all three branches, got: {}", code);
+        // 不应回退到 Empty（有 else 分支）
+        assert!(!code.contains("gpui::Empty"),
+            "chain with else should not fall back to Empty, got: {}", code);
+    }
+
+    #[test]
+    fn multiple_else_if_chain() {
+        // <div>
+        //   <div if={a}>A</div>
+        //   <div else-if={b}>B</div>
+        //   <div else-if={c}>C</div>
+        //   <div else-if={d}>D</div>
+        //   <div else>E</div>
+        // </div>
+        let root = parser::parse(
+            r#"<div><div if={a}>A</div><div else-if={b}>B</div><div else-if={c}>C</div><div else-if={d}>D</div><div else>E</div></div>"#,
+        )
+        .unwrap();
+        let (code, _) = gen(&root).expect("codegen should succeed");
+        assert!(code.contains("if self.a {"), "expected if self.a, got: {}", code);
+        assert!(code.contains(" else if self.b {"), "expected else if self.b, got: {}", code);
+        assert!(code.contains(" else if self.c {"), "expected else if self.c, got: {}", code);
+        assert!(code.contains(" else if self.d {"), "expected else if self.d, got: {}", code);
+        assert!(code.contains(" else {"), "expected else branch, got: {}", code);
+    }
+
+    #[test]
+    fn else_if_without_else_falls_back_to_empty() {
+        // <div><div if={a}>A</div><div else-if={b}>B</div></div>
+        // 无 else 分支 → 自动添加 Empty fallback
+        let root = parser::parse(
+            r#"<div><div if={a}>A</div><div else-if={b}>B</div></div>"#,
+        )
+        .unwrap();
+        let (code, _) = gen(&root).expect("codegen should succeed");
+        assert!(
+            code.contains("if self.a {"),
+            "expected if self.a, got: {}",
+            code
+        );
+        assert!(
+            code.contains(" else if self.b {"),
+            "expected else if self.b, got: {}",
+            code
+        );
+        assert!(
+            code.contains("gpui::Empty.into_any_element()"),
+            "expected Empty fallback for missing else, got: {}",
+            code
+        );
+    }
+
+    #[test]
+    fn standalone_else_if_returns_error() {
+        // <div><div else-if={x}></div></div>
+        let root = parser::parse(r#"<div><div else-if={x}></div></div>"#).unwrap();
+        let result = gen(&root);
+        assert!(result.is_err(), "expected error for standalone else-if");
+        let err = result.unwrap_err();
+        assert!(
+            err.message.contains("`else-if` 指令必须紧跟在 `if` 或 `else-if` 之后"),
+            "expected standalone else-if error, got: {}",
+            err.message
+        );
+    }
+
+    #[test]
+    fn else_if_after_else_returns_error() {
+        // <div><div if={a}></div><div else></div><div else-if={b}></div></div>
+        // else 后跟 else-if → else 终止链，else-if 成为孤立项
+        let root = parser::parse(
+            r#"<div><div if={a}></div><div else></div><div else-if={b}></div></div>"#,
+        )
+        .unwrap();
+        let result = gen(&root);
+        assert!(result.is_err(), "expected error for else-if after else");
+        let err = result.unwrap_err();
+        assert!(
+            err.message.contains("`else-if` 指令必须紧跟在 `if` 或 `else-if` 之后"),
+            "expected else-if after else error, got: {}",
+            err.message
+        );
+    }
+
+    #[test]
+    fn else_if_chain_with_each_returns_error() {
+        // <div><div if={a} each={i in items}></div><div else></div></div>
+        // 链中含 each → 报错
+        let root = parser::parse(
+            r#"<div><div if={a} each={i in items}></div><div else></div></div>"#,
+        )
+        .unwrap();
+        let result = gen(&root);
+        assert!(result.is_err(), "expected error for if/else chain with each");
+        let err = result.unwrap_err();
+        assert!(
+            err.message.contains("不支持 `each`"),
+            "expected each rejection, got: {}",
+            err.message
         );
     }
 }

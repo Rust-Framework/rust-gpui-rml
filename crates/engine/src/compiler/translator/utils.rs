@@ -36,6 +36,7 @@ pub fn print_element(
     for d in &elem.directives {
         match d {
             Directive::If { expr, .. } => out.push_str(&format!(" if={{{}}}", expr)),
+            Directive::ElseIf { expr, .. } => out.push_str(&format!(" else-if={{{}}}", expr)),
             Directive::Each { clause, .. } => {
                 if let Some(idx) = &clause.index {
                     out.push_str(&format!(

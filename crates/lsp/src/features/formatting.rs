@@ -207,6 +207,11 @@ fn format_handler(h: &EventHandler, out: &mut String) {
             }
             out.push('}');
         }
+        EventHandler::ClosureField(name) => {
+            out.push_str("{self.");
+            out.push_str(name);
+            out.push('}');
+        }
     }
 }
 
@@ -215,6 +220,11 @@ fn format_directive(d: &Directive, out: &mut String) {
     match d {
         Directive::If { expr, .. } => {
             out.push_str("if={");
+            out.push_str(expr);
+            out.push('}');
+        }
+        Directive::ElseIf { expr, .. } => {
+            out.push_str("else-if={");
             out.push_str(expr);
             out.push('}');
         }

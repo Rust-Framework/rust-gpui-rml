@@ -41,6 +41,7 @@ pub fn signature_help(
         rust_rml_engine::parser::ast::EventHandler::Ident(name)
         | rust_rml_engine::parser::ast::EventHandler::MethodName(name) => name.as_str(),
         rust_rml_engine::parser::ast::EventHandler::WithArgs(name, _) => name.as_str(),
+        rust_rml_engine::parser::ast::EventHandler::ClosureField(name) => name.as_str(),
     };
 
     let rml_rs_uri = workspace.codebehind_uri(uri)?;

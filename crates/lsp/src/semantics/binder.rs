@@ -130,6 +130,10 @@ fn emit_directive_token(
             emit_keyword_token("if", directive_span, source, result);
             check_binding_expr_emit(expr, directive_span, source, meta, result);
         }
+        Directive::ElseIf { expr, .. } => {
+            emit_keyword_token("else-if", directive_span, source, result);
+            check_binding_expr_emit(expr, directive_span, source, meta, result);
+        }
         Directive::Show { expr, .. } => {
             emit_keyword_token("show", directive_span, source, result);
             check_binding_expr_emit(expr, directive_span, source, meta, result);
@@ -204,7 +208,7 @@ fn emit_directive_token(
 
     // 诊断（保持原有逻辑，Except Each 已提前 return）
     match directive {
-        Directive::If { expr, .. } | Directive::Show { expr, .. } | Directive::Key { expr, .. } => {
+        Directive::If { expr, .. } | Directive::ElseIf { expr, .. } | Directive::Show { expr, .. } | Directive::Key { expr, .. } => {
             check_binding_expr(expr, elem_span_from_directive(directive), meta, &mut result.diagnostics);
         }
         Directive::Html { expr, .. } => {
@@ -222,6 +226,7 @@ fn directive_span(d: &Directive) -> Span {
     match d {
         Directive::If { span, .. }
         | Directive::Else { span }
+        | Directive::ElseIf { span, .. }
         | Directive::Each { span, .. }
         | Directive::Key { span, .. }
         | Directive::Model { span, .. }
@@ -276,7 +281,7 @@ fn emit_event_handler_token(
     result: &mut BindingResult,
 ) {
     let cmd_name = match handler {
-        EventHandler::Ident(name) | EventHandler::MethodName(name) | EventHandler::WithArgs(name, _) => name,
+        EventHandler::Ident(name) | EventHandler::MethodName(name) | EventHandler::WithArgs(name, _) | EventHandler::ClosureField(name) => name,
     };
     if cmd_name.is_empty() {
         return;
@@ -385,6 +390,7 @@ fn check_event_handler(
         EventHandler::Ident(name) => name,
         EventHandler::MethodName(name) => name,
         EventHandler::WithArgs(name, _) => name,
+        EventHandler::ClosureField(name) => name,
     };
     if cmd_name.is_empty() {
         return;

@@ -206,6 +206,12 @@ impl Parser {
                         directives.push(Directive::If { expr, span: attr.span });
                     }
                 }
+                // else-if（kebab-case 规范化为 else_if）必须在 else 之前匹配
+                "else_if" => {
+                    if let AttrValue::Binding(expr) = attr.value {
+                        directives.push(Directive::ElseIf { expr, span: attr.span });
+                    }
+                }
                 "else" => directives.push(Directive::Else { span: attr.span }),
                 "each" => {
                     if let AttrValue::Binding(expr) = attr.value {
@@ -665,6 +671,21 @@ mod tests {
             Node::Element(e) => {
                 assert_eq!(e.directives.len(), 1);
                 assert!(matches!(&e.directives[0], Directive::Else { .. }));
+            }
+            other => panic!("expected Element, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_else_if_directive() {
+        let root = parse(r#"<div else-if={status == "done"}></div>"#).unwrap();
+        match root {
+            Node::Element(e) => {
+                assert_eq!(e.directives.len(), 1);
+                assert!(matches!(
+                    &e.directives[0],
+                    Directive::ElseIf { expr, .. } if expr == r#"status == "done""#
+                ));
             }
             other => panic!("expected Element, got {:?}", other),
         }

@@ -1,11 +1,11 @@
 <component>
     <CaseDocPage
         title={t("case.conditional.title")}
-        description="条件渲染案例演示 RML 的 if 指令。if=&#123;expr&#125; 在条件为真时渲染元素，if=&#123;!expr&#125; 在条件为假时渲染。支持多分支条件渲染。"
+        description="条件渲染案例演示 RML 的 if/else-if/else 指令。if={expr} 在条件为真时渲染元素，else-if={expr} 实现多分支条件链，else 提供默认分支。支持互斥条件渲染。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
-            <Card title="Tab 切换（多分支 if）">
+            <Card title="Tab 切换（if/else-if 链）">
                 <p>当前 Tab：{tab_label}</p>
                 <div display="flex" flex-direction="row" gap="16px">
                     <Button label="概览" on-click={on_tab_overview} />
@@ -16,10 +16,10 @@
                     <Card title="概览内容" if={tab_index == 0}>
                         <p>这是概览页面，展示项目基本信息。</p>
                     </Card>
-                    <Card title="详情内容" if={tab_index == 1}>
+                    <Card title="详情内容" else-if={tab_index == 1}>
                         <p>这是详情页面，展示项目的详细数据。</p>
                     </Card>
-                    <Card title="设置内容" if={tab_index == 2}>
+                    <Card title="设置内容" else-if={tab_index == 2}>
                         <p>这是设置页面，配置项目选项。</p>
                     </Card>
                 </div>

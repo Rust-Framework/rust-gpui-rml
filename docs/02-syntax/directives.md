@@ -1,6 +1,6 @@
 # 2.4 指令系统
 
-> **本节目标**：完整掌握 RML 的 10 个指令——`if`、`else`、`each`、`key`、`model`、`show`、`once`、`html`、`ref`、`slot`。这是 RML 区别于 HTML 的核心能力。
+> **本节目标**：完整掌握 RML 的 11 个指令——`if`、`else`、`else-if`、`each`、`key`、`model`、`show`、`once`、`html`、`ref`、`slot`。这是 RML 区别于 HTML 的核心能力。
 
 ## 2.4.1 指令总览
 
@@ -8,6 +8,7 @@
 | ------- | --------------- | ------------------------------------- |
 | `if`    | 条件渲染            | `<div if={is_visible}>内容</div>`       |
 | `else`  | 条件分支            | `<div else>备选内容</div>`                |
+| `else-if` | 链式条件分支        | `<div else-if={cond}>备选内容</div>`    |
 | `each`  | 列表渲染            | `<li each={item in items}>`           |
 | `key`   | 列表唯一标识（配合 each） | `<li key={item.id}>`                  |
 | `model` | 双向绑定            | `<input model={user_name}>`           |
@@ -34,21 +35,24 @@
 
 ### 多分支条件
 
-RML 不支持 `else if`，需要用嵌套 `if` 实现：
+`else-if` 实现链式多分支条件渲染，`else` 提供默认分支：
 
 ```html
 <div if={status == "loading"}>
     加载中...
 </div>
+<div else-if={status == "success"}>
+    加载成功：{data}
+</div>
+<div else-if={status == "error"}>
+    加载失败：{error}
+</div>
 <div else>
-    <div if={status == "success"}>
-        加载成功：{data}
-    </div>
-    <div else>
-        加载失败：{error}
-    </div>
+    未知状态
 </div>
 ```
+
+`else-if` 必须紧跟在 `if` 或 `else-if` 之后，`else` 必须是链的末尾。如果链没有 `else` 分支，条件都不匹配时渲染空元素。
 
 ### `if` 与 `each` 的组合
 
@@ -344,9 +348,9 @@ impl MyView {
 
 ## 2.4.11 小结
 
-RML 的 10 个指令是 HTML 之上的扩展能力：
+RML 的 11 个指令是 HTML 之上的扩展能力：
 
-- **条件**：`if`、`else`、`show`
+- **条件**：`if`、`else`、`else-if`、`show`
 - **循环**：`each`、`key`
 - **绑定**：`model`
 - **优化**：`once`

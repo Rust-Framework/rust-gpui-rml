@@ -83,7 +83,7 @@ fn validate_element(
             }
             // Phase B-1：允许 if/each/else/once/html/key/show 通过校验
             // Phase B-2 会补全 else 必须紧跟 if 的语义校验、each 子句校验等
-            Directive::If { .. } | Directive::Each { .. } | Directive::Else { .. } | Directive::Once { .. }
+            Directive::If { .. } | Directive::Each { .. } | Directive::Else { .. } | Directive::ElseIf { .. } | Directive::Once { .. }
             | Directive::Html { .. } | Directive::Key { .. } | Directive::Show { .. } => {}
         }
     }

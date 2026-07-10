@@ -174,19 +174,31 @@ pub mod builtin_engine {
         while i < elem.children.len() {
             let child = &elem.children[i];
 
-            // 4a. 检测独立 else（无前置 if 兄弟）：报错
+            // 4a. 检测独立的 else-if / else（未被链消费）：报错
             if let Node::Element(e) = child {
-                let has_else = e.directives.iter().any(|d| matches!(d, Directive::Else { .. }));
                 let has_if = e.directives.iter().any(|d| matches!(d, Directive::If { .. }));
-                if has_else && !has_if {
-                    return Err(CodegenError {
-                        message: "`else` 指令必须紧跟在 `if` 指令之后".to_string(),
-                        span: Some(elem.span),
-                    });
+                if !has_if {
+                    let has_else_if = e.directives.iter().any(|d| matches!(d, Directive::ElseIf { .. }));
+                    let has_else = e.directives.iter().any(|d| matches!(d, Directive::Else { .. }));
+                    if has_else_if {
+                        return Err(CodegenError {
+                            message: "`else-if` 指令必须紧跟在 `if` 或 `else-if` 之后".to_string(),
+                            span: Some(elem.span),
+                        });
+                    }
+                    if has_else {
+                        return Err(CodegenError {
+                            message: "`else` 指令必须紧跟在 `if` 或 `else-if` 之后".to_string(),
+                            span: Some(elem.span),
+                        });
+                    }
                 }
             }
 
-            // 4b. 检测 if + 紧邻 else 配对
+            // 4b. 检测 if + else-if/else 链式配对
+            //
+            // 从 if 元素开始向前扫描后续兄弟，收集连续的 else-if 和可选的 else，
+            // 生成 `if cond1 { elem1 } else if cond2 { elem2 } else { elem3 }` 表达式。
             let if_cond: Option<String> = if let Node::Element(e) = child {
                 e.directives.iter().find_map(|d| match d {
                     Directive::If { expr: c, .. } => Some(c.clone()),
@@ -197,24 +209,48 @@ pub mod builtin_engine {
             };
 
             if let Some(cond) = if_cond {
-                let next_idx = i + 1;
-                let next_has_else = next_idx < elem.children.len()
-                    && matches!(
-                        &elem.children[next_idx],
-                        Node::Element(e) if e.directives.iter().any(|d| matches!(d, Directive::Else { .. }))
-                    );
+                // 收集链：if + 0或多个 else-if + 可选 else
+                let mut chain_end = i + 1;
+                let mut else_if_conds: Vec<String> = Vec::new();
+                let mut else_idx: Option<usize> = None;
 
-                if next_has_else {
-                    let (if_e, else_e) = match (&elem.children[i], &elem.children[next_idx]) {
-                        (Node::Element(if_e), Node::Element(else_e)) => (if_e, else_e),
-                        _ => unreachable!("next_has_else 已保证 next_idx 是 Element"),
+                while chain_end < elem.children.len() {
+                    let next = &elem.children[chain_end];
+                    if let Node::Element(e) = next {
+                        let has_if = e.directives.iter().any(|d| matches!(d, Directive::If { .. }));
+                        if has_if {
+                            break;
+                        }
+                        if let Some(expr) = e.directives.iter().find_map(|d| match d {
+                            Directive::ElseIf { expr, .. } => Some(expr.clone()),
+                            _ => None,
+                        }) {
+                            else_if_conds.push(expr);
+                            chain_end += 1;
+                            continue;
+                        }
+                        if e.directives.iter().any(|d| matches!(d, Directive::Else { .. })) {
+                            else_idx = Some(chain_end);
+                            chain_end += 1;
+                        }
+                    }
+                    break;
+                }
+
+                let has_chain = !else_if_conds.is_empty() || else_idx.is_some();
+                if has_chain {
+                    // 生成链式条件表达式
+                    let mut parts: Vec<String> = Vec::new();
+
+                    // if 分支
+                    let if_e = match child {
+                        Node::Element(e) => e,
+                        _ => unreachable!("if_cond 已保证 child 是 Element"),
                     };
-
                     let mut if_clone = if_e.clone();
-                    if_clone.directives.retain(|d| !matches!(d, Directive::If { .. }));
-                    let mut else_clone = else_e.clone();
-                    else_clone.directives.retain(|d| !matches!(d, Directive::Else { .. }));
-
+                    if_clone.directives.retain(|d| {
+                        !matches!(d, Directive::If { .. } | Directive::ElseIf { .. } | Directive::Else { .. })
+                    });
                     let (if_code, if_is_iter) = gen_node_impl(
                         &Node::Element(if_clone),
                         ctx,
@@ -223,36 +259,91 @@ pub mod builtin_engine {
                         &child_loop_vars,
                         &child_parents,
                     )?;
-                    let (else_code, else_is_iter) = gen_node_impl(
-                        &Node::Element(else_clone),
-                        ctx,
-                        0,
-                        id_counter,
-                        &child_loop_vars,
-                        &child_parents,
-                    )?;
-
-                    if if_is_iter || else_is_iter {
+                    if if_is_iter {
                         return Err(CodegenError {
-                            message: "`if`/`else` 配对不支持 `each` 指令，请将列表渲染与条件渲染分离"
+                            message: "`if`/`else-if`/`else` 链不支持 `each` 指令，请将列表渲染与条件渲染分离"
                                 .to_string(),
                             span: Some(elem.span),
                         });
                     }
-
-                    let cond_code = gen_expr_code(&cond, &lv, &computed);
-                    let cond_code = cond_code
+                    let if_cond_code = gen_expr_code(&cond, &lv, &computed);
+                    let if_cond_code = if_cond_code
                         .strip_prefix('(')
                         .and_then(|s| s.strip_suffix(')'))
                         .map(|s| s.to_string())
-                        .unwrap_or(cond_code);
+                        .unwrap_or(if_cond_code);
+                    parts.push(format!("if {} {{ {}.into_any_element() }}", if_cond_code, if_code));
 
-                    let merged = format!(
-                        "if {} {{ {}.into_any_element() }} else {{ {}.into_any_element() }}",
-                        cond_code, if_code, else_code
-                    );
+                    // else-if 分支
+                    let mut next_idx = i + 1;
+                    for else_if_cond in &else_if_conds {
+                        let else_if_e = match &elem.children[next_idx] {
+                            Node::Element(e) => e,
+                            _ => unreachable!("else_if 已保证是 Element"),
+                        };
+                        let mut clone = else_if_e.clone();
+                        clone.directives.retain(|d| {
+                            !matches!(d, Directive::If { .. } | Directive::ElseIf { .. } | Directive::Else { .. })
+                        });
+                        let (code, is_iter) = gen_node_impl(
+                            &Node::Element(clone),
+                            ctx,
+                            0,
+                            id_counter,
+                            &child_loop_vars,
+                            &child_parents,
+                        )?;
+                        if is_iter {
+                            return Err(CodegenError {
+                                message: "`if`/`else-if`/`else` 链不支持 `each` 指令，请将列表渲染与条件渲染分离"
+                                    .to_string(),
+                                span: Some(elem.span),
+                            });
+                        }
+                        let cond_code = gen_expr_code(else_if_cond, &lv, &computed);
+                        let cond_code = cond_code
+                            .strip_prefix('(')
+                            .and_then(|s| s.strip_suffix(')'))
+                            .map(|s| s.to_string())
+                            .unwrap_or(cond_code);
+                        parts.push(format!(" else if {} {{ {}.into_any_element() }}", cond_code, code));
+                        next_idx += 1;
+                    }
+
+                    // else 分支
+                    if let Some(idx) = else_idx {
+                        let else_e = match &elem.children[idx] {
+                            Node::Element(e) => e,
+                            _ => unreachable!("else_idx 已保证是 Element"),
+                        };
+                        let mut clone = else_e.clone();
+                        clone.directives.retain(|d| {
+                            !matches!(d, Directive::If { .. } | Directive::ElseIf { .. } | Directive::Else { .. })
+                        });
+                        let (code, is_iter) = gen_node_impl(
+                            &Node::Element(clone),
+                            ctx,
+                            0,
+                            id_counter,
+                            &child_loop_vars,
+                            &child_parents,
+                        )?;
+                        if is_iter {
+                            return Err(CodegenError {
+                                message: "`if`/`else-if`/`else` 链不支持 `each` 指令，请将列表渲染与条件渲染分离"
+                                    .to_string(),
+                                span: Some(elem.span),
+                            });
+                        }
+                        parts.push(format!(" else {{ {}.into_any_element() }}", code));
+                    } else if !else_if_conds.is_empty() {
+                        // 有 else-if 但无 else：自动添加 Empty fallback
+                        parts.push(" else { gpui::Empty.into_any_element() }".to_string());
+                    }
+
+                    let merged = parts.join("");
                     code.push_str(&format!("\n            .child({})", merged));
-                    i = next_idx + 1;
+                    i = chain_end;
                     continue;
                 }
             }
@@ -358,6 +449,7 @@ pub mod builtin_engine {
         for d in &elem.directives {
             match d {
                 Directive::If { expr, .. } => out.push_str(&format!(" if={{{}}}", expr)),
+                Directive::ElseIf { expr, .. } => out.push_str(&format!(" else-if={{{}}}", expr)),
                 Directive::Each { clause, .. } => {
                     out.push_str(&format!(
                         " each={{{} in {}}}",

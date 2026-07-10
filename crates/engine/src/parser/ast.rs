@@ -87,6 +87,8 @@ pub enum Directive {
     If { expr: String, span: Span },
     /// `else` 分支
     Else { span: Span },
+    /// `else-if={cond}` 链式条件分支
+    ElseIf { expr: String, span: Span },
     /// `each={item in items}` 列表渲染
     Each { clause: EachClause, span: Span },
     /// `key={expr}` 列表项唯一标识
