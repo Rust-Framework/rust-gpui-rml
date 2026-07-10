@@ -198,7 +198,7 @@ fn control_button(
                 }
             })
         })
-        .child(Icon::new(icon).small())
+        .child(Icon::new(icon))
         .into_any_element()
 }
 
