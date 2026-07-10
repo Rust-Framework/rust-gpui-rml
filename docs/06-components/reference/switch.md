@@ -28,7 +28,16 @@
 
 ## 数据绑定
 
-单向 `selected={flag}`；无 `model` 双向绑定。
+- `checked={field}` — **自动双向绑定**（Stateless EventClick 机制，与 Checkbox 一致）
+  - 正向：`field` 值 → `.checked(bool)` 显示开关态
+  - 反向：点击 → `on_click(&bool)` 事件自动回写 `field`
+  - 无需声明 `on-click` 手动回写
+- `selected={expr}` — 单向显示开关态（不触发双向绑定）
+
+```html
+<!-- 自动双向绑定：点击即回写 notifications 字段 -->
+<Switch checked={notifications} />
+```
 
 ## 子节点 / 插槽
 
@@ -45,7 +54,7 @@
 
 ## 常见错误
 
-1. **只绑 `selected` 无 `on-click`** — 状态不会自动回写。
+1. **只绑 `selected` 无 `on-click`** — `selected` 是单向绑定；双向绑定请用 `checked={field}`。
 2. **与 Checkbox 混淆** — Switch 用于二元设置，Checkbox 用于多选/同意场景。
 
 ## 相关组件

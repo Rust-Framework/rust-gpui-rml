@@ -201,6 +201,25 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
     ("OtpInput", &["length", "groups", "masked", "default_value", "on_change", "on_focus", "on_blur"]),
     // VirtualList：direction 选择 v/h 构造器，item-sizes 作为函数参数，slot="render" 注入闭包
     ("VirtualList", &["direction", "item_sizes", "on_scroll"]),
+    // Resizable：direction 选择 h/v 构造器，size 为组高度/宽度，on_resize 为调整回调
+    ("Resizable", &["direction", "size", "on_resize"]),
+    // ResizablePanel：size 为初始尺寸，size_range 为范围限制，visible 为可见性
+    ("ResizablePanel", &["size", "size_range", "visible"]),
+    // Settings：4 层嵌套设置面板，sidebar_width/group_variant/default_selected_page 为静态属性
+    // size 走通用 Sizable
+    ("Settings", &["sidebar_width", "group_variant", "default_selected_page"]),
+    // SettingPage：title 为构造器参数，icon/description/default_open/resettable 为 setter
+    ("SettingPage", &["title", "icon", "description", "default_open", "resettable"]),
+    // SettingGroup：实现 Styled，title/description 为 setter
+    ("SettingGroup", &["title", "description"]),
+    // SettingItem：title 为构造器参数，field_type 选择 SettingField 构造器
+    // value={field} → getter 闭包，on-change={handler} → setter 闭包
+    // options 为 dropdown 选项绑定，default_value 为重置默认值
+    // min/max/step 为 number-input 配置，layout/keywords 为布局与搜索
+    ("SettingItem", &[
+        "title", "field_type", "value", "options", "on_change", "default_value",
+        "description", "layout", "keywords", "min", "max", "step",
+    ]),
 ];
 
 /// 查询组件的所有已注册属性（通用 + 专用）

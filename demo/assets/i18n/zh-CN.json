@@ -372,7 +372,10 @@
 
   "case.rating.title": "星级评分 Rating",
   "case.otp_input.title": "OTP 输入 OtpInput",
-  "case.virtual_list.title": "虚拟列表 VirtualList"
+  "case.virtual_list.title": "虚拟列表 VirtualList",
+  "case.resizable.title": "可调整面板 Resizable",
+
+  "case.settings.title": "设置面板 Settings"
 
 }
 

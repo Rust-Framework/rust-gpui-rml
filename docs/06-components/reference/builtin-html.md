@@ -15,8 +15,8 @@
 | `p` | `gpui::div()` | 否 | 段落 |
 | `h1`–`h6` | `gpui::div().text_size(px(...))` | 否 | 标题（32/28/24/20/18/16 px） |
 | `button` | `gpui::div()` | 否 | **非** gpui-component Button |
-| `input` | 见下文 | 是 | 支持 `model` 双向绑定 |
-| `textarea` | 见下文 | 否 | 支持 `model` 双向绑定 |
+| `input` | 见下文 | 是 | 支持 `value={field}` 自动双向绑定 |
+| `textarea` | 见下文 | 否 | 支持 `value={field}` 自动双向绑定 |
 | `ul` / `ol` | `gpui::div().flex().flex_col()` | 否 | 列表容器 |
 | `li` | `gpui::div()` | 否 | 列表项 |
 | `img` | `gpui::div()` | 是 | 占位（扩展轨未单独注册 Image 组件） |
@@ -24,21 +24,19 @@
 | `label` | `gpui::div()` | 否 | 标签占位 |
 | `br` | `gpui::div().hidden()` | 是 | 换行占位 |
 
-## input / textarea 与 model 指令
+## input / textarea 自动双向绑定
 
-小写 `<input>` / `<textarea>` 支持 `model={field}` 指令，codegen 生成 `rml_ui::Input::new(&self.__rml_get_or_init_input_state(...))` 并实现双向同步。
+小写 `<input>` / `<textarea>` 使用 `value={field}` 自动触发双向绑定，codegen 生成 `rml_ui::Input::new(&self.__rml_get_or_init_input_state(...))` 并实现双向同步。
 
 ```html
-<input model={name} placeholder={t("demo.name_placeholder")} />
-<textarea model={description} placeholder="描述" />
+<input value={name} placeholder={t("demo.name_placeholder")} />
+<textarea value={description} placeholder="描述" />
 ```
 
 要求：
 
 - ViewModel 字段为 `String`（或 codegen 支持的类型）
-- `model` **仅**用于 `input`/`textarea`，不能用于 `<Input>`
-
-验证器会拒绝在其他标签上使用 `model`。
+- 双向绑定通过 `value={field}` 自动推断，无需额外指令
 
 ## 通用属性与事件
 
@@ -70,8 +68,8 @@
     <div class="case-pane">
         <h2 class="case-title">{t("case.two_way.title")}</h2>
         <div class="form">
-            <input model={name} placeholder={t("demo.name_placeholder")} />
-            <input model={age} placeholder={t("demo.age_placeholder")} />
+            <input value={name} placeholder={t("demo.name_placeholder")} />
+            <input value={age} placeholder={t("demo.age_placeholder")} />
             <p class="profile">{profile_summary}</p>
         </div>
     </div>
@@ -82,7 +80,6 @@
 
 1. **用 `<button>` 期望按钮组件** — 应使用 `<Button>`。
 2. **用 `<input type="checkbox">` 期望 Checkbox** — 应使用 `<Checkbox>`。
-3. **`model` 用在 div 上** — 编译期验证失败。
 
 ## 相关组件
 

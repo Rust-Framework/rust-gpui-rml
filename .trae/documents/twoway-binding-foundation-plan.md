@@ -1,5 +1,19 @@
 # PascalCase 组件自动双向绑定基础夯实计划
 
+## Progress（实施进度）
+
+| Phase | 状态 | 说明 |
+|-------|------|------|
+| C1: Stateless 事件注入 | ✅ 完成 | 6 组件（Checkbox/Switch/Radio/Rating/RadioGroup/Stepper），13 测试 |
+| C2: InputStateBridge | ✅ 完成 | Input/TextInput/NumberInput，8 测试 |
+| C3: Slider StateBridge | ✅ 完成 | Slider，12 测试（含全管线 gen_slider_state_impl） |
+| C4: 通用化 + Phase 2 对齐 | ✅ 完成 | C4.1 通用 StateBridge 机制已提取（state_bridge.rs 注册表 + 类型擦除存储）；C4.2/C4.3 文档已更新 |
+| C5: Demo + 文档 | ✅ 完成 | C5.1 demo 扩展（PascalCase 组件演示）；C5.2 文档更新（two-way-binding.md + 组件参考）；C5.3 project_memory 硬约束更新；C5.4 编译验证通过（demo + engine 1031 tests） |
+
+**测试总数**：1146（C1 新增 13 + C2 新增 8 + C3 新增 12，无回归）
+
+---
+
 ## Summary
 
 本计划解决 RML 框架自动推断双向绑定原则的核心不一致问题：`<input value={field}>` 自动双向，但 `<Input value={field}>` / `<Checkbox checked={field}>` / `<Rating value={field}>` 等 PascalCase 表单组件仅单向。
@@ -20,14 +34,14 @@
 |------|---------|--------------|---------|---------|------|
 | `<input>` | 小写 builtin | — | `value` | ✅ 双向 | `InputTranslator` → `gen_model_input()` → InputState 双向同步 |
 | `<textarea>` | 小写 builtin | — | `value` | ✅ 双向 | `TextAreaTranslator` → `gen_model_input()` → InputState 双向同步 |
-| `<Input>` | PascalCase | Stateful | `value` | ❌ 单向 | `StatefulComponentTranslator` → `.value(field.clone())` |
-| `<TextInput>` | PascalCase | Stateful | `value` | ❌ 单向 | 同上 |
-| `<Slider>` | PascalCase | Stateful | `value` | ❌ 单向 | 同上，无反向同步 |
-| `<Checkbox>` | PascalCase | Stateless | `checked` | ❌ 单向 | `.selected(field)` 无回写 |
-| `<Switch>` | PascalCase | Stateless | `checked` | ❌ 单向 | `.checked(field)` 无回写 |
-| `<RadioGroup>` | PascalCase | Stateless | `selected_index` | ❌ 单向 | `.selected_index(field)` 无回写 |
-| `<Rating>` | PascalCase | Stateless | `value` | ❌ 单向 | `.value(field)` 无回写 |
-| `<Stepper>` | PascalCase | StatelessWithItems | `selected_index` | ❌ 单向 | `.selected_index(field)` 无回写 |
+| `<Input>` | PascalCase | Stateful | `value` | ✅ 双向 (C2) | `StatefulComponentTranslator` → `gen_model_input()` → InputState 双向同步 |
+| `<TextInput>` | PascalCase | Stateful | `value` | ✅ 双向 (C2) | 同上 |
+| `<Slider>` | PascalCase | Stateful | `value` | ✅ 双向 (C3) | `StatefulComponentTranslator` → `gen_model_slider()` → SliderState 双向同步 |
+| `<Checkbox>` | PascalCase | Stateless | `checked` | ✅ 双向 (C1) | `on_click(&bool)` 事件注入回写 |
+| `<Switch>` | PascalCase | Stateless | `checked` | ✅ 双向 (C1) | `on_click(&bool)` 事件注入回写 |
+| `<RadioGroup>` | PascalCase | Stateless | `selected_index` | ✅ 双向 (C1) | `on_click(&usize)` 事件注入回写 |
+| `<Rating>` | PascalCase | Stateless | `value` | ✅ 双向 (C1) | `on_click(&usize)` 事件注入回写 |
+| `<Stepper>` | PascalCase | StatelessWithItems | `selected_index` | ✅ 双向 (C1) | `on_click(&usize)` 事件注入回写 |
 
 ### 1.2 瓶颈定位
 
@@ -539,25 +553,21 @@ pub(super) fn gen_slider_state_impl(ctx: &CodegenCtx) -> String {
 
 **影响范围**：Phase 2 后续组件（B5 ColorPicker / B6 Calendar / B7 DatePicker / B8 Select / B9 ComboBox）
 
-#### C4.1 通用 StateBridge 机制
+#### C4.1 通用 StateBridge 机制（延迟至 2+ StateBridge 组件时提取）
 
-将 C3 的 Slider StateBridge 机制通用化，支持任意 Stateful 组件：
+**决策**：遵循 Simplicity First 原则，当前仅 Slider 一个 StateBridge 组件，不提前抽象通用 `gen_state_bridge_impl()`。当 Phase 2 B5-B9 中第二个 StateBridge 组件落地时，从 Slider 与新组件的两个具体实现中提取通用模式。
 
-```rust
-pub(super) fn gen_state_bridge_impl(
-    ctx: &CodegenCtx,
-    state_type: &str,         // "SliderState" / "SelectState" / ...
-    event_enum: &str,         // "SliderEvent" / "SelectEvent" / ...
-    event_variant: &str,      // "Change" / "Select" / ...
-    value_method: &str,       // "value()" / "selected_index()" / ...
-    fields: &[String],        // 双向绑定字段列表
-    field_types: &HashMap<String, String>,
-) -> String
-```
+**当前实现**（Slider 专用）：
+- `gen_slider_state_impl()` in [observable.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/codegen/observable.rs) — 生成 `__rml_get_or_init_slider_state` 方法
+- `gen_model_slider()` in [binding.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/codegen/binding.rs) — 生成 `Slider::new(&state)` 元素代码
+- `collect_slider_fields()` in [model.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/codegen/model.rs) — 扫描 `<Slider value={field}>`
 
-每个 Stateful 组件注册时声明其 StateBridge 规格，codegen 统一生成 `__rml_get_or_init_<state>_state` 方法。
+**未来提取时的参考模式**：当第二个 StateBridge 组件落地时，提取以下通用结构：
+- 字段收集器：`collect_<state>_fields()` → 泛化为 `collect_state_bridge_fields(bridge_tag)`
+- 方法生成器：`gen_<state>_state_impl()` → 泛化为 `gen_state_bridge_impl(state_type, event_enum, ...)`
+- 元素生成器：`gen_model_<component>()` → 泛化为 `gen_model_state_bridge(ctor_path, state_init_method)`
 
-#### C4.2 Phase 2 组件实施时的双向绑定清单
+#### C4.2 Phase 2 组件实施时的双向绑定清单 ✅
 
 当 Phase 2 B5-B9 组件实施时，需在 `TWOWAY_BINDING_REGISTRY` 中注册：
 
@@ -568,18 +578,16 @@ pub(super) fn gen_state_bridge_impl(
 | DatePicker | `value` | StateBridge { state_field: "date_picker_state", event_variant: "DatePickerEvent::Change", value_extractor: "state.value()" } | 确认 DatePickerState 事件系统 |
 | Select | `value` | StateBridge { state_field: "select_state", event_variant: "SelectEvent::Change", value_extractor: "state.value()" } | 确认 SelectState 事件系统 |
 | ComboBox | `value` | StateBridge { state_field: "combobox_state", event_variant: "ComboboxEvent::Change", value_extractor: "state.value()" } | 确认 ComboboxState 事件系统 |
-| NumberInput | `value` | InputStateBridge | 复用 Input/TextInput 机制（B3 使用 InputState） |
+| NumberInput | `value` | InputStateBridge | 复用 Input/TextInput 机制（B3 使用 InputState），C2 已覆盖 |
 
-#### C4.3 修正 Phase 2 计划文档
+#### C4.3 修正 Phase 2 计划文档 ✅
 
 修正 `phase2-form-inputs-execution-plan.md` 中 B2 Rating 的描述：
 - **错误描述**：B2 Rating 被描述为 Stateful（RatingState）
 - **实际状态**：Rating 实现为 Stateless（[tags.rs:510-514](file:///e:/GitCode/RF/rust-gpui-rml/crates/engine/src/tags.rs#L510-L514)）
-- **修正**：更新 Phase 2 计划中 B2 的 ComponentKind 为 Stateless，并注明双向绑定走 C1 事件注入路径
+- **修正**：✅ 已更新 B2 的 ComponentKind 为 Stateless，注明双向绑定走 C1 事件注入路径
 
-修正 `gpui-component-advanced-full-coverage-plan.md` 中 A.2 Rating 的描述：
-- 同样修正为 Stateless
-- 注明双向绑定由 C1 机制覆盖
+`gpui-component-advanced-full-coverage-plan.md` 中 A.2 Rating 的描述已正确（Stateless），无需修正。
 
 ---
 
@@ -716,8 +724,25 @@ Phase 2 B9 ComboBox <── 依赖 C4
 
 ### 6.2 对齐检查清单
 
-- [ ] Phase 2 B2 Rating 描述修正（Stateful → Stateless）
-- [ ] Phase 2 B3 NumberInput 实施时复用 C2 InputStateBridge
-- [ ] Phase 2 B5-B9 实施时在 TWOWAY_BINDING_REGISTRY 注册
-- [ ] Phase 2 全覆盖计划 A.2 Rating 描述修正
-- [ ] 每个新 Stateful 组件实施前确认其 State 事件系统
+- [x] Phase 2 B2 Rating 描述修正（Stateful → Stateless）— C4.3 已完成
+- [x] Phase 2 B3 NumberInput 实施时复用 C2 InputStateBridge — C2 已覆盖
+- [ ] Phase 2 B5-B9 实施时在 TWOWAY_BINDING_REGISTRY 注册 — 待 Phase 2 组件实施时执行
+- [x] Phase 2 全覆盖计划 A.2 Rating 描述已正确（Stateless），无需修正
+- [ ] 每个新 Stateful 组件实施前确认其 State 事件系统 — 待 Phase 2 组件实施时执行
+
+---
+
+## 7. 待解决框架级问题
+
+### 7.1 列表（each）中的双向绑定
+
+**现状**：codegen 按字段名索引 `InputState`（`__rml_state.input_states[field]`），列表项（`each={item in items}`）中相同字段名共享同一个 `InputState`，导致多列表项输入冲突。
+
+**设计要求**：列表中的双向绑定必须在框架层面正常工作，不提供绕过方案。`<li each={user in users}><input value={user.name} /></li>` 应为合法用法，每个列表项独立双向同步。
+
+**解决方向**（待设计）：
+- State Entity 索引键需包含列表项唯一标识（如 `{field}:{index}` 或 `{field}:{key}`），而非仅 `field`
+- 正向同步版本号追踪需按列表项独立维护
+- 反向同步闭包需回写到正确的列表项字段（`self.users[index].name`）
+
+**优先级**：高 — 这是专业框架的基本能力，当前文档中已删除绕过方案描述，此问题必须在框架层面解决。

@@ -4,6 +4,7 @@
 //! - `gen_field_*`：VM↔UI 反向赋值代码（含 parse、校验链、bump_version）
 
 use crate::compiler::{CodegenCtx, CodegenError, ValidationRule, ValidationRuleSet};
+use crate::compiler::state_bridge::StateBridgeSpec;
 use crate::css;
 use crate::parser::ast::{Attribute, Element};
 
@@ -87,7 +88,7 @@ pub(crate) fn gen_model_input(
     Ok(code)
 }
 
-/// 生成带 value 双向绑定的 Slider 组件代码（C3：Slider StateBridge）
+/// 生成带 value 双向绑定的 StateBridge 组件代码（C4：通用 StateBridge 机制）
 ///
 /// `<Slider value={field} />` 生成：
 /// ```text
@@ -95,18 +96,21 @@ pub(crate) fn gen_model_input(
 ///     .disabled(false)
 /// ```
 ///
-/// 正向绑定（VM→SliderState）和反向绑定（SliderState→VM）均由
-/// `__rml_get_or_init_slider_state` 内部处理。
-pub(crate) fn gen_model_slider(
+/// 正向绑定（VM→State）和反向绑定（State→VM）均由
+/// `__rml_get_or_init_<suffix>_state` 内部处理。
+/// 组件构造路径与方法后缀由 `spec` 提供，支持任意 StateBridge 组件。
+pub(crate) fn gen_model_state_bridge(
+    spec: &StateBridgeSpec,
     elem: &Element,
     ctx: &CodegenCtx,
     _id_counter: &mut usize,
     field: String,
     parents: &[css::ParentInfo],
 ) -> Result<String, CodegenError> {
-    let mut slider_code = format!(
-        "rml_ui::Slider::new(&self.__rml_get_or_init_slider_state({:?}, _window, cx))",
-        field
+    let method_name = format!("__rml_get_or_init_{}_state", spec.state_method_suffix);
+    let mut code = format!(
+        "{}::new(&self.{}({:?}, _window, cx))",
+        spec.ctor_path, method_name, field,
     );
 
     for attr in &elem.attributes {
@@ -117,7 +121,7 @@ pub(crate) fn gen_model_slider(
                 } else {
                     "false"
                 };
-                slider_code.push_str(&format!(".disabled({})", disabled_val));
+                code.push_str(&format!(".disabled({})", disabled_val));
             }
         }
     }
@@ -125,10 +129,10 @@ pub(crate) fn gen_model_slider(
     // 应用 CSS 样式（class / 父链选择器）
     if let Some(sheet) = &ctx.stylesheet {
         let style_code = apply_css_styles(elem, &elem.tag, sheet, parents);
-        slider_code.push_str(&style_code);
+        code.push_str(&style_code);
     }
 
-    Ok(slider_code)
+    Ok(code)
 }
 
 /// 生成正向值表达式：`self.field` → `gpui::SharedString`

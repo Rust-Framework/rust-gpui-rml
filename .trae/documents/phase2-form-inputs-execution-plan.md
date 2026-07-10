@@ -33,7 +33,7 @@
 ### 架构关键点（已验证）
 
 1. **StatelessWithItems 组件**（如 Stepper）：`StatelessComponentTranslator::matches` 仅匹配 `Stateless`/`StatelessNoId`（`stateless.rs:36-41`），因此 `StatelessWithItems` 组件**必须**有专属 translator
-2. **Stateful 组件**（Rating/NumberInput/OtpInput/ColorPicker/Calendar/DatePicker/Select/ComboBox）：`StatefulComponentTranslator` 泛化处理所有 `Stateful` 组件（`stateful.rs:32-41`），但排除 Tree/CodeEditor（有专属 translator）。若新组件无特殊构造需求，可复用泛化 translator；若有特殊需求（如 OtpInput 的 length 参数注入、NumberInput 的事件 downcast），需专属 translator
+2. **Stateful 组件**（NumberInput/OtpInput/ColorPicker/Calendar/DatePicker/Select/ComboBox）：`StatefulComponentTranslator` 泛化处理所有 `Stateful` 组件（`stateful.rs:32-41`），但排除 Tree/CodeEditor（有专属 translator）。若新组件无特殊构造需求，可复用泛化 translator；若有特殊需求（如 OtpInput 的 length 参数注入、NumberInput 的事件 downcast），需专属 translator。注：Rating 实际为 Stateless（[tags.rs:510-514](file:///e:/GitCode/RF/rust-gpui-rml/crates/engine/src/tags.rs#L510-L514)），不走 Stateful 路径
 3. **Codegen 路由**：translator 注册顺序决定优先级——专属 translator 的 `matches()` 优先于泛化 `StatefulComponentTranslator`/`StatelessComponentTranslator`
 
 ---
@@ -131,28 +131,29 @@
 
 ---
 
-### B2. Rating（Stateful, RatingState）— 验证 Stateful + EventEmitter
+### B2. Rating（Stateless）— 验证 Stateless + on_click &usize 双向绑定
 
-**gpui-component 来源**：`gpui_component::rating::{Rating, RatingState, RatingEvent}`
+**gpui-component 来源**：`gpui_component::rating::{Rating, RatingEvent}`
+
+> **修正说明**：原计划描述 Rating 为 Stateful（RatingState），实际实现为 Stateless（[tags.rs:510-514](file:///e:/GitCode/RF/rust-gpui-rml/crates/engine/src/tags.rs#L510-L514)）。Rating 无 State Entity，通过 `on_click(&usize)` 事件回写。双向绑定由 Phase C1 事件注入机制覆盖。
 
 | 项 | 内容 |
 |----|------|
-| 构造 | `RatingState::new()` + `Rating::new(&Entity<RatingState>)` |
-| ComponentKind | `Stateful { state_field: "rating_state", state_ctor: "\|_w, _c\| RatingState::new()" }` |
-| 属性 | `value`（bind）、`max`（usize）、`allow_half`（bool）、`disabled`（bool） |
-| 事件 | `RatingEvent`（通过 `cx.subscribe` + `on_change` 回调） |
-| 专属 translator | **否**（标准 Stateful，复用 `StatefulComponentTranslator`）——除非 RatingEvent 需特殊处理 |
+| 构造 | `Rating::new(("rml_el", id))` |
+| ComponentKind | `Stateless` |
+| 属性 | `value`（bind，双向）、`max`（usize）、`allow_half`（bool）、`disabled`（bool） |
+| 事件 | `on_click(&usize)` — 双向绑定通过 C1 EventClick { payload_type: Usize } 注入 |
+| 专属 translator | **否**（标准 Stateless，复用 `StatelessComponentTranslator`） |
 | container | false |
+| 双向绑定 | ✅ Phase C1 已覆盖：`<Rating value={score} />` 自动双向 |
 
 **文件清单**：
-1. 创建 `crates/ui/src/components/rating.rs`：`pub use gpui_component::rating::{Rating, RatingState, RatingEvent};`
+1. 创建 `crates/ui/src/components/rating.rs`：`pub use gpui_component::rating::{Rating, RatingEvent};`
 2. 修改 `crates/ui/src/components/mod.rs`
-3. 修改 `crates/engine/src/tags.rs`：添加 `"Rating"` → `Stateful`
-4. 修改 `crates/engine/src/compiler/props_registry.rs`：添加 `("Rating", &["value", "max", "allow_half", "on_change"])`
+3. 修改 `crates/engine/src/tags.rs`：添加 `"Rating"` → `Stateless`（已实现）
+4. 修改 `crates/engine/src/compiler/props_registry.rs`：添加 `("Rating", &["value", "max", "allow_half", "disabled"])`
 5. 修改 `crates/engine/src/compiler/setters.rs`（如需）：添加 Rating 专属 setter（`max`/`allow_half`）
 6. 创建 `demo/src/cases/rating_case.rml` + `.rml.rs` + 注册 + i18n
-
-**关键验证点**：RatingState 是否实现 EventEmitter<RatingEvent>？若是，codegen 需生成 `cx.subscribe` 订阅（参考 Input 的 on_change 模式）。实施时需读 `rating.rs` 源码确认。
 
 ---
 

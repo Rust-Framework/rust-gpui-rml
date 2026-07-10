@@ -14,6 +14,8 @@ pub mod otp_input;
 pub mod pagination;
 pub mod radio;
 pub mod rating;
+pub mod resizable;
+pub mod settings;
 pub mod skeleton;
 pub mod spinner;
 pub mod status_bar;
@@ -51,7 +53,16 @@ pub use otp_input::{OtpInput, OtpState};
 pub use pagination::Pagination;
 pub use radio::{Radio, RadioGroup};
 pub use rating::Rating;
+pub use resizable::{
+    ResizablePanel, ResizablePanelEvent, ResizablePanelGroup, ResizableState, h_resizable,
+    resizable_panel, v_resizable,
+};
+pub use settings::{
+    AnySettingField, GroupBoxVariant, NumberFieldOptions, RenderOptions, SelectIndex,
+    SettingField, SettingFieldElement, SettingFieldType, SettingGroup, SettingItem, SettingPage,
+    Settings,
+};
 pub use skeleton::Skeleton;
 pub use spinner::Spinner;
 pub use stepper::{Stepper, StepperItem};
-pub use virtual_list::{VirtualList, VirtualListScrollHandle};
+pub use virtual_list::{VirtualList, VirtualListScrollHandle, h_virtual_list, v_virtual_list};

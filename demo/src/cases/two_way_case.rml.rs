@@ -26,6 +26,18 @@ pub struct TwoWayCase {
     pub input_event_count: u32,
     /// B-3 demo：onchange 触发次数（值提交时 +1）。
     pub change_event_count: u32,
+    /// C5 demo：PascalCase Checkbox 自动双向绑定（Stateless EventClick）。
+    /// `checked={agree}` 自动双向，无需 on-click 手动回写。
+    pub agree: bool,
+    /// C5 demo：PascalCase Switch 自动双向绑定（Stateless EventClick）。
+    pub notifications: bool,
+    /// C5 demo：PascalCase Rating 自动双向绑定（Stateless EventClick，&usize 载荷）。
+    pub score: usize,
+    /// C5 demo：PascalCase Slider 自动双向绑定（Stateful StateBridge）。
+    /// 正向 VM→SliderState，反向 SliderEvent::Change→VM。
+    pub volume: f32,
+    /// C5 demo：PascalCase Input 自动双向绑定（Stateful InputStateBridge）。
+    pub username: String,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
     pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
@@ -49,6 +61,8 @@ impl ILifecycle for TwoWayCase {
             ("placeholder", "字符串", "占位提示"),
             ("#[computed]", "方法", "依赖字段自动重算"),
             ("converter (|)", "IConverter", "value={price | Currency} 双向转换"),
+            ("checked={field}", "Checkbox/Switch", "Stateless EventClick 自动双向"),
+            ("value={field}", "Rating/Slider/Input", "PascalCase 自动双向绑定"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;
@@ -69,6 +83,15 @@ impl TwoWayCase {
     #[computed]
     pub fn price_raw(&self) -> String {
         format!("VM price 字段值：{}", self.price)
+    }
+
+    /// C5 demo：汇总 PascalCase 组件双向绑定的字段状态。
+    #[computed]
+    pub fn pascal_summary(&self) -> String {
+        format!(
+            "agree={} | notifications={} | score={} | volume={:.1} | username=\"{}\"",
+            self.agree, self.notifications, self.score, self.volume, self.username
+        )
     }
 
     #[computed]

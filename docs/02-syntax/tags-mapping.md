@@ -104,16 +104,16 @@
 
 ```html
 <!-- 文本输入 -->
-<input type="text" model={user_name} placeholder="请输入用户名" />
+<input type="text" value={user_name} placeholder="请输入用户名" />
 
 <!-- 密码输入 -->
-<input type="password" model={password} placeholder="密码" />
+<input type="password" value={password} placeholder="密码" />
 
 <!-- 复选框 -->
 <input type="checkbox" checked={remember_me} onchange={toggle_remember} />
 
 <!-- 数字输入 -->
-<input type="number" model={age} min="0" max="150" />
+<input type="number" value={age} min="0" max="150" />
 ```
 
 **支持的 type**：
@@ -132,7 +132,7 @@
 对应 `gpui_component::TextArea`。
 
 ```html
-<textarea model={content} placeholder="请输入内容..." rows="5"></textarea>
+<textarea value={content} placeholder="请输入内容..." rows="5"></textarea>
 ```
 
 ## 2.2.5 列表类标签

@@ -1,0 +1,65 @@
+<component>
+    <CaseDocPage
+        title={t("case.resizable.title")}
+        description="Resizable 是可调整面板组组件，标签为 PascalCase Resizable 或 kebab-case resizable。构造器为函数 h_resizable(id)/v_resizable(id)（非 ResizablePanelGroup::new），由 ResizableTranslator 特化处理。direction 属性选择 h/v 构造器。子节点 resizable-panel 实现 Styled + ParentElement，支持 CSS 样式和子节点。非 panel 子节点通过 From&lt;T: Into&lt;AnyElement&gt;&gt; for ResizablePanel 自动包裹。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <Card title="水平可调整面板（拖拽分隔条调整宽度）">
+                <p>三个面板，前两个设置初始宽度，最后一个自适应：</p>
+                <resizable direction="horizontal" height="200px">
+                    <resizable-panel size="200px" style="background: #f5f5f5; padding: 12px;">
+                        <p font-bold="">面板 1</p>
+                        <p>初始宽度 200px，可拖拽右侧分隔条调整</p>
+                    </resizable-panel>
+                    <resizable-panel size="300px" style="background: #fafafa; padding: 12px;">
+                        <p font-bold="">面板 2</p>
+                        <p>初始宽度 300px</p>
+                    </resizable-panel>
+                    <resizable-panel style="background: #f0f0f0; padding: 12px;">
+                        <p font-bold="">面板 3</p>
+                        <p>自适应宽度（flex_grow: 1）</p>
+                    </resizable-panel>
+                </resizable>
+            </Card>
+
+            <Card title="垂直可调整面板（拖拽分隔条调整高度）">
+                <p>使用 direction="vertical" 切换 v_resizable 构造器：</p>
+                <resizable direction="vertical" height="300px">
+                    <resizable-panel size="100px" style="background: #e8f4f8; padding: 12px;">
+                        <p font-bold="">顶部面板</p>
+                        <p>初始高度 100px</p>
+                    </resizable-panel>
+                    <resizable-panel style="background: #f0f8e8; padding: 12px;">
+                        <p font-bold="">中间面板</p>
+                        <p>自适应高度</p>
+                    </resizable-panel>
+                    <resizable-panel size="80px" style="background: #f8e8f0; padding: 12px;">
+                        <p font-bold="">底部面板</p>
+                        <p>初始高度 80px</p>
+                    </resizable-panel>
+                </resizable>
+            </Card>
+
+            <Card title="非 Panel 子节点自动包裹">
+                <p>直接放置 div 等元素，通过 From impl 自动包裹为 ResizablePanel：</p>
+                <resizable direction="horizontal" height="120px">
+                    <div style="background: #e3f2fd; padding: 12px; flex: 1;">
+                        <p font-bold="">自动包裹 1</p>
+                        <p>div 直接作为子节点</p>
+                    </div>
+                    <div style="background: #fce4ec; padding: 12px; flex: 1;">
+                        <p font-bold="">自动包裹 2</p>
+                        <p>div 直接作为子节点</p>
+                    </div>
+                </resizable>
+            </Card>
+        </template>
+
+        <template slot="api">
+            <h3>Resizable</h3>
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+            <p>注：direction 为静态属性（选择 h/v 构造器），size 支持静态和绑定两种形式（如 size="400px" 或 size=&#123;height&#125;）。ResizablePanelGroup 不实现 Styled trait，CSS 样式仅作用于 resizable-panel 子节点。resizable-panel 实现 Styled + ParentElement，支持 size/size_range/visible 属性及所有样式属性。</p>
+        </template>
+    </CaseDocPage>
+</component>

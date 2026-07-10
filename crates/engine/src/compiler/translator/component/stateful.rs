@@ -11,11 +11,12 @@
 
 use super::super::{ComponentCategory, IRmlTranslator, PrintError, PrinterCtx, TranslatorMetadata};
 use crate::compiler::codegen::attribute::append_css_class_styles;
-use crate::compiler::codegen::binding::{gen_model_input, gen_model_slider};
+use crate::compiler::codegen::binding::{gen_model_input, gen_model_state_bridge};
 use crate::compiler::codegen::extract_field_converter;
 use crate::compiler::setters::{
     component_bind_setter, component_event_setter, component_static_setter,
 };
+use crate::compiler::state_bridge::lookup_state_bridge_for_tag;
 use crate::compiler::expr;
 use crate::compiler::{CodegenCtx, CodegenError};
 use crate::css::ParentInfo;
@@ -70,18 +71,19 @@ impl IRmlTranslator for StatefulComponentTranslator {
             }
         }
 
-        // C3: Slider StateBridge — Slider + value={field} → gen_model_slider
-        // 正向同步（VM 字段 → SliderState.set_value）+ 反向同步（SliderEvent::Change → VM 字段）
-        if canonical == "Slider" {
+        // C4: 通用 StateBridge — 任意 StateBridge 组件 + bind_property={field} → gen_model_state_bridge
+        // 正向同步（VM 字段 → State.set_value）+ 反向同步（StateEvent → VM 字段）
+        // 由 STATE_BRIDGE_REGISTRY 驱动，新增组件只需在 state_bridge.rs 注册
+        if let Some(spec) = lookup_state_bridge_for_tag(canonical.as_str()) {
             if let Some(expr) = elem.attributes.iter().find_map(|attr| {
                 if let Attribute::Bind { name, expr, .. } = attr {
-                    (name == "value").then(|| expr.clone())
+                    (name == spec.bind_property).then(|| expr.clone())
                 } else {
                     None
                 }
             }) {
                 let (field, _) = extract_field_converter(&expr);
-                let code = gen_model_slider(elem, ctx, _id_counter, field, parents)?;
+                let code = gen_model_state_bridge(spec, elem, ctx, _id_counter, field, parents)?;
                 return Ok((code, false));
             }
         }

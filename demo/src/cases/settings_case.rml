@@ -1,0 +1,93 @@
+<component>
+    <CaseDocPage
+        title={t("case.settings.title")}
+        description="Settings 是多层嵌套设置面板组件，标签为 PascalCase Settings 或 kebab-case settings。层级结构为 Settings &gt; SettingPage &gt; SettingGroup &gt; SettingItem。Settings 不实现 Styled，仅 RenderOnce。SettingGroup 实现 Styled，支持 CSS 样式。SettingItem 通过 field-type 属性选择 SettingField 构造器（switch/checkbox/input/dropdown/number-input），value 绑定提供 getter 闭包，on-change 事件提供 setter 闭包，闭包使用 cx.weak_entity() 模式访问 ViewModel。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <Card title="设置面板（多页面、多字段类型）">
+                <p>包含两个页面：通用设置和编辑器设置，涵盖 switch/checkbox/input/dropdown/number-input 五种字段类型：</p>
+                <settings id="settings-demo" sidebar-width="240px">
+                    <setting-page title="通用" icon="Settings" description="应用基础配置">
+                        <setting-group title="外观">
+                            <setting-item
+                                title="暗色主题"
+                                description="切换暗色模式"
+                                field-type="switch"
+                                value={is_dark}
+                                on-change={on_dark_change}
+                                default-value="false" />
+                            <setting-item
+                                title="界面语言"
+                                description="选择显示语言"
+                                field-type="dropdown"
+                                value={language}
+                                options={language_options}
+                                on-change={on_language_change}
+                                default-value="zh-CN" />
+                        </setting-group>
+                        <setting-group title="通知">
+                            <setting-item
+                                title="启用通知"
+                                description="允许推送通知消息"
+                                field-type="checkbox"
+                                value={enable_notifications}
+                                on-change={on_notifications_change} />
+                            <setting-item
+                                title="通知邮箱"
+                                description="接收通知的邮箱地址"
+                                field-type="input"
+                                value={notify_email}
+                                on-change={on_email_change} />
+                        </setting-group>
+                    </setting-page>
+
+                    <setting-page title="编辑器" icon="File" description="代码编辑器配置">
+                        <setting-group title="字体">
+                            <setting-item
+                                title="字体大小"
+                                description="编辑器字体大小（px）"
+                                field-type="number-input"
+                                min="8"
+                                max="32"
+                                step="1"
+                                value={font_size}
+                                on-change={on_font_size_change}
+                                default-value="14" />
+                        </setting-group>
+                        <setting-group title="行为">
+                            <setting-item
+                                title="自动保存"
+                                description="失去焦点时自动保存文件"
+                                field-type="switch"
+                                value={auto_save}
+                                on-change={on_auto_save_change} />
+                            <setting-item
+                                title="用户名"
+                                description="代码作者标识"
+                                field-type="input"
+                                value={username}
+                                on-change={on_username_change} />
+                        </setting-group>
+                    </setting-page>
+                </settings>
+            </Card>
+
+            <Card title="当前设置值">
+                <p>暗色主题: &#123;is_dark&#125;</p>
+                <p>通知: &#123;enable_notifications&#125;</p>
+                <p>语言: &#123;language&#125;</p>
+                <p>邮箱: &#123;notify_email&#125;</p>
+                <p>字体大小: &#123;font_size&#125;</p>
+                <p>自动保存: &#123;auto_save&#125;</p>
+                <p>用户名: &#123;username&#125;</p>
+            </Card>
+        </template>
+
+        <template slot="api">
+            <h3>Settings</h3>
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+            <p>注：Settings 不实现 Styled trait，CSS 样式不作用于 settings 标签。sidebar-width 为侧边栏宽度（px），group-variant 为分组框样式（normal/fill/outline），default-selected-page 为默认选中页面索引。SettingGroup 实现 Styled，支持 CSS 样式。SettingItem 的 field-type 决定字段类型，value 绑定提供 getter（读取 ViewModel 字段），on-change 事件提供 setter（调用 ViewModel 方法），闭包使用 cx.weak_entity() 模式。</p>
+        </template>
+    </CaseDocPage>
+</component>

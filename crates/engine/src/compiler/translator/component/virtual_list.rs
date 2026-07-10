@@ -125,7 +125,7 @@ impl IRmlTranslator for VirtualListTranslator {
         );
 
         let mut code = format!(
-            "{}(cx.entity(), (\"rml_vlist\", {}usize), ({}).clone(), {})",
+            "{}(cx.entity(), (\"rml_vlist\", {}usize), std::rc::Rc::new({}.clone()), {})",
             ctor_fn, id_val, item_sizes_rust, closure
         );
 

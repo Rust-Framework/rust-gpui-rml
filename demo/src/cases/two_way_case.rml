@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.two_way.title")}
-        description="双向绑定案例演示 RML 的 value 自动双向绑定。通过 value=&#123;field&#125; 将 input 与 pub 字段绑定，输入变化自动回写字段，字段变化自动触发 computed 重算与重渲。核心概念：input value=&#123;field&#125; 实现双向绑定；#[validate(range(min,max))] 标注数值验证规则；验证失败时框架自动显示红框 + tooltip。"
+        description="双向绑定案例演示 RML 的 value 自动双向绑定。通过 value=&#123;field&#125; 将 input 与 pub 字段绑定，输入变化自动回写字段，字段变化自动触发 computed 重算与重渲。核心概念：input value=&#123;field&#125; 实现双向绑定；PascalCase 组件（Checkbox/Switch/Rating/Slider/Input）同样自动双向；#[validate(range(min,max))] 标注数值验证规则；验证失败时框架自动显示红框 + tooltip。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
@@ -34,6 +34,43 @@
                     <h3>输入事件（B-3）</h3>
                     <p><code>oninput</code> 逐键触发，<code>onchange</code> 失焦/回车触发。在姓名框输入观察 oninput 计数，在年龄框失焦观察 onchange 计数：</p>
                     <p>oninput 触发次数：{input_event_count} | onchange 触发次数：{change_event_count}</p>
+                </div>
+            </Card>
+
+            <Card title="PascalCase 组件自动双向绑定">
+                <div class="demo-section">
+                    <h3>Stateless EventClick（Checkbox / Switch）</h3>
+                    <p><code>checked=&#123;field&#125;</code> 自动双向——点击即回写 bool 字段，无需 on-click 手动处理：</p>
+                    <div display="flex" flex-direction="column" gap="8px">
+                        <Checkbox label="同意条款" checked={agree} />
+                        <Switch checked={notifications} />
+                    </div>
+                    <p>agree={agree} | notifications={notifications}</p>
+                </div>
+
+                <div class="demo-section">
+                    <h3>Stateless EventClick（Rating）</h3>
+                    <p><code>value=&#123;field&#125;</code> 自动双向——点击星标回写 usize 字段：</p>
+                    <Rating value={score} max="5" />
+                    <p>当前评分：{score}</p>
+                </div>
+
+                <div class="demo-section">
+                    <h3>Stateful StateBridge（Slider）</h3>
+                    <p><code>value=&#123;field&#125;</code> 自动双向——拖动滑块回写 f32 字段，字段变更同步滑块：</p>
+                    <Slider value={volume} />
+                    <p>当前音量：{volume}</p>
+                </div>
+
+                <div class="demo-section">
+                    <h3>Stateful InputStateBridge（Input）</h3>
+                    <p><code>value=&#123;field&#125;</code> 自动双向——PascalCase Input 复用 InputState 双向同步：</p>
+                    <Input value={username} placeholder="用户名" />
+                    <p>当前用户名：{username}</p>
+                </div>
+
+                <div class="demo-section">
+                    <p>{pascal_summary}</p>
                 </div>
             </Card>
         </template>

@@ -148,8 +148,11 @@ pub struct CodegenCtx {
     /// RML 中声明 `value={field}` 的字段名（双向绑定 input/textarea/Input/TextInput 专用）
     pub model_fields: Vec<String>,
 
-    /// RML 中声明 `<Slider value={field}>` 的字段名（C3：Slider StateBridge 双向绑定）
-    pub slider_fields: Vec<String>,
+    /// StateBridge 双向绑定字段，按 bridge_key 分组（C4：通用 StateBridge 机制）
+    ///
+    /// key 为 bridge_key（如 "slider"），value 为字段名列表。
+    /// 由 `collect_state_bridge_fields()` 填充，供 `gen_state_bridge_impl()` 使用。
+    pub state_bridge_fields: HashMap<&'static str, Vec<String>>,
     /// `value={field | Converter}` 的 converter 映射（Phase B-2：双向绑定 convert_back）
     ///
     /// key 为字段名，value 为 converter 类型名（如 "Currency"）。
@@ -299,7 +302,7 @@ pub fn compile(source: &str, ctx: &CodegenCtx) -> Result<CompileOutput, CompileE
     ctx.model_fields = super::codegen::collect_model_fields(&root);
     ctx.model_converters = super::codegen::collect_model_converters(&root);
     ctx.model_input_handlers = super::codegen::collect_model_input_handlers(&root);
-    ctx.slider_fields = super::codegen::collect_slider_fields(&root);
+    ctx.state_bridge_fields = super::state_bridge::collect_state_bridge_fields(&root);
     let code = super::codegen::codegen(&root, &ctx)?;
     Ok(CompileOutput {
         code,

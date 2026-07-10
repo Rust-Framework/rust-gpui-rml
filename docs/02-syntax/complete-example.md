@@ -27,7 +27,7 @@
             class="todo-input"
             type="text"
             placeholder="输入新任务..."
-            model={new_todo_text}
+            value={new_todo_text}
             onkeydown="on_enter_key"
         />
         <button class="btn-add" on-click={add_todo}>添加</button>
@@ -91,7 +91,7 @@ type="checkbox"               <!-- 复选框类型 -->
 ### 数据绑定属性
 
 ```html
-model={new_todo_text}         <!-- 双向绑定到 new_todo_text 字段 -->
+value={new_todo_text}         <!-- 双向绑定到 new_todo_text 字段 -->
 checked={todo.done}           <!-- 单向绑定到 todo.done -->
 class={todo.done ? "done" : ""}  <!-- 动态 class -->
 ```
@@ -211,7 +211,7 @@ impl TodoViewModel {
 ```
 1. 用户在输入框输入"买牛奶"
    ↓
-2. model={new_todo_text} 双向绑定
+2. value={new_todo_text} 双向绑定
    ↓
 3. ViewModel.new_todo_text = "买牛奶"
    ↓
@@ -272,10 +272,10 @@ pub fn completed_count(&self) -> usize {
 ### 4. 双向绑定与命令的协作
 
 ```html
-<input model={new_todo_text} onkeydown="on_enter_key" />
+<input value={new_todo_text} onkeydown="on_enter_key" />
 ```
 
-`model` 处理输入值的同步，`onkeydown` 处理特殊按键（回车提交）。两者协作完成"输入 + 回车提交"的交互模式。
+`value={field}` 自动双向绑定处理输入值的同步，`onkeydown` 处理特殊按键（回车提交）。两者协作完成"输入 + 回车提交"的交互模式。
 
 ## 2.6.7 扩展练习
 

@@ -1,7 +1,7 @@
-//! PascalCase Slider StateBridge 双向绑定测试（C3）
+//! PascalCase Slider StateBridge 双向绑定测试（C3/C4）
 //!
-//! 验证 `<Slider value={field}>` 自动路由到 gen_model_slider，
-//! 以及 gen_slider_state_impl 生成正向/反向同步代码。
+//! 验证 `<Slider value={field}>` 自动路由到 gen_model_state_bridge，
+//! 以及 gen_state_bridge_impl 生成正向/反向同步代码。
 
 use rust_rml_engine::compiler::{compile, CodegenCtx};
 use rust_rml_engine::compiler::translator::TranslatorRegistry;
@@ -55,7 +55,7 @@ fn gen(elem: &Element) -> String {
     code
 }
 
-// ── 元素级：gen_model_slider 路由 ──────────────────────────────
+// ── 元素级：gen_model_state_bridge 路由 ──────────────────────────────
 
 #[test]
 fn slider_value_twoway() {
@@ -149,7 +149,7 @@ fn slider_without_value_no_twoway() {
     );
 }
 
-// ── 全管线：gen_slider_state_impl 生成 ─────────────────────────
+// ── 全管线：gen_state_bridge_impl 生成 ─────────────────────────
 
 fn compile_slider(source: &str, field_types: HashMap<String, String>) -> String {
     let codegen_ctx = CodegenCtx {
@@ -266,8 +266,13 @@ fn slider_state_impl_version_tracking() {
         HashMap::new(),
     );
     assert!(
-        code.contains("slider_state_versions"),
-        "版本追踪字段: {}",
+        code.contains("set_state_bridge_version"),
+        "版本追踪（通用 StateBridge 版本设置）: {}",
+        code
+    );
+    assert!(
+        code.contains("get_state_bridge_version"),
+        "版本读取（通用 StateBridge 版本获取）: {}",
         code
     );
     assert!(

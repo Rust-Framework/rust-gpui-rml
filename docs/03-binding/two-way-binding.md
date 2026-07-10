@@ -1,6 +1,6 @@
 # 3.3 双向绑定
 
-> **本节目标**：完整掌握 `model` 指令的双向绑定机制——基于 `Entity<InputState>` 的数据流、循环防护、类型转换、适用字段类型。
+> **本节目标**：完整掌握 `value={field}` 自动双向绑定机制——基于 `Entity<InputState>` / StateBridge 的数据流、循环防护、类型转换、适用字段类型与组件范围。
 
 ## 3.3.1 双向绑定的定义
 
@@ -11,16 +11,28 @@
 
 ```html
 <!-- 双向绑定：ViewModel ↔ View -->
-<input model={user_name} />
+<input value={user_name} />
 ```
+
+### 自动推断原则
+
+RML 遵循**自动推断双向绑定**原则：双向能力是属性的固有语义，框架自动识别。当 `value={field}` / `checked={field}` / `selected_index={field}` 绑定到可变字段时，框架自动启用双向同步。
+
+### 三类双向绑定机制
+
+| 机制 | 适用组件 | 绑定属性 | 反向同步方式 |
+|------|---------|---------|-------------|
+| **Stateless EventClick** | Checkbox / Switch / Radio / Rating / RadioGroup / Stepper | `checked` / `value` / `selected_index` | `on_click(&bool/&usize)` 事件注入回写 |
+| **Stateful InputStateBridge** | `<input>` / `<textarea>` / `<Input>` / `<TextInput>` / `<NumberInput>` | `value` | `InputState` entity + `InputEvent::Change` 订阅 |
+| **Stateful StateBridge** | `<Slider>` | `value` | State entity + 事件订阅（注册表驱动） |
 
 ### 实际实现机制
 
-RML 的双向绑定基于 gpui-component 的 `InputState` entity 与 `InputEvent` 订阅模式：
+RML 的双向绑定基于 gpui-component 的 `InputState` / `SliderState` entity 与事件订阅模式：
 
-- 每个 `<input model={field}>` 在首次 render 时**惰性创建**一个 `Entity<InputState>`
-- **正向同步**（VM→UI）：render 时对比字段版本号，若变化则调用 `InputState::set_value`
-- **反向同步**（UI→VM）：`cx.subscribe` 订阅 `InputEvent::Change`，闭包内回写字段 + `bump_version` + `cx.notify()`
+- 每个 `value={field}` 绑定在首次 render 时**惰性创建**对应的 State Entity
+- **正向同步**（VM→UI）：render 时对比字段版本号，若变化则调用 `State::set_value`
+- **反向同步**（UI→VM）：`cx.subscribe` 订阅事件，闭包内回写字段 + `bump_version` + `cx.notify()`
 
 这并非简单的 `value={field} + oninput={update_field}` 语法糖，而是基于 entity 生命周期管理的完整双向数据流。
 
@@ -70,15 +82,30 @@ cx.subscribe 的闭包被调用：
 1. **`set_value` 内部 `emit_events=false`**：正向同步调用 `InputState::set_value` 不会触发 `InputEvent::Change`，切断 VM→UI→VM 循环
 2. **版本号标记**：反向闭包内 `bump_version` 后立即更新 `__rml_state.input_state_versions`，render 时版本号相等跳过 `set_value`，切断 UI→VM→UI 循环
 
+> ℹ️ 上述数据流以 InputStateBridge（`<input>` / `<Input>` 等）为例。Stateful StateBridge（`<Slider>` 等）遵循相同模式，仅将 `__rml_get_or_init_input_state` 替换为 `__rml_get_or_init_<suffix>_state`，版本号存储于 `state_bridge_entities` 而非 `input_state_versions`。Stateless EventClick（Checkbox/Switch/Rating 等）无需 State entity，直接通过 `on_click` 事件回写字段。
+
 ## 3.3.3 适用标签与字段类型
 
 ### 当前支持的标签
 
-| 标签 | 说明 |
-|---|---|
-| `<input model={field}>` | 文本输入框（基于 `InputState`） |
+RML 对小写原生标签和 PascalCase 组件均支持自动双向绑定，分属三类机制：
 
-> ⚠️ **未来支持**：`<textarea>`、`<input type="checkbox">`、`<input type="number">` 等特殊类型当前未实现 codegen，会回退为普通 `<input>` 文本输入。
+| 标签 | 机制 | 绑定属性 | 说明 |
+|---|---|---|---|
+| `<input>` | InputStateBridge | `value` | 文本输入框（基于 `InputState`） |
+| `<textarea>` | InputStateBridge | `value` | 多行文本（基于 `InputState`） |
+| `<Input>` | InputStateBridge | `value` | PascalCase 文本输入（复用 `InputState`） |
+| `<TextInput>` | InputStateBridge | `value` | PascalCase 文本输入（复用 `InputState`） |
+| `<NumberInput>` | InputStateBridge | `value` | 数字输入（复用 `InputState`） |
+| `<Checkbox>` | Stateless EventClick | `checked` | 勾选框（`on_click(&bool)` 回写） |
+| `<Switch>` | Stateless EventClick | `checked` | 开关（`on_click(&bool)` 回写） |
+| `<Radio>` | Stateless EventClick | `checked` | 单选项（`on_click(&bool)` 回写） |
+| `<Rating>` | Stateless EventClick | `value` | 评分（`on_click(&usize)` 回写） |
+| `<RadioGroup>` | Stateless EventClick | `selected_index` | 单选组（`on_click(&usize)` 回写） |
+| `<Stepper>` | Stateless EventClick | `value` | 步进器（`on_click(&usize)` 回写） |
+| `<Slider>` | Stateful StateBridge | `value` | 滑块（基于 `SliderState`，注册表驱动） |
+
+> ℹ️ **扩展机制**：新增 Stateful 表单组件时，在 `STATE_BRIDGE_REGISTRY` 注册 `StateBridgeSpec` 即可自动获得 `value={field}` 双向绑定能力，无需修改 codegen 主流程。Stateless 组件通过 `twoway.rs` 的事件注入模式扩展。
 
 ### 支持的字段类型
 
@@ -96,7 +123,7 @@ codegen 根据 `#[component]` 宏扫描的字段类型自动生成转换代码�
 
 ### 转换器（Converter）
 
-当字段类型与输入框显示格式不一致时，用 `model={field | Converter}` 声明转换器。转换器实现 `IConverter` trait，提供两个方向的自定义转换：
+当字段类型与输入框显示格式不一致时，用 `value={field | Converter}` 声明转换器。转换器实现 `IConverter` trait，提供两个方向的自定义转换：
 
 | 方向 | 调用 | 作用 |
 |---|---|---|
@@ -115,7 +142,7 @@ pub struct OrderView {
 
 ```html
 <!-- 正向显示 ¥1500.00，反向解析 ¥1500.00 → 1500.0 -->
-<input model={price | Currency} placeholder="输入 ¥1500.00" />
+<input value={price | Currency} placeholder="输入 ¥1500.00" />
 ```
 
 codegen 生成（简化）：
@@ -147,8 +174,8 @@ pub struct LoginForm {
 ```
 
 ```html
-<input model={username} placeholder="用户名" />
-<input model={password} placeholder="密码" />
+<input value={username} placeholder="用户名" />
+<input value={password} placeholder="密码" />
 ```
 
 ### 数字输入
@@ -163,11 +190,30 @@ pub struct Settings {
 ```
 
 ```html
-<input model={age} placeholder="年龄" />
-<input model={score} placeholder="分数" />
+<input value={age} placeholder="年龄" />
+<input value={score} placeholder="分数" />
 ```
 
 用户输入 `"25"` 时，codegen 生成的反向闭包执行 `match "25".parse::<i32>() { Ok(v) => this.age = v, Err(_) => 设置错误状态 }`，结果为 `25`。输入 `"abc"` 时 parse 失败，**保留原值**，仅设置 `__rml_state.field_errors["age"] = Some("请输入有效的整数")`，UI 显示红色边框 + tooltip。
+
+### PascalCase 组件
+
+PascalCase 表单组件同样自动双向绑定，无需额外声明：
+
+```html
+<!-- Checkbox / Switch：checked={field} 自动双向 -->
+<Checkbox checked={agree} label="同意条款" />
+<Switch checked={notifications} />
+
+<!-- Rating：value={field} 自动双向（usize 字段） -->
+<Rating value={score} max="5" />
+
+<!-- Slider：value={field} 自动双向（f32 字段，StateBridge 机制） -->
+<Slider value={volume} />
+
+<!-- Input：value={field} 自动双向（复用 InputState） -->
+<Input value={username} placeholder="用户名" />
+```
 
 ### 完整示例（来自 demo）
 
@@ -197,19 +243,19 @@ impl MainWindow {
 
 ```html
 <!-- crates/demo/src/main_window.rml -->
-<input model={name} placeholder="姓名" />
-<input model={age} placeholder="年龄" />
+<input value={name} placeholder="姓名" />
+<input value={age} placeholder="年龄" />
 <button on-click={increment}>+1</button>
 <p>{profile_summary}</p>
 ```
 
 ## 3.3.5 双向绑定的字段要求
 
-被 `model` 绑定的字段必须满足：
+被 `value={field}` / `checked={field}` / `selected_index={field}` 绑定的字段必须满足：
 
 1. **`pub` 可见性**：codegen 生成的反向闭包需要访问 `this.field`
-2. **类型可转换**：字段类型必须是上表列出的支持类型（`String`、`i32`、`f64` 等）
-3. **`#[derive(Default)]` 或手动实现 `Default`**：用于 ViewModel 初始化（并非 `model` 机制本身的要求，而是整体框架惯例）
+2. **类型可转换**：字段类型必须是上表列出的支持类型（`String`、`i32`、`f64`、`bool`、`usize`、`f32` 等）
+3. **`#[derive(Default)]` 或手动实现 `Default`**：用于 ViewModel 初始化（并非绑定机制本身的要求，而是整体框架惯例）
 
 ```rust
 #[derive(Default)]
@@ -226,38 +272,38 @@ pub struct MyView {
 
 ## 3.3.6 与命令的协作
 
-`model` 处理输入同步，`#[command]` 处理用户动作（如点击按钮）。两者独立工作：
+`value={field}` 处理输入同步，`#[command]` 处理用户动作（如点击按钮）。两者独立工作：
 
 ```html
-<input model={search_text} placeholder="搜索..." />
+<input value={search_text} placeholder="搜索..." />
 <button on-click={perform_search}>搜索</button>
 ```
 
 ```rust
 #[command]
 pub fn perform_search(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
-    // search_text 已经由 model 反向同步
+    // search_text 已经由双向绑定反向同步
     let query = self.search_text.clone();
     self.execute_query(&query, cx);
     // 宏自动注入 bump_version（若修改了字段）+ cx.notify()
 }
 ```
 
-> ⚠️ **避免在命令中重复修改 `model` 绑定的字段**：若 `#[command]` 修改了 `model` 绑定的字段（如 `self.name = ...`），会触发正向同步 `set_value`。虽然循环防护机制会避免无限循环，但可能导致用户输入被覆盖。
+> ⚠️ **避免在命令中重复修改双向绑定的字段**：若 `#[command]` 修改了双向绑定的字段（如 `self.name = ...`），会触发正向同步 `set_value`。虽然循环防护机制会避免无限循环，但可能导致用户输入被覆盖。
 
-### `oninput` / `onchange` 与 `model` 协作
+### `oninput` / `onchange` 与双向绑定协作
 
-`<input model={field}>` 可同时声明 `oninput={fn}` / `onchange={fn}`。handler 在 model 反向同步**之后**、`cx.notify()` **之前**调用，可读取已同步的最新字段值：
+`<input value={field}>` 可同时声明 `oninput={fn}` / `onchange={fn}`。handler 在反向同步**之后**、`cx.notify()` **之前**调用，可读取已同步的最新字段值：
 
 ```html
-<input model={name} oninput={on_name_input} />
-<input model={age} onchange={on_age_change} />
+<input value={name} oninput={on_name_input} />
+<input value={age} onchange={on_age_change} />
 ```
 
 ```rust
 #[command]
 pub fn on_name_input(&mut self, _ev: &InputEvent, cx: &mut Context<Self>) {
-    // name 字段已被 model 反向同步，self.name 是最新值
+    // name 字段已被双向绑定反向同步，self.name 是最新值
     self.input_count += 1;
     cx.notify();
 }
@@ -270,22 +316,22 @@ pub fn on_age_change(&mut self, _ev: &ChangeEvent, cx: &mut Context<Self>) {
 }
 ```
 
-| 事件 | 触发时机 | 与 model 的关系 |
+| 事件 | 触发时机 | 与双向绑定的关系 |
 |---|---|---|
-| `oninput` | 每次输入（逐键） | model 已反向同步，可读最新字段 |
-| `onchange` | 失焦 / 回车（值提交） | model 已反向同步，适合提交类逻辑 |
+| `oninput` | 每次输入（逐键） | 已反向同步，可读最新字段 |
+| `onchange` | 失焦 / 回车（值提交） | 已反向同步，适合提交类逻辑 |
 
-> `oninput`/`onchange` handler 签名为 `(&InputEvent, &mut Context<Self>)` / `(&ChangeEvent, &mut Context<Self>)`，与独立 `<input>`（无 `model`）上的事件绑定一致。
+> `oninput`/`onchange` handler 签名为 `(&InputEvent, &mut Context<Self>)` / `(&ChangeEvent, &mut Context<Self>)`，与独立 `<input>`（无双向绑定）上的事件绑定一致。
 
 ## 3.3.7 双向绑定的特殊场景
 
 ### 嵌套字段
 
-`model` 不支持嵌套字段，需通过 `#[computed]` 派生或命令手动处理：
+双向绑定不支持嵌套字段，需通过 `#[computed]` 派生或命令手动处理：
 
 ```html
 <!-- ❌ 不支持嵌套字段 -->
-<input model={user.profile.name} />
+<input value={user.profile.name} />
 
 <!-- ✅ 通过 computed 派生为扁平字段 -->
 ```
@@ -297,35 +343,33 @@ pub fn display_name(&self) -> String {
 }
 ```
 
-### 列表中的双向绑定
-
-`model` 在列表项中使用时，每个 item 需要独立的字段。当前 codegen 按字段名索引 `InputState`，列表项会共享同一个 `InputState`，导致冲突。
-
-```html
-<!-- ❌ 列表项的 model 会冲突 -->
-<li each={user in users}>
-    <input model={user.name} />
-</li>
-```
-
-**解决方案**：列表项使用 `value={}` + `oninput={command, {index}}` 手动同步：
-
-```html
-<li each={index, user in users} key={user.id}>
-    <input value={user.name} oninput={update_name, {index}} />
-</li>
-```
-
-```rust
-#[command]
-pub fn update_name(&mut self, index: usize, ev: &InputEvent, cx: &mut Context<Self>) {
-    self.users[index].name = ev.value.to_string();
-}
-```
-
 ### 自定义组件的双向绑定
 
-当前 codegen 仅支持内置 `<input>` 标签的双向绑定。自定义组件（如 `<Slider>`、`<DatePicker>`）的双向绑定将在未来版本支持。
+PascalCase 表单组件的自动双向绑定分属三类机制（详见 3.3.1）：
+
+- **Stateless EventClick**：`Checkbox` / `Switch` / `Radio` / `Rating` / `RadioGroup` / `Stepper` — 通过 `twoway.rs` 注入 `on_click` 事件回写字段
+- **Stateful InputStateBridge**：`<Input>` / `<TextInput>` / `<NumberInput>` — 复用 `InputState` entity 双向同步
+- **Stateful StateBridge**：`<Slider>` — 通过 `STATE_BRIDGE_REGISTRY` 注册表驱动
+
+**扩展 Stateful 组件**：新增 Stateful 表单组件时，在 `state_bridge.rs` 的 `STATE_BRIDGE_REGISTRY` 中注册 `StateBridgeSpec`：
+
+```rust
+// crates/engine/src/compiler/state_bridge.rs
+pub static STATE_BRIDGE_REGISTRY: &[StateBridgeSpec] = &[
+    StateBridgeSpec {
+        tag: "Slider",
+        bind_property: "value",
+        bridge_key: "slider",
+        state_type: "rml_ui::SliderState",
+        state_ctor: "rml_ui::SliderState::default()",
+        state_method_suffix: "slider",
+        // ... 事件匹配、值提取/设置模板
+    },
+    // 新增组件在此注册
+];
+```
+
+注册后，codegen 自动为该组件生成 `__rml_get_or_init_<suffix>_state` 方法，无需修改主流程。
 
 ## 3.3.8 循环防护机制详解
 
@@ -378,12 +422,12 @@ let last_synced = self.__rml_state.input_state_versions.get("name").copied().unw
 
 ### 防护失效的场景
 
-若用户在 `#[command]` 中手动修改 `model` 绑定的字段：
+若用户在 `#[command]` 中手动修改双向绑定的字段：
 
 ```rust
 #[command]
 pub fn uppercase_name(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
-    self.name = self.name.to_uppercase();  // 修改了 model 绑定的字段
+    self.name = self.name.to_uppercase();  // 修改了双向绑定的字段
     // 宏自动注入：bump_version("name")，但未更新 __rml_state.input_state_versions
 }
 ```
@@ -429,7 +473,7 @@ render → 检查 __rml_state.field_errors → None → 直接返回 Input（无
 
 ### 正向同步清除错误
 
-当 `#[command]` 修改 `model` 绑定的字段后，正向同步 `set_value` 会自动清除错误状态：
+当 `#[command]` 修改双向绑定的字段后，正向同步 `set_value` 会自动清除错误状态：
 
 ```rust
 #[command]
@@ -448,7 +492,7 @@ render 时版本号变化 → `set_value("0")` → `__rml_state.field_errors["ag
 | 整数（i32/u32/i64/u64/isize/usize） | `请输入有效的整数` |
 | 浮点（f32/f64） | `请输入有效的数字` |
 
-> ✅ **已实现**：业务范围校验通过 `#[validate]` 宏（C# Attribute 风格）实现，不污染 RML 声明语法。详见 [3.3.10 自定义校验规则](#3310-自定义校验规则)。
+> 业务范围校验通过 `#[validate]` 宏（C# Attribute 风格）实现，不污染 RML 声明语法。详见 [3.3.10 自定义校验规则](#3310-自定义校验规则)。
 
 ## 3.3.10 自定义校验规则
 
@@ -571,10 +615,10 @@ pub struct RegistrationForm {
 ```
 
 ```html
-<input model={username} placeholder="用户名（2-30 字符）" />
-<input model={age} placeholder="年龄（18-150）" />
-<input model={email} placeholder="邮箱" />
-<input model={phone} placeholder="手机号" />
+<input value={username} placeholder="用户名（2-30 字符）" />
+<input value={age} placeholder="年龄（18-150）" />
+<input value={email} placeholder="邮箱" />
+<input value={phone} placeholder="手机号" />
 ```
 
 ### IValidate 接口式校验
@@ -696,17 +740,17 @@ pub struct MyView {
 
 codegen 会生成 `this.user_name = value.to_string()`，但 `user_name` 非 `pub` 导致编译错误（实际上 codegen 在 `impl MyView` 块内，可以访问私有字段，但 `IModel::rml_fields()` 不会收集非 pub 字段，版本号追踪字段也不会注入，导致 `__rml_bump_version("user_name")` 编译失败）。
 
-### 陷阱二：在命令中修改 model 绑定的字段
+### 陷阱二：在命令中修改双向绑定的字段
 
 ```rust
 #[command]
 pub fn on_input(&mut self, ev: &InputEvent, cx: &mut Context<Self>) {
-    // ❌ 与 model 反向闭包冲突
+    // ❌ 与反向闭包冲突
     self.user_name = ev.value.to_uppercase().into();
 }
 ```
 
-若需要在输入时转换值，应该用 `value={}` + `oninput` + 命令的方式，而不是 `model`。或者用 `#[computed]` 派生显示值：
+若需要在输入时转换值，应该用单向 `value={expr}` + `oninput` + 命令的方式（不触发自动双向绑定），或者用 `#[computed]` 派生显示值：
 
 ```rust
 #[computed]
@@ -715,18 +759,7 @@ pub fn display_name(&self) -> String {
 }
 ```
 
-### 陷阱三：列表中使用 model
-
-```html
-<!-- ❌ 列表项的 model 会冲突（共享同一个 InputState） -->
-<li each={user in users}>
-    <input model={user.name} />
-</li>
-```
-
-列表项的 `model` 需通过 `value={}` + `oninput={command, {index}}` 手动处理，详见 3.3.7。
-
-### 陷阱四：不支持的字段类型
+### 陷阱三：不支持的字段类型
 
 ```rust
 #[derive(Default)]
@@ -739,17 +772,19 @@ pub struct MyView {
 
 若字段类型不在支持列表中（见 3.3.3），codegen 仍会生成代码（编译通过），但运行时行为未定义。请仅使用支持的字段类型。
 
-## 3.3.12 小结
+## 3.3.13 小结
 
 双向绑定是表单输入的核心机制：
 
-- **语法**：`<input model={field} placeholder="..." />`
-- **机制**：基于 `Entity<InputState>` + `cx.subscribe(InputEvent::Change)` + 版本号追踪
+- **语法**：`<input value={field} placeholder="..." />`、`<Checkbox checked={field} />`、`<Slider value={field} />`
+- **自动推断**：`value={field}` / `checked={field}` / `selected_index={field}` 绑定到可变字段时自动启用双向同步
+- **三类机制**：Stateless EventClick（Checkbox/Switch/Rating 等）、Stateful InputStateBridge（input/Input/TextInput）、Stateful StateBridge（Slider）
 - **正向同步**：render 时对比版本号，变化则 `set_value`
-- **反向同步**：`InputEvent::Change` 触发订阅闭包，回写字段 + `bump_version` + `notify`
+- **反向同步**：事件触发订阅闭包，回写字段 + `bump_version` + `notify`
 - **循环防护**：`set_value` 内部 `emit_events=false` + 版本号标记双层防护
-- **字段要求**：`pub` + 支持的类型（`String`、`i32`、`f64` 等）
+- **字段要求**：`pub` + 支持的类型（`String`、`i32`、`f64`、`bool`、`usize`、`f32` 等）
+- **扩展性**：新增 Stateful 组件在 `STATE_BRIDGE_REGISTRY` 注册即可获得双向绑定能力
 
-记住：`model` 是基于 `InputState` entity 的完整双向数据流，而非简单的语法糖。需要更细粒度控制时，回退到 `value={}` + `oninput` + 命令的手动方式。
+记住：双向绑定是基于 `InputState` / `StateBridge` entity 的完整双向数据流，而非简单的语法糖。需要更细粒度控制时，回退到单向 `value={expr}` + `oninput` + 命令的手动方式。
 
 下一节 → [3.4 计算属性](./computed.md)

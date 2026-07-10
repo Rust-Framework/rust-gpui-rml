@@ -20,7 +20,9 @@ pub mod label;
 pub mod otp_input;
 pub mod popover;
 pub mod radio_group;
+pub mod resizable;
 pub mod separator;
+pub mod settings;
 pub mod stateful;
 pub mod stateless;
 pub mod stepper;
@@ -117,6 +119,8 @@ pub fn register_all(registry: &mut crate::compiler::translator::TranslatorRegist
     stepper::register(registry);
     otp_input::register(registry);
     virtual_list::register(registry);
+    resizable::register(registry);
+    settings::register(registry);
     activity_bar::register(registry);
     registry.register(ComponentTranslator);
 }

@@ -180,7 +180,6 @@ RML 的属性分为四类，每类有不同的语法和用途：
 | `else`  | 条件分支            | `<div else>备选内容</div>`                |
 | `each`  | 列表渲染            | `<li each={item in items}>`           |
 | `key`   | 列表唯一标识（配合 each） | `<li key={item.id}>`                  |
-| `model` | 双向绑定            | `<input model={user_name}>`           |
 | `show`  | 显示/隐藏（CSS 控制）   | `<div show={is_active}>`              |
 | `once`  | 仅首次渲染           | `<span once>初始化: {init_value}</span>` |
 | `html`  | 渲染 HTML 字符串     | `<div html={raw_content}>`            |
@@ -265,7 +264,7 @@ RML 的属性系统是四类属性的有序组合：
 1. **标准 HTML 属性**：`class="..."`、`id="..."`、`style="..."`、`type="..."` 等
 2. **数据绑定属性**：`value={field}`、`disabled={cond}` 等
 3. **事件绑定属性**：`on-click={fn}`、`oninput={fn}` 等
-4. **指令属性**：`if={}`、`each={}`、`model={}` 等
+4. **指令属性**：`if={}`、`each={}`、`show={}` 等
 
 掌握这四类属性的语法和用途，你就能在 `.rml` 中表达任何 UI 的结构、样式、数据和行为。
 

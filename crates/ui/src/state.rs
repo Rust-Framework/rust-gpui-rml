@@ -20,7 +20,7 @@ use std::sync::Mutex;
 
 use gpui::{AnyWindowHandle, AppContext, Entity, SharedString};
 
-use crate::{InputState, SliderState};
+use crate::InputState;
 
 /// 组件运行时状态容器
 ///
@@ -43,13 +43,18 @@ pub struct RmlState {
     /// render 时对比 `get_version(field)` 与此值，不同则调用 `InputState::set_value`。
     pub input_state_versions: HashMap<String, u64>,
 
-    /// `<Slider value={field}>` 绑定的 `SliderState` entity，按字段名索引
+    /// StateBridge 绑定的 State Entity，按 (bridge_key, field) 索引
     ///
-    /// 惰性初始化：首次 `__rml_get_or_init_slider_state(field)` 时创建并订阅。
-    pub slider_states: HashMap<String, Entity<SliderState>>,
+    /// 类型擦除存储（与 `ref_entities` 同模式）：`Entity<T>` 自身 `Clone + Send + Sync + 'static`
+    /// （不依赖 `T` 的 `Send`/`Sync`），可安全存储为 `Box<dyn Any + Send + Sync>`
+    /// 并通过 `downcast_ref::<Entity<T>>()` 取回。
+    ///
+    /// key 为 bridge_key（如 "slider"），value 为字段名→Entity 的映射。
+    /// 惰性初始化：首次 `__rml_get_or_init_<suffix>_state(field)` 时创建并订阅。
+    pub state_bridge_entities: HashMap<&'static str, HashMap<String, Box<dyn std::any::Any + Send + Sync>>>,
 
-    /// 每个字段上次正向同步到 `SliderState` 的版本号
-    pub slider_state_versions: HashMap<String, u64>,
+    /// StateBridge 正向同步版本号，key 为 `"<bridge_key>:<field>"`
+    pub state_bridge_versions: HashMap<String, u64>,
 
     /// 字段校验错误状态
     ///
@@ -229,6 +234,52 @@ impl RmlState {
         self.ref_entities
             .insert(name.to_string(), Box::new(entity.clone()));
         entity
+    }
+
+    // ── StateBridge 存取 ──────────────────────────────────────────
+
+    /// 检查 StateBridge entity 是否已初始化
+    pub fn has_state_bridge(&self, bridge_key: &str, field: &str) -> bool {
+        self.state_bridge_entities
+            .get(bridge_key)
+            .map(|m| m.contains_key(field))
+            .unwrap_or(false)
+    }
+
+    /// 获取 StateBridge entity（类型擦除 → downcast 回 `Entity<T>`）
+    ///
+    /// 由生成的 `__rml_get_or_init_<suffix>_state` 方法调用。
+    pub fn get_state_bridge<T: 'static>(&self, bridge_key: &str, field: &str) -> Option<Entity<T>> {
+        self.state_bridge_entities
+            .get(bridge_key)?
+            .get(field)?
+            .downcast_ref::<Entity<T>>()
+            .cloned()
+    }
+
+    /// 插入 StateBridge entity
+    pub fn insert_state_bridge<T: 'static>(
+        &mut self,
+        bridge_key: &'static str,
+        field: String,
+        entity: Entity<T>,
+    ) {
+        self.state_bridge_entities
+            .entry(bridge_key)
+            .or_insert_with(HashMap::new)
+            .insert(field, Box::new(entity));
+    }
+
+    /// 读取 StateBridge 正向同步版本号
+    pub fn get_state_bridge_version(&self, bridge_key: &str, field: &str) -> u64 {
+        let key = format!("{}:{}", bridge_key, field);
+        self.state_bridge_versions.get(&key).copied().unwrap_or(0)
+    }
+
+    /// 设置 StateBridge 正向同步版本号
+    pub fn set_state_bridge_version(&mut self, bridge_key: &str, field: &str, version: u64) {
+        let key = format!("{}:{}", bridge_key, field);
+        self.state_bridge_versions.insert(key, version);
     }
 
     /// 检查指定事件是否已订阅

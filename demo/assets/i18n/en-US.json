@@ -371,7 +371,10 @@
 
   "case.rating.title": "Rating",
   "case.otp_input.title": "OtpInput",
-  "case.virtual_list.title": "VirtualList"
+  "case.virtual_list.title": "VirtualList",
+  "case.resizable.title": "Resizable",
+
+  "case.settings.title": "Settings"
 
 }
 

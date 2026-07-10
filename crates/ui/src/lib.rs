@@ -89,10 +89,15 @@ pub use components::{
     Collapsible, DefaultTableDelegate, DialogAction, DialogButtonProps, DialogClose, DialogContent,
     DialogDescription, DialogFooter, DialogHeader, DialogTitle, FooterTemplate, GroupBox,
     GroupBoxVariants, HeaderTemplate, IActivityAct, IActivityPanel, Link, MenuBar,
-    NativeStatusBar, OtpInput, OtpState, Pagination, RadioGroup, Rating, StatusBarAlign, Skeleton, Spinner, Stepper,
+    NativeStatusBar, OtpInput, OtpState, Pagination, RadioGroup, Rating, ResizablePanel,
+    ResizablePanelEvent, ResizablePanelGroup, ResizableState, StatusBarAlign, Skeleton, Spinner, Stepper,
     StepperItem, Tab, TabBar, TabItem, Tabs, Table, TableColumn, TableDelegate, TableRow,
     TabVariant, Tree, VisualActivityPanel, VirtualList, VirtualListScrollHandle,
+    h_resizable, h_virtual_list, resizable_panel, v_resizable, v_virtual_list,
     configure_menu_bar_popup, menu_bar_button,
+    AnySettingField, GroupBoxVariant, NumberFieldOptions, RenderOptions, SelectIndex,
+    SettingField, SettingFieldElement, SettingFieldType, SettingGroup, SettingItem, SettingPage,
+    Settings,
 };
 
 pub use state::RmlState;

@@ -26,6 +26,7 @@ pub mod printer;
 pub mod props_registry;
 pub mod setters;
 pub mod source_map;
+pub mod state_bridge;
 pub mod style_directive;
 pub mod tooltip;
 pub mod twoway;

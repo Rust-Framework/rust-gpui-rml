@@ -51,6 +51,12 @@ pub fn canonical_tag(tag: &str) -> String {
         "separator" => "DescriptionSeparator".to_string(),
         "breadcrumb" => "Breadcrumb".to_string(),
         "stepper" => "Stepper".to_string(),
+        // resizable 小写别名映射（normalize_component_tag 不转为 PascalCase）
+        "resizable" => "Resizable".to_string(),
+        // settings 小写别名映射（normalize_component_tag 不转为 PascalCase）
+        "settings" => "Settings".to_string(),
+        // setting-page/setting-group/setting-item 经 normalize_component_tag 转为 SettingPage/SettingGroup/SettingItem
+        // 不需要额外映射，normalize_component_tag 已正确处理
         // step-item 经 normalize_component_tag 转为 StepItem，需映射为 StepperItem
         "StepItem" => "StepperItem".to_string(),
         // kebab-case 形式（tab-bar / tab-item）由 normalize_component_tag 自动转为 PascalCase
@@ -530,6 +536,31 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             kind: ComponentKind::Stateless,
             container: false,
         }),
+        // Resizable：可调整面板组，构造器 h_resizable(id)/v_resizable(id) 函数
+        // 由 ResizableTranslator 特化处理 direction 属性 → h/v 构造器选择
+        // ResizablePanelGroup 不实现 Styled，CSS 样式仅作用于 <resizable-panel>
+        "Resizable" | "resizable" => Some(ComponentTag {
+            ctor_path: "rml_ui::h_resizable",
+            kind: ComponentKind::Stateless,
+            container: true,
+        }),
+        // ResizablePanel：面板，构造器 resizable_panel() 函数（无 ElementId）
+        // 实现 ParentElement + Styled，由 ResizablePanelTranslator 特化处理
+        "ResizablePanel" | "resizable-panel" => Some(ComponentTag {
+            ctor_path: "rml_ui::resizable_panel",
+            kind: ComponentKind::StatelessNoId,
+            container: true,
+        }),
+        // Settings：多层嵌套设置面板，构造器 Settings::new(id)
+        // 不实现 Styled，仅 RenderOnce。由 SettingsTranslator 特化处理 4 层嵌套：
+        // Settings > SettingPage > SettingGroup > SettingItem
+        // 子节点标签（setting-page/setting-group/setting-item）不在 component_lookup 注册，
+        // 通过 is_item_builder_tag 识别，由 SettingsTranslator 递归遍历 AST 生成嵌套 builder 调用
+        "Settings" | "settings" => Some(ComponentTag {
+            ctor_path: "rml_ui::Settings",
+            kind: ComponentKind::Stateless,
+            container: true,
+        }),
         _ => None,
     }
 }
@@ -548,12 +579,20 @@ pub fn is_item_builder_tag(tag: &str) -> bool {
         "AccordionItem" | "item" | "Tab" | "tab" | "Column" | "column"
             | "DescriptionItem" | "description" | "DescriptionSeparator" | "separator"
             | "StepperItem" | "step-item"
+            | "ResizablePanel" | "resizable-panel"
+            | "SettingPage" | "setting-page"
+            | "SettingGroup" | "setting-group"
+            | "SettingItem" | "setting-item"
     ) || normalize_component_tag(tag) == "AccordionItem"
         || normalize_component_tag(tag) == "Tab"
         || normalize_component_tag(tag) == "Column"
         || normalize_component_tag(tag) == "DescriptionItem"
         || normalize_component_tag(tag) == "DescriptionSeparator"
         || normalize_component_tag(tag) == "StepperItem"
+        || normalize_component_tag(tag) == "ResizablePanel"
+        || normalize_component_tag(tag) == "SettingPage"
+        || normalize_component_tag(tag) == "SettingGroup"
+        || normalize_component_tag(tag) == "SettingItem"
 }
 
 /// 判断标签是否为菜单容器（ContextMenu / DropdownMenu / MenuBar / AppMenuBar / menu）

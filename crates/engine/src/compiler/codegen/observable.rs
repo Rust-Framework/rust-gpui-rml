@@ -245,95 +245,106 @@ pub(super) fn gen_input_state_impl(ctx: &CodegenCtx) -> String {
     out
 }
 
-/// 生成 SliderState 惰性初始化 + 双向同步方法（C3：Slider StateBridge）
+/// 生成 StateBridge 惰性初始化 + 双向同步方法（C4：通用 StateBridge 机制）
 ///
-/// 生成 `__rml_get_or_init_slider_state(field, window, cx) -> Entity<SliderState>`：
-/// - 首次调用：创建 SliderState，设置初始值，订阅 SliderEvent::Change 反向回写
-/// - 后续调用：版本检查 → 正向同步（VM 字段变更 → SliderState.set_value）
+/// 遍历 `STATE_BRIDGE_REGISTRY`，为每个有绑定字段的 spec 生成
+/// `__rml_get_or_init_<suffix>_state(field, window, cx) -> Entity<StateType>` 方法。
 ///
-/// 与 InputState 的差异：
-/// - 值类型为 f32（经 `as f32` 转换），非 SharedString
-/// - 事件为 `SliderEvent::Change(SliderValue)`，需从 SliderValue 提取 f32
-/// - 无校验、无 on_input/on_change handler
-pub(super) fn gen_slider_state_impl(ctx: &CodegenCtx) -> String {
+/// 生成方法内部流程：
+/// 1. 首次调用：创建 State Entity，设置初始值，订阅事件反向回写
+/// 2. 后续调用：版本检查 → 正向同步（VM 字段变更 → State.set_value）
+///
+/// RmlState 用类型擦除的 `state_bridge_entities` 存储各 State Entity，
+/// 无需为每种 State 类型添加专用 HashMap 字段。
+pub(super) fn gen_state_bridge_impl(ctx: &CodegenCtx) -> String {
     let view_name = &ctx.view_struct_name;
-    let slider_fields: Vec<String> = ctx.slider_fields.clone();
-
-    if slider_fields.is_empty() {
-        return String::new();
-    }
-
-    // 正向同步臂：field → f32 值
-    let mut forward_arms = String::new();
-    for field in &slider_fields {
-        let ty = ctx.field_types.get(field).map(|s| s.as_str()).unwrap_or("f32");
-        let expr = numeric_forward_expr(field, ty);
-        forward_arms.push_str(&format!("            \"{}\" => {},\n", field, expr));
-    }
-
-    // 反向同步臂：SliderValue → field 赋值
-    let mut reverse_arms = String::new();
-    for field in &slider_fields {
-        let ty = ctx.field_types.get(field).map(|s| s.as_str()).unwrap_or("f32");
-        let cast = numeric_cast_expr(ty);
-        reverse_arms.push_str(&format!(
-            "                \"{}\" => {{ this.{} = v{}; this.__rml_bump_version({:?}); }}\n",
-            field, field, cast, field,
-        ));
-    }
-
     let mut out = String::new();
-    out.push_str("#[allow(dead_code, non_snake_case, unused_variables)]\n");
-    out.push_str(&format!("impl {} {{\n", view_name));
-    out.push_str("    fn __rml_get_or_init_slider_state(\n");
-    out.push_str("        &mut self,\n");
-    out.push_str("        field: &'static str,\n");
-    out.push_str("        window: &mut gpui::Window,\n");
-    out.push_str("        cx: &mut gpui::Context<Self>,\n");
-    out.push_str("    ) -> gpui::Entity<rml_ui::SliderState> {\n");
-    out.push_str("        if !self.__rml_state.slider_states.contains_key(field) {\n");
-    out.push_str("            let entity = cx.new(|_cx| rml_ui::SliderState::new());\n");
-    out.push_str("            let initial_value: f32 = match field {\n");
-    out.push_str(&forward_arms);
-    out.push_str("                _ => 0.0,\n");
-    out.push_str("            };\n");
-    out.push_str("            entity.update(cx, |state, cx| state.set_value(rml_ui::SliderValue::Single(initial_value), window, cx));\n");
-    out.push_str("            cx.subscribe(&entity, move |this, _state_entity, event, cx| {\n");
-    out.push_str("                match event {\n");
-    out.push_str("                    rml_ui::SliderEvent::Change(value) => {\n");
-    out.push_str("                        let v = match value {\n");
-    out.push_str("                            rml_ui::SliderValue::Single(v) => *v,\n");
-    out.push_str("                            _ => return,\n");
-    out.push_str("                        };\n");
-    out.push_str("                        match field {\n");
-    out.push_str(&reverse_arms);
-    out.push_str("                            _ => {}\n");
-    out.push_str("                        }\n");
-    out.push_str("                        let __rml_ver = this.__rml_get_version(field);\n");
-    out.push_str("                        this.__rml_state.slider_state_versions.insert(field.to_string(), __rml_ver);\n");
-    out.push_str("                        cx.notify();\n");
-    out.push_str("                    }\n");
-    out.push_str("                    _ => {}\n");
-    out.push_str("                }\n");
-    out.push_str("            }).detach();\n");
-    out.push_str("            let __rml_ver = self.__rml_get_version(field);\n");
-    out.push_str("            self.__rml_state.slider_state_versions.insert(field.to_string(), __rml_ver);\n");
-    out.push_str("            self.__rml_state.slider_states.insert(field.to_string(), entity);\n");
-    out.push_str("        }\n");
-    out.push_str("        let entity = self.__rml_state.slider_states.get(field).unwrap().clone();\n");
-    out.push_str("        let current_version = self.__rml_get_version(field);\n");
-    out.push_str("        let last_synced = self.__rml_state.slider_state_versions.get(field).copied().unwrap_or(0);\n");
-    out.push_str("        if current_version != last_synced {\n");
-    out.push_str("            let value: f32 = match field {\n");
-    out.push_str(&forward_arms);
-    out.push_str("                _ => 0.0,\n");
-    out.push_str("            };\n");
-    out.push_str("            entity.update(cx, |state, cx| state.set_value(rml_ui::SliderValue::Single(value), window, cx));\n");
-    out.push_str("            self.__rml_state.slider_state_versions.insert(field.to_string(), current_version);\n");
-    out.push_str("        }\n");
-    out.push_str("        entity\n");
-    out.push_str("    }\n");
-    out.push_str("}\n");
+
+    for spec in crate::compiler::state_bridge::all_specs() {
+        let fields = ctx.state_bridge_fields.get(spec.bridge_key);
+        let fields = match fields {
+            Some(f) if !f.is_empty() => f,
+            _ => continue,
+        };
+
+        let method_name = format!("__rml_get_or_init_{}_state", spec.state_method_suffix);
+
+        // 正向同步臂：field → f32 值（Numeric kind）
+        let mut forward_arms = String::new();
+        for field in fields {
+            let ty = ctx.field_types.get(field).map(|s| s.as_str()).unwrap_or("f32");
+            let expr = numeric_forward_expr(field, ty);
+            forward_arms.push_str(&format!("            \"{}\" => {},\n", field, expr));
+        }
+
+        // 反向同步臂：事件载荷 → field 赋值
+        let mut reverse_arms = String::new();
+        for field in fields {
+            let ty = ctx.field_types.get(field).map(|s| s.as_str()).unwrap_or("f32");
+            let cast = numeric_cast_expr(ty);
+            reverse_arms.push_str(&format!(
+                "                \"{}\" => {{ this.{} = v{}; this.__rml_bump_version({:?}); }}\n",
+                field, field, cast, field,
+            ));
+        }
+
+        let state_type = spec.state_type;
+        let state_ctor = spec.state_ctor;
+        let bridge_key = spec.bridge_key;
+        let event_match = spec.event_match;
+        let event_extract = spec.event_payload_extract;
+        let value_set = spec.value_set_call;
+
+        out.push_str("#[allow(dead_code, non_snake_case, unused_variables)]\n");
+        out.push_str(&format!("impl {} {{\n", view_name));
+        out.push_str(&format!("    fn {}(\n", method_name));
+        out.push_str("        &mut self,\n");
+        out.push_str("        field: &'static str,\n");
+        out.push_str("        window: &mut gpui::Window,\n");
+        out.push_str("        cx: &mut gpui::Context<Self>,\n");
+        out.push_str(&format!("    ) -> gpui::Entity<{}> {{\n", state_type));
+        out.push_str(&format!("        if !self.__rml_state.has_state_bridge({:?}, field) {{\n", bridge_key));
+        out.push_str(&format!("            let entity = cx.new(|_cx| {});\n", state_ctor));
+        out.push_str("            let value: f32 = match field {\n");
+        out.push_str(&forward_arms);
+        out.push_str("                _ => 0.0,\n");
+        out.push_str("            };\n");
+        out.push_str(&format!("            entity.update(cx, |state, cx| {});\n", value_set));
+        out.push_str("            cx.subscribe(&entity, move |this, _state_entity, event, cx| {\n");
+        out.push_str("                match event {\n");
+        out.push_str(&format!("                    {} => {{\n", event_match));
+        out.push_str(&format!("                        {};\n", event_extract));
+        out.push_str("                        match field {\n");
+        out.push_str(&reverse_arms);
+        out.push_str("                            _ => {}\n");
+        out.push_str("                        }\n");
+        out.push_str("                        let __rml_ver = this.__rml_get_version(field);\n");
+        out.push_str(&format!("                        this.__rml_state.set_state_bridge_version({:?}, field, __rml_ver);\n", bridge_key));
+        out.push_str("                        cx.notify();\n");
+        out.push_str("                    }\n");
+        out.push_str("                    _ => {}\n");
+        out.push_str("                }\n");
+        out.push_str("            }).detach();\n");
+        out.push_str("            let __rml_ver = self.__rml_get_version(field);\n");
+        out.push_str(&format!("            self.__rml_state.set_state_bridge_version({:?}, field, __rml_ver);\n", bridge_key));
+        out.push_str(&format!("            self.__rml_state.insert_state_bridge({:?}, field.to_string(), entity);\n", bridge_key));
+        out.push_str("        }\n");
+        out.push_str(&format!("        let entity = self.__rml_state.get_state_bridge::<{}>({:?}, field).expect(\"state bridge entity\");\n", state_type, bridge_key));
+        out.push_str("        let current_version = self.__rml_get_version(field);\n");
+        out.push_str(&format!("        let last_synced = self.__rml_state.get_state_bridge_version({:?}, field);\n", bridge_key));
+        out.push_str("        if current_version != last_synced {\n");
+        out.push_str("            let value: f32 = match field {\n");
+        out.push_str(&forward_arms);
+        out.push_str("                _ => 0.0,\n");
+        out.push_str("            };\n");
+        out.push_str(&format!("            entity.update(cx, |state, cx| {});\n", value_set));
+        out.push_str(&format!("            self.__rml_state.set_state_bridge_version({:?}, field, current_version);\n", bridge_key));
+        out.push_str("        }\n");
+        out.push_str("        entity\n");
+        out.push_str("    }\n");
+        out.push_str("}\n");
+    }
+
     out
 }
 

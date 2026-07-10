@@ -151,33 +151,3 @@ fn collect_model_input_handlers_recursive(
         }
     }
 }
-
-/// 收集 `<Slider value={field}>` 双向绑定字段名（C3：Slider StateBridge）
-pub fn collect_slider_fields(root: &Node) -> Vec<String> {
-    let mut fields = Vec::new();
-    if let Node::Element(elem) = root {
-        collect_slider_fields_recursive(elem, &mut fields);
-    }
-    fields.sort();
-    fields.dedup();
-    fields
-}
-
-fn collect_slider_fields_recursive(elem: &Element, fields: &mut Vec<String>) {
-    let canonical = crate::tags::canonical_tag(&elem.tag);
-    if canonical == "Slider" {
-        for attr in &elem.attributes {
-            if let Attribute::Bind { name, expr, .. } = attr {
-                if name == "value" {
-                    let (field, _) = extract_field_converter(expr);
-                    fields.push(field);
-                }
-            }
-        }
-    }
-    for child in &elem.children {
-        if let Node::Element(child_elem) = child {
-            collect_slider_fields_recursive(child_elem, fields);
-        }
-    }
-}

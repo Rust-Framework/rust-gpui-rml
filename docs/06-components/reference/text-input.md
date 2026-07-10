@@ -23,8 +23,8 @@
 
 ## 数据绑定
 
-- 推荐使用 `<input model={field}>` 做双向绑定
-- 使用 `<TextInput>` 时需 `input_state: Entity<InputState>`
+- 使用 `value={field}` 自动双向绑定，行为与 `<Input>` 一致
+- `ref` 模式需声明 `input_state: Entity<InputState>`
 
 ## 子节点 / 插槽
 

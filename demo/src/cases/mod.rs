@@ -152,6 +152,10 @@ pub mod rating_case;
 pub mod otp_input_case;
 #[path = "virtual_list_case.rml.rs"]
 pub mod virtual_list_case;
+#[path = "resizable_case.rml.rs"]
+pub mod resizable_case;
+#[path = "settings_case.rml.rs"]
+pub mod settings_case;
 
 // P0-1：用户组件事件绑定 demo
 #[path = "user_component_event_case.rml.rs"]

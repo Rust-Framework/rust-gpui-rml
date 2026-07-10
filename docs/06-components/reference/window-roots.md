@@ -195,7 +195,7 @@ window.defer(cx, |window, cx| {
 ```html
 <dialog title="RML Demo" width="420" margin_top="120">
     <div class="login">
-        <input model={username} placeholder={t("login.username")} />
+        <input value={username} placeholder={t("login.username")} />
         <Button label={t("login.submit")} primary="" on-click={on_login} />
     </div>
 </dialog>

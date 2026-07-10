@@ -2,18 +2,16 @@
 
 ## 概述
 
-`Input` 是 gpui-component 文本输入框的 RML 封装，**Stateful** 组件。codegen 要求 ViewModel 持有 `input_state: Entity<InputState>` 字段（路由表 `state_field: "input_state"`），生成 `rml_ui::Input::new(&self.input_state)`。
-
-> 双向绑定场景更推荐小写 `<input model={field}>`（见 [builtin-html.md](./builtin-html.md)），无需手动管理 `Entity<InputState>`。
+`Input` 是 gpui-component 文本输入框的 RML 封装，**Stateful** 组件。支持 `value={field}` 自动双向绑定（InputStateBridge 机制），与小写 `<input>` 行为一致。
 
 ## 基本用法
 
 ```html
-<!-- 方式 A：model 指令（推荐） -->
-<input model={username} placeholder="用户名" />
+<!-- PascalCase Input 自动双向绑定 -->
+<Input value={username} placeholder="用户名" />
 
-<!-- 方式 B：PascalCase 组件（需 code-behind 准备 input_state） -->
-<Input placeholder="搜索" onchange={on_search_change} />
+<!-- 小写 input 同样自动双向绑定 -->
+<input value={username} placeholder="用户名" />
 ```
 
 ## 属性
@@ -24,7 +22,7 @@
 | `label` | 字符串 | `{expr}` | 标签文字 |
 | `tooltip` | 字符串 | — | 悬停提示 |
 | `disabled` | 布尔 | `{expr}` | 禁用 |
-| `value` | 任意 | `{expr}` | 静态显示值（单向） |
+| `value` | 任意 | `{field}` | **自动双向绑定**（InputStateBridge 机制） |
 | `small` / `large` 等 | 布尔标志 | — | 与其他组件共享的尺寸/变体属性 |
 
 ## 事件
@@ -36,30 +34,22 @@
 
 ## 数据绑定
 
-### `model` 指令（`<input>` / `<textarea>`）
+### `value={field}` 自动双向绑定
 
-在 ViewModel 上声明普通字段（如 `username: String`），RML 写：
+`<Input value={field}>` 与小写 `<input value={field}>` 行为一致，均通过 InputStateBridge 自动双向同步：
 
-```html
-<input model={username} placeholder={t("login.username")} />
-```
-
-codegen 自动生成 `__rml_get_or_init_input_state` 管理 `Entity<InputState>` 与字段双向同步。见 `demo/src/cases/two_way_case.rml`：
+- **正向同步**（VM→UI）：render 时对比字段版本号，变化则 `InputState::set_value`
+- **反向同步**（UI→VM）：订阅 `InputEvent::Change`，回写字段 + `bump_version` + `cx.notify()`
 
 ```html
-<input model={name} placeholder={t("demo.name_placeholder")} />
-<input model={age} placeholder={t("demo.age_placeholder")} />
+<Input value={username} placeholder="用户名" />
 ```
 
-### `<Input>` 组件
+支持 `value={field | Converter}` 转换器语法（如 `Currency`、`Percent`）。
 
-需手动在 struct 中声明：
+### `<Input>` ref 模式
 
-```rust
-input_state: Entity<InputState>,
-```
-
-并在 `on_loaded` 中初始化（若未使用 `model` 指令）。
+通过 `ref="name"` 引用手动管理的 `Entity<InputState>`，适用于需要自定义 InputState 配置的场景。需在 struct 中声明 `input_state: Option<Entity<InputState>>` 并在 `on_loaded` 中初始化。
 
 ## 子节点 / 插槽
 
@@ -67,27 +57,20 @@ input_state: Entity<InputState>,
 
 ## 完整示例
 
-`demo/src/shell/login_dialog.rml`：
-
 ```html
-<dialog title="RML Demo" width="420">
-    <div class="login-form">
-        <input model={username} placeholder={t("login.username")} />
-        <Button label={t("login.submit")} primary="" on-click={on_login} />
-    </div>
-</dialog>
+<Input value={username} placeholder="用户名" />
+<p>当前用户名：{username}</p>
 ```
 
 ## 常见错误
 
-1. **`<Input model={field}>`** — `model` 指令仅适用于小写 `<input>`/`<textarea>`，不能用于 `<Input>`。
-2. **缺少 `input_state` 字段** — 使用 `<Input>` 时未声明 `Entity<InputState>` 会导致编译错误。
-3. **在 Button 上写 `onchange`** — 仅 Input/TextInput 映射 `onchange`。
+1. **缺少 `input_state` 字段** — 仅 `ref` 模式需要；`value={field}` 自动双向绑定无需手动声明 `Entity<InputState>`。
+2. **在 Button 上写 `onchange`** — 仅 Input/TextInput 映射 `onchange`。
 
 ## 相关组件
 
 - [text-input.md](./text-input.md) — 同 `Input` 的别名标签
-- [builtin-html.md](./builtin-html.md) — `model` 双向绑定详解
+- [builtin-html.md](./builtin-html.md) — 小写 `<input>` 双向绑定详解
 
 ## RML 未覆盖的 gpui-component API
 

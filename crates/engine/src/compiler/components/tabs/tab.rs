@@ -32,6 +32,7 @@ use crate::parser::ast::{Attribute, Directive, Element, Node};
 /// 当前提取的模式：
 /// - `self.__rml_state.get_or_init_ref(...)` → ref-based 组件 lazy init
 /// - `self.__rml_get_or_init_input_state(...)` → `<input value={field}>` 双向绑定 InputState 初始化
+/// - `self.__rml_get_or_init_<suffix>_state(...)` → C4 通用 StateBridge 双向绑定（如 Slider）
 ///
 /// - `var_prefix`：提取的变量名前缀（如 `__rml_entity_` 或 `__rml_slot_demo_entity_``），
 ///   避免多 slot 场景变量名冲突
@@ -41,16 +42,23 @@ pub fn extract_state_refs(body_code: &str, var_prefix: &str) -> (String, String)
     let mut prelude = String::new();
     let mut working = body_code.to_string();
     let mut entity_counter: usize = 0;
-    let needles = [
-        "self.__rml_state.get_or_init_ref(",
-        "self.__rml_get_or_init_input_state(",
+    let mut needles: Vec<String> = vec![
+        "self.__rml_state.get_or_init_ref(".to_string(),
+        "self.__rml_get_or_init_input_state(".to_string(),
     ];
+    // C4: 通用 StateBridge 方法（__rml_get_or_init_<suffix>_state）
+    for spec in crate::compiler::state_bridge::all_specs() {
+        needles.push(format!(
+            "self.__rml_get_or_init_{}_state(",
+            spec.state_method_suffix
+        ));
+    }
 
     loop {
         // 在 working 中查找最早出现的 needle
         let earliest = needles
             .iter()
-            .filter_map(|n| working.find(n).map(|i| (i, *n)))
+            .filter_map(|n| working.find(n).map(|i| (i, n.as_str())))
             .min_by_key(|(i, _)| *i);
         let (start, needle) = match earliest {
             Some(x) => x,

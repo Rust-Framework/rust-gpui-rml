@@ -1,6 +1,6 @@
 # 2.4 指令系统
 
-> **本节目标**：完整掌握 RML 的 11 个指令——`if`、`else`、`else-if`、`each`、`key`、`model`、`show`、`once`、`html`、`ref`、`slot`。这是 RML 区别于 HTML 的核心能力。
+> **本节目标**：完整掌握 RML 的 10 个指令——`if`、`else`、`else-if`、`each`、`key`、`show`、`once`、`html`、`ref`、`slot`。这是 RML 区别于 HTML 的核心能力。
 
 ## 2.4.1 指令总览
 
@@ -11,7 +11,6 @@
 | `else-if` | 链式条件分支        | `<div else-if={cond}>备选内容</div>`    |
 | `each`  | 列表渲染            | `<li each={item in items}>`           |
 | `key`   | 列表唯一标识（配合 each） | `<li key={item.id}>`                  |
-| `model` | 双向绑定            | `<input model={user_name}>`           |
 | `show`  | 显示/隐藏（CSS 控制）   | `<div show={is_active}>`              |
 | `once`  | 仅首次渲染           | `<span once>初始化: {init_value}</span>` |
 | `html`  | 渲染 HTML 字符串     | `<div html={raw_content}>`            |
@@ -165,49 +164,36 @@ pub fn pending_todos(&self) -> Vec<&TodoItem> {
 </div>
 ```
 
-## 2.4.4 `model`：双向绑定
+## 2.4.4 双向绑定（自动推断）
 
-`model` 指令实现双向数据绑定，等价于 `value={field}` + `oninput={update_field}`。
-
-### 基础用法
+RML 的双向绑定通过 `value={field}` / `checked={field}` / `selected_index={field}` 数据绑定属性**自动推断**，无需独立指令。当绑定目标为 ViewModel 的可变 `pub` 字段时，框架自动启用双向同步。
 
 ```html
-<input model={user_name} placeholder="输入姓名" />
+<input value={user_name} placeholder="输入姓名" />
+<Checkbox checked={agree} label="同意条款" />
+<Slider value={volume} />
 ```
 
-等价于：
+### 适用组件
 
-```html
-<input
-    value={user_name}
-    oninput={update_user_name}
-/>
-```
+| 组件          | 绑定属性         | 字段类型                |
+| ----------- | ------------- | ------------------- |
+| `<input>` / `<textarea>` / `<Input>` / `<TextInput>` | `value` | `String`、`i32`、`f64` 等 |
+| `<Checkbox>` / `<Switch>` / `<Radio>` | `checked` | `bool`              |
+| `<Rating>` / `<Stepper>` | `value` / `selected_index` | `usize`   |
+| `<Slider>`  | `value`       | `f32`               |
 
-其中 `update_user_name` 是 RML 自动生成的命令，把输入值赋给 `user_name` 字段。
+### 字段要求
 
-### 适用标签
-
-`model` 主要用于表单元素：
-
-| 标签          | 绑定字段类型        |
-| ----------- | ------------- |
-| `<input>`   | `SharedString`、`i32`、`f64` 等 |
-| `<textarea>` | `SharedString` |
-| `<input type="checkbox">` | `bool`        |
-| `<input type="number">` | `i32`、`f64`   |
-
-### 双向绑定的字段要求
-
-被 `model` 绑定的字段必须是 `pub` 且类型可赋值：
+被双向绑定的字段必须是 `pub` 且类型可赋值：
 
 ```rust
-#[derive(IModel)]
+#[derive(Default)]
 #[component]
 pub struct MyView {
-    pub user_name: SharedString,  // ✅ 可以双向绑定
-    pub age: i32,                 // ✅ 可以双向绑定
-    pub remember_me: bool,        // ✅ 可以双向绑定
+    pub user_name: String,    // ✅ 可以双向绑定
+    pub age: i32,             // ✅ 可以双向绑定
+    pub agree: bool,          // ✅ 可以双向绑定
 }
 ```
 
@@ -285,7 +271,7 @@ pub fn user_bio_text(&self) -> SharedString {
 `ref` 指令为元素指定一个引用名，在 `.rml.rs` 中可以通过 `#[element]` 字段访问。
 
 ```html
-<input ref="username_input" model={user_name} />
+<input ref="username_input" value={user_name} />
 <button ref="submit_btn" on-click={submit}>提交</button>
 ```
 
