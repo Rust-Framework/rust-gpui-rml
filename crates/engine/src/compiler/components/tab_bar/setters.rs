@@ -11,17 +11,18 @@ use crate::parser::ast::EventHandler;
 
 /// 静态属性 → builder 方法（仅 TabBar 容器）
 ///
-/// - `underline=""` / `pill=""` / `flat=""` / `outline=""` / `segmented=""` → `.<name>()`（variant 快捷方法）
+/// - `variant="underline"` / `"pill"` / `"flat"` / `"outline"` / `"segmented"` → `.<variant>()`
+/// - `variant="tab"` = 默认，no-op
 /// - `menu="true"` → `.menu(true)`
 pub fn static_setter(name: &str, value: &str, tag: &str) -> Option<String> {
     match name {
-        "underline" | "pill" | "flat" | "outline" | "segmented" if tag == "TabBar" => {
-            if value.is_empty() || value.eq_ignore_ascii_case("true") {
-                Some(format!(".{}()", name))
-            } else {
-                None
-            }
-        }
+        // variant="underline" → .underline() 等
+        // variant="tab" = 默认 TabVariant::Tab，no-op
+        "variant" if tag == "TabBar" => match value {
+            "flat" | "outline" | "pill" | "segmented" | "underline" => Some(format!(".{}()", value)),
+            "tab" => Some(String::new()),
+            _ => None,
+        },
         "menu" if tag == "TabBar" => {
             let bool_val = if value.is_empty() || value.eq_ignore_ascii_case("true") {
                 "true"
@@ -102,17 +103,23 @@ mod tests {
 
     #[test]
     fn static_setter_tab_bar_variants() {
-        assert_eq!(static_setter("underline", "", "TabBar").unwrap(), ".underline()");
-        assert_eq!(static_setter("pill", "true", "TabBar").unwrap(), ".pill()");
-        assert_eq!(static_setter("flat", "", "TabBar").unwrap(), ".flat()");
-        assert_eq!(static_setter("outline", "", "TabBar").unwrap(), ".outline()");
-        assert_eq!(static_setter("segmented", "", "TabBar").unwrap(), ".segmented()");
+        assert_eq!(static_setter("variant", "underline", "TabBar").unwrap(), ".underline()");
+        assert_eq!(static_setter("variant", "pill", "TabBar").unwrap(), ".pill()");
+        assert_eq!(static_setter("variant", "flat", "TabBar").unwrap(), ".flat()");
+        assert_eq!(static_setter("variant", "outline", "TabBar").unwrap(), ".outline()");
+        assert_eq!(static_setter("variant", "segmented", "TabBar").unwrap(), ".segmented()");
     }
 
     #[test]
-    fn static_setter_variant_false_returns_none() {
-        assert!(static_setter("underline", "false", "TabBar").is_none());
-        assert!(static_setter("pill", "0", "TabBar").is_none());
+    fn static_setter_tab_bar_variant_tab_default_no_op() {
+        // variant="tab" = 默认 TabVariant::Tab，返回空字符串 no-op
+        assert_eq!(static_setter("variant", "tab", "TabBar").unwrap(), "");
+    }
+
+    #[test]
+    fn static_setter_variant_invalid_returns_none() {
+        assert!(static_setter("variant", "invalid", "TabBar").is_none());
+        assert!(static_setter("variant", "false", "TabBar").is_none());
     }
 
     #[test]

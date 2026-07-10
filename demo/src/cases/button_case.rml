@@ -7,18 +7,18 @@
         <template slot="demo">
             <div class="demo-section">
                 <h3>变体 variants</h3>
-                <p>9 种 variant 通过同名空属性切换（primary="" / secondary="" / danger="" / success="" / warning="" / info="" / ghost="" / link="" / text=""）。不写 variant 即默认 Default。</p>
+                <p>9 种 variant 通过 variant 属性切换（variant="primary" / "secondary" / "danger" / "success" / "warning" / "info" / "ghost" / "link" / "text"）。不写 variant 即默认 Secondary。</p>
                 <div class="button-row">
                     <Button label="Default" on-click={on_basic_click} />
-                    <Button label="Primary" primary="" on-click={on_basic_click} />
-                    <Button label="Secondary" secondary="" on-click={on_basic_click} />
-                    <Button label="Danger" danger="" on-click={on_basic_click} />
-                    <Button label="Success" success="" on-click={on_basic_click} />
-                    <Button label="Warning" warning="" on-click={on_basic_click} />
-                    <Button label="Info" info="" on-click={on_basic_click} />
-                    <Button label="Ghost" ghost="" on-click={on_basic_click} />
-                    <Button label="Link" link="" on-click={on_basic_click} />
-                    <Button label="Text" text="" on-click={on_basic_click} />
+                    <Button label="Primary" variant="primary" on-click={on_basic_click} />
+                    <Button label="Secondary" variant="secondary" on-click={on_basic_click} />
+                    <Button label="Danger" variant="danger" on-click={on_basic_click} />
+                    <Button label="Success" variant="success" on-click={on_basic_click} />
+                    <Button label="Warning" variant="warning" on-click={on_basic_click} />
+                    <Button label="Info" variant="info" on-click={on_basic_click} />
+                    <Button label="Ghost" variant="ghost" on-click={on_basic_click} />
+                    <Button label="Link" variant="link" on-click={on_basic_click} />
+                    <Button label="Text" variant="text" on-click={on_basic_click} />
                 </div>
                 <p>累计点击次数：{basic_clicks}</p>
             </div>
@@ -27,10 +27,10 @@
                 <h3>尺寸 size</h3>
                 <p>size 属性控制按钮大小：xsmall / small / medium / large。</p>
                 <div class="button-row">
-                    <Button label="XSmall" size="xsmall" primary="" />
-                    <Button label="Small" size="small" primary="" />
-                    <Button label="Medium" size="medium" primary="" />
-                    <Button label="Large" size="large" primary="" />
+                    <Button label="XSmall" size="xsmall" variant="primary" />
+                    <Button label="Small" size="small" variant="primary" />
+                    <Button label="Medium" size="medium" variant="primary" />
+                    <Button label="Large" size="large" variant="primary" />
                 </div>
                 <p class="hint">注：在 gpui-component 底层实现中，Size::Large 与 Size::Medium 走同一高度分支（h_8 + px_4 + text_base），视觉等价。建议优先使用 XSmall/Small/Medium 三档以体现尺寸差异。</p>
             </div>
@@ -40,7 +40,7 @@
                 <p>disabled 属性禁用按钮交互，点击切换查看效果。当前：{disabled_status_text}</p>
                 <div class="button-row">
                     <Button label="切换禁用" on-click={on_toggle_disabled} />
-                    <Button label="Disabled Button" disabled={is_disabled} primary="" />
+                    <Button label="Disabled Button" disabled={is_disabled} variant="primary" />
                 </div>
             </div>
 
@@ -58,7 +58,7 @@
                 <p>loading 属性显示加载指示器，点击切换查看效果。当前：{loading_status_text}</p>
                 <div class="button-row">
                     <Button label="切换 Loading" on-click={on_toggle_loading} />
-                    <Button label="Loading Button" loading={is_loading} primary="" />
+                    <Button label="Loading Button" loading={is_loading} variant="primary" />
                 </div>
             </div>
 
@@ -66,8 +66,8 @@
                 <h3>紧凑模式 compact</h3>
                 <p>compact 属性减少按钮内边距，常用于工具栏或密集表单。</p>
                 <div class="button-row">
-                    <Button label="Normal" primary="" />
-                    <Button label="Compact" primary="" compact="" />
+                    <Button label="Normal" variant="primary" />
+                    <Button label="Compact" variant="primary" compact="" />
                 </div>
             </div>
 
@@ -75,8 +75,8 @@
                 <h3>tooltip 悬浮提示</h3>
                 <p>tooltip 属性添加鼠标悬浮提示文本，常用于图标按钮或操作说明。</p>
                 <div class="button-row">
-                    <Button label="Save" primary="" tooltip="保存当前文档 (Ctrl+S)" />
-                    <Button label="Delete" danger="" tooltip="删除后不可恢复" />
+                    <Button label="Save" variant="primary" tooltip="保存当前文档 (Ctrl+S)" />
+                    <Button label="Delete" variant="danger" tooltip="删除后不可恢复" />
                 </div>
             </div>
 
@@ -84,10 +84,10 @@
                 <h3>字体权重 font weight</h3>
                 <p>font_bold / font_semibold / font_medium 等属性切换字体权重（StyledExt trait）。</p>
                 <div class="button-row">
-                    <Button label="Normal" primary="" />
-                    <Button label="Bold" primary="" font-bold="" />
-                    <Button label="Semibold" primary="" font-semibold="" />
-                    <Button label="Medium" primary="" font-medium="" />
+                    <Button label="Normal" variant="primary" />
+                    <Button label="Bold" variant="primary" font-bold="" />
+                    <Button label="Semibold" variant="primary" font-semibold="" />
+                    <Button label="Medium" variant="primary" font-medium="" />
                 </div>
             </div>
 

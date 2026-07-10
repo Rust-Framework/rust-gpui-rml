@@ -166,8 +166,8 @@ mod tests {
             "Tabs",
             vec![
                 Attribute::Static {
-                    name: "underline".into(),
-                    value: "".into(),
+                    name: "variant".into(),
+                    value: "underline".into(),
                     span: Span::empty(),
                 },
                 Attribute::Static {
@@ -351,8 +351,8 @@ mod tests {
                     span: Span::empty(),
                 },
                 Attribute::Static {
-                    name: "underline".into(),
-                    value: "".into(),
+                    name: "variant".into(),
+                    value: "underline".into(),
                     span: Span::empty(),
                 },
             ],

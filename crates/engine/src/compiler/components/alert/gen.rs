@@ -1,14 +1,12 @@
 //! Alert 组件 codegen
 //!
-//! Alert 构造器：`Alert::new(id, message)` 或 `Alert::info(id, message)` 等关联函数。
-//! 构造器需要 `(ElementId, message)` 两个参数，与 Tag 类似需在构造器选择阶段决定 variant。
+//! Alert 构造器统一为 `Alert::new(id, message)`，variant 通过 `variant="info"` 属性
+//! 映射到 `.with_variant(AlertVariant::Info)` builder 方法。
 //!
-//! ## variant 属性的两种形式
+//! ## variant 属性
 //!
-//! - 布尔属性：`info=""` / `success=""` / `warning=""` / `error=""` → 关联函数 `Alert::info(...)`
-//! - `variant="info"` → builder 方法 `.with_variant(AlertVariant::Info)`
-//!
-//! 两种形式互斥：布尔属性优先（一旦命中，跳过 `variant` 属性）。
+//! `variant="info"` / `"success"` / `"warning"` / `"error"` / `"default"` → `.with_variant(AlertVariant::*）`
+//! 不写 variant = 默认 Default。
 //!
 //! ## message 来源
 //!
@@ -74,20 +72,8 @@ pub fn gen_alert(
         format!("(\"rml_el\", {}usize)", id_val)
     };
 
-    // 3. 构造器选择（参考 Tag 模式）：布尔 variant 属性 → 关联函数
-    let mut ctor = format!("rml_ui::Alert::new({}, {})", id_code, message_code);
-    let mut variant_set_by_attr = false;
-    for attr in &elem.attributes {
-        if let Attribute::Static { name, value, .. } = attr {
-            if is_variant_attr(name) && (value.is_empty() || value.eq_ignore_ascii_case("true")) {
-                ctor = format!("rml_ui::Alert::{}({}, {})", name, id_code, message_code);
-                variant_set_by_attr = true;
-                break;
-            }
-        }
-    }
-
-    let mut code = ctor;
+    // 3. 构造器统一为 Alert::new(id, message)，variant 由 variant 属性 + .with_variant() 设置
+    let mut code = format!("rml_ui::Alert::new({}, {})", id_code, message_code);
 
     // CSS class 样式（基础层，被后续内联 style / 归一化属性覆盖）
     append_css_class_styles(&mut code, elem, "Alert", ctx.stylesheet.as_ref(), parents);
@@ -96,21 +82,14 @@ pub fn gen_alert(
     for attr in &elem.attributes {
         match attr {
             Attribute::Static { name, value, .. } => {
-                // variant 关联属性已用于构造器，跳过
-                if is_variant_attr(name)
-                    && (value.is_empty() || value.eq_ignore_ascii_case("true"))
-                {
-                    continue;
-                }
                 // message 属性已用于构造器
                 if name == "message" {
                     continue;
                 }
                 // variant="info" → .with_variant(AlertVariant::Info)
-                if name == "variant" && !variant_set_by_attr {
+                if name == "variant" {
                     if let Some(v) = parse_variant(value) {
                         code.push_str(&format!(".with_variant(rml_ui::AlertVariant::{})", v));
-                        variant_set_by_attr = true;
                         continue;
                     }
                 }
@@ -149,7 +128,7 @@ pub fn gen_alert(
                     continue;
                 }
                 // variant={expr} → .with_variant(expr)
-                if name == "variant" && !variant_set_by_attr {
+                if name == "variant" {
                     let rust_expr = crate::compiler::setters::component_bind_rust_expr(expr, &lv, &computed);
                     code.push_str(&format!(".with_variant({})", rust_expr));
                     continue;
@@ -215,11 +194,6 @@ pub fn gen_alert(
     let _ = gen_node;
 
     Ok(code)
-}
-
-/// 判断属性是否为 Alert 的 variant 关联函数（info/success/warning/error）
-fn is_variant_attr(name: &str) -> bool {
-    matches!(name, "info" | "success" | "warning" | "error")
 }
 
 /// 解析 `variant="info"` 静态值为 AlertVariant 枚举变体名
@@ -311,19 +285,20 @@ mod tests {
 
     #[test]
     fn gen_alert_info_variant() {
-        // <Alert info="">提示</Alert> → Alert::info(id, "提示")
+        // <Alert variant="info">提示</Alert> → Alert::new(id, "提示").with_variant(AlertVariant::Info)
         let elem = make_element(
             "Alert",
             vec![Attribute::Static {
-                name: "info".into(),
-                value: "".into(),
+                name: "variant".into(),
+                value: "info".into(),
                 span: Span::empty(),
             }],
             vec![Node::Text("提示".into())],
         );
         let mut id = 0;
         let code = gen_alert(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
-        assert!(code.contains("rml_ui::Alert::info("));
+        assert!(code.contains("rml_ui::Alert::new("));
+        assert!(code.contains(".with_variant(rml_ui::AlertVariant::Info)"));
         assert!(code.contains("\"提示\""));
     }
 
@@ -332,15 +307,16 @@ mod tests {
         let elem = make_element(
             "Alert",
             vec![Attribute::Static {
-                name: "success".into(),
-                value: "true".into(),
+                name: "variant".into(),
+                value: "success".into(),
                 span: Span::empty(),
             }],
             vec![Node::Text("成功".into())],
         );
         let mut id = 0;
         let code = gen_alert(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
-        assert!(code.contains("rml_ui::Alert::success("));
+        assert!(code.contains("rml_ui::Alert::new("));
+        assert!(code.contains(".with_variant(rml_ui::AlertVariant::Success)"));
     }
 
     #[test]
@@ -374,13 +350,13 @@ mod tests {
 
     #[test]
     fn gen_alert_with_title_and_banner() {
-        // <Alert info="" title="提示" banner="">消息</Alert>
+        // <Alert variant="info" title="提示" banner="">消息</Alert>
         let elem = make_element(
             "Alert",
             vec![
                 Attribute::Static {
-                    name: "info".into(),
-                    value: "".into(),
+                    name: "variant".into(),
+                    value: "info".into(),
                     span: Span::empty(),
                 },
                 Attribute::Static {
@@ -398,7 +374,8 @@ mod tests {
         );
         let mut id = 0;
         let code = gen_alert(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
-        assert!(code.contains("rml_ui::Alert::info("));
+        assert!(code.contains("rml_ui::Alert::new("));
+        assert!(code.contains(".with_variant(rml_ui::AlertVariant::Info)"));
         assert!(code.contains(".title(\"标题\")"));
         assert!(code.contains(".banner()"));
     }
@@ -505,7 +482,7 @@ mod tests {
 
     #[test]
     fn gen_alert_icon_attr() {
-        // <Alert icon="Bell" info="">消息</Alert>
+        // <Alert icon="Bell" variant="info">消息</Alert>
         let elem = make_element(
             "Alert",
             vec![
@@ -515,8 +492,8 @@ mod tests {
                     span: Span::empty(),
                 },
                 Attribute::Static {
-                    name: "info".into(),
-                    value: "".into(),
+                    name: "variant".into(),
+                    value: "info".into(),
                     span: Span::empty(),
                 },
             ],

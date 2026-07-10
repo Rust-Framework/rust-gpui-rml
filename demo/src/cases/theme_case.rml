@@ -27,8 +27,8 @@
                 <p>根据 theme_index 条件渲染不同变体的 Tag：</p>
                 <div display="flex" flex-direction="row" gap="16px">
                     <Tag if={theme_index == 0}>Default Tag</Tag>
-                    <Tag primary="" if={theme_index == 1}>Primary Tag</Tag>
-                    <Tag danger="" if={theme_index == 2}>Danger Tag</Tag>
+                    <Tag variant="primary" if={theme_index == 1}>Primary Tag</Tag>
+                    <Tag variant="danger" if={theme_index == 2}>Danger Tag</Tag>
                 </div>
             </Card>
         </template>

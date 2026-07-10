@@ -12,7 +12,7 @@
                     <h3>可用项与禁用项</h3>
                     <p>Available 可点击，Disabled 灰显且点击不触发回调：</p>
                     <dropdown-menu>
-                        <Button label="可用/禁用" ghost="" />
+                        <Button label="可用/禁用" variant="ghost" />
                         <menu-item label="Available" on-click={on_available} />
                         <menu-item label="Disabled" disabled="" on-click={on_disabled} />
                     </dropdown-menu>
@@ -22,7 +22,7 @@
                     <h3>声明式命令绑定（B-1）</h3>
                     <p><code>command=&#123;save_command&#125;</code> 绑定 <code>Arc&lt;dyn ICommand&gt;</code> 字段，点击经 <code>ICommand::execute</code> 调度：</p>
                     <dropdown-menu>
-                        <Button label="Command" ghost="" />
+                        <Button label="Command" variant="ghost" />
                         <menu-item label="Save (Command)" command={save_command} />
                     </dropdown-menu>
                 </div>
@@ -31,7 +31,7 @@
                     <h3>勾选项</h3>
                     <p>checked={is_checked} 绑定字段，点击切换勾选状态：</p>
                     <dropdown-menu>
-                        <Button label="勾选项" ghost="" />
+                        <Button label="勾选项" variant="ghost" />
                         <menu-item label="Checkable" checked={is_checked} on-click={on_toggle_check} />
                     </dropdown-menu>
                 </div>
@@ -40,7 +40,7 @@
                     <h3>链接项</h3>
                     <p>href 渲染为外链，icon 添加图标：</p>
                     <dropdown-menu>
-                        <Button label="链接项" ghost="" />
+                        <Button label="链接项" variant="ghost" />
                         <menu-item label="Documentation" href="https://rml.dev/docs/" icon="Info" />
                     </dropdown-menu>
                 </div>
@@ -49,7 +49,7 @@
                     <h3>子菜单与可滚动</h3>
                     <p>scrollable + max-h="280" 限制高度，menu-item 内嵌形成子菜单：</p>
                     <dropdown-menu scrollable="" max-h="280">
-                        <Button label="Features" ghost="" />
+                        <Button label="Features" variant="ghost" />
                         <menu-item header="" label="Actions" />
                         <menu-item label="Available" on-click={on_available} />
                         <menu-item label="Disabled" disabled="" on-click={on_disabled} />

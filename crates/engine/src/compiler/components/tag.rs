@@ -21,12 +21,18 @@ pub fn gen_tag(
     parents: &[ParentInfo],
 ) -> Result<String, CodegenError> {
     // 1. 扫描 variant 属性，决定构造器
+    // variant="primary" → Tag::primary()，不写 variant = 默认 Tag::new()
     let mut ctor = "rml_ui::Tag::new()".to_string();
     for attr in &elem.attributes {
         if let Attribute::Static { name, value, .. } = attr {
-            if is_variant_attr(name) && (value.is_empty() || value.eq_ignore_ascii_case("true")) {
-                ctor = format!("rml_ui::Tag::{}()", name);
-                break;
+            if name == "variant" {
+                match value.as_str() {
+                    "primary" | "secondary" | "danger" | "success" | "warning" | "info" => {
+                        ctor = format!("rml_ui::Tag::{}()", value);
+                        break;
+                    }
+                    _ => {}
+                }
             }
         }
     }
@@ -45,7 +51,7 @@ pub fn gen_tag(
         match attr {
             Attribute::Static { name, value, .. } => {
                 // variant 属性已用于构造器，跳过
-                if is_variant_attr(name) {
+                if name == "variant" {
                     continue;
                 }
                 // Tag 专用：outline="" → .outline()（描边样式，透明背景）
@@ -92,13 +98,6 @@ pub fn gen_tag(
     Ok(code)
 }
 
-fn is_variant_attr(name: &str) -> bool {
-    matches!(
-        name,
-        "primary" | "secondary" | "danger" | "success" | "warning" | "info"
-    )
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -138,8 +137,8 @@ mod tests {
         let elem = make_element(
             "Tag",
             vec![Attribute::Static {
-                name: "primary".into(),
-                value: "".into(),
+                name: "variant".into(),
+                value: "primary".into(),
                 span: Span::empty(),
             }],
             vec![],
@@ -156,8 +155,8 @@ mod tests {
         let elem = make_element(
             "Tag",
             vec![Attribute::Static {
-                name: "danger".into(),
-                value: "".into(),
+                name: "variant".into(),
+                value: "danger".into(),
                 span: Span::empty(),
             }],
             vec![],
@@ -173,8 +172,8 @@ mod tests {
             "Tag",
             vec![
                 Attribute::Static {
-                    name: "primary".into(),
-                    value: "".into(),
+                    name: "variant".into(),
+                    value: "primary".into(),
                     span: Span::empty(),
                 },
                 Attribute::Static {
@@ -197,8 +196,8 @@ mod tests {
             "Tag",
             vec![
                 Attribute::Static {
-                    name: "primary".into(),
-                    value: "".into(),
+                    name: "variant".into(),
+                    value: "primary".into(),
                     span: Span::empty(),
                 },
                 Attribute::Static {

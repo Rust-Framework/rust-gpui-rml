@@ -10,7 +10,7 @@
                 <p>使用全局样式表 styles.css 中的 .button-row 类（display:flex; gap:8px）：</p>
                 <div class="button-row">
                     <Button label="全局 CSS 1" />
-                    <Button label="全局 CSS 2" primary="" />
+                    <Button label="全局 CSS 2" variant="primary" />
                 </div>
             </Card>
 
@@ -68,7 +68,7 @@
             <Card title="复杂嵌套（div > div > Button + Tag + Icon + Label）">
                 <div class="nested-container">
                     <div class="nested-row">
-                        <Button label="嵌套按钮" primary="" />
+                        <Button label="嵌套按钮" variant="primary" />
                         <Tag>嵌套标签</Tag>
                         <Icon name="Bell" />
                     </div>
@@ -86,7 +86,7 @@
             <Card title="动态样式（if 条件切换 class）">
                 <p>当前状态：{status_label}</p>
                 <div class="button-row">
-                    <Button label="激活" on-click={on_activate} primary="" />
+                    <Button label="激活" on-click={on_activate} variant="primary" />
                     <Button label="停用" on-click={on_deactivate} />
                 </div>
                 <div if={is_active} class="dynamic-active">

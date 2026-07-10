@@ -9,7 +9,7 @@
                 <p>通过 <code>open</code> 属性控制内容显示。点击下方按钮切换展开状态：</p>
                 <p>当前状态：{state_label}</p>
                 <div class="button-row">
-                    <Button label="切换展开" primary="" on-click={on_toggle} />
+                    <Button label="切换展开" variant="primary" on-click={on_toggle} />
                 </div>
                 <Collapsible open={is_open}>
                     <div display="flex" flex-direction="column" gap="8px" class="collapsible-content">

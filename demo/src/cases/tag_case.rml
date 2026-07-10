@@ -10,12 +10,12 @@
                 <p>6 种 variant 通过同名空属性切换（primary / secondary / danger / success / warning / info）。不写 variant 即默认 Default（Secondary 配色）。</p>
                 <div class="button-row">
                     <Tag>Default</Tag>
-                    <Tag primary="">Primary</Tag>
-                    <Tag secondary="">Secondary</Tag>
-                    <Tag danger="">Danger</Tag>
-                    <Tag success="">Success</Tag>
-                    <Tag warning="">Warning</Tag>
-                    <Tag info="">Info</Tag>
+                    <Tag variant="primary">Primary</Tag>
+                    <Tag variant="secondary">Secondary</Tag>
+                    <Tag variant="danger">Danger</Tag>
+                    <Tag variant="success">Success</Tag>
+                    <Tag variant="warning">Warning</Tag>
+                    <Tag variant="info">Info</Tag>
                 </div>
             </div>
 
@@ -23,12 +23,12 @@
                 <h3>描边样式 outline</h3>
                 <p>outline 属性切换为描边样式：透明背景 + 彩色边框/文字，常用于次要状态区分。</p>
                 <div class="button-row">
-                    <Tag primary="" outline="">Primary Outline</Tag>
-                    <Tag secondary="" outline="">Secondary Outline</Tag>
-                    <Tag danger="" outline="">Danger Outline</Tag>
-                    <Tag success="" outline="">Success Outline</Tag>
-                    <Tag warning="" outline="">Warning Outline</Tag>
-                    <Tag info="" outline="">Info Outline</Tag>
+                    <Tag variant="primary" outline="">Primary Outline</Tag>
+                    <Tag variant="secondary" outline="">Secondary Outline</Tag>
+                    <Tag variant="danger" outline="">Danger Outline</Tag>
+                    <Tag variant="success" outline="">Success Outline</Tag>
+                    <Tag variant="warning" outline="">Warning Outline</Tag>
+                    <Tag variant="info" outline="">Info Outline</Tag>
                 </div>
             </div>
 
@@ -36,10 +36,10 @@
                 <h3>尺寸 size</h3>
                 <p>size 属性控制标签大小：xsmall / small / medium / large。来自 Sizable trait。</p>
                 <div class="button-row">
-                    <Tag primary="" size="xsmall">XSmall</Tag>
-                    <Tag primary="" size="small">Small</Tag>
-                    <Tag primary="" size="medium">Medium</Tag>
-                    <Tag primary="" size="large">Large</Tag>
+                    <Tag variant="primary" size="xsmall">XSmall</Tag>
+                    <Tag variant="primary" size="small">Small</Tag>
+                    <Tag variant="primary" size="medium">Medium</Tag>
+                    <Tag variant="primary" size="large">Large</Tag>
                 </div>
                 <p>注：在 gpui-component 底层实现中，Tag 仅支持 Small 与 Medium 两档视觉区分。XSmall 与 Small 共用同一尺寸分支，Medium 与 Large 共用另一分支。建议优先使用 Small/Medium 两档。</p>
             </div>
@@ -48,9 +48,9 @@
                 <h3>圆角与形状</h3>
                 <p>通过 CSS 样式属性控制圆角：rounded-full 实现药丸形状，适用于状态标签。</p>
                 <div class="button-row">
-                    <Tag primary="">Default Radius</Tag>
-                    <Tag primary="" rounded="full">Pill Shape</Tag>
-                    <Tag success="" rounded="full" size="small">Small Pill</Tag>
+                    <Tag variant="primary">Default Radius</Tag>
+                    <Tag variant="primary" rounded="full">Pill Shape</Tag>
+                    <Tag variant="success" rounded="full" size="small">Small Pill</Tag>
                 </div>
             </div>
 
@@ -59,25 +59,25 @@
                 <p>点击按钮切换标签文本和 variant，观察标签实时变化（演示字段绑定 + if 条件渲染）。</p>
                 <p>当前文本: {tag_text} | 当前变体: {variant_label} | 样式: {outline_label}</p>
                 <div class="button-row">
-                    <Button label="切换变体" primary="" on-click={on_cycle_variant} />
+                    <Button label="切换变体" variant="primary" on-click={on_cycle_variant} />
                     <Button label="切换 outline" on-click={on_toggle_outline} />
                     <Button label="切换文本" on-click={on_cycle_text} />
                 </div>
                 <div class="button-row">
                     <Tag if={variant_index == 0 && !is_outline}>{tag_text}</Tag>
-                    <Tag primary="" if={variant_index == 1 && !is_outline}>{tag_text}</Tag>
-                    <Tag secondary="" if={variant_index == 2 && !is_outline}>{tag_text}</Tag>
-                    <Tag danger="" if={variant_index == 3 && !is_outline}>{tag_text}</Tag>
-                    <Tag success="" if={variant_index == 4 && !is_outline}>{tag_text}</Tag>
-                    <Tag warning="" if={variant_index == 5 && !is_outline}>{tag_text}</Tag>
-                    <Tag info="" if={variant_index == 6 && !is_outline}>{tag_text}</Tag>
+                    <Tag variant="primary" if={variant_index == 1 && !is_outline}>{tag_text}</Tag>
+                    <Tag variant="secondary" if={variant_index == 2 && !is_outline}>{tag_text}</Tag>
+                    <Tag variant="danger" if={variant_index == 3 && !is_outline}>{tag_text}</Tag>
+                    <Tag variant="success" if={variant_index == 4 && !is_outline}>{tag_text}</Tag>
+                    <Tag variant="warning" if={variant_index == 5 && !is_outline}>{tag_text}</Tag>
+                    <Tag variant="info" if={variant_index == 6 && !is_outline}>{tag_text}</Tag>
                     <Tag if={variant_index == 0 && is_outline} outline="">{tag_text}</Tag>
-                    <Tag primary="" if={variant_index == 1 && is_outline} outline="">{tag_text}</Tag>
-                    <Tag secondary="" if={variant_index == 2 && is_outline} outline="">{tag_text}</Tag>
-                    <Tag danger="" if={variant_index == 3 && is_outline} outline="">{tag_text}</Tag>
-                    <Tag success="" if={variant_index == 4 && is_outline} outline="">{tag_text}</Tag>
-                    <Tag warning="" if={variant_index == 5 && is_outline} outline="">{tag_text}</Tag>
-                    <Tag info="" if={variant_index == 6 && is_outline} outline="">{tag_text}</Tag>
+                    <Tag variant="primary" if={variant_index == 1 && is_outline} outline="">{tag_text}</Tag>
+                    <Tag variant="secondary" if={variant_index == 2 && is_outline} outline="">{tag_text}</Tag>
+                    <Tag variant="danger" if={variant_index == 3 && is_outline} outline="">{tag_text}</Tag>
+                    <Tag variant="success" if={variant_index == 4 && is_outline} outline="">{tag_text}</Tag>
+                    <Tag variant="warning" if={variant_index == 5 && is_outline} outline="">{tag_text}</Tag>
+                    <Tag variant="info" if={variant_index == 6 && is_outline} outline="">{tag_text}</Tag>
                 </div>
             </div>
         </template>

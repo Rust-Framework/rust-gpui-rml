@@ -6,20 +6,20 @@
         code-rust={rust_sample}>
         <template slot="demo">
             <div class="demo-section">
-                <h3>variant 关联函数</h3>
-                <p>4 种 variant 关联函数通过同名空属性切换：info="" / success="" / warning="" / error="" 分别映射到 Alert::info(id, msg) 等构造器。不写 variant 即默认 Default。两种形式互斥：布尔属性优先于 variant 属性。</p>
+                <h3>variant 属性</h3>
+                <p>4 种 variant 通过 variant 属性切换：variant="info" / "success" / "warning" / "error" 映射到 .with_variant(AlertVariant::*) builder 方法。不写 variant 即默认 Default。</p>
                 <div class="alert-col">
                     <Alert message="默认提示：用于一般性信息展示" />
-                    <Alert info="" message="Info：用于重要提示信息" />
-                    <Alert success="" message="Success：操作成功的反馈" />
-                    <Alert warning="" message="Warning：警告信息，需注意" />
-                    <Alert error="" message="Error：错误提示，需立即处理" />
+                    <Alert variant="info" message="Info：用于重要提示信息" />
+                    <Alert variant="success" message="Success：操作成功的反馈" />
+                    <Alert variant="warning" message="Warning：警告信息，需注意" />
+                    <Alert variant="error" message="Error：错误提示，需立即处理" />
                 </div>
             </div>
 
             <div class="demo-section">
-                <h3>variant 属性（builder 方法）</h3>
-                <p>使用 variant="info" 属性切换 variant，等价于关联函数但走 builder 方法 .with_variant(AlertVariant::Info)。适用于 variant 由状态字段动态决定的场景（如 variant 绑定到枚举字段）。</p>
+                <h3>variant 绑定</h3>
+                <p>variant 属性也支持绑定形式 variant=&#123;field&#125;，适用于 variant 由状态字段动态决定的场景（如 variant 绑定到枚举字段）。</p>
                 <div class="alert-col">
                     <Alert variant="info" message="variant=info 的提示" />
                     <Alert variant="success" message="variant=success 的提示" />
@@ -32,9 +32,9 @@
                 <h3>title + banner</h3>
                 <p>title 属性设置提示标题，banner="" 切换为顶部横幅模式（无边框，撑满宽度，常用于页面顶部全局提示）。</p>
                 <div class="alert-col">
-                    <Alert info="" title="提示标题" message="带标题的提示信息，标题与消息一起展示" />
-                    <Alert warning="" banner="" message="顶部横幅警告（无边框，撑满宽度）" />
-                    <Alert error="" title="错误" banner="" message="带标题的横幅错误，常用于严重错误的全局通知" />
+                    <Alert variant="info" title="提示标题" message="带标题的提示信息，标题与消息一起展示" />
+                    <Alert variant="warning" banner="" message="顶部横幅警告（无边框，撑满宽度）" />
+                    <Alert variant="error" title="错误" banner="" message="带标题的横幅错误，常用于严重错误的全局通知" />
                 </div>
             </div>
 
@@ -42,9 +42,9 @@
                 <h3>message 来源优先级</h3>
                 <p>message 优先级：message="..." 静态属性 &gt; message 绑定属性 &gt; 文本子节点 &gt; 空字符串。下方三个 Alert 分别演示前三种来源。</p>
                 <div class="alert-col">
-                    <Alert info="" message="静态属性 message（最高优先级）" />
-                    <Alert info="">{message_from_field}</Alert>
-                    <Alert success="">文本子节点作为 message（第三优先级）</Alert>
+                    <Alert variant="info" message="静态属性 message（最高优先级）" />
+                    <Alert variant="info">{message_from_field}</Alert>
+                    <Alert variant="success">文本子节点作为 message（第三优先级）</Alert>
                 </div>
             </div>
 
@@ -52,10 +52,10 @@
                 <h3>icon 自定义</h3>
                 <p>icon 属性设置自定义图标，值为 rml_ui::IconName 枚举变体名（如 Info/Check/Bell/CircleX）。不设置 icon 时，Alert 会根据 variant 自动选择对应图标。</p>
                 <div class="alert-col">
-                    <Alert info="" icon="Info" message="自定义 Info 图标" />
-                    <Alert success="" icon="Check" message="自定义 Check 图标" />
-                    <Alert warning="" icon="Bell" message="自定义 Bell 图标" />
-                    <Alert error="" icon="CircleX" message="自定义 CircleX 图标" />
+                    <Alert variant="info" icon="Info" message="自定义 Info 图标" />
+                    <Alert variant="success" icon="Check" message="自定义 Check 图标" />
+                    <Alert variant="warning" icon="Bell" message="自定义 Bell 图标" />
+                    <Alert variant="error" icon="CircleX" message="自定义 CircleX 图标" />
                 </div>
             </div>
 
@@ -63,8 +63,8 @@
                 <h3>on-close 事件 + if 条件渲染</h3>
                 <p>点击 Alert 右侧关闭按钮触发 on-close 事件，配合 if={is_visible} 指令实现关闭后隐藏。下方演示事件回调 + 条件渲染的典型业务场景。</p>
                 <div class="alert-col">
-                    <Alert info="" title="可关闭提示" message="点击右侧 X 按钮关闭此提示" on-close={on_close} if={is_visible} />
-                    <Alert warning="" message="另一个可关闭的警告提示" on-close={on_close} if={is_visible} />
+                    <Alert variant="info" title="可关闭提示" message="点击右侧 X 按钮关闭此提示" on-close={on_close} if={is_visible} />
+                    <Alert variant="warning" message="另一个可关闭的警告提示" on-close={on_close} if={is_visible} />
                     <Button label="重置显示" on-click={on_reset} />
                 </div>
                 <p>当前状态：{visibility_label}</p>
@@ -74,9 +74,9 @@
                 <h3>尺寸 size</h3>
                 <p>size 属性控制提示大小：xsmall / small / medium / large，走通用 Sizable trait。影响图标尺寸、字号和内边距。</p>
                 <div class="alert-col">
-                    <Alert info="" size="small" message="small 尺寸的提示" />
-                    <Alert info="" size="medium" message="medium 尺寸的提示" />
-                    <Alert info="" size="large" message="large 尺寸的提示" />
+                    <Alert variant="info" size="small" message="small 尺寸的提示" />
+                    <Alert variant="info" size="medium" message="medium 尺寸的提示" />
+                    <Alert variant="info" size="large" message="large 尺寸的提示" />
                 </div>
             </div>
         </template>

@@ -23,19 +23,19 @@
                         <Tab label="Underline" />
                         <Tab label="B" />
                     </TabBar>
-                    <TabBar pill="">
+                    <TabBar variant="pill">
                         <Tab label="Pill" />
                         <Tab label="B" />
                     </TabBar>
-                    <TabBar flat="">
+                    <TabBar variant="flat">
                         <Tab label="Flat" />
                         <Tab label="B" />
                     </TabBar>
-                    <TabBar outline="">
+                    <TabBar variant="outline">
                         <Tab label="Outline" />
                         <Tab label="B" />
                     </TabBar>
-                    <TabBar segmented="">
+                    <TabBar variant="segmented">
                         <Tab label="Segmented" />
                         <Tab label="B" />
                     </TabBar>

@@ -51,7 +51,7 @@
                 <p>当前方向: {orientation_label} | 虚线: {dashed_label}</p>
                 <div class="button-row">
                     <Button label="切换方向" on-click={on_toggle_orientation} />
-                    <Button label="切换虚线" primary="" on-click={on_toggle_dashed} />
+                    <Button label="切换虚线" variant="primary" on-click={on_toggle_dashed} />
                 </div>
                 <div if={is_vertical} display="flex" flex-direction="row" gap="16px" align-items="center">
                     <p>左侧</p>

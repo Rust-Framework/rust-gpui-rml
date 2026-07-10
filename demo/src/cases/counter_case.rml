@@ -8,8 +8,8 @@
             <Card title="基础计数">
                 <p>{counter_text}</p>
                 <div class="button-row">
-                    <Button label="点击 +1" primary="" on-click={on_click} />
-                    <Button label="重置" ghost="" on-click={on_reset} />
+                    <Button label="点击 +1" variant="primary" on-click={on_click} />
+                    <Button label="重置" variant="ghost" on-click={on_reset} />
                 </div>
             </Card>
             <Card title="步长控制">

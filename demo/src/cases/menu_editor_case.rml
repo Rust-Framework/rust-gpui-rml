@@ -12,7 +12,7 @@
                     <h3>编辑器菜单基础</h3>
                     <p>check-side="Right" 勾选标记在右侧，点击 Edit 触发菜单：</p>
                     <dropdown-menu check-side="Right">
-                        <Button label="Edit" ghost="" />
+                        <Button label="Edit" variant="ghost" />
                         <menu-item label="Save" on-click={on_save} />
                         <menu-item label="Save As" on-click={on_save_as} />
                         <menu-separator />
@@ -25,7 +25,7 @@
                     <h3>勾选状态</h3>
                     <p>checked={word_wrap} 绑定字段，点击 Word Wrap 切换状态，观察勾选标记：</p>
                     <dropdown-menu check-side="Right">
-                        <Button label="View" ghost="" />
+                        <Button label="View" variant="ghost" />
                         <menu-item label="Word Wrap" checked={word_wrap} on-click={on_toggle_wrap} />
                     </dropdown-menu>
                 </div>
@@ -34,7 +34,7 @@
                     <h3>分隔符与命令分组</h3>
                     <p>Save/Save As 一组，Find/Replace 一组，观察视觉分组：</p>
                     <dropdown-menu check-side="Right">
-                        <Button label="File" ghost="" />
+                        <Button label="File" variant="ghost" />
                         <menu-item label="Save" icon="Check" on-click={on_save} />
                         <menu-item label="Save As" icon="File" on-click={on_save_as} />
                         <menu-separator />

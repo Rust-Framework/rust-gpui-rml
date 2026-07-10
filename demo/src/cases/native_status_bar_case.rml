@@ -17,9 +17,9 @@
             <Card title="动态状态(#[command] 事件)">
                 <p>点击按钮切换状态栏消息(演示 #[command] 事件处理):</p>
                 <div class="button-row">
-                    <Button label="就绪" primary="" on-click={on_show_ready} />
-                    <Button label="警告" warning="" on-click={on_show_warning} />
-                    <Button label="错误" danger="" on-click={on_show_error} />
+                    <Button label="就绪" variant="primary" on-click={on_show_ready} />
+                    <Button label="警告" variant="warning" on-click={on_show_warning} />
+                    <Button label="错误" variant="danger" on-click={on_show_error} />
                 </div>
                 <p>当前状态: {status_text}</p>
                 <div style="border: 1px solid #e0e0e0; overflow: hidden; border-radius: 4px;">

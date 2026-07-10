@@ -33,7 +33,7 @@
                 <p>通过命令修改 current 字段，实时反映到 value 绑定；切换 loading 状态用 if 条件渲染不同 Progress。</p>
                 <div class="button-row">
                     <Button label="减少 10" on-click={on_decrease} />
-                    <Button label="增加 10" primary="" on-click={on_increase} />
+                    <Button label="增加 10" variant="primary" on-click={on_increase} />
                     <Button label="切换 loading" on-click={on_toggle_loading} />
                 </div>
                 <div display="flex" flex-direction="column" gap="8px">

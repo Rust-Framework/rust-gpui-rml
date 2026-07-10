@@ -6,7 +6,6 @@
 //! ## 布局选择
 //!
 //! - 默认（无属性） → `RadioGroup::vertical(id)`
-//! - `horizontal=""` 或 `horizontal="true"` → `RadioGroup::horizontal(id)`
 //! - `layout="horizontal"` → `RadioGroup::horizontal(id)`
 //! - `layout="vertical"` → `RadioGroup::vertical(id)`（显式指定，与默认一致）
 //!
@@ -53,13 +52,10 @@ pub fn gen_radio_group(
         format!("(\"rml_el\", {}usize)", id_val)
     };
 
-    // 2. 构造器选择：horizontal 或 layout="horizontal" → horizontal(id)，否则 vertical(id)
+    // 2. 构造器选择：layout="horizontal" → horizontal(id)，否则 vertical(id)
     let mut is_horizontal = false;
     for attr in &elem.attributes {
         if let Attribute::Static { name, value, .. } = attr {
-            if name == "horizontal" && (value.is_empty() || value.eq_ignore_ascii_case("true")) {
-                is_horizontal = true;
-            }
             if name == "layout" && value.eq_ignore_ascii_case("horizontal") {
                 is_horizontal = true;
             }
@@ -76,11 +72,11 @@ pub fn gen_radio_group(
     // CSS class 样式（基础层，被后续内联 style / 归一化属性覆盖）
     append_css_class_styles(&mut code, elem, "RadioGroup", ctx.stylesheet.as_ref(), parents);
 
-    // 3. 处理其他属性（跳过 horizontal/layout/vertical，已用于构造器选择）
+    // 3. 处理其他属性（跳过 layout，已用于构造器选择）
     for attr in &elem.attributes {
         match attr {
             Attribute::Static { name, value, .. } => {
-                if name == "horizontal" || name == "layout" || name == "vertical" {
+                if name == "layout" {
                     continue;
                 }
                 if let Some(s) =
@@ -90,7 +86,7 @@ pub fn gen_radio_group(
                 }
             }
             Attribute::Bind { name, expr, .. } => {
-                if name == "horizontal" || name == "layout" || name == "vertical" {
+                if name == "layout" {
                     continue;
                 }
                 if let Some(s) = crate::compiler::setters::component_bind_setter(
@@ -159,22 +155,6 @@ mod tests {
     }
 
     #[test]
-    fn gen_radio_group_horizontal_attr() {
-        let elem = make_element(
-            vec![Attribute::Static {
-                name: "horizontal".into(),
-                value: "".into(),
-                span: Span::empty(),
-            }],
-            vec![],
-        );
-        let mut id = 0;
-        let code = gen_radio_group(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
-        assert!(code.contains("rml_ui::RadioGroup::horizontal("));
-        assert!(!code.contains("vertical("));
-    }
-
-    #[test]
     fn gen_radio_group_layout_horizontal() {
         let elem = make_element(
             vec![Attribute::Static {
@@ -187,6 +167,22 @@ mod tests {
         let mut id = 0;
         let code = gen_radio_group(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains("rml_ui::RadioGroup::horizontal("));
+    }
+
+    #[test]
+    fn gen_radio_group_layout_vertical() {
+        let elem = make_element(
+            vec![Attribute::Static {
+                name: "layout".into(),
+                value: "vertical".into(),
+                span: Span::empty(),
+            }],
+            vec![],
+        );
+        let mut id = 0;
+        let code = gen_radio_group(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
+        assert!(code.contains("rml_ui::RadioGroup::vertical("));
+        assert!(!code.contains("horizontal("));
     }
 
     #[test]

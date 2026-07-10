@@ -16,8 +16,8 @@
             </Card>
 
             <Card title="RadioGroup 水平布局">
-                <p><code>horizontal=""</code> 或 <code>layout="horizontal"</code> 切换为水平布局：</p>
-                <RadioGroup horizontal="" selected-index={selected_index} on-click={on_select}>
+                <p><code>layout="horizontal"</code> 切换为水平布局：</p>
+                <RadioGroup layout="horizontal" selected-index={selected_index} on-click={on_select}>
                     <Radio label="A" />
                     <Radio label="B" />
                     <Radio label="C" />
@@ -26,7 +26,7 @@
             </Card>
 
             <Card title="layout 属性">
-                <p><code>layout="horizontal"</code> 与 <code>horizontal=""</code> 等价：</p>
+                <p><code>layout="horizontal"</code> 与默认 <code>layout="vertical"</code> 的对比：</p>
                 <RadioGroup layout="horizontal" selected-index={selected_index} on-click={on_select}>
                     <Radio label="X" />
                     <Radio label="Y" />

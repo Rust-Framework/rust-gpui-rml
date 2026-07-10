@@ -22,7 +22,7 @@
                     <Link href={dynamic_url}>{dynamic_label}</Link>
                     <p>当前 URL: {dynamic_url}</p>
                     <div class="button-row">
-                        <Button label="切换 URL" primary="" on-click={on_cycle_url} />
+                        <Button label="切换 URL" variant="primary" on-click={on_cycle_url} />
                     </div>
                 </div>
             </div>

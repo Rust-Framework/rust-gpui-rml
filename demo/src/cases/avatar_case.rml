@@ -62,7 +62,7 @@
                         <Avatar name={name} size="large" />
                     </div>
                 </div>
-                <Button label="切换尺寸" primary="" on-click={on_cycle_size} />
+                <Button label="切换尺寸" variant="primary" on-click={on_cycle_size} />
             </div>
 
             <div class="demo-section">

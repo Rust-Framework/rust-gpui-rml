@@ -72,7 +72,7 @@
             <Card title="动态主题切换（if 条件切换 class）">
                 <p>当前主题：{theme_label}</p>
                 <div class="button-row">
-                    <Button label="切换主题" on-click={on_toggle_theme} primary="" />
+                    <Button label="切换主题" on-click={on_toggle_theme} variant="primary" />
                 </div>
                 <div if={is_dark} class="theme-dark">
                     <p>深色主题：rgb(33,37,41) 背景 + rgb(248,249,250) 文字</p>
@@ -85,7 +85,7 @@
             <Card title="复杂嵌套（颜色函数 + 单位 + 组件）">
                 <div class="nested-container">
                     <div class="nested-row" style="background: rgba(0, 102, 204, 0.1);">
-                        <Button label="rgb 按钮" primary="" />
+                        <Button label="rgb 按钮" variant="primary" />
                         <Tag>rgba 标签</Tag>
                         <Icon name="Bell" />
                     </div>

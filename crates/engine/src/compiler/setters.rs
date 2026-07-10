@@ -12,7 +12,7 @@ use crate::parser::ast::EventHandler;
 ///
 /// - `label="..."` → `.label("...")`
 /// - `placeholder="..."` → `.placeholder("...")`（Input 支持）
-/// - `primary`/`secondary`/`danger`/`success`/`warning`/`info`/`ghost` → `.primary()` 等
+/// - `variant="primary"`/`variant="danger"` → `.primary()` / `.danger()`（Button 专用）
 /// - `disabled="true"` → `.disabled(true)`
 /// - `selected`/`compact`/`loading` → 对应方法
 /// - `size` → Sizable 尺寸方法（`size="small"` → `.with_size(rml_ui::Size::Small)`）
@@ -51,8 +51,8 @@ pub fn component_static_setter(name: &str, value: &str, tag: &str) -> Option<Str
     match name {
         "label" => Some(format!(".label({:?})", value)),
         "placeholder" => Some(format!(".placeholder({:?})", value)),
-        // ── Phase 1 组件专用 static setter（须在 Button variant 之前，避免无 guard 的多模式臂抢先匹配）──
-        // Skeleton: secondary="" → .secondary()（secondary 也在 Button variant 列表中，需先匹配）
+        // ── Phase 1 组件专用 static setter ──
+        // Skeleton: secondary="" → .secondary()
         "secondary" if tag == "Skeleton" => {
             if value.is_empty() || value.eq_ignore_ascii_case("true") {
                 Some(".secondary()".to_string())
@@ -70,19 +70,18 @@ pub fn component_static_setter(name: &str, value: &str, tag: &str) -> Option<Str
         "open" if tag == "Collapsible" => Some(format!(".open({})", parse_bool(value))),
         // GroupBox: title="..." → .title("...")
         "title" if tag == "GroupBox" => Some(format!(".title({:?})", value)),
-        // GroupBox variant 布尔属性: fill="" → .fill()
-        "normal" | "fill" | "outline" if tag == "GroupBox" => {
-            if value.is_empty() || value.eq_ignore_ascii_case("true") {
-                Some(format!(".{}()", name))
-            } else {
-                None
-            }
-        }
         // GroupBox variant 字符串属性: variant="fill" → .fill()
         "variant" if tag == "GroupBox" => match value {
             "normal" => Some(".normal()".to_string()),
             "fill" => Some(".fill()".to_string()),
             "outline" => Some(".outline()".to_string()),
+            _ => None,
+        },
+        // Button variant: variant="primary" → .primary()，variant="danger" → .danger() 等
+        // 不写 variant = 默认 Secondary（ButtonVariant::Secondary 为 #[default]）
+        "variant" if tag == "Button" => match value {
+            "primary" | "secondary" | "danger" | "success" | "warning" | "info" | "ghost"
+            | "link" | "text" => Some(format!(".{}()", value)),
             _ => None,
         },
         // Pagination 数值属性
@@ -96,15 +95,6 @@ pub fn component_static_setter(name: &str, value: &str, tag: &str) -> Option<Str
         // Radio tab_index/tab_stop
         "tab_index" if tag == "Radio" => Some(format!(".tab_index({})", value)),
         "tab_stop" if tag == "Radio" => Some(format!(".tab_stop({})", parse_bool(value))),
-        // Button variant 属性（值为空或 "true" 时启用变体）
-        "primary" | "secondary" | "danger" | "success" | "warning" | "info" | "ghost" | "link"
-        | "text" => {
-            if value.is_empty() || value.eq_ignore_ascii_case("true") {
-                Some(format!(".{}()", name))
-            } else {
-                None
-            }
-        }
         // Sizable 尺寸：size="xsmall" / size="small" / size="large"
         // medium/default 为组件原生默认（Size::Medium 由 #[default] 指定），
         // 遵循原生写法不生成 .with_size() 调用，避免冗余加工。
