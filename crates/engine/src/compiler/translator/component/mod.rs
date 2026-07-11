@@ -4,7 +4,7 @@
 //! - `stateless`：通用 Stateless / StatelessNoId 组件（Button / Avatar / Card 等，通过 component_lookup + setter 通用分发）
 //! - `stateful`：通用 Stateful 组件（Input / TextInput / Slider 等）
 //! - `tree` / `code_editor`：从 Stateful 抽出的特殊构造器组件
-//! - `tabs` / `tab_bar` / `table` / `description_list` / `popover` / `hover_card` / `sheet` / `accordion`：容器组件
+//! - `tabs` / `tab_bar` / `table` / `description_list` / `popover` / `hover_card` / `sheet` / `dialog` / `accordion`：容器组件
 //! - `label` / `separator` / `icon` / `kbd` / `tag` / `alert` / `radio_group` / `activity_bar`：特殊构造组件
 //!
 //! 本模块保留 `<component content={...}>` 透明容器 translator。
@@ -12,12 +12,15 @@
 pub mod accordion;
 pub mod activity_bar;
 pub mod alert;
+pub mod alert_dialog;
 pub mod code_editor;
 pub mod description_list;
+pub mod dialog;
 pub mod hover_card;
 pub mod icon;
 pub mod kbd;
 pub mod label;
+pub mod notification;
 pub mod otp_input;
 pub mod popover;
 pub mod radio_group;
@@ -112,8 +115,11 @@ pub fn register_all(registry: &mut crate::compiler::translator::TranslatorRegist
     popover::register(registry);
     hover_card::register(registry);
     sheet::register(registry);
+    dialog::register(registry);
+    alert_dialog::register(registry);
     accordion::register(registry);
     label::register(registry);
+    notification::register(registry);
     separator::register(registry);
     icon::register(registry);
     kbd::register(registry);

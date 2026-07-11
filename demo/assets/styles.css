@@ -202,6 +202,52 @@
     font-weight: 600;
 }
 
+/* ── Dialog case 样式 ── */
+
+.dialog-row {
+    display: flex;
+    flex-direction: row;
+    gap: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.dialog-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+}
+
+.dialog-tip {
+    padding: 8px 12px;
+    font-size: 13px;
+}
+
+.dialog-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    min-width: 200px;
+}
+
+.dialog-panel h4 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+/* ── Notification case 样式 ── */
+
+.notification-row {
+    display: flex;
+    flex-direction: row;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
 /* ── 文档格式 case 样式 ── */
 
 .doc-pane {

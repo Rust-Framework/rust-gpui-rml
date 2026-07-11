@@ -386,7 +386,13 @@
 
   "case.hover_card.title": "HoverCard",
 
-  "case.sheet.title": "Sheet"
+  "case.sheet.title": "Sheet",
+
+  "case.dialog.title": "Dialog",
+
+  "case.alert_dialog.title": "AlertDialog",
+
+  "case.notification.title": "Notification"
 
 }
 

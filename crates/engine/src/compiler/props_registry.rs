@@ -164,6 +164,18 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
     // Sheet 专用（侧边抽屉：title/footer + size + resizable/overlay/overlay_closable + on_close）
     // 构造器 Sheet::new(&mut Window, &mut App)，codegen 使用 render 上下文变量
     ("Sheet", &["title", "footer", "size", "resizable", "overlay", "overlay_closable", "on_close"]),
+    // Dialog 专用（模态对话框：title/footer + width + overlay/overlay_closable/close_button/keyboard + on_close/on_ok/on_cancel）
+    // 构造器 Dialog::new(cx: &mut App)，仅需 render 上下文的 cx 变量
+    ("Dialog", &["title", "footer", "width", "overlay", "overlay_closable", "close_button", "keyboard", "on_close", "on_ok", "on_cancel"]),
+    // AlertDialog 专用（警示对话框：title/description + width + confirm/show_cancel + overlay_closable/close_button/keyboard + on_close/on_ok/on_cancel）
+    // 构造器 AlertDialog::new(cx: &mut App)，仅需 render 上下文的 cx 变量
+    // 与 Dialog 区别：默认 close_button(false)+overlay_closable(false)，提供 description/confirm/show_cancel 便捷方法
+    ("AlertDialog", &["title", "description", "width", "confirm", "show_cancel", "overlay_closable", "close_button", "keyboard", "on_close", "on_ok", "on_cancel"]),
+    // Notification 专用（声明式通知触发器：title/message + variant 布尔属性 + autohide）
+    // 构造器 NotificationTrigger::new()（RenderOnce 无 ElementId、无 cx）
+    // variant 布尔属性: success/info/warning/error → .with_type(NotificationType::*)
+    // autohide 默认 true，显式 false 关闭
+    ("Notification", &["title", "message", "success", "info", "warning", "error", "autohide"]),
     // Icon 专用（RenderOnce 无 ElementId，name/path 为构造器参数，size 走通用 Sizable）
     ("Icon", &["name", "path"]),
     // Kbd 专用（RenderOnce 无 ElementId，key 为构造器参数，outline/appearance 为 setter）

@@ -313,14 +313,42 @@ gpui-component 共暴露约 50 个公共模块/重导出。剔除非 UI 组件�
    - Demo：`demo/src/cases/sheet_case.rml` + `.rml.rs`（5 个 demo section：基础用法/尺寸控制/页脚/交互控制/富内容）
    - 测试：8 个 codegen 单元测试 + 13 个 setter 单元测试，全 workspace 1491 tests passed
 
-4. **Notification**（特殊：NotificationList 集成）
-   - 构造：`Notification::new()` + `NotificationList::new()`
-   - 属性：`message`、`title`、`icon`、`variant`（type: info/success/warning/error）
-   - **集成 ModernWindow**：在 ModernWindow 中预置 `NotificationList` Entity，通过 helper trait 调用 `push(Notification)`
-   - codegen 模式：声明式 `<Notification>` 标签生成 `Notification::new().message(...).title(...)`，但实际触发通过 helper trait
-   - 参考 `project_memory.md` 中 ModernWindow 的 Notification 集成约束
+4. **Dialog**（Stateless, ParentElement, EventEmitter<DismissEvent>） ✅ 完成
+   - 构造：`Dialog::new(cx: &mut App)` —— codegen 生成 `Dialog::new(cx)` 使用 render 上下文变量（仅需 cx，不需要 _window）
+   - 属性：`title`（string）、`footer`（string）、`width`（px/裸数字）、`overlay`（bool）、`overlay_closable`（bool）、`close_button`（bool）、`keyboard`（bool）、`on_close`（event，cx.listener 桥接）、`on_ok`（event，entity 捕获闭包返回 true）、`on_cancel`（event，entity 捕获闭包返回 true）
+   - slot="trigger" → `.trigger()`，其余子节点 → `.child()` / `.children()`（ParentElement）
+   - 注意：仅 PascalCase `<Dialog>` 为本组件，小写 `<dialog>` 为 `RootTag::DialogWindow`
+   - on_ok/on_cancel 特殊处理：签名 `Fn(&ClickEvent, &mut Window, &mut App) -> bool`，`cx.listener()` 无法适配（不返回 bool），改用 `cx.entity()` 捕获 entity + `entity.update()` 调用方法，固定返回 `true`
+   - 实现文件：`crates/engine/src/compiler/components/dialog/{gen,setters,mod}.rs`、`crates/engine/src/compiler/translator/component/dialog.rs`
+   - Demo：`demo/src/cases/dialog_case.rml` + `.rml.rs`（5 个 demo section：基础用法/宽度控制/页脚/交互控制/富内容）
+   - 测试：10 个 codegen 单元测试 + 15 个 setter 单元测试，全 workspace tests passed
 
-5. **Scroll**（特殊：trait 包装）
+5. **AlertDialog**（Stateless, ParentElement, RenderOnce） ✅ 完成
+   - 构造：`AlertDialog::new(cx: &mut App)` —— codegen 生成 `AlertDialog::new(cx)` 使用 render 上下文变量
+   - 与 Dialog 的区别已明确消除二义性：
+     - Dialog 默认 `close_button(true)` + `overlay_closable(true)`，通用模态对话框
+     - AlertDialog 默认 `close_button(false)` + `overlay_closable(false)`，警示确认场景
+     - AlertDialog 专属方法：`.description()` / `.confirm()` / `.show_cancel()`
+     - AlertDialog footer 按钮居中对齐，Dialog 右对齐
+   - 属性：`title`、`description`（专属）、`width`、`confirm`（布尔属性）、`show_cancel`、`overlay_closable`、`close_button`、`keyboard`、`on_close`、`on_ok`、`on_cancel`
+   - slot="trigger" → `.trigger()`，其余子节点 → `.child()` / `.children()`
+   - **根标签 `<dialog>` 修复**：从 `window.open_alert_dialog()` 改为 `window.open_dialog()`，使用 Dialog（非 AlertDialog）作为底层，语义正确
+   - 实现文件：`crates/engine/src/compiler/components/alert_dialog/{gen,setters,mod}.rs`、`crates/engine/src/compiler/translator/component/alert_dialog.rs`
+   - 文档：`crates/ui/src/components/alert_dialog.rs` 添加 AlertDialog vs Dialog 对比表
+   - Demo：`demo/src/cases/alert_dialog_case.rml` + `.rml.rs`（5 个 demo section：基础用法/确认对话框/宽度控制/交互控制/与 Dialog 对比）
+   - 测试：8 个 codegen 单元测试 + 15 个 setter 单元测试，全 workspace tests passed
+
+6. **Notification**（特殊：NotificationTrigger 包装器） ✅ 完成
+   - 构造：`NotificationTrigger::new()`（RenderOnce 无 ElementId、无 cx 参数）
+   - **设计原因**：`Notification` 实现 `Render`（非 `RenderOnce`），通过 `window.push_notification()` 命令式推送，无法直接作为 RML 组件
+   - **NotificationTrigger 包装器**：存储 title/message/type/autohide 字段，包裹 `slot="trigger"` 子元素，点击时构造 `Notification` 并调用 `window.push_notification()` 推送
+   - 属性：`title`（string）、`message`（string）、`success`/`info`/`warning`/`error`（独立布尔属性 → `.with_type(NotificationType::X)`）、`autohide`（默认 true，`autohide=false` 关闭）
+   - 子节点：`slot="trigger"` → `.trigger()`，不支持其余子节点（NotificationTrigger 不实现 ParentElement）
+   - 实现文件：`crates/ui/src/components/notification_trigger.rs`、`crates/engine/src/compiler/components/notification/{gen,setters,mod}.rs`、`crates/engine/src/compiler/translator/component/notification.rs`
+   - Demo：`demo/src/cases/notification_case.rml` + `.rml.rs`（5 个 demo section：基础用法/通知类型/仅消息/禁用自动隐藏/不同触发器）
+   - 测试：10 个 codegen 单元测试 + 13 个 setter 单元测试，全 workspace 1259 tests passed
+
+7. **Scroll**（特殊：trait 包装）
    - **设计决策**：封装为 `<Scroll>` 容器组件，而非通用属性
    - 构造：codegen 生成 `div().id(...).scrollable(ScrollbarAxis::Vertical).child(...)`
    - 属性：`axis`（`vertical` / `horizontal` / `both`，默认 `vertical`）
@@ -328,7 +356,7 @@ gpui-component 共暴露约 50 个公共模块/重导出。剔除非 UI 组件�
    - 子节点：通过 `.child(...)` 注入
    - codegen 模式：参考 `component.rs` 的通用 div 处理，但追加 `.scrollable(axis)` 调用
 
-6. **Resizable**（Stateful, items builder）
+8. **Resizable**（Stateful, items builder）
    - 构造：`h_resizable(id)` / `v_resizable(id)`（关联函数选择方向）
    - 状态：`ResizableState`
    - 子节点：`<ResizablePanel>`（item builder，含 `size_range`、`default_size`）

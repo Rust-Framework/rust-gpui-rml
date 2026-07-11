@@ -186,3 +186,9 @@ pub mod focus_event_case;
 pub mod hover_card_case;
 #[path = "sheet_case.rml.rs"]
 pub mod sheet_case;
+#[path = "dialog_case.rml.rs"]
+pub mod dialog_case;
+#[path = "alert_dialog_case.rml.rs"]
+pub mod alert_dialog_case;
+#[path = "notification_case.rml.rs"]
+pub mod notification_case;

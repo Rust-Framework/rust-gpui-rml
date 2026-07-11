@@ -505,6 +505,39 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             kind: ComponentKind::Stateless,
             container: true,
         }),
+        // Dialog：模态对话框（gpui-component 组件，非 <dialog> 根标签）
+        // 构造器 Dialog::new(cx: &mut App)，仅需 render 上下文的 cx 变量
+        // .title()/.footer()/.trigger()/.on_close()/.on_ok()/.on_cancel()/.width()/.overlay()/.overlay_closable()/.close_button()/.keyboard()
+        // slot="trigger" → .trigger()，其余子节点 → .child()（ParentElement）
+        // 注意：仅 PascalCase "Dialog" 命中此条目，小写 "dialog" 为 RootTag::DialogWindow
+        "Dialog" => Some(ComponentTag {
+            ctor_path: "rml_ui::Dialog",
+            kind: ComponentKind::Stateless,
+            container: true,
+        }),
+        // AlertDialog：警示对话框（基于 Dialog 的简化封装，opinionated defaults）
+        // 构造器 AlertDialog::new(cx: &mut App)，仅需 render 上下文的 cx 变量
+        // 与 Dialog 的区别：默认 close_button(false) + overlay_closable(false)，
+        //   提供 .description()/.confirm()/.show_cancel() 便捷方法，
+        //   footer 按钮居中对齐（Dialog 右对齐）
+        // .title()/.description()/.trigger()/.on_close()/.on_ok()/.on_cancel()/.width()/.confirm()/.show_cancel()/.overlay_closable()/.close_button()/.keyboard()
+        // slot="trigger" → .trigger()，其余子节点 → .child()（ParentElement）
+        "AlertDialog" => Some(ComponentTag {
+            ctor_path: "rml_ui::AlertDialog",
+            kind: ComponentKind::Stateless,
+            container: true,
+        }),
+        // Notification：声明式通知触发器（RenderOnce 包装器，非 gpui-component Notification）
+        // RML <Notification> 编译为 NotificationTrigger，点击 trigger 时自动推送通知。
+        // NotificationTrigger::new() 无 ElementId、无 cx 参数。
+        // .title()/.message()/.with_type(NotificationType::X)/.autohide(bool)/.trigger(element)
+        // variant 布尔属性：success/info/warning/error → .with_type(NotificationType::X)
+        // slot="trigger" → .trigger()，不支持其余子节点（非 ParentElement）
+        "Notification" => Some(ComponentTag {
+            ctor_path: "rml_ui::NotificationTrigger",
+            kind: ComponentKind::StatelessNoId,
+            container: true,
+        }),
         // Phase 1 基础无状态组件
         // Spinner：RenderOnce 无 ElementId，.icon(impl Into<Icon>)/.color(Hsla)，Sizable
         "Spinner" => Some(ComponentTag {

@@ -88,9 +88,11 @@ pub(crate) fn gen_window_impl(
 /// 存储父窗口句柄，供 `close()` 通过 `AnyWindowHandle::update` 调用
 /// `WindowExt::close_dialog`。
 ///
-/// 基于 gpui-component `AlertDialog` 实现：默认居中显示，内置 ESC 关闭、关闭按钮，
-/// `title` 属性映射到 `AlertDialog::title`，子元素通过 `content` 注入。
-/// `footer` 显式置空以避免 AlertDialog 默认 OK 按钮与 RML 子元素中的按钮重复。
+/// 基于 gpui-component `Dialog` 实现（非 `AlertDialog`）：
+/// - `Dialog` 默认 `close_button(true)` + `overlay_closable(true)`，适合通用对话框窗口
+/// - `AlertDialog` 默认 `close_button(false)` + `overlay_closable(false)`，适合警示确认场景
+/// - `<dialog>` 根标签为通用对话框窗口，使用 `Dialog` 语义正确
+/// - `title` 属性映射到 `Dialog::title`，子元素通过 `content` 注入
 pub(crate) fn gen_dialog_impl(elem: &Element, ctx: &CodegenCtx) -> Result<String, CodegenError> {
     let view_name = &ctx.view_struct_name;
 
@@ -103,7 +105,7 @@ pub(crate) fn gen_dialog_impl(elem: &Element, ctx: &CodegenCtx) -> Result<String
         r#"impl {view_name} {{
     /// 在指定父窗口上打开对话框（模态）。
     ///
-    /// 基于 `AlertDialog` 实现，默认居中显示，内置 ESC 关闭与关闭按钮。
+    /// 基于 `Dialog` 实现，默认带关闭按钮、遮罩层可点击关闭、ESC 键关闭。
     /// 标题由 RML `title` 属性映射，子元素通过 `content` 注入。
     pub fn open(self, window: &mut gpui::Window, cx: &mut gpui::App) {{
         use rml_ui::WindowExt;
@@ -116,13 +118,11 @@ pub(crate) fn gen_dialog_impl(elem: &Element, ctx: &CodegenCtx) -> Result<String
             __rml_this.__rml_state.window_handle = Some(__rml_parent_handle);
             __rml_this
         }});
-        window.open_alert_dialog(cx, move |__rml_a, _, _| {{
+        window.open_dialog(cx, move |__rml_d, _, _| {{
             let __rml_entity = __rml_entity.clone();
-            __rml_a
+            __rml_d
                 .title(__rml_title.clone())
                 .width(__rml_width)
-                .close_button(true)
-                .footer(rml_ui::DialogFooter::new())
                 .content(move |__rml_content, _, _| {{
                     __rml_content.child(__rml_entity.clone())
                 }})

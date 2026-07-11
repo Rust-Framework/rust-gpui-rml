@@ -387,7 +387,13 @@
 
   "case.hover_card.title": "悬浮卡片 HoverCard",
 
-  "case.sheet.title": "侧边抽屉 Sheet"
+  "case.sheet.title": "侧边抽屉 Sheet",
+
+  "case.dialog.title": "模态对话框 Dialog",
+
+  "case.alert_dialog.title": "警示对话框 AlertDialog",
+
+  "case.notification.title": "通知 Notification"
 
 }
 
