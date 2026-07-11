@@ -54,6 +54,8 @@ pub fn canonical_tag(tag: &str) -> String {
         "select" => "Select".to_string(),
         "calendar" => "Calendar".to_string(),
         "combobox" => "Combobox".to_string(),
+        "hover-card" => "HoverCard".to_string(),
+        "sheet" => "Sheet".to_string(),
         // resizable 小写别名映射（normalize_component_tag 不转为 PascalCase）
         "resizable" => "Resizable".to_string(),
         // settings 小写别名映射（normalize_component_tag 不转为 PascalCase）
@@ -485,6 +487,23 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             ctor_path: "rml_ui::Popover",
             kind: ComponentKind::StatelessWithItems,
             container: false,
+        }),
+        // HoverCard：悬浮卡片，与 Popover 类似但通过鼠标悬浮触发
+        // 构造器 HoverCard::new(id)，.trigger()/.content()/.anchor()/.open_delay()/.close_delay()/.appearance()
+        // 子节点 slot="trigger" → .trigger()，其余 → .child()（同 Popover 模式）
+        "HoverCard" | "hover-card" => Some(ComponentTag {
+            ctor_path: "rml_ui::HoverCard",
+            kind: ComponentKind::StatelessWithItems,
+            container: false,
+        }),
+        // Sheet：侧边抽屉，从窗口边缘滑入
+        // 构造器 Sheet::new(&mut Window, &mut App)，需 render 上下文变量
+        // .title()/.footer()/.size()/.resizable()/.overlay()/.overlay_closable()/.on_close()
+        // ParentElement：子节点通过 .child() 注入为 content
+        "Sheet" | "sheet" => Some(ComponentTag {
+            ctor_path: "rml_ui::Sheet",
+            kind: ComponentKind::Stateless,
+            container: true,
         }),
         // Phase 1 基础无状态组件
         // Spinner：RenderOnce 无 ElementId，.icon(impl Into<Icon>)/.color(Hsla)，Sizable

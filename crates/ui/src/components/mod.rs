@@ -12,6 +12,7 @@ pub mod color_picker;
 pub mod combobox;
 pub mod date_picker;
 pub mod group_box;
+pub mod hover_card;
 pub mod link;
 pub mod menu;
 pub mod number_input;
@@ -22,6 +23,7 @@ pub mod rating;
 pub mod resizable;
 pub mod select;
 pub mod settings;
+pub mod sheet;
 pub mod skeleton;
 pub mod spinner;
 pub mod status_bar;
@@ -58,6 +60,7 @@ pub use color_picker::{ColorPicker, ColorPickerEvent, ColorPickerState};
 pub use combobox::{Combobox, ComboboxEvent, ComboboxState, StringComboboxEvent, StringComboboxState};
 pub use date_picker::{DatePicker, DatePickerEvent, DatePickerState};
 pub use group_box::{GroupBox, GroupBoxVariants};
+pub use hover_card::{HoverCard, HoverCardState};
 pub use link::Link;
 pub use number_input::{NumberInput, NumberInputEvent};
 pub use otp_input::{OtpInput, OtpState};
@@ -73,6 +76,7 @@ pub use settings::{
     SettingField, SettingFieldElement, SettingFieldType, SettingGroup, SettingItem, SettingPage,
     Settings,
 };
+pub use sheet::Sheet;
 pub use skeleton::Skeleton;
 pub use select::{IndexPath, SearchableVec, Select, SelectEvent, SelectState, StringSelectEvent, StringSelectState};
 pub use spinner::Spinner;

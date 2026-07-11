@@ -7,7 +7,7 @@
 //! ## 子模块
 //!
 //! - `accordion/` / `alert/` / `avatar/` / `badge/` / `card/` / `code_editor/` /
-//!   `description_list/` / `input/` / `kbd/` / `menu/` / `popover/` / `table/` /
+//!   `description_list/` / `hover_card/` / `input/` / `kbd/` / `menu/` / `popover/` / `sheet/` / `table/` /
 //!   `tabs/` / `tab_bar/` / `tree/`：复杂组件 codegen（含 gen.rs / setters.rs / item.rs 等）
 //! - `icon.rs` / `label.rs` / `radio_group.rs` / `separator.rs` / `tag.rs`：单文件组件 codegen
 
@@ -18,6 +18,7 @@ pub mod badge;
 pub mod card;
 pub mod code_editor;
 pub mod description_list;
+pub mod hover_card;
 pub mod icon;
 pub mod input;
 pub mod kbd;
@@ -27,6 +28,7 @@ pub mod otp_input;
 pub mod popover;
 pub mod radio_group;
 pub mod separator;
+pub mod sheet;
 pub mod state_event;
 pub mod stepper;
 pub mod tab_bar;

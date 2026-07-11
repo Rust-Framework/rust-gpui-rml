@@ -130,6 +130,78 @@
     font-weight: 600;
 }
 
+/* ── HoverCard case 样式 ── */
+
+.hover-card-row {
+    display: flex;
+    flex-direction: row;
+    gap: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.hover-card-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+}
+
+.hover-card-tip {
+    padding: 8px 12px;
+    font-size: 13px;
+}
+
+.hover-card-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    min-width: 200px;
+}
+
+.hover-card-panel h4 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+/* ── Sheet case 样式 ── */
+
+.sheet-row {
+    display: flex;
+    flex-direction: row;
+    gap: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.sheet-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+}
+
+.sheet-tip {
+    padding: 8px 12px;
+    font-size: 13px;
+}
+
+.sheet-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    min-width: 200px;
+}
+
+.sheet-panel h4 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+}
+
 /* ── 文档格式 case 样式 ── */
 
 .doc-pane {

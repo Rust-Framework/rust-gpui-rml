@@ -159,6 +159,11 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
     // Popover 专用（浮动气泡容器：trigger slot + content 子节点 + anchor 定位 + default_open 非受控初始）
     // 受控模式（open + on_open_change）需要特殊回调签名适配，待需求出现时再添加
     ("Popover", &["anchor", "mouse_button", "appearance", "overlay_closable", "default_open"]),
+    // HoverCard 专用（悬浮卡片：trigger slot + content 子节点 + anchor 定位 + open/close 延迟）
+    ("HoverCard", &["anchor", "appearance", "open_delay", "close_delay"]),
+    // Sheet 专用（侧边抽屉：title/footer + size + resizable/overlay/overlay_closable + on_close）
+    // 构造器 Sheet::new(&mut Window, &mut App)，codegen 使用 render 上下文变量
+    ("Sheet", &["title", "footer", "size", "resizable", "overlay", "overlay_closable", "on_close"]),
     // Icon 专用（RenderOnce 无 ElementId，name/path 为构造器参数，size 走通用 Sizable）
     ("Icon", &["name", "path"]),
     // Kbd 专用（RenderOnce 无 ElementId，key 为构造器参数，outline/appearance 为 setter）

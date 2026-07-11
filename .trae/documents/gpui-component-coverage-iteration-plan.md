@@ -297,15 +297,21 @@ gpui-component 共暴露约 50 个公共模块/重导出。剔除非 UI 组件�
    - 子节点：`<template slot="trigger">` + content 子节点
    - 与 AlertDialog 共存（AlertDialog 已 re-export，Dialog 独立实现）
 
-2. **HoverCard**（Stateful, HoverCardState）
-   - 构造：`HoverCard::new(id)` + `HoverCardState::new()`
-   - 属性：`trigger`（slot）、content 子节点
-   - codegen 模式：参考 `popover.rs`（slot 路由 + content 注入）
+2. **HoverCard**（StatelessWithItems, HoverCardState） ✅ 完成
+   - 构造：`HoverCard::new(id)` —— Stateless 容器，trigger slot + content 子节点
+   - 属性：`anchor`（8 方向）、`appearance`（bool）、`open_delay`（ms→Duration）、`close_delay`（ms→Duration）
+   - codegen 模式：参考 `popover.rs`（slot 路由 `.trigger()` + content 注入 `.child()`）
+   - 实现文件：`crates/ui/src/components/hover_card.rs`、`crates/engine/src/compiler/components/hover_card/{gen,setters,mod}.rs`、`crates/engine/src/compiler/translator/component/hover_card.rs`
+   - Demo：`demo/src/cases/hover_card_case.rml` + `.rml.rs`（6 个 demo section：基础用法/anchor 定位/顶部锚点/延迟控制/样式控制/富内容）
+   - 测试：7 个 codegen 单元测试 + 6 个 setter 单元测试，全 workspace 1470 tests passed
 
-3. **Sheet**（Stateless, EventEmitter<DismissEvent>）
-   - 构造：`Sheet::new()`
-   - 属性：`title`、`footer`、`size`、`on_close`（DismissEvent）
-   - ParentElement：直接接收子节点作为 content
+3. **Sheet**（Stateless, EventEmitter<DismissEvent>） ✅ 完成
+   - 构造：`Sheet::new(_: &mut Window, cx: &mut App)` —— codegen 生成 `Sheet::new(_window, cx)` 使用 render 上下文变量
+   - 属性：`title`（string）、`footer`（string）、`size`（px/%/裸数字）、`resizable`（bool）、`overlay`（bool）、`overlay_closable`（bool）、`on_close`（event，cx.listener 桥接）
+   - ParentElement：子节点通过 `.child()` / `.children()` 注入为 content
+   - 实现文件：`crates/ui/src/components/sheet.rs`、`crates/engine/src/compiler/components/sheet/{gen,setters,mod}.rs`、`crates/engine/src/compiler/translator/component/sheet.rs`
+   - Demo：`demo/src/cases/sheet_case.rml` + `.rml.rs`（5 个 demo section：基础用法/尺寸控制/页脚/交互控制/富内容）
+   - 测试：8 个 codegen 单元测试 + 13 个 setter 单元测试，全 workspace 1491 tests passed
 
 4. **Notification**（特殊：NotificationList 集成）
    - 构造：`Notification::new()` + `NotificationList::new()`

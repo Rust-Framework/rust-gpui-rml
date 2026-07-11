@@ -180,3 +180,9 @@ pub mod content_binding_case;
 // 基础能力补齐：焦点事件 demo
 #[path = "focus_event_case.rml.rs"]
 pub mod focus_event_case;
+
+// Phase 3：反馈与覆盖层组件 demo
+#[path = "hover_card_case.rml.rs"]
+pub mod hover_card_case;
+#[path = "sheet_case.rml.rs"]
+pub mod sheet_case;

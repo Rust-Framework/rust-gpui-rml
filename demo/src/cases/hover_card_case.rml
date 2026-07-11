@@ -1,0 +1,106 @@
+<component>
+    <CaseDocPage
+        title={t("case.hover_card.title")}
+        description="HoverCard 是 RML 的悬浮卡片组件，标签为 PascalCase HoverCard 或小写 hover-card（均合法）。Stateless 容器组件，子节点通过 slot=&quot;trigger&quot; 路由到 .trigger()，其余子节点作为 content 注入 .child()。与 Popover 类似，但通过鼠标悬浮触发（非点击），可配置 open-delay 和 close-delay 控制显示/隐藏延迟。anchor 属性控制卡片定位锚点（8 个方向），appearance 控制是否应用默认样式。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <div class="demo-section">
+                <h3>基础用法</h3>
+                <p>HoverCard 包裹一个 trigger 元素（通过 slot=&quot;trigger&quot; 标记）和若干 content 子节点。鼠标悬浮在 trigger 上时显示卡片内容，移开时自动隐藏。trigger 需实现 Selectable + IntoElement（如 Button）。</p>
+                <HoverCard>
+                    <Button slot="trigger" label="悬浮查看" />
+                    <div class="hover-card-content">
+                        <p>这是悬浮卡片内容，可以放置任意元素。</p>
+                        <p>移开鼠标后自动隐藏。</p>
+                    </div>
+                </HoverCard>
+            </div>
+
+            <div class="demo-section">
+                <h3>锚点定位 anchor</h3>
+                <p>anchor 属性控制卡片相对于 trigger 的定位方向，支持 8 个锚点：top-left / top-center / top-right / bottom-left / bottom-center / bottom-right / left-center / right-center。下方演示三种常用的 bottom 锚点。</p>
+                <div class="hover-card-row">
+                    <HoverCard anchor="bottom-left">
+                        <Button slot="trigger" label="bottom-left" />
+                        <div class="hover-card-tip">左下角锚点</div>
+                    </HoverCard>
+                    <HoverCard anchor="bottom-center">
+                        <Button slot="trigger" label="bottom-center" />
+                        <div class="hover-card-tip">中下角锚点</div>
+                    </HoverCard>
+                    <HoverCard anchor="bottom-right">
+                        <Button slot="trigger" label="bottom-right" />
+                        <div class="hover-card-tip">右下角锚点</div>
+                    </HoverCard>
+                </div>
+            </div>
+
+            <div class="demo-section">
+                <h3>顶部锚点对比</h3>
+                <p>top-left / top-center / top-right 锚点让卡片显示在 trigger 上方，适用于 trigger 位于页面底部的场景。</p>
+                <div class="hover-card-row">
+                    <HoverCard anchor="top-left">
+                        <Button slot="trigger" label="top-left" />
+                        <div class="hover-card-tip">左上角锚点</div>
+                    </HoverCard>
+                    <HoverCard anchor="top-center">
+                        <Button slot="trigger" label="top-center" />
+                        <div class="hover-card-tip">中上角锚点</div>
+                    </HoverCard>
+                    <HoverCard anchor="top-right">
+                        <Button slot="trigger" label="top-right" />
+                        <div class="hover-card-tip">右上角锚点</div>
+                    </HoverCard>
+                </div>
+            </div>
+
+            <div class="demo-section">
+                <h3>显示/隐藏延迟</h3>
+                <p>open-delay 控制鼠标悬浮后多久显示卡片（毫秒），close-delay 控制鼠标移开后多久隐藏卡片（毫秒）。适用于需要避免误触的场景。下方演示 open-delay=800（延迟显示）和 close-delay=1000（延迟隐藏）。</p>
+                <div class="hover-card-row">
+                    <HoverCard open-delay="800">
+                        <Button slot="trigger" label="延迟显示 800ms" />
+                        <div class="hover-card-tip">悬浮 800ms 后才会显示此卡片</div>
+                    </HoverCard>
+                    <HoverCard close-delay="1000">
+                        <Button slot="trigger" label="延迟隐藏 1000ms" />
+                        <div class="hover-card-tip">移开鼠标 1000ms 后才会隐藏此卡片</div>
+                    </HoverCard>
+                </div>
+            </div>
+
+            <div class="demo-section">
+                <h3>样式控制</h3>
+                <p>appearance=&quot;false&quot; 关闭默认样式（背景/边框/阴影），适用于完全自定义卡片样式的场景。</p>
+                <HoverCard appearance="false">
+                    <Button slot="trigger" label="无默认样式" />
+                    <div class="hover-card-tip" style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 8px;">appearance=false：自定义黄色背景，无默认边框/阴影</div>
+                </HoverCard>
+            </div>
+
+            <div class="demo-section">
+                <h3>富内容 Rich Content</h3>
+                <p>悬浮卡片内容支持任意 GPUI 元素，包括表单、按钮、列表等。下方演示一个含标题和操作按钮的富内容卡片。</p>
+                <HoverCard>
+                    <Button slot="trigger" label="悬浮打开面板" primary />
+                    <div class="hover-card-panel">
+                        <h4>快捷操作</h4>
+                        <p class="hint">在此面板中放置表单或操作按钮。</p>
+                        <div class="hover-card-row">
+                            <Button label="确定" primary size="small" />
+                            <Button label="取消" size="small" />
+                        </div>
+                    </div>
+                </HoverCard>
+            </div>
+        </template>
+
+        <template slot="api">
+            <h3>HoverCard</h3>
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+            <p>另：hover-card 与 HoverCard 标签等价（normalize_component_tag 统一为 HoverCard）。</p>
+            <p>另：slot=&quot;trigger&quot; 是 RML 的 slot 机制，将子元素路由到 .trigger() 方法；其余子节点作为 content 通过 .child() 注入。</p>
+        </template>
+    </CaseDocPage>
+</component>

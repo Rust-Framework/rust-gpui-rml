@@ -382,7 +382,11 @@
   "case.virtual_list.title": "VirtualList",
   "case.resizable.title": "Resizable",
 
-  "case.settings.title": "Settings"
+  "case.settings.title": "Settings",
+
+  "case.hover_card.title": "HoverCard",
+
+  "case.sheet.title": "Sheet"
 
 }
 

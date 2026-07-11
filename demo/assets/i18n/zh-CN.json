@@ -383,7 +383,11 @@
   "case.virtual_list.title": "虚拟列表 VirtualList",
   "case.resizable.title": "可调整面板 Resizable",
 
-  "case.settings.title": "设置面板 Settings"
+  "case.settings.title": "设置面板 Settings",
+
+  "case.hover_card.title": "悬浮卡片 HoverCard",
+
+  "case.sheet.title": "侧边抽屉 Sheet"
 
 }
 
