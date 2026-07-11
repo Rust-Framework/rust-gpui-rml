@@ -1,14 +1,7 @@
 /* Light theme CSS overrides.
-   框架已内置 light 主题默认色,此文件为空即可获得完整配色。
-   如需定制,在 :root 中覆盖对应变量,例如:
+   框架已在 crates/core/src/theme.rs 内置完整 light 配色，此文件无需 :root 块。
+   如需定制或新增主题套餐，在 :root 中覆盖对应变量，例如:
    :root {
        --primary: #ff6600;
    }
-*/
-:root {
-    --primary-foreground: #ffffff;
-    --title-bar: #f3f4f6;
-    --status-bar: #f3f4f6;
-    --chrome-surface: #f3f4f6;
-    --editor-surface: #ffffff;
-}
+ */

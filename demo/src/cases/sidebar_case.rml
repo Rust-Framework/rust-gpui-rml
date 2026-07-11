@@ -8,7 +8,7 @@
             <div class="demo-section">
                 <h3>基础侧边栏</h3>
                 <p>默认左侧、不可折叠。SidebarMenu 分组，SidebarMenuItem 菜单项支持 icon 图标与 active 高亮。点击菜单项触发 on-click 回调。</p>
-                <div style="height: 320px; display: flex; border: 1px solid var(--color_border);">
+                <div style="height: 320px; display: flex; border: 1px solid var(--border);">
                     <Sidebar side="left" ref="basic_sidebar">
                         <SidebarMenu>
                             <SidebarMenuItem label="首页" icon="Frame" active="" on-click={on_item_click} />
@@ -30,7 +30,7 @@
             <div class="demo-section">
                 <h3>可折叠侧边栏</h3>
                 <p>collapsible="icon" 启用图标折叠模式，collapsed 绑定状态字段控制展开/折叠。折叠时仅显示图标，悬停可展开。点击菜单项同样触发回调。</p>
-                <div style="height: 320px; display: flex; border: 1px solid var(--color_border);">
+                <div style="height: 320px; display: flex; border: 1px solid var(--border);">
                     <Sidebar side="left" collapsible="icon" collapsed={is_collapsed} ref="collapsible_sidebar">
                         <SidebarMenu>
                             <SidebarMenuItem label="仪表盘" icon="LayoutDashboard" on-click={on_item_click} />
@@ -48,7 +48,7 @@
             <div class="demo-section">
                 <h3>带 header/footer 插槽</h3>
                 <p>slot="header" 注入顶部内容（如品牌标识），slot="footer" 注入底部内容（如用户信息）。插槽通过 .header() / .footer() builder 方法注入。</p>
-                <div style="height: 360px; display: flex; border: 1px solid var(--color_border);">
+                <div style="height: 360px; display: flex; border: 1px solid var(--border);">
                     <Sidebar side="left">
                         <div slot="header" style="padding: 12px; font-weight: bold; font-size: 16px;">
                             🚀 RML Framework
@@ -58,7 +58,7 @@
                             <SidebarMenuItem label="团队" icon="User" on-click={on_item_click} />
                             <SidebarMenuItem label="文档" icon="BookOpen" on-click={on_item_click} />
                         </SidebarMenu>
-                        <div slot="footer" style="padding: 12px; border-top: 1px solid var(--color_border);">
+                        <div slot="footer" style="padding: 12px; border-top: 1px solid var(--border);">
                             <p style="font-size: 12px; margin: 0;">当前用户：admin</p>
                         </div>
                     </Sidebar>
@@ -71,7 +71,7 @@
             <div class="demo-section">
                 <h3>子菜单嵌套</h3>
                 <p>SidebarMenuItem 可嵌套子菜单：子节点为 SidebarMenuItem，通过 .children(vec![...]) 注入。default-open 控制子菜单默认展开，click-to-toggle 允许点击切换展开/折叠。</p>
-                <div style="height: 360px; display: flex; border: 1px solid var(--color_border);">
+                <div style="height: 360px; display: flex; border: 1px solid var(--border);">
                     <Sidebar side="left">
                         <SidebarMenu>
                             <SidebarMenuItem label="文件" icon="File" default-open="" on-click={on_item_click}>
@@ -95,7 +95,7 @@
             <div class="demo-section">
                 <h3>禁用菜单项</h3>
                 <p>disabled 属性禁用菜单项（映射到 .disable(bool) 方法），禁用项不可点击。右侧侧边栏演示 side="right"。</p>
-                <div style="height: 320px; display: flex; border: 1px solid var(--color_border);">
+                <div style="height: 320px; display: flex; border: 1px solid var(--border);">
                     <div style="flex: 1; padding: 16px;">
                         <p>主内容区域（右侧侧边栏演示）</p>
                     </div>

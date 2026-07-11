@@ -268,49 +268,150 @@ fn rgba_from_hex(hex: u32) -> Rgba {
     }
 }
 
-/// 内置 light 主题默认 CSS 变量颜色
+/// 批量写入内置 CSS 颜色变量
+fn insert_builtin(m: &mut HashMap<String, Rgba>, vars: &[(&str, u32)]) {
+    for (name, hex) in vars {
+        m.insert(name.to_string(), rgba_from_hex(*hex));
+    }
+}
+
+/// 内置 light 主题默认 CSS 变量颜色（与 `apply_light_theme_config` 语义 token 对齐）
 fn builtin_light_colors() -> HashMap<String, Rgba> {
     let mut m = HashMap::new();
-    m.insert("--primary".to_string(), rgba_from_hex(0x007acc));
-    m.insert("--background".to_string(), rgba_from_hex(0xffffff));
-    m.insert("--surface".to_string(), rgba_from_hex(0xf3f4f6));
-    m.insert("--surface-variant".to_string(), rgba_from_hex(0xf9fafb));
-    m.insert("--code-bg".to_string(), rgba_from_hex(0xf1f3f5));
-    m.insert("--text".to_string(), rgba_from_hex(0x111827));
-    m.insert("--text-muted".to_string(), rgba_from_hex(0x6b7280));
-    m.insert("--border".to_string(), rgba_from_hex(0xe5e7eb));
-    m.insert("--success".to_string(), rgba_from_hex(0x059669));
-    m.insert("--warning".to_string(), rgba_from_hex(0xd97706));
-    m.insert("--error".to_string(), rgba_from_hex(0xdc2626));
-    m.insert("--info".to_string(), rgba_from_hex(0x2563eb));
-    m.insert("--primary-foreground".to_string(), rgba_from_hex(0xffffff));
-    m.insert("--title-bar".to_string(), rgba_from_hex(0xf3f4f6));
-    m.insert("--status-bar".to_string(), rgba_from_hex(0xf3f4f6));
-    m.insert("--chrome-surface".to_string(), rgba_from_hex(0xf3f4f6));
-    m.insert("--editor-surface".to_string(), rgba_from_hex(0xffffff));
+    insert_builtin(
+        &mut m,
+        &[
+            // 基础
+            ("--primary", 0x007acc),
+            ("--primary-foreground", 0xffffff),
+            ("--background", 0xffffff),
+            ("--foreground", 0x111827),
+            ("--text", 0x111827),
+            ("--text-muted", 0x6b7280),
+            ("--muted-foreground", 0x6b7280),
+            ("--border", 0xe5e7eb),
+            ("--ring", 0x007acc),
+            // 表面层级
+            ("--surface", 0xf3f4f6),
+            ("--surface-variant", 0xf9fafb),
+            ("--muted", 0xf9fafb),
+            ("--secondary", 0xf3f4f6),
+            ("--secondary-foreground", 0x374151),
+            ("--accent", 0xdbeafe),
+            ("--accent-foreground", 0x374151),
+            ("--code-bg", 0xf1f3f5),
+            ("--chrome-surface", 0xf3f4f6),
+            ("--editor-surface", 0xffffff),
+            // 壳层
+            ("--title-bar", 0xf3f4f6),
+            ("--title-bar-border", 0xe5e7eb),
+            ("--status-bar", 0xf3f4f6),
+            ("--status-bar-border", 0xe5e7eb),
+            ("--sidebar", 0xf3f4f6),
+            ("--sidebar-foreground", 0x374151),
+            // 标签页
+            ("--tab-bar", 0xf3f4f6),
+            ("--tab-foreground", 0x374151),
+            ("--tab-active", 0xffffff),
+            ("--tab-active-foreground", 0x111827),
+            // 列表 / 表格
+            ("--list", 0xf9fafb),
+            ("--list-hover", 0xe5e7eb),
+            ("--list-active", 0xd1d5db),
+            ("--table-head", 0xf9fafb),
+            ("--table-head-foreground", 0x6b7280),
+            ("--table-even", 0xf9fafb),
+            // 浮层 / 输入
+            ("--popover", 0xffffff),
+            ("--popover-foreground", 0x111827),
+            ("--input", 0xffffff),
+            ("--selection", 0xadd6ff),
+            ("--link", 0x2563eb),
+            // 语义色
+            ("--success", 0x059669),
+            ("--success-foreground", 0xffffff),
+            ("--warning", 0xd97706),
+            ("--warning-foreground", 0xffffff),
+            ("--error", 0xdc2626),
+            ("--danger", 0xdc2626),
+            ("--danger-foreground", 0xffffff),
+            ("--info", 0x2563eb),
+            ("--info-foreground", 0xffffff),
+            // 滚动条
+            ("--scrollbar", 0xf3f4f6),
+            ("--scrollbar-thumb", 0x9ca3af),
+        ],
+    );
     m
 }
 
-/// 内置 dark 主题默认 CSS 变量颜色
+/// 内置 dark 主题默认 CSS 变量颜色（与 `apply_dark_theme_config` 语义 token 对齐）
 fn builtin_dark_colors() -> HashMap<String, Rgba> {
     let mut m = HashMap::new();
-    m.insert("--primary".to_string(), rgba_from_hex(0x007acc));
-    m.insert("--background".to_string(), rgba_from_hex(0x222427));
-    m.insert("--surface".to_string(), rgba_from_hex(0x2a2b30));
-    m.insert("--surface-variant".to_string(), rgba_from_hex(0x1a1b1d));
-    m.insert("--code-bg".to_string(), rgba_from_hex(0x1a1b1d));
-    m.insert("--text".to_string(), rgba_from_hex(0xd4d4d8));
-    m.insert("--text-muted".to_string(), rgba_from_hex(0x8e8e93));
-    m.insert("--border".to_string(), rgba_from_hex(0x374151));
-    m.insert("--success".to_string(), rgba_from_hex(0x4ec9b0));
-    m.insert("--warning".to_string(), rgba_from_hex(0xcca700));
-    m.insert("--error".to_string(), rgba_from_hex(0xf44747));
-    m.insert("--info".to_string(), rgba_from_hex(0x3794ff));
-    m.insert("--primary-foreground".to_string(), rgba_from_hex(0xffffff));
-    m.insert("--title-bar".to_string(), rgba_from_hex(0x1a1b1d));
-    m.insert("--status-bar".to_string(), rgba_from_hex(0x1a1b1d));
-    m.insert("--chrome-surface".to_string(), rgba_from_hex(0x1a1b1d));
-    m.insert("--editor-surface".to_string(), rgba_from_hex(0x222427));
+    insert_builtin(
+        &mut m,
+        &[
+            // 基础
+            ("--primary", 0x007acc),
+            ("--primary-foreground", 0xffffff),
+            ("--background", 0x222427),
+            ("--foreground", 0xd4d4d8),
+            ("--text", 0xd4d4d8),
+            ("--text-muted", 0x8e8e93),
+            ("--muted-foreground", 0x8e8e93),
+            ("--border", 0x374151),
+            ("--ring", 0x007acc),
+            // 表面层级
+            ("--surface", 0x2a2b30),
+            ("--surface-variant", 0x1a1b1d),
+            ("--muted", 0x2a2b30),
+            ("--secondary", 0x1a1b1d),
+            ("--secondary-foreground", 0xd4d4d8),
+            ("--accent", 0x094771),
+            ("--accent-foreground", 0xd4d4d8),
+            ("--code-bg", 0x1a1b1d),
+            ("--chrome-surface", 0x1a1b1d),
+            ("--editor-surface", 0x222427),
+            // 壳层
+            ("--title-bar", 0x1a1b1d),
+            ("--title-bar-border", 0x0f1012),
+            ("--status-bar", 0x1a1b1d),
+            ("--status-bar-border", 0x0f1012),
+            ("--sidebar", 0x1a1b1d),
+            ("--sidebar-foreground", 0xd4d4d8),
+            // 标签页
+            ("--tab-bar", 0x1a1b1d),
+            ("--tab-foreground", 0xd4d4d8),
+            ("--tab-active", 0x222427),
+            ("--tab-active-foreground", 0xffffff),
+            // 列表 / 表格
+            ("--list", 0x25262a),
+            ("--list-hover", 0x33353a),
+            ("--list-active", 0x2a2b30),
+            ("--table-head", 0x25262a),
+            ("--table-head-foreground", 0x8e8e93),
+            ("--table-even", 0x25262a),
+            // 浮层 / 输入
+            ("--popover", 0x2a2b32),
+            ("--popover-foreground", 0xd4d4d8),
+            ("--input", 0x2e3035),
+            ("--selection", 0x264f78),
+            ("--link", 0x3794ff),
+            // 语义色
+            ("--success", 0x4ec9b0),
+            ("--success-foreground", 0xffffff),
+            ("--warning", 0xcca700),
+            ("--warning-foreground", 0xffffff),
+            ("--error", 0xf44747),
+            ("--danger", 0xf44747),
+            ("--danger-foreground", 0xffffff),
+            ("--info", 0x3794ff),
+            ("--info-foreground", 0xffffff),
+            // 滚动条
+            ("--scrollbar", 0x1a1b1d),
+            ("--scrollbar-thumb", 0x555555),
+        ],
+    );
     m
 }
 
@@ -362,43 +463,72 @@ fn apply_dark_theme_config(cx: &mut App) {
     t.highlight_theme = gpui_component::highlighter::HighlightTheme::default_dark();
 
     t.background = gpui::rgb(0x222427).into();
+    t.foreground = gpui::rgb(0xd4d4d8).into();
     t.secondary = gpui::rgb(0x1a1b1d).into();
+    t.secondary_hover = gpui::rgb(0x3a3b40).into();
+    t.secondary_active = gpui::rgb(0x4a4b50).into();
+    t.secondary_foreground = gpui::rgb(0xd4d4d8).into();
     t.muted = gpui::rgb(0x2a2b30).into();
+    t.muted_foreground = gpui::rgb(0x8e8e93).into();
+
     t.title_bar = gpui::rgb(0x1a1b1d).into();
     t.title_bar_border = gpui::rgb(0x0f1012).into();
+    t.status_bar = gpui::rgb(0x1a1b1d).into();
+    t.status_bar_border = gpui::rgb(0x0f1012).into();
+
     t.sidebar = gpui::rgb(0x1a1b1d).into();
     t.sidebar_accent = gpui::rgb(0x2a2b30).into();
+    t.sidebar_foreground = gpui::rgb(0xd4d4d8).into();
+    t.sidebar_border = gpui::rgb(0x374151).into();
+
     t.tab_bar = gpui::transparent_black();
     t.tab_bar_segmented = gpui::rgb(0x1a1b1d).into();
     t.tab_foreground = gpui::rgb(0xd4d4d8).into();
     t.tab_active = gpui::rgb(0x222427).into();
     t.tab_active_foreground = gpui::rgb(0xffffff).into();
-    t.colors.list = gpui::rgb(0x25262a).into();
-    t.input = gpui::rgb(0x2e3035).into();
 
+    t.colors.list = gpui::rgb(0x25262a).into();
     t.list_hover = gpui::rgb(0x33353a).into();
     t.list_active = gpui::rgb(0x2a2b30).into();
     t.list_active_border = gpui::transparent_black();
-    t.selection = gpui::rgb(0x264f78).into();
-    t.secondary_hover = gpui::rgb(0x3a3b40).into();
-    t.secondary_active = gpui::rgb(0x4a4b50).into();
-    t.secondary_foreground = gpui::rgb(0xd4d4d8).into();
-    t.primary_hover = gpui::rgb(0x1a8ad4).into();
+    t.list_even = gpui::rgb(0x25262a).into();
+    t.list_head = gpui::rgb(0x25262a).into();
 
-    t.foreground = gpui::rgb(0xd4d4d8).into();
+    t.table = gpui::rgb(0x222427).into();
+    t.table_head = gpui::rgb(0x25262a).into();
+    t.table_head_foreground = gpui::rgb(0x8e8e93).into();
+    t.table_even = gpui::rgb(0x25262a).into();
+    t.table_hover = gpui::rgb(0x33353a).into();
+    t.table_row_border = gpui::rgb(0x374151).into();
+
+    t.input = gpui::rgb(0x2e3035).into();
+    t.selection = gpui::rgb(0x264f78).into();
     t.caret = gpui::rgb(0xffffff).into();
-    t.muted_foreground = gpui::rgb(0x8e8e93).into();
-    t.link = gpui::rgb(0x3794ff).into();
-    t.accent_foreground = gpui::rgb(0xd4d4d8).into();
 
     t.primary = gpui::rgb(0x007acc).into();
+    t.primary_hover = gpui::rgb(0x1a8ad4).into();
+    t.primary_active = gpui::rgb(0x006bb3).into();
     t.primary_foreground = gpui::rgb(0xffffff).into();
-    t.success = gpui::rgb(0x4ec9b0).into();
-    t.warning = gpui::rgb(0xcca700).into();
-    t.danger = gpui::rgb(0xf44747).into();
-    t.info = gpui::rgb(0x3794ff).into();
 
-    t.status_bar = gpui::rgb(0x1a1b1d).into();
+    t.success = gpui::rgb(0x4ec9b0).into();
+    t.success_foreground = gpui::rgb(0xffffff).into();
+    t.warning = gpui::rgb(0xcca700).into();
+    t.warning_foreground = gpui::rgb(0xffffff).into();
+    t.danger = gpui::rgb(0xf44747).into();
+    t.danger_hover = gpui::rgb(0xff5555).into();
+    t.danger_active = gpui::rgb(0xcc3333).into();
+    t.danger_foreground = gpui::rgb(0xffffff).into();
+    t.info = gpui::rgb(0x3794ff).into();
+    t.info_foreground = gpui::rgb(0xffffff).into();
+
+    t.link = gpui::rgb(0x3794ff).into();
+    t.link_hover = gpui::rgb(0x5aa8ff).into();
+    t.link_active = gpui::rgb(0x0066cc).into();
+    t.accent = gpui::rgb(0x094771).into();
+    t.accent_foreground = gpui::rgb(0xd4d4d8).into();
+
+    t.popover = gpui::rgb(0x2a2b32).into();
+    t.popover_foreground = gpui::rgb(0xd4d4d8).into();
 
     t.scrollbar = gpui::transparent_black();
     t.scrollbar_thumb = gpui::rgb(0x555555).into();
@@ -406,9 +536,6 @@ fn apply_dark_theme_config(cx: &mut App) {
 
     t.border = gpui::rgb(0x374151).into();
     t.drag_border = gpui::rgb(0x007acc).into();
-    t.popover = gpui::rgb(0x2a2b32).into();
-    t.popover_foreground = gpui::rgb(0xd4d4d8).into();
-    t.accent = gpui::rgb(0x094771).into();
     t.ring = gpui::rgb(0x007acc).into();
 
     t.transparent = gpui::transparent_black();
@@ -429,43 +556,72 @@ fn apply_light_theme_config(cx: &mut App) {
     t.highlight_theme = gpui_component::highlighter::HighlightTheme::default_light();
 
     t.background = gpui::rgb(0xffffff).into();
+    t.foreground = gpui::rgb(0x111827).into();
     t.secondary = gpui::rgb(0xf3f4f6).into();
+    t.secondary_hover = gpui::rgb(0xd1d5db).into();
+    t.secondary_active = gpui::rgb(0x9ca3af).into();
+    t.secondary_foreground = gpui::rgb(0x374151).into();
     t.muted = gpui::rgb(0xf9fafb).into();
+    t.muted_foreground = gpui::rgb(0x6b7280).into();
+
     t.title_bar = gpui::rgb(0xf3f4f6).into();
     t.title_bar_border = gpui::rgb(0xe5e7eb).into();
+    t.status_bar = gpui::rgb(0xf3f4f6).into();
+    t.status_bar_border = gpui::rgb(0xe5e7eb).into();
+
     t.sidebar = gpui::rgb(0xf3f4f6).into();
     t.sidebar_accent = gpui::rgb(0xe5e7eb).into();
+    t.sidebar_foreground = gpui::rgb(0x374151).into();
+    t.sidebar_border = gpui::rgb(0xe5e7eb).into();
+
     t.tab_bar = gpui::rgb(0xf3f4f6).into();
     t.tab_bar_segmented = gpui::rgb(0xf3f4f6).into();
     t.tab_foreground = gpui::rgb(0x374151).into();
     t.tab_active = gpui::rgb(0xffffff).into();
     t.tab_active_foreground = gpui::rgb(0x111827).into();
-    t.colors.list = gpui::rgb(0xf9fafb).into();
-    t.input = gpui::rgb(0xffffff).into();
 
+    t.colors.list = gpui::rgb(0xf9fafb).into();
     t.list_hover = gpui::rgb(0xe5e7eb).into();
     t.list_active = gpui::rgb(0xd1d5db).into();
     t.list_active_border = gpui::transparent_black();
-    t.selection = gpui::rgb(0xadd6ff).into();
-    t.secondary_hover = gpui::rgb(0xd1d5db).into();
-    t.secondary_active = gpui::rgb(0x9ca3af).into();
-    t.secondary_foreground = gpui::rgb(0x374151).into();
-    t.primary_hover = gpui::rgb(0x1a8ad4).into();
+    t.list_even = gpui::rgb(0xf9fafb).into();
+    t.list_head = gpui::rgb(0xf9fafb).into();
 
-    t.foreground = gpui::rgb(0x111827).into();
+    t.table = gpui::rgb(0xffffff).into();
+    t.table_head = gpui::rgb(0xf9fafb).into();
+    t.table_head_foreground = gpui::rgb(0x6b7280).into();
+    t.table_even = gpui::rgb(0xf9fafb).into();
+    t.table_hover = gpui::rgb(0xe5e7eb).into();
+    t.table_row_border = gpui::rgb(0xe5e7eb).into();
+
+    t.input = gpui::rgb(0xffffff).into();
+    t.selection = gpui::rgb(0xadd6ff).into();
     t.caret = gpui::rgb(0x000000).into();
-    t.muted_foreground = gpui::rgb(0x6b7280).into();
-    t.link = gpui::rgb(0x2563eb).into();
-    t.accent_foreground = gpui::rgb(0x374151).into();
 
     t.primary = gpui::rgb(0x007acc).into();
+    t.primary_hover = gpui::rgb(0x1a8ad4).into();
+    t.primary_active = gpui::rgb(0x006bb3).into();
     t.primary_foreground = gpui::rgb(0xffffff).into();
-    t.success = gpui::rgb(0x059669).into();
-    t.warning = gpui::rgb(0xd97706).into();
-    t.danger = gpui::rgb(0xdc2626).into();
-    t.info = gpui::rgb(0x2563eb).into();
 
-    t.status_bar = gpui::rgb(0xf3f4f6).into();
+    t.success = gpui::rgb(0x059669).into();
+    t.success_foreground = gpui::rgb(0xffffff).into();
+    t.warning = gpui::rgb(0xd97706).into();
+    t.warning_foreground = gpui::rgb(0xffffff).into();
+    t.danger = gpui::rgb(0xdc2626).into();
+    t.danger_hover = gpui::rgb(0xef4444).into();
+    t.danger_active = gpui::rgb(0xb91c1c).into();
+    t.danger_foreground = gpui::rgb(0xffffff).into();
+    t.info = gpui::rgb(0x2563eb).into();
+    t.info_foreground = gpui::rgb(0xffffff).into();
+
+    t.link = gpui::rgb(0x2563eb).into();
+    t.link_hover = gpui::rgb(0x1d4ed8).into();
+    t.link_active = gpui::rgb(0x1e40af).into();
+    t.accent = gpui::rgb(0xdbeafe).into();
+    t.accent_foreground = gpui::rgb(0x374151).into();
+
+    t.popover = gpui::rgb(0xffffff).into();
+    t.popover_foreground = gpui::rgb(0x111827).into();
 
     t.scrollbar = gpui::rgb(0xf3f4f6).into();
     t.scrollbar_thumb = gpui::rgb(0x9ca3af).into();
@@ -473,9 +629,6 @@ fn apply_light_theme_config(cx: &mut App) {
 
     t.border = gpui::rgb(0xe5e7eb).into();
     t.drag_border = gpui::rgb(0x007acc).into();
-    t.popover = gpui::rgb(0xffffff).into();
-    t.popover_foreground = gpui::rgb(0x111827).into();
-    t.accent = gpui::rgb(0xdbeafe).into();
     t.ring = gpui::rgb(0x007acc).into();
 
     t.transparent = gpui::transparent_black();
@@ -1322,5 +1475,57 @@ mod tests {
         // 480° == 120° → green
         let (r, g, b) = hsl_to_rgb(480.0, 1.0, 0.5);
         assert_eq!((r, g, b), (0, 255, 0));
+    }
+
+    #[test]
+    fn builtin_light_colors_cover_essential_vars() {
+        let colors = builtin_light_colors();
+        for key in [
+            "--primary",
+            "--background",
+            "--surface",
+            "--text",
+            "--border",
+            "--title-bar",
+            "--status-bar",
+            "--sidebar-foreground",
+            "--table-head",
+            "--table-even",
+            "--success-foreground",
+            "--danger-foreground",
+        ] {
+            assert!(colors.contains_key(key), "missing light builtin: {key}");
+        }
+        assert!(colors.len() >= 40);
+    }
+
+    #[test]
+    fn builtin_dark_colors_cover_essential_vars() {
+        let colors = builtin_dark_colors();
+        for key in [
+            "--primary",
+            "--background",
+            "--surface",
+            "--text",
+            "--border",
+            "--title-bar",
+            "--status-bar",
+            "--sidebar-foreground",
+            "--table-head",
+            "--table-even",
+            "--success-foreground",
+            "--danger-foreground",
+        ] {
+            assert!(colors.contains_key(key), "missing dark builtin: {key}");
+        }
+        assert!(colors.len() >= 40);
+    }
+
+    #[test]
+    fn merge_theme_with_builtin_uses_builtins_when_css_empty() {
+        let (colors, vars) = merge_theme_with_builtin("light", DEFAULT_THEMES_DIR);
+        assert!(colors.contains_key("--primary"));
+        assert!(colors.contains_key("--editor-surface"));
+        assert!(vars.is_empty());
     }
 }

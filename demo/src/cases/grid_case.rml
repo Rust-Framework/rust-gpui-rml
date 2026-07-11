@@ -8,12 +8,12 @@
             <Card title="基础 Grid 布局">
                 <p>3 列等宽网格，每个格子显示编号：</p>
                 <Grid columns="3" gap="12px" style="margin-top: 12px;">
-                    <div style="background: var(--color-bg-2); padding: 16px; text-align: center; border-radius: 4px;">1</div>
-                    <div style="background: var(--color-bg-2); padding: 16px; text-align: center; border-radius: 4px;">2</div>
-                    <div style="background: var(--color-bg-2); padding: 16px; text-align: center; border-radius: 4px;">3</div>
-                    <div style="background: var(--color-bg-2); padding: 16px; text-align: center; border-radius: 4px;">4</div>
-                    <div style="background: var(--color-bg-2); padding: 16px; text-align: center; border-radius: 4px;">5</div>
-                    <div style="background: var(--color-bg-2); padding: 16px; text-align: center; border-radius: 4px;">6</div>
+                    <div style="background: var(--surface-variant); padding: 16px; text-align: center; border-radius: 4px;">1</div>
+                    <div style="background: var(--surface-variant); padding: 16px; text-align: center; border-radius: 4px;">2</div>
+                    <div style="background: var(--surface-variant); padding: 16px; text-align: center; border-radius: 4px;">3</div>
+                    <div style="background: var(--surface-variant); padding: 16px; text-align: center; border-radius: 4px;">4</div>
+                    <div style="background: var(--surface-variant); padding: 16px; text-align: center; border-radius: 4px;">5</div>
+                    <div style="background: var(--surface-variant); padding: 16px; text-align: center; border-radius: 4px;">6</div>
                 </Grid>
             </Card>
 
@@ -21,12 +21,12 @@
                 <p>3 列网格，第一个元素跨 2 列：</p>
                 <Grid columns="3" gap="12px" style="margin-top: 12px;">
                     <GridItem col-span="2">
-                        <div style="background: var(--color-primary-bg); padding: 16px; text-align: center; border-radius: 4px; color: var(--color-primary);">跨 2 列</div>
+                        <div style="background: var(--accent); padding: 16px; text-align: center; border-radius: 4px; color: var(--primary);">跨 2 列</div>
                     </GridItem>
-                    <div style="background: var(--color-bg-2); padding: 16px; text-align: center; border-radius: 4px;">1 列</div>
-                    <div style="background: var(--color-bg-2); padding: 16px; text-align: center; border-radius: 4px;">1 列</div>
+                    <div style="background: var(--surface-variant); padding: 16px; text-align: center; border-radius: 4px;">1 列</div>
+                    <div style="background: var(--surface-variant); padding: 16px; text-align: center; border-radius: 4px;">1 列</div>
                     <GridItem col-span="2">
-                        <div style="background: var(--color-primary-bg); padding: 16px; text-align: center; border-radius: 4px; color: var(--color-primary);">跨 2 列</div>
+                        <div style="background: var(--accent); padding: 16px; text-align: center; border-radius: 4px; color: var(--primary);">跨 2 列</div>
                     </GridItem>
                 </Grid>
             </Card>
@@ -37,15 +37,15 @@
                     <GridItem col-span="3">
                         <div style="background: var(--color-bg-3); padding: 8px 12px; border-radius: 4px; font-size: 13px;">菜单栏 Menu Bar</div>
                     </GridItem>
-                    <div style="background: var(--color-bg-2); padding: 12px; border-radius: 4px; font-size: 13px; overflow: hidden;">
+                    <div style="background: var(--surface-variant); padding: 12px; border-radius: 4px; font-size: 13px; overflow: hidden;">
                         侧边栏 / 文件树
                     </div>
                     <GridItem col-span="2" row-span="2">
-                        <div style="background: var(--color-primary-bg); padding: 12px; border-radius: 4px; font-size: 13px; color: var(--color-primary); height: 100%; overflow: hidden;">
+                        <div style="background: var(--accent); padding: 12px; border-radius: 4px; font-size: 13px; color: var(--primary); height: 100%; overflow: hidden;">
                             编辑器区域 Editor Area（占 2 列 2 行）
                         </div>
                     </GridItem>
-                    <div style="background: var(--color-bg-2); padding: 12px; border-radius: 4px; font-size: 13px; overflow: hidden;">
+                    <div style="background: var(--surface-variant); padding: 12px; border-radius: 4px; font-size: 13px; overflow: hidden;">
                         大纲 / Outline
                     </div>
                     <GridItem col-span="3">

@@ -9,28 +9,28 @@
                 <p>标题、粗体/斜体/删除线、列表、引用块、行内代码：</p>
                 <Markdown
                     content={basic_markdown}
-                    style="margin-top: 12px; padding: 16px; background: var(--color-bg-2); border-radius: 6px;" />
+                    style="margin-top: 12px; padding: 16px; background: var(--surface-variant); border-radius: 6px;" />
             </Card>
 
             <Card title="代码块语法高亮">
                 <p>支持 Rust / JSON / TypeScript 等语言的语法高亮：</p>
                 <Markdown
                     content={code_block_markdown}
-                    style="margin-top: 12px; padding: 16px; background: var(--color-bg-2); border-radius: 6px;" />
+                    style="margin-top: 12px; padding: 16px; background: var(--surface-variant); border-radius: 6px;" />
             </Card>
 
             <Card title="数据绑定 Markdown（AI 聊天场景）">
                 <p>通过 content 绑定 ViewModel 字段，适合 AI 聊天回复等动态内容：</p>
                 <Markdown
                     content={ai_response}
-                    style="margin-top: 12px; padding: 16px; background: var(--color-bg-2); border-radius: 6px;" />
+                    style="margin-top: 12px; padding: 16px; background: var(--surface-variant); border-radius: 6px;" />
             </Card>
 
             <Card title="Markdown 表格">
                 <p>支持 GFM 标准表格语法：</p>
                 <Markdown
                     content={table_markdown}
-                    style="margin-top: 12px; padding: 16px; background: var(--color-bg-2); border-radius: 6px;" />
+                    style="margin-top: 12px; padding: 16px; background: var(--surface-variant); border-radius: 6px;" />
             </Card>
         </template>
 

@@ -36,7 +36,7 @@ impl ILifecycle for MarkdownCase {
         let (cols, rows) = build_api_table(&[
             ("content", "static / bind", "Markdown 源文本，如 content=\"# Hello\" 或 content={field}"),
             ("padding", "style", "内边距，如 padding=\"16px\""),
-            ("background", "style", "背景色，如 background=\"var(--color-bg-2)\""),
+            ("background", "style", "背景色，如 background=\"var(--surface-variant)\""),
             ("border-radius", "style", "圆角，如 border-radius=\"6px\""),
             ("margin-top", "style", "顶部外边距，如 margin-top=\"12px\""),
         ]);

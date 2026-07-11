@@ -1,14 +1,7 @@
 /* Dark theme CSS overrides.
-   框架已内置 dark 主题默认色,此文件为空即可获得完整配色。
-   如需定制,在 :root 中覆盖对应变量,例如:
+   框架已在 crates/core/src/theme.rs 内置完整 dark 配色，此文件无需 :root 块。
+   如需定制或新增主题套餐，在 :root 中覆盖对应变量，例如:
    :root {
        --primary: #ff6600;
    }
-*/
-:root {
-    --primary-foreground: #ffffff;
-    --title-bar: #1a1b1d;
-    --status-bar: #1a1b1d;
-    --chrome-surface: #1a1b1d;
-    --editor-surface: #222427;
-}
+ */

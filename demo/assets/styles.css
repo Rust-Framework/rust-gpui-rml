@@ -1,6 +1,6 @@
 /* RML Showcase — 可选 CSS 覆盖层
  * 默认外观由 gpui-component Theme + rml_ui Shell 组件 + 语义标签提供。
- * 本文件仅保留 demo 布局 utility 与覆盖示例；颜色请优先使用 themes/*.css 变量。
+ * 颜色默认值由 crates/core/src/theme.rs 内置；本文件仅保留 demo 布局 utility。
  */
 
 .case-host {
