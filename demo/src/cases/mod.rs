@@ -192,3 +192,7 @@ pub mod dialog_case;
 pub mod alert_dialog_case;
 #[path = "notification_case.rml.rs"]
 pub mod notification_case;
+#[path = "scroll_case.rml.rs"]
+pub mod scroll_case;
+#[path = "form_case.rml.rs"]
+pub mod form_case;

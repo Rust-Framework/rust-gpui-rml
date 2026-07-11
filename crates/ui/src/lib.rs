@@ -53,7 +53,7 @@ pub use gpui_component::{
     calendar::{Calendar, CalendarEvent, CalendarState, Date},
     date_picker::{DatePicker, DatePickerEvent, DatePickerState},
     dialog::Dialog,
-    form::Form,
+    form::{Field, Form},
     hover_card::HoverCard,
     input::{Input, InputEvent, InputState},
     kbd::Kbd,

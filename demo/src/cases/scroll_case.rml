@@ -1,0 +1,62 @@
+<component>
+    <CaseDocPage
+        title={t("case.scroll.title")}
+        description="Scroll 是声明式滚动容器组件，标签为 PascalCase Scroll。封装 gpui-component 的 ScrollableElement trait，底层使用 div().overflow_y_scrollbar() 等方法返回 Scrollable&lt;Div&gt; 包装器，自带滚动条 UI。通过独立布尔属性 vertical/horizontal/both 选择滚动方向，默认 vertical。子节点通过 .child() 注入。构造器 Scroll::new()（RenderOnce 无 ElementId、无 cx）。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <div class="demo-section">
+                <h3>基础用法（垂直滚动）</h3>
+                <p>Scroll 默认垂直滚动。设置固定高度后，内容超出时自动显示垂直滚动条。下方演示一个高度为 200px 的垂直滚动容器，包含 20 个列表项。</p>
+                <Scroll class="scroll-demo-vertical">
+                    <div class="scroll-content">
+                        <p each={item in items}>{item}</p>
+                    </div>
+                </Scroll>
+            </div>
+
+            <div class="demo-section">
+                <h3>水平滚动 horizontal</h3>
+                <p>通过 horizontal 属性设置水平滚动。设置固定宽度后，内容超出时自动显示水平滚动条。下方演示一个宽度为 300px 的水平滚动容器。</p>
+                <Scroll horizontal class="scroll-demo-horizontal">
+                    <div class="scroll-content-horizontal">
+                        <span each={item in items}>{item}　</span>
+                    </div>
+                </Scroll>
+            </div>
+
+            <div class="demo-section">
+                <h3>双向滚动 both</h3>
+                <p>通过 both 属性设置双向滚动（垂直 + 水平）。适用于内容宽度和高度都可能超出容器的场景。下方演示一个 300x200px 的双向滚动容器。</p>
+                <Scroll both class="scroll-demo-both">
+                    <div class="scroll-content-both">
+                        <p each={item in items}>{item} — 这是一段较长的内容，可以触发水平滚动。</p>
+                    </div>
+                </Scroll>
+            </div>
+
+            <div class="demo-section">
+                <h3>嵌套使用</h3>
+                <p>Scroll 可嵌套使用，外层垂直滚动，内层水平滚动。适用于复杂的布局场景。</p>
+                <Scroll class="scroll-demo-vertical">
+                    <div class="scroll-content">
+                        <p each={item in items}>{item}</p>
+                        <Scroll horizontal class="scroll-demo-horizontal">
+                            <div class="scroll-content-horizontal">
+                                <span each={item in items}>{item}　</span>
+                            </div>
+                        </Scroll>
+                    </div>
+                </Scroll>
+            </div>
+        </template>
+
+        <template slot="api">
+            <h3>Scroll</h3>
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+            <p>注意：Scroll 底层使用 gpui-component 的 Scrollable&lt;Div&gt; 包装器，自带滚动条 UI。</p>
+            <p>另：variant 布尔属性（vertical/horizontal/both）为互斥方向选择，不设置时默认 vertical。</p>
+            <p>另：需设置固定高度/宽度（通过 CSS class 或内联样式）才能触发滚动。</p>
+        </template>
+    </CaseDocPage>
+</component>

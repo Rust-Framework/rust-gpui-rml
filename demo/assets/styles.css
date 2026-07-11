@@ -248,6 +248,50 @@
     flex-wrap: wrap;
 }
 
+/* ── Scroll case 样式 ── */
+
+.scroll-demo-vertical {
+    height: 200px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+}
+
+.scroll-demo-horizontal {
+    width: 300px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+}
+
+.scroll-demo-both {
+    width: 300px;
+    height: 200px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+}
+
+.scroll-content {
+    padding: 12px;
+}
+
+.scroll-content-horizontal {
+    padding: 12px;
+    white-space: nowrap;
+}
+
+.scroll-content-both {
+    padding: 12px;
+    min-width: 500px;
+}
+
+/* ── Form case 样式 ── */
+
+.form-demo {
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    max-width: 500px;
+}
+
 /* ── 文档格式 case 样式 ── */
 
 .doc-pane {

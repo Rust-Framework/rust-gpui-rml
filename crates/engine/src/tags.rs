@@ -538,6 +538,33 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             kind: ComponentKind::StatelessNoId,
             container: true,
         }),
+        // Scroll：声明式滚动容器（封装 div().overflow_y_scrollbar() 模式）
+        // Scroll::new() 无 ElementId、无 cx 参数（RenderOnce + ParentElement）。
+        // .vertical()/.horizontal()/.both() 设置滚动方向（默认 vertical）
+        // 子节点通过 .child()/.children() 注入
+        "Scroll" => Some(ComponentTag {
+            ctor_path: "rml_ui::Scroll",
+            kind: ComponentKind::StatelessNoId,
+            container: true,
+        }),
+        // Form：声明式表单容器（RenderOnce，非 ParentElement）
+        // Form::horizontal() / Form::vertical() 构造器选择（默认 vertical）
+        // .label_width(px) / .columns(usize) / .child(impl Into<Field>)
+        // 子节点必须为 <Field> 元素
+        "Form" => Some(ComponentTag {
+            ctor_path: "rml_ui::Form",
+            kind: ComponentKind::StatelessNoId,
+            container: true,
+        }),
+        // Field：表单字段容器（RenderOnce + ParentElement）
+        // Field::new() 无 ElementId、无 cx 参数
+        // .label() / .description() / .required(bool) / .visible(bool) / .col_span(u16)
+        // 子节点：Input、Switch、Checkbox 等表单控件
+        "Field" => Some(ComponentTag {
+            ctor_path: "rml_ui::Field",
+            kind: ComponentKind::StatelessNoId,
+            container: true,
+        }),
         // Phase 1 基础无状态组件
         // Spinner：RenderOnce 无 ElementId，.icon(impl Into<Icon>)/.color(Hsla)，Sizable
         "Spinner" => Some(ComponentTag {

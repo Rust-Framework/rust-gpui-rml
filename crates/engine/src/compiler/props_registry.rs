@@ -176,6 +176,18 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
     // variant 布尔属性: success/info/warning/error → .with_type(NotificationType::*)
     // autohide 默认 true，显式 false 关闭
     ("Notification", &["title", "message", "success", "info", "warning", "error", "autohide"]),
+    // Scroll 专用（声明式滚动容器：variant 布尔属性选择滚动方向）
+    // 构造器 Scroll::new()（RenderOnce 无 ElementId、无 cx，ParentElement）
+    // variant 布尔属性: vertical/horizontal/both → .vertical()/.horizontal()/.both()，默认 vertical
+    ("Scroll", &["vertical", "horizontal", "both"]),
+    // Form 专用（声明式表单容器：variant 构造器 + label_width + columns）
+    // 构造器 Form::vertical()（默认）/ Form::horizontal()（horizontal 属性切换）
+    // .child(impl Into<Field>)，子节点必须为 <Field> 元素
+    ("Form", &["horizontal", "vertical", "label_width", "label_text_size", "columns"]),
+    // Field 专用（表单字段：label + description + required + visible + col_span）
+    // 构造器 Field::new()（RenderOnce + ParentElement）
+    // 子节点：Input、Switch、Checkbox 等表单控件
+    ("Field", &["label", "description", "required", "visible", "label_indent", "col_span", "col_start", "col_end"]),
     // Icon 专用（RenderOnce 无 ElementId，name/path 为构造器参数，size 走通用 Sizable）
     ("Icon", &["name", "path"]),
     // Kbd 专用（RenderOnce 无 ElementId，key 为构造器参数，outline/appearance 为 setter）

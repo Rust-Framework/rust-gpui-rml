@@ -392,7 +392,11 @@
 
   "case.alert_dialog.title": "AlertDialog",
 
-  "case.notification.title": "Notification"
+  "case.notification.title": "Notification",
+
+  "case.scroll.title": "Scroll",
+
+  "case.form.title": "Form"
 
 }
 

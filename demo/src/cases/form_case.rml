@@ -1,0 +1,101 @@
+<component>
+    <CaseDocPage
+        title={t("case.form.title")}
+        description="Form 是声明式表单容器组件，标签为 PascalCase Form / Field。Form 封装 gpui-component 的 Form::horizontal() / Form::vertical() 构造器，通过独立布尔属性 horizontal/vertical 选择布局方向（默认 vertical）。label-width 设置标签宽度，columns 设置列数。Field 是表单字段容器，实现 ParentElement，可包含任意表单控件。Field 支持 label、description、required、visible、col-span 等属性。Form 的 .child() 方法接受 impl Into&lt;Field&gt;，子节点必须为 Field 元素。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <div class="demo-section">
+                <h3>垂直布局（默认）</h3>
+                <p>Form 默认垂直布局，标签位于内容上方。每个 Field 通过 label 属性设置标签文本。</p>
+                <Form class="form-demo">
+                    <Field label="用户名">
+                        <Label text="input_field" />
+                    </Field>
+                    <Field label="邮箱">
+                        <Label text="input_field" />
+                    </Field>
+                    <Field label="备注">
+                        <Label text="input_field" />
+                    </Field>
+                </Form>
+            </div>
+
+            <div class="demo-section">
+                <h3>水平布局 horizontal</h3>
+                <p>通过 horizontal 属性切换为水平布局，标签位于内容左侧。label-width 控制标签宽度（默认 140px）。</p>
+                <Form horizontal label-width="100" class="form-demo">
+                    <Field label="姓名">
+                        <Label text="input_field" />
+                    </Field>
+                    <Field label="年龄">
+                        <Label text="input_field" />
+                    </Field>
+                    <Field label="地址">
+                        <Label text="input_field" />
+                    </Field>
+                </Form>
+            </div>
+
+            <div class="demo-section">
+                <h3>必填与描述</h3>
+                <p>Field 支持 required 布尔属性（显示 * 标记）和 description 属性（显示帮助文本）。</p>
+                <Form horizontal label-width="100" class="form-demo">
+                    <Field label="密码" required description="至少 8 位字符">
+                        <Label text="input_field" />
+                    </Field>
+                    <Field label="确认密码" required description="再次输入密码">
+                        <Label text="input_field" />
+                    </Field>
+                </Form>
+            </div>
+
+            <div class="demo-section">
+                <h3>多列布局 columns</h3>
+                <p>通过 columns 属性设置列数，Field 通过 col-span 控制跨列。适用于紧凑的表单布局。</p>
+                <Form horizontal label-width="80" columns="2" class="form-demo">
+                    <Field label="名">
+                        <Label text="input_field" />
+                    </Field>
+                    <Field label="姓">
+                        <Label text="input_field" />
+                    </Field>
+                    <Field label="城市">
+                        <Label text="input_field" />
+                    </Field>
+                    <Field label="邮编">
+                        <Label text="input_field" />
+                    </Field>
+                    <Field label="地址" col-span="2">
+                        <Label text="input_field" />
+                    </Field>
+                </Form>
+            </div>
+
+            <div class="demo-section">
+                <h3>表单控件组合</h3>
+                <p>Field 可包含任意表单控件：Switch、Checkbox、Button 等。下方演示不同控件类型的表单字段。</p>
+                <Form horizontal label-width="100" class="form-demo">
+                    <Field label="启用">
+                        <Switch />
+                    </Field>
+                    <Field label="记住我">
+                        <Checkbox label="记住登录状态" />
+                    </Field>
+                    <Field label="操作">
+                        <Button label="提交" primary />
+                    </Field>
+                </Form>
+            </div>
+        </template>
+
+        <template slot="api">
+            <h3>Form</h3>
+            <Table columns={form_api_columns} rows={form_api_rows} bordered="" stripe="" />
+            <h3>Field</h3>
+            <Table columns={field_api_columns} rows={field_api_rows} bordered="" stripe="" />
+            <p>注意：Form 的 .child() 方法接受 impl Into&lt;Field&gt;，非 Field 子节点会编译失败。</p>
+            <p>另：variant 布尔属性（horizontal/vertical）为互斥布局选择，不设置时默认 vertical。</p>
+        </template>
+    </CaseDocPage>
+</component>

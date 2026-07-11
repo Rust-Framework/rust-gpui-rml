@@ -348,13 +348,15 @@ gpui-component 共暴露约 50 个公共模块/重导出。剔除非 UI 组件�
    - Demo：`demo/src/cases/notification_case.rml` + `.rml.rs`（5 个 demo section：基础用法/通知类型/仅消息/禁用自动隐藏/不同触发器）
    - 测试：10 个 codegen 单元测试 + 13 个 setter 单元测试，全 workspace 1259 tests passed
 
-7. **Scroll**（特殊：trait 包装）
-   - **设计决策**：封装为 `<Scroll>` 容器组件，而非通用属性
-   - 构造：codegen 生成 `div().id(...).scrollable(ScrollbarAxis::Vertical).child(...)`
-   - 属性：`axis`（`vertical` / `horizontal` / `both`，默认 `vertical`）
-   - ComponentKind：`Stateless`（使用 `div().id()` 作为底层）
-   - 子节点：通过 `.child(...)` 注入
-   - codegen 模式：参考 `component.rs` 的通用 div 处理，但追加 `.scrollable(axis)` 调用
+7. **Scroll**（特殊：trait 包装） ✅ 完成
+   - **设计决策**：封装为 `<Scroll>` 容器组件，包装 gpui-component 的 `ScrollableElement` trait
+   - 构造：`Scroll::new()`（RenderOnce 无 ElementId、无 cx，ParentElement）
+   - **底层实现**：`RenderOnce::render()` 中根据 axis 调用 `div().overflow_y_scrollbar()` / `.overflow_x_scrollbar()` / `.overflow_scrollbar()`，返回 `Scrollable<Div>` 包装器（自带滚动条 UI）
+   - 属性：`vertical` / `horizontal` / `both`（独立布尔属性 → `.vertical()` / `.horizontal()` / `.both()`，默认 vertical）
+   - 子节点：通过 `.child()` / `.children()` 注入（ParentElement）
+   - 实现文件：`crates/ui/src/components/scroll.rs`、`crates/engine/src/compiler/components/scroll/{gen,setters,mod}.rs`、`crates/engine/src/compiler/translator/component/scroll.rs`
+   - Demo：`demo/src/cases/scroll_case.rml` + `.rml.rs`（4 个 demo section：垂直滚动/水平滚动/双向滚动/嵌套使用）
+   - 测试：7 个 codegen 单元测试 + 7 个 setter 单元测试，全 workspace 1273 tests passed
 
 8. **Resizable**（Stateful, items builder）
    - 构造：`h_resizable(id)` / `v_resizable(id)`（关联函数选择方向）
@@ -367,16 +369,16 @@ gpui-component 共暴露约 50 个公共模块/重导出。剔除非 UI 组件�
 
 ### Phase 4：表单容器（1 个组件，预计 1-2 天）
 
-1. **Form + Field**（Stateless, items builder）
-   - **Form** 构造：`Form::horizontal()` / `Form::vertical()`（关联函数选择布局）
-   - **Form** 属性：`layout`（horizontal/vertical，等价关联函数）、`label_width`
-   - **Field** 作为布局容器标签（用户已确认）：
-     - 语法：`<Field label="用户名" name="username"><Input /></Field>`
-     - Field 内嵌任意表单组件（Input/Select/Checkbox 等），自动布局 label + content
-     - Field 属性：`label`（标签文本）、`name`（字段名）、`rules`（校验规则，可选）
-   - codegen 模式：variant 关联函数（horizontal/vertical）+ items builder（Field 子项）
-   - Form 与 Field 配对实现于 `form.rs`（配对豁免）
-   - 参考：`accordion.rs`（Accordion + AccordionItem 配对模式）
+1. **Form + Field**（StatelessNoId, ParentElement） ✅ 完成
+   - **Form** 构造：`Form::vertical()`（默认）/ `Form::horizontal()`（horizontal 属性切换）
+   - **Form** 属性：`horizontal`/`vertical`（独立布尔属性，构造器选择）、`label-width`（像素值）、`label-text-size`（rems）、`columns`（列数）
+   - **Form** 子节点：`.child(impl Into<Field>)`，子节点必须为 `<Field>` 元素（空白文本被忽略）
+   - **Field** 构造：`Field::new()`（RenderOnce + ParentElement）
+   - **Field** 属性：`label`、`description`、`required`（布尔，默认 false）、`visible`（默认 true）、`label-indent`、`col-span`、`col-start`、`col-end`
+   - **Field** 子节点：任意 `AnyElement`（Switch、Checkbox、Button、Label 等表单控件）
+   - 实现文件：`crates/ui/src/components/form.rs`、`crates/engine/src/compiler/components/form/{gen,setters,mod}.rs`、`crates/engine/src/compiler/components/field/{gen,setters,mod}.rs`、`crates/engine/src/compiler/translator/component/{form,field}.rs`
+   - Demo：`demo/src/cases/form_case.rml` + `.rml.rs`（5 个 demo section：垂直布局/水平布局/必填与描述/多列布局/表单控件组合）
+   - 测试：38 个单元测试（8 form setters + 8 form gen + 13 field setters + 9 field gen），全 workspace 1311 tests passed
 
 ### Phase 5：重型/复杂组件（8 个组件，预计 10+ 天）
 
