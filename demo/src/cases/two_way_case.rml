@@ -39,7 +39,7 @@
 
             <Card title="PascalCase 组件自动双向绑定">
                 <div class="demo-section">
-                    <h3>Stateless EventClick（Checkbox / Switch）</h3>
+                    <h3>事件绑定（Checkbox / Switch）</h3>
                     <p><code>checked=&#123;field&#125;</code> 自动双向——点击即回写 bool 字段，无需 on-click 手动处理：</p>
                     <div display="flex" flex-direction="column" gap="8px">
                         <Checkbox label="同意条款" checked={agree} />
@@ -49,21 +49,21 @@
                 </div>
 
                 <div class="demo-section">
-                    <h3>Stateless EventClick（Rating）</h3>
+                    <h3>事件绑定（Rating）</h3>
                     <p><code>value=&#123;field&#125;</code> 自动双向——点击星标回写 usize 字段：</p>
                     <Rating value={score} max="5" />
                     <p>当前评分：{score}</p>
                 </div>
 
                 <div class="demo-section">
-                    <h3>Stateful StateBridge（Slider）</h3>
+                    <h3>状态桥接（Slider）</h3>
                     <p><code>value=&#123;field&#125;</code> 自动双向——拖动滑块回写 f32 字段，字段变更同步滑块：</p>
                     <Slider value={volume} />
                     <p>当前音量：{volume}</p>
                 </div>
 
                 <div class="demo-section">
-                    <h3>Stateful InputStateBridge（Input）</h3>
+                    <h3>输入状态桥接（Input）</h3>
                     <p><code>value=&#123;field&#125;</code> 自动双向——PascalCase Input 复用 InputState 双向同步：</p>
                     <Input value={username} placeholder="用户名" />
                     <p>当前用户名：{username}</p>

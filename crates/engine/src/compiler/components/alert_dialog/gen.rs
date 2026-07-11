@@ -7,6 +7,7 @@
 //! ## 子节点处理
 //!
 //! - `slot="trigger"` 的子元素 → `.trigger(element)`（同 Dialog/HoverCard）
+//! - `slot="footer"` 的子元素 → `.footer(element)`（自定义页脚，同 Dialog）
 //! - 其余子元素 → `.child(element)` / `.children(iterator)`（ParentElement）
 
 use crate::compiler::codegen::attribute::append_css_class_styles;
@@ -72,8 +73,9 @@ pub fn gen_alert_dialog(
         }
     }
 
-    // 3. 子节点：slot="trigger" → .trigger()，其余 → .child() / .children()
+    // 3. 子节点：slot="trigger" → .trigger()，slot="footer" → .footer()，其余 → .child() / .children()
     let mut trigger_code: Option<String> = None;
+    let mut footer_code: Option<String> = None;
     let mut content_codes: Vec<String> = Vec::new();
 
     for child in &elem.children {
@@ -95,6 +97,22 @@ pub fn gen_alert_dialog(
                 }
                 trigger_code = Some(child_code);
             }
+            crate::parser::ast::Node::Element(e) if e.slot_name.as_deref() == Some("footer") => {
+                if is_iter {
+                    return Err(CodegenError {
+                        message: "AlertDialog footer slot cannot be an each iterator".into(),
+                        span: Some(elem.span),
+                    });
+                }
+                if footer_code.is_some() {
+                    return Err(CodegenError {
+                        message: "AlertDialog requires exactly one footer slot (multiple found)"
+                            .into(),
+                        span: Some(elem.span),
+                    });
+                }
+                footer_code = Some(child_code);
+            }
             _ => {
                 if is_iter {
                     content_codes.push(format!(".children({})", child_code));
@@ -107,6 +125,9 @@ pub fn gen_alert_dialog(
 
     if let Some(tc) = trigger_code {
         code.push_str(&format!("\n            .trigger({})", tc));
+    }
+    if let Some(fc) = footer_code {
+        code.push_str(&format!("\n            .footer({})", fc));
     }
     for content_code in content_codes {
         code.push_str(&format!("\n            {}", content_code));
@@ -265,5 +286,35 @@ mod tests {
         );
         let code = gen_alert_dialog(&elem, None, 0, &ctx(), &mut 1, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".close_button(true)"));
+    }
+
+    #[test]
+    fn gen_alert_dialog_with_footer_slot() {
+        let mut footer_btn = make_trigger();
+        footer_btn.slot_name = Some("footer".into());
+        footer_btn.attributes = vec![Attribute::Static {
+            name: "label".into(),
+            value: "自定义确认".into(),
+            span: Span::empty(),
+        }];
+        let elem = make_element("AlertDialog", vec![], vec![Node::Element(footer_btn)]);
+        let code = gen_alert_dialog(&elem, None, 0, &ctx(), &mut 1, &Vec::new(), &[]).unwrap();
+        assert!(code.contains(".footer("));
+    }
+
+    #[test]
+    fn gen_alert_dialog_multiple_footers_error() {
+        let mut footer1 = make_trigger();
+        footer1.slot_name = Some("footer".into());
+        let mut footer2 = make_trigger();
+        footer2.slot_name = Some("footer".into());
+        let elem = make_element(
+            "AlertDialog",
+            vec![],
+            vec![Node::Element(footer1), Node::Element(footer2)],
+        );
+        let result = gen_alert_dialog(&elem, None, 0, &ctx(), &mut 1, &Vec::new(), &[]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().message.contains("exactly one footer"));
     }
 }

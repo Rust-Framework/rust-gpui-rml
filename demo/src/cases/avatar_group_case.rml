@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.avatar_group.title")}
-        description="AvatarGroup 是 RML 的头像分组容器组件，标签为 PascalCase AvatarGroup。无 ElementId 构造（StatelessNoId），容器模式，子节点为 Avatar 组件。通过 limit 属性限制最大显示数量，ellipsis 属性启用溢出折叠显示 +N。"
+        description="AvatarGroup 是 RML 的头像分组容器组件，标签为 PascalCase AvatarGroup。无 ElementId 构造，容器模式，子节点为 Avatar 组件。通过 limit 属性限制最大显示数量，ellipsis 属性启用溢出折叠显示 +N。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">

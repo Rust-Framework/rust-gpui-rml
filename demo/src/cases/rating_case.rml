@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.rating.title")}
-        description="Rating 是 RML 的星级评分组件，标签为 PascalCase Rating。Stateless 组件，构造器接受 ElementId。支持 value（当前评分）、max（最大星数）、color（激活色，主题色名）、size、disabled 等属性。on-click 事件签名为 Fn(&amp;usize, ...)（评分值），不是 ClickEvent。"
+        description="Rating 是 RML 的星级评分组件，标签为 PascalCase Rating。构造器接受 ElementId。支持 value（当前评分）、max（最大星数）、color（激活色，主题色名）、size、disabled 等属性。on-click 事件签名为 Fn(&amp;usize, ...)（评分值），不是 ClickEvent。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">

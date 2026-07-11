@@ -99,7 +99,7 @@
         <template slot="api">
             <h3>HoverCard</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-            <p>另：hover-card 与 HoverCard 标签等价（normalize_component_tag 统一为 HoverCard）。</p>
+            <p>另：hover-card 与 HoverCard 标签等价。</p>
             <p>另：slot=&quot;trigger&quot; 是 RML 的 slot 机制，将子元素路由到 .trigger() 方法；其余子节点作为 content 通过 .child() 注入。</p>
         </template>
     </CaseDocPage>

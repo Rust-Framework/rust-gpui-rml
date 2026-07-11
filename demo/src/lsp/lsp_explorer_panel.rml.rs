@@ -1,8 +1,9 @@
-﻿use gpui::{SharedString, Window};
+use gpui::{SharedString, Window};
 use rml::prelude::*;
 use rml_core::contribution::IconSpec;
+use rml_core::element_ref::ElementRef;
 use rml_core::i18n::t_static;
-use rml_ui::{TreeItem, TreeState};
+use rml_ui::{TreeData, TreeState};
 
 use crate::shell::MainWindowRef;
 
@@ -18,7 +19,8 @@ use crate::shell::MainWindowRef;
 #[component]
 #[derive(Default)]
 pub struct LspExplorerPanel {
-    tree_state: Option<gpui::Entity<TreeState>>,
+    tree_state: ElementRef<TreeState>,
+    tree_items: Vec<TreeData>,
 }
 
 impl IContribution for LspExplorerPanel {
@@ -35,23 +37,12 @@ impl IContribution for LspExplorerPanel {
 
 impl ILifecycle for LspExplorerPanel {
     fn on_loaded(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
-        let items = crate::lsp::file_tree::build_source_tree();
-        self.set_tree_items(items, cx);
+        self.tree_items = crate::lsp::file_tree::build_source_tree();
+        cx.notify();
     }
 }
 
 impl LspExplorerPanel {
-    fn set_tree_items(&mut self, items: Vec<TreeItem>, cx: &mut Context<Self>) {
-        if let Some(state) = self.tree_state.as_ref() {
-            state.update(cx, |s, cx| {
-                s.set_items(items, cx);
-            });
-        } else {
-            let state = cx.new(|cx| TreeState::new(cx).items(items));
-            self.tree_state = Some(state);
-        }
-    }
-
     #[command]
     pub fn on_file_activate(&mut self, item_id: &gpui::SharedString, cx: &mut Context<Self>) {
         let path = item_id.to_string();

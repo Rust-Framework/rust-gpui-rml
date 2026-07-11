@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.resizable.title")}
-        description="Resizable 是可调整面板组组件，标签为 PascalCase Resizable 或 kebab-case resizable。构造器为函数 h_resizable(id)/v_resizable(id)（非 ResizablePanelGroup::new），由 ResizableTranslator 特化处理。direction 属性选择 h/v 构造器。子节点 resizable-panel 实现 Styled + ParentElement，支持 CSS 样式和子节点。非 panel 子节点通过 From&lt;T: Into&lt;AnyElement&gt;&gt; for ResizablePanel 自动包裹。"
+        description="Resizable 是可调整面板组组件，标签为 PascalCase Resizable 或 kebab-case resizable。构造器为函数 h_resizable(id)/v_resizable(id)（非 ResizablePanelGroup::new），由编译器特化处理。direction 属性选择 h/v 构造器。子节点 resizable-panel 实现 Styled + ParentElement，支持 CSS 样式和子节点。非 panel 子节点通过 From&lt;T: Into&lt;AnyElement&gt;&gt; for ResizablePanel 自动包裹。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">

@@ -67,7 +67,7 @@ impl ILifecycle for SidebarCase {
             ("click-to-open", "布尔", "点击打开子菜单（click-to-open=\"\" 为 true）"),
             ("click-to-toggle", "布尔", "点击切换子菜单展开/折叠"),
             ("disabled", "布尔", "禁用菜单项（映射到 .disable() 方法）"),
-            ("on-click", "事件", "点击事件回调"),
+            ("on-click", "事件", "点击事件回调（参数：&ClickEvent）"),
             ("SidebarMenuItem", "子节点", "子菜单项（通过 .children(vec![...]) 注入）"),
         ]);
         self.item_api_columns = cols;

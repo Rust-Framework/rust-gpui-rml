@@ -1,0 +1,42 @@
+<component>
+    <CaseDocPage
+        title={t("case.breadcrumb.title")}
+        description="Breadcrumb 是面包屑导航组件，标签为 PascalCase Breadcrumb 或 kebab-case breadcrumb。水平展示符号路径，项之间以 › 分隔。每级可点击展开下拉选择同级元素。通过 items={breadcrumb_items} 绑定 BreadcrumbItem 列表，on-select={on_breadcrumb_select} 绑定同级选择回调。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <div class="demo-section">
+                <h3>基础用法</h3>
+                <p>Breadcrumb 通过 items 绑定面包屑项列表，每项包含 label（显示文本）和 siblings（同级可选元素）。项之间以 › 分隔，点击展开下拉选择。</p>
+                <div class="breadcrumb-container">
+                    <Breadcrumb items={breadcrumb_items} on-select={on_breadcrumb_select} />
+                </div>
+                <p>最近选择：级 {selected_level}，索引 {selected_index}</p>
+            </div>
+
+            <div class="demo-section">
+                <h3>单级面包屑</h3>
+                <p>仅一项的面包屑，适用于简单的路径展示场景。</p>
+                <div class="breadcrumb-container">
+                    <Breadcrumb items={single_item} on-select={on_breadcrumb_select} />
+                </div>
+            </div>
+
+            <div class="demo-section">
+                <h3>多级路径</h3>
+                <p>多级面包屑模拟文件路径导航。每级有多个同级元素可供选择，点击展开下拉列表。</p>
+                <div class="breadcrumb-container">
+                    <Breadcrumb items={path_items} on-select={on_breadcrumb_select} />
+                </div>
+                <p>提示：点击任意一级可展开同级元素下拉列表，选择后触发 on-select 回调。</p>
+            </div>
+        </template>
+
+        <template slot="api">
+            <h3>Breadcrumb</h3>
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+            <p>注：BreadcrumbItem 包含 label（显示文本）、icon（图标）、siblings（同级可选元素列表）、selected-index（当前选中索引）。BreadcrumbSibling 包含 label 和 icon。</p>
+            <p>另：on-select 回调签名为 fn(&amp;mut self, level: usize, index: usize, cx: &amp;mut Context&lt;Self&gt;)，level 为层级（0 开始），index 为同级元素索引。</p>
+        </template>
+    </CaseDocPage>
+</component>

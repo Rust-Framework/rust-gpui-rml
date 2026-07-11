@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.number_input.title")}
-        description="NumberInput 是 RML 的数字输入框组件，标签为 PascalCase NumberInput 或 kebab-case number-input。Stateful 模式，复用 InputState（同 Input/TextInput）。步进按钮（增减）默认由 InputState 内部处理，直接更新值并触发 InputEvent::Change。支持 value 双向绑定、placeholder、appearance、disabled、size 等属性。on_change/on_enter/on_focus/on_blur 通过 cx.subscribe 订阅 InputEvent 触发。"
+        description="NumberInput 是 RML 的数字输入框组件，标签为 PascalCase NumberInput 或 kebab-case number-input。复用 InputState（同 Input/TextInput）。步进按钮（增减）默认由 InputState 内部处理，直接更新值并触发 InputEvent::Change。支持 value 双向绑定、placeholder、appearance、disabled、size 等属性。on-change/on-enter/on-focus/on-blur 事件通过 InputEvent 触发。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">

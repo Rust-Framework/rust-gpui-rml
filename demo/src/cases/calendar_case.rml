@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.calendar.title")}
-        description="Calendar 是 RML 的日历选择器组件，标签为 PascalCase Calendar 或小写 calendar。Stateful 模式，构造器 CalendarState::new(window, cx) 创建状态，Calendar::new(&state) 创建视图。支持 size 尺寸属性。on_select 通过 cx.subscribe 订阅 CalendarEvent::Selected(Date) 触发，用户方法直接接收 Date 载荷。"
+        description="Calendar 是 RML 的日历选择器组件，标签为 PascalCase Calendar 或小写 calendar。通过 ref 指令引用 CalendarState，Calendar::new(&state) 创建视图。支持 size 尺寸属性。on-select 事件接收 Date 载荷。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">

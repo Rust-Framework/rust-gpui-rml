@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.spinner.title")}
-        description="Spinner 和 Skeleton 是 RML 的加载指示组件。Spinner 为旋转图标动画，Skeleton 为骨架屏占位。两者均为 StatelessNoId 组件（无 ElementId，RenderOnce）。Spinner 支持 icon 自定义图标和 size 尺寸控制；Skeleton 支持 secondary 切换次级颜色。常用于异步请求、内容加载等需要即时反馈的场景。"
+        description="Spinner 和 Skeleton 是 RML 的加载指示组件。Spinner 为旋转图标动画，Skeleton 为骨架屏占位。两者均为无 ElementId 构造（RenderOnce）。Spinner 支持 icon 自定义图标和 size 尺寸控制；Skeleton 支持 secondary 切换次级颜色。常用于异步请求、内容加载等需要即时反馈的场景。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">

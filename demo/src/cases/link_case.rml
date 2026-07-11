@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.link.title")}
-        description="Link 是 RML 的超链接组件，标签为 PascalCase Link。Stateless 组件，构造器接受 ElementId，实现 ParentElement（可包含子元素）。支持 href 跳转（点击调用系统打开 URL）、on-click 事件回调和 disabled 禁用。常用于文档内引用、外部链接、操作入口。"
+        description="Link 是 RML 的超链接组件，标签为 PascalCase Link。构造器接受 ElementId，实现 ParentElement（可包含子元素）。支持 href 跳转（点击调用系统打开 URL）、on-click 事件回调和 disabled 禁用。常用于文档内引用、外部链接、操作入口。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">

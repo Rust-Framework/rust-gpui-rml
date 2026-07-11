@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.date_picker.title")}
-        description="DatePicker 是 RML 的日期选择器组件，标签为 PascalCase DatePicker 或 kebab-case date-picker。Stateful 模式，构造器 DatePickerState::new(window, cx) 创建状态，DatePicker::new(&state) 创建视图。支持 placeholder、cleanable、appearance、number_of_months、size 等属性。on_change 通过 cx.subscribe 订阅 DatePickerEvent::Change(Date) 触发，用户方法直接接收 Date 载荷。"
+        description="DatePicker 是 RML 的日期选择器组件，标签为 PascalCase DatePicker 或 kebab-case date-picker。通过 ref 指令引用 DatePickerState，DatePicker::new(&state) 创建视图。支持 placeholder、cleanable、appearance、number_of_months、size 等属性。on-change 事件接收 Date 载荷。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">

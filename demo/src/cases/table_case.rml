@@ -77,7 +77,7 @@
             <Table columns={column_api_columns} rows={column_api_rows} bordered="" stripe="" />
             <h3>Slots（模板插槽）</h3>
             <Table columns={slot_api_columns} rows={slot_api_rows} bordered="" stripe="" />
-            <p>另：table 与 Table 标签等价（normalize_component_tag 统一为 Table），column 与 Column 同理。</p>
+            <p>另：table 与 Table 标签等价，column 与 Column 同理。</p>
             <p>另：TableRow::row_span(key, n) 在 Rust 端设置行合并，无需在 RML 声明中配置。</p>
         </template>
     </CaseDocPage>

@@ -53,9 +53,9 @@ pub fn bind_setter(
 /// 事件属性 → builder 方法
 ///
 /// - `on_toggle_click={on_toggle}` →
-///   `.on_toggle_click(cx.listener(move |this, open_ixs: &[usize], _window, cx| { this.on_toggle(open_ixs, cx); }))`
+///   `.on_toggle_click(cx.listener(move |this, open_indices: &[usize], _window, cx| { this.on_toggle(open_indices, cx); }))`
 ///
-/// 用户方法签名约定：`fn on_toggle(&mut self, open_ixs: &[usize], cx: &mut Context<Self>)`
+/// 用户方法签名约定：`fn on_toggle(&mut self, open_indices: &[usize], cx: &mut Context<Self>)`
 pub fn event_setter(name: &str, handler: &EventHandler, _tag: &str) -> Option<String> {
     match name {
         "on_toggle_click" => {
@@ -65,8 +65,8 @@ pub fn event_setter(name: &str, handler: &EventHandler, _tag: &str) -> Option<St
                 EventHandler::ClosureField(_) => "",
             };
             Some(format!(
-                ".on_toggle_click(cx.listener(move |this, open_ixs: &[usize], _window, cx| {{\n                    \
-                 this.{}(open_ixs, cx);\n                }}))",
+                ".on_toggle_click(cx.listener(move |this, open_indices: &[usize], _window, cx| {{\n                    \
+                 this.{}(open_indices, cx);\n                }}))",
                 method
             ))
         }
@@ -133,7 +133,7 @@ mod tests {
         let code = event_setter("on_toggle_click", &handler, "Accordion").unwrap();
         assert!(code.starts_with(".on_toggle_click("));
         assert!(code.contains("cx.listener"));
-        assert!(code.contains("open_ixs: &[usize]"));
+        assert!(code.contains("open_indices: &[usize]"));
         assert!(code.contains("this.on_toggle"));
     }
 

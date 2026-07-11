@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.color_picker.title")}
-        description="ColorPicker 是 RML 的颜色选择器组件，标签为 PascalCase ColorPicker 或 kebab-case color-picker。Stateful 模式，构造器 ColorPickerState::new(window, cx) 创建状态，ColorPicker::new(&state) 创建视图。支持 label、icon、size 等属性。on_change 通过 cx.subscribe 订阅 ColorPickerEvent::Change(Option<Hsla>) 触发，用户方法直接接收 Option<Hsla> 载荷。"
+        description="ColorPicker 是 RML 的颜色选择器组件，标签为 PascalCase ColorPicker 或 kebab-case color-picker。通过 ref 指令引用 ColorPickerState，ColorPicker::new(&state) 创建视图。支持 label、icon、size 等属性。on-change 事件接收 Option<Hsla> 载荷。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">

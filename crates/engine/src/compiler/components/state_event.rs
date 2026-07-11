@@ -77,6 +77,14 @@ pub static STATE_EVENT_REGISTRY: &[StateEventSpec] = &[
         payload_binding: "values",
         call_template: "this.{method}((*values).clone(), cx)",
     },
+    StateEventSpec {
+        tag: "Slider",
+        event_name: "on_change",
+        event_type: "rml_ui::SliderEvent",
+        event_variant: "Change",
+        payload_binding: "value",
+        call_template: "this.{method}((*value).clone(), cx)",
+    },
 ];
 
 /// 检测属性是否为 State 事件（非 Input 的 Stateful 组件事件）
@@ -222,6 +230,24 @@ mod tests {
         assert!(code.contains("cx.subscribe(&__rml_entity"), "code: {}", code);
         assert!(code.contains("rml_ui::ComboboxEvent::Change(values)"), "code: {}", code);
         assert!(code.contains("this.on_combobox_change((*values).clone(), cx)"), "code: {}", code);
+        assert!(code.contains("detach()"), "code: {}", code);
+        assert!(code.contains("mark_event_subscribed"), "code: {}", code);
+    }
+
+    #[test]
+    fn is_state_event_recognizes_slider() {
+        assert!(is_state_event("on_change", "Slider"));
+    }
+
+    #[test]
+    fn gen_subscribe_slider_change() {
+        let handler = EventHandler::Ident("on_slider_change".into());
+        let code = gen_state_event_subscribe("slider_state", "on_change", &handler, "Slider");
+        assert!(code.contains("is_event_subscribed"), "code: {}", code);
+        assert!(code.contains("\"slider_state:on_change\""), "code: {}", code);
+        assert!(code.contains("cx.subscribe(&__rml_entity"), "code: {}", code);
+        assert!(code.contains("rml_ui::SliderEvent::Change(value)"), "code: {}", code);
+        assert!(code.contains("this.on_slider_change((*value).clone(), cx)"), "code: {}", code);
         assert!(code.contains("detach()"), "code: {}", code);
         assert!(code.contains("mark_event_subscribed"), "code: {}", code);
     }

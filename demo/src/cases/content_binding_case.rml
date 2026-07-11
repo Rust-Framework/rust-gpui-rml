@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.content_binding.title")}
-        description="content 绑定通过 IntoContent trait 统一转换为 child 元素。支持四类输入：IntoElement（String/SharedString/AnyElement）、ToString（i32/bool 等数值）、IVisual（Box&lt;dyn IVisual&gt; trait 对象）、&amp;T 引用（&amp;String/&amp;i32 等，通过 blanket impl Clone 委托）。codegen 对简单字段访问自动添加 &amp; 前缀，无需手写 .clone()。"
+        description="content 绑定通过 IntoContent trait 统一转换为 child 元素。支持四类输入：IntoElement（String/SharedString/AnyElement）、ToString（i32/bool 等数值）、IVisual（Box&lt;dyn IVisual&gt; trait 对象）、&amp;T 引用（&amp;String/&amp;i32 等，通过 blanket impl Clone 委托）。编译器对简单字段访问自动添加 &amp; 前缀，无需手写 .clone()。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">

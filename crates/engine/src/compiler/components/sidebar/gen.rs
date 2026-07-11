@@ -285,7 +285,7 @@ mod tests {
             vec![],
         );
         let code = gen_sidebar(&elem, None, 0, &ctx(), &mut 1, &Vec::new(), &[]).unwrap();
-        assert!(code.contains(".collapsed(is_collapsed)"));
+        assert!(code.contains(".collapsed(self.is_collapsed)"));
     }
 
     #[test]

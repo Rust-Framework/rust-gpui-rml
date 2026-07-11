@@ -20,6 +20,7 @@ pub mod field;
 pub mod form;
 pub mod hover_card;
 pub mod icon;
+pub mod input;
 pub mod kbd;
 pub mod label;
 pub mod notification;
@@ -30,6 +31,7 @@ pub mod resizable;
 pub mod scroll;
 pub mod separator;
 pub mod settings;
+pub mod slider;
 pub mod sheet;
 pub mod sidebar;
 pub mod sidebar_menu;
@@ -111,6 +113,8 @@ impl IRmlTranslator for ComponentTranslator {
 /// 注册所有扩展组件 translator
 pub fn register_all(registry: &mut crate::compiler::translator::TranslatorRegistry) {
     stateless::register(registry);
+    input::register(registry);
+    slider::register(registry);
     stateful::register(registry);
     tree::register(registry);
     code_editor::register(registry);

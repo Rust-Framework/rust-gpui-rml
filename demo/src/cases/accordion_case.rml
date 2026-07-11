@@ -1,15 +1,15 @@
 <component>
     <CaseDocPage
         title={t("case.accordion.title")}
-        description="Accordion 是 RML 的折叠面板组件，标签为 PascalCase Accordion 或小写 accordion（均合法）。子项用 item 标签（映射为 AccordionItem），title 属性指定面板标题，open-ixs 属性控制展开状态（Vec<usize> 绑定）。支持 multiple 多展开、bordered 边框、size 尺寸，item 支持 icon/disabled 属性。on-toggle-click 回调接收展开项索引列表。"
+        description="Accordion 是 RML 的折叠面板组件，标签为 PascalCase Accordion 或小写 accordion（均合法）。子项用 item 标签（映射为 AccordionItem），title 属性指定面板标题，open-indices 属性控制展开状态（Vec<usize> 绑定）。支持 multiple 多展开、bordered 边框、size 尺寸，item 支持 icon/disabled 属性。on-toggle-click 回调接收展开项索引列表。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
             <div class="demo-section">
                 <h3>{t("case.accordion.basic")}</h3>
-                <p>默认单展开模式（同时只能展开一项）。open-ixs 绑定 Vec&lt;usize&gt; 字段，初始值为 vec![0] 表示第一项展开。点击面板标题切换展开/折叠，单展开模式下展开新项自动收起其他项。</p>
+                <p>默认单展开模式（同时只能展开一项）。open-indices 绑定 Vec&lt;usize&gt; 字段，初始值为 vec![0] 表示第一项展开。点击面板标题切换展开/折叠，单展开模式下展开新项自动收起其他项。</p>
                 <p>{status_text}</p>
-                <accordion bordered="" open-ixs={basic_open}>
+                <accordion bordered="" open-indices={basic_open}>
                     <item title={t("case.accordion.section1")}>
                         <p>{t("case.accordion.content1")}</p>
                     </item>
@@ -25,7 +25,7 @@
             <div class="demo-section">
                 <h3>{t("case.accordion.multiple")}</h3>
                 <p>multiple 属性允许多项同时展开。初始 multiple_open 为 vec![0, 1]，两项同时展开。与单展开模式对比：multiple 模式下展开新项不影响其他项的展开状态。</p>
-                <accordion multiple="" bordered="" open-ixs={multiple_open}>
+                <accordion multiple="" bordered="" open-indices={multiple_open}>
                     <item title={t("case.accordion.section1")}>
                         <p>{t("case.accordion.content1")}</p>
                     </item>
@@ -38,12 +38,12 @@
             <div class="demo-section">
                 <h3>{t("case.accordion.sizes")}</h3>
                 <p>size 属性控制尺寸：small / large。size 走通用 Sizable setter，影响标题字号和内边距。下方演示 small 和 large 两种尺寸对比。</p>
-                <accordion size="small" bordered="" open-ixs={sizes_small_open} on-toggle-click={on_toggle}>
+                <accordion size="small" bordered="" open-indices={sizes_small_open} on-toggle-click={on_toggle}>
                     <item title={t("case.accordion.small")}>
                         <p>{t("case.accordion.content1")}</p>
                     </item>
                 </accordion>
-                <accordion size="large" bordered="" open-ixs={sizes_large_open} on-toggle-click={on_toggle}>
+                <accordion size="large" bordered="" open-indices={sizes_large_open} on-toggle-click={on_toggle}>
                     <item title={t("case.accordion.large")}>
                         <p>{t("case.accordion.content1")}</p>
                     </item>
@@ -53,7 +53,7 @@
             <div class="demo-section">
                 <h3>{t("case.accordion.with_icon")}</h3>
                 <p>item 的 icon 属性添加标题图标（IconName 枚举值，如 Settings/Bell），disabled 属性禁用面板（禁用面板无法点击展开）。on-toggle-click 回调在展开状态变化时触发，参数为当前展开项索引列表。</p>
-                <accordion bordered="" open-ixs={with_icon_open} on-toggle-click={on_toggle}>
+                <accordion bordered="" open-indices={with_icon_open} on-toggle-click={on_toggle}>
                     <item title={t("case.accordion.settings")} icon="Settings">
                         <p>{t("case.accordion.content1")}</p>
                     </item>
@@ -65,10 +65,10 @@
 
             <div class="demo-section">
                 <h3>{t("case.accordion.nested")}</h3>
-                <p>accordion 可嵌套使用：父 item 的内容中包含子 accordion，子 accordion 独立维护自己的 open-ixs 状态。嵌套时建议父级用单展开、子级用 multiple，避免层级切换冲突。</p>
-                <accordion bordered="" open-ixs={nested_open}>
+                <p>accordion 可嵌套使用：父 item 的内容中包含子 accordion，子 accordion 独立维护自己的 open-indices 状态。嵌套时建议父级用单展开、子级用 multiple，避免层级切换冲突。</p>
+                <accordion bordered="" open-indices={nested_open}>
                     <item title={t("case.accordion.parent")}>
-                        <accordion bordered="" multiple="" open-ixs={nested_child_open}>
+                        <accordion bordered="" multiple="" open-indices={nested_child_open}>
                             <item title={t("case.accordion.child1")}>
                                 <p>{t("case.accordion.content1")}</p>
                             </item>
@@ -86,7 +86,7 @@
             <Table columns={accordion_api_columns} rows={accordion_api_rows} bordered="" stripe="" />
             <h3>AccordionItem（item）</h3>
             <Table columns={item_api_columns} rows={item_api_rows} bordered="" stripe="" />
-            <p>另：accordion 与 Accordion 标签等价（normalize_component_tag 统一为 Accordion）。item 标签映射为 AccordionItem，由 StatelessWithItems codegen 自动收集为 children。open-ixs 是受控模式核心属性，需配合 on-toggle-click 回调更新状态字段。</p>
+            <p>另：accordion 与 Accordion 标签等价。item 标签映射为 AccordionItem，自动收集为 children。open-indices 是受控模式核心属性，需配合 on-toggle-click 回调更新状态字段。</p>
         </template>
     </CaseDocPage>
 </component>

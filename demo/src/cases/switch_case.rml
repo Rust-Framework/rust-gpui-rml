@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.switch.title")}
-        description="Switch 是 RML 的开关组件，标签为 PascalCase Switch。Stateless 组件，通过 checked 属性绑定开关状态（映射到 .checked() 方法）。on-click 回调签名为 Fn(&bool, ...)（切换后的新状态）。支持 label 标签、disabled 禁用、tooltip 提示。适合二元开关场景：自动保存、深色模式、通知开关。"
+        description="Switch 是 RML 的开关组件，标签为 PascalCase Switch。通过 checked 属性绑定开关状态（映射到 .checked() 方法）。on-click 回调签名为 Fn(&bool, ...)（切换后的新状态）。支持 label 标签、disabled 禁用、tooltip 提示。适合二元开关场景：自动保存、深色模式、通知开关。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">

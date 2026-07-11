@@ -100,7 +100,7 @@ pub use components::{
     NativeStatusBar, NumberInput, NumberInputEvent, NotificationTrigger, OtpInput, OtpState, Pagination, RadioGroup, Rating, ResizablePanel,
     ResizablePanelEvent, ResizablePanelGroup, ResizableState, StatusBarAlign, Skeleton, Spinner, Stepper,
     StepperItem, Tab, TabBar, TabItem, Tabs, Table, TableColumn, TableDelegate, TableRow,
-    TabVariant, Tree, VisualActivityPanel, VirtualList, VirtualListScrollHandle,
+    TabVariant, Tree, TreeData, VisualActivityPanel, VirtualList, VirtualListScrollHandle,
     SelectState, SelectEvent, StringSelectState, StringSelectEvent,
     ComboboxState, ComboboxEvent, StringComboboxState, StringComboboxEvent,
     HoverCardState,

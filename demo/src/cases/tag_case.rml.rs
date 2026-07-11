@@ -41,7 +41,7 @@ impl ILifecycle for TagCase {
             ("outline", "布尔标志", "描边样式（透明背景 + 彩色边框/文字）"),
             ("size", "xsmall/small/medium/large", "尺寸（仅 Small/Medium 视觉区分）"),
             ("子节点", "文本/元素", "标签内容"),
-            ("on-click", "事件", "点击回调"),
+            ("on-click", "事件", "点击回调（参数：&ClickEvent）"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

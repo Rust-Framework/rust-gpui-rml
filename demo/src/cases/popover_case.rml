@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.popover.title")}
-        description="Popover 是 RML 的浮动气泡容器组件，标签为 PascalCase Popover 或小写 popover（均合法）。Stateless 容器组件，子节点通过 slot=&quot;trigger&quot; 路由到 .trigger()，其余子节点作为 content 注入 .child()。anchor 属性控制气泡定位锚点（8 个方向），default-open 控制初始展开状态，overlay-closable 控制点击外部是否关闭，appearance 控制是否应用默认样式。"
+        description="Popover 是 RML 的浮动气泡容器组件，标签为 PascalCase Popover 或小写 popover（均合法）。容器组件，子节点通过 slot=&quot;trigger&quot; 路由到 .trigger()，其余子节点作为 content 注入 .child()。anchor 属性控制气泡定位锚点（8 个方向），default-open 控制初始展开状态，overlay-closable 控制点击外部是否关闭，appearance 控制是否应用默认样式。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
@@ -99,7 +99,7 @@
         <template slot="api">
             <h3>Popover</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-            <p>另：popover 与 Popover 标签等价（normalize_component_tag 统一为 Popover）。</p>
+            <p>另：popover 与 Popover 标签等价。</p>
             <p>另：slot="trigger" 是 RML 的 slot 机制，将子元素路由到 .trigger() 方法；其余子节点作为 content 通过 .child() 注入。</p>
         </template>
     </CaseDocPage>

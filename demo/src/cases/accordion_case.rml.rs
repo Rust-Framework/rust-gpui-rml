@@ -16,7 +16,7 @@ use crate::cases::common::{build_api_table, CaseDocPage};
 #[derive(Default)]
 pub struct AccordionCase {
     /// Section 1：基础用法（单展开模式）
-    /// open-ixs 绑定 Vec<usize>，初始 vec![0] 表示第一项展开
+    /// open-indices 绑定 Vec<usize>，初始 vec![0] 表示第一项展开
     pub basic_open: Vec<usize>,
 
     /// Section 2：multiple 多展开
@@ -65,7 +65,7 @@ impl ILifecycle for AccordionCase {
             ("bordered", "布尔标志", "显示边框（bordered=\"\" 为 true）"),
             ("multiple", "布尔标志", "允许多项同时展开（multiple=\"\" 为 true）"),
             ("size", "small/medium/large", "尺寸变体（Sizable trait 通用属性）"),
-            ("open-ixs", "Vec<usize> 绑定", "展开项索引列表（受控模式核心属性）"),
+            ("open-indices", "Vec<usize> 绑定", "展开项索引列表（受控模式核心属性）"),
             ("on-toggle-click", "事件", "展开状态变化回调（参数：&[usize]）"),
         ]);
         self.accordion_api_columns = cols;
@@ -102,10 +102,10 @@ impl AccordionCase {
     }
 
     /// on-toggle-click 回调签名：(&[usize], &mut Context<Self>)
-    /// 展开状态变化时触发，open_ixs 为当前展开项索引列表
+    /// 展开状态变化时触发，open_indices 为当前展开项索引列表
     #[command]
-    pub fn on_toggle(&mut self, open_ixs: &[usize], cx: &mut Context<Self>) {
-        self.last_open = format!("{:?}", open_ixs);
+    pub fn on_toggle(&mut self, open_indices: &[usize], cx: &mut Context<Self>) {
+        self.last_open = format!("{:?}", open_indices);
         cx.notify();
     }
 }

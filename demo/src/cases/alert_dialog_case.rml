@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.alert_dialog.title")}
-        description="AlertDialog 是基于 Dialog 封装的警示对话框组件，标签为 PascalCase AlertDialog。与 Dialog 的区别：默认 close_button=false + overlay_closable=false（强制用户交互），提供 description/confirm/show_cancel 便捷方法，footer 按钮居中对齐。适用于删除确认、不可逆操作等警示场景。构造器 AlertDialog::new(cx: &mut App)。slot=trigger 的子元素映射为 .trigger()，其余子节点通过 .child() 注入为 content。"
+        description="AlertDialog 是基于 Dialog 封装的警示对话框组件，标签为 PascalCase AlertDialog。与 Dialog 的区别：默认 close-button=false + overlay-closable=false（强制用户交互），提供 description/confirm/show-cancel 便捷方法，footer 按钮居中对齐。适用于删除确认、不可逆操作等警示场景。slot=trigger 的子元素映射为 .trigger()，其余子节点通过 .child() 注入为 content。on-ok/on-cancel 回调返回 bool，返回 false 可阻止关闭对话框。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
@@ -15,7 +15,7 @@
 
             <div class="demo-section">
                 <h3>确认对话框 confirm</h3>
-                <p>添加 confirm 属性显示取消按钮，适用于需要用户确认的不可逆操作。confirm 属性等同于 show_cancel=true，同时显示 OK 和 Cancel 按钮。</p>
+                <p>添加 confirm 属性显示取消按钮，适用于需要用户确认的不可逆操作。confirm 属性等同于 show-cancel=true，同时显示 OK 和 Cancel 按钮。</p>
                 <AlertDialog title="确认删除" description="此操作不可撤销，确定要删除吗？" confirm>
                     <Button slot="trigger" label="删除项目" danger />
                 </AlertDialog>
@@ -31,7 +31,7 @@
 
             <div class="demo-section">
                 <h3>交互控制</h3>
-                <p>AlertDialog 默认 close_button=false 和 overlay_closable=false。可通过 close-button=true 显示关闭按钮，overlay-closable=true 允许点击遮罩关闭，keyboard=false 禁用 ESC 键。</p>
+                <p>AlertDialog 默认 close-button=false 和 overlay-closable=false。可通过 close-button=true 显示关闭按钮，overlay-closable=true 允许点击遮罩关闭，keyboard=false 禁用 ESC 键。</p>
                 <div class="dialog-row">
                     <AlertDialog title="可关闭" description="带关闭按钮和遮罩点击关闭" confirm close-button="true" overlay-closable="true">
                         <Button slot="trigger" label="可关闭对话框" />
@@ -40,6 +40,15 @@
                         <Button slot="trigger" label="禁用 ESC 对话框" />
                     </AlertDialog>
                 </div>
+            </div>
+
+            <div class="demo-section">
+                <h3>on-ok / on-cancel 事件回调</h3>
+                <p>on-ok 和 on-cancel 回调返回 bool 值：返回 true 关闭对话框，返回 false 阻止关闭。下方演示事件回调场景。</p>
+                <AlertDialog title="确认操作" description="点击 OK 或 Cancel 关闭对话框" confirm
+                    on-ok={on_alert_ok} on-cancel={on_alert_cancel}>
+                    <Button slot="trigger" label="事件回调演示" />
+                </AlertDialog>
             </div>
 
             <div class="demo-section">
@@ -60,9 +69,9 @@
         <template slot="api">
             <h3>AlertDialog</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-            <p>注意：AlertDialog 默认 close_button=false + overlay_closable=false（与 Dialog 相反），适用于警示场景。</p>
-            <p>另：confirm 属性等同于 show_cancel=true，显示 OK + Cancel 两个按钮（默认仅 OK）。</p>
-            <p>另：on_ok / on_cancel 回调返回 bool（true 关闭对话框），codegen 使用 entity 捕获闭包固定返回 true。</p>
+            <p>注意：AlertDialog 默认 close-button=false + overlay-closable=false（与 Dialog 相反），适用于警示场景。</p>
+            <p>另：confirm 属性等同于 show-cancel=true，显示 OK + Cancel 两个按钮（默认仅 OK）。</p>
+            <p>另：on-ok/on-cancel 回调返回 bool，返回 false 可阻止关闭对话框。</p>
         </template>
     </CaseDocPage>
 </component>

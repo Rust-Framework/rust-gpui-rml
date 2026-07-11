@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.badge.title")}
-        description="Badge 是 RML 的徽标组件，标签为 PascalCase Badge。无 ElementId 构造（StatelessNoId），容器模式，子节点为被徽标标记的元素。支持三种 variant：Number（默认，显示计数）、Dot（小红点）、Icon（图标徽标）。"
+        description="Badge 是 RML 的徽标组件，标签为 PascalCase Badge。无 ElementId 构造，容器模式，子节点为被徽标标记的元素。支持三种 variant：Number（默认，显示计数）、Dot（小红点）、Icon（图标徽标）。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
@@ -101,7 +101,7 @@
         <template slot="api">
             <h3>Badge</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-            <p>另：size 属性来自 Sizable trait，disabled 等通用属性对所有 Stateless 组件生效。</p>
+            <p>另：size 属性来自 Sizable trait，disabled 等通用属性对所有组件生效。</p>
         </template>
     </CaseDocPage>
 </component>

@@ -101,12 +101,14 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
     // Input / TextInput 专用（声明式 on-change，内部 on_change）
     ("Input", &["on_change"]),
     ("TextInput", &["on_change"]),
-    // Tree 专用（Stateful 组件，数据由 TreeState Entity 提供，不支持 items 绑定）
-    ("Tree", &["on_activate", "on_select"]),
+    // Tree 专用（StatefulWithDelegate 组件，items 为委托数据绑定属性）
+    ("Tree", &["items", "on_activate", "on_select"]),
+    // Slider 专用（min/max/step/default_value 由 SliderTranslator 注入 state_ctor，on_change 通过 state_event 订阅 SliderEvent::Change）
+    ("Slider", &["min", "max", "step", "default_value", "on_change"]),
     // MenuBar / StatusBar 不支持 items 绑定（框架不定义 IMenuItem/IStatusBarItem 数据结构）
     // 业务侧经命令式 render_menu_bar() / render_status_bar() 构建
     // Accordion 专用
-    ("Accordion", &["multiple", "bordered", "on_toggle_click", "open_ixs"]),
+    ("Accordion", &["multiple", "bordered", "on_toggle_click", "open_indices"]),
     // AccordionItem 专用（item builder 子标签，不在 component_lookup 中）
     ("AccordionItem", &["title", "open", "icon"]),
     // Avatar 专用（placeholder 已在 COMMON_STATIC_PROPS）
@@ -409,8 +411,8 @@ mod tests {
     #[test]
     fn known_component_props_recognized() {
         assert!(is_prop_registered("Input", "on_change"));
-        // Tree 是 Stateful 组件，数据由 TreeState Entity 提供，不支持 items 绑定
-        assert!(!is_prop_registered("Tree", "items"));
+        // Tree 是 StatefulWithDelegate 组件，items 为委托数据绑定属性
+        assert!(is_prop_registered("Tree", "items"));
         assert!(is_prop_registered("Tree", "on_activate"));
         assert!(is_prop_registered("Tree", "on_select"));
         // MenuBar / StatusBar 不支持 items 绑定（框架不定义 IMenuItem/IStatusBarItem）

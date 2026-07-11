@@ -399,7 +399,11 @@
 
   "case.sidebar.title": "侧边栏 Sidebar",
 
-  "case.form.title": "表单 Form"
+  "case.form.title": "表单 Form",
+
+  "case.skeleton.title": "骨架屏 Skeleton",
+
+  "case.breadcrumb.title": "面包屑导航 Breadcrumb"
 
 }
 

@@ -1,35 +1,35 @@
 <component>
     <CaseDocPage
         title={t("case.slider.title")}
-        description="Slider 是 RML 的滑块组件，标签为 PascalCase Slider。Stateful 模式，需在 on_loaded 中初始化 SliderState Entity 并通过 ref 引用。SliderState 提供 min/max/step/default_value 链式构造器，default_value 接受 f32 单值或 (f32, f32) 元组（范围滑块）。"
+        description="Slider 是 RML 的滑块组件，标签为 PascalCase Slider。通过 ref 引用 SliderState，min/max/step/default-value 可直接在标签上声明式设置。default-value 接受 f32 单值（静态属性）或 (f32, f32) 元组（绑定，范围滑块）。on-change 事件接收 SliderValue 载荷。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
             <Card title="基础用法">
-                <p><code>ref="slider_state"</code> 引用 on_loaded 中初始化的 SliderState（min=0, max=100, step=1, default=50）。</p>
+                <p><code>min="0" max="100" step="1" default-value="50"</code> 声明式设置滑块范围与初始值。</p>
                 <div display="flex" flex-direction="column" gap="8px">
-                    <Slider ref="slider_state" />
+                    <Slider ref="slider_state" min="0" max="100" step="1" default-value="50" />
                 </div>
             </Card>
 
             <Card title="禁用状态 disabled">
-                <p><code>disabled=\{true\}</code> 静态禁用滑块交互（disabled 是 Slider 组件方法，需在 RML 标签上设置）。</p>
+                <p><code>disabled=\{true\}</code> 静态禁用滑块交互。</p>
                 <div display="flex" flex-direction="column" gap="8px">
-                    <Slider ref="disabled_state" disabled={true} />
+                    <Slider ref="disabled_state" min="0" max="100" default-value="30" disabled={true} />
                 </div>
             </Card>
 
             <Card title="范围滑块 Range">
-                <p><code>default_value((20.0, 80.0))</code> 在 on_loaded 中设置元组初始值，step=5。Slider 自动渲染双 thumb 范围滑块。</p>
+                <p><code>default-value=\{range_default\}</code> 绑定 <code>(f32, f32)</code> 元组字段，Slider 自动渲染双 thumb 范围滑块。step=5。</p>
                 <div display="flex" flex-direction="column" gap="8px">
-                    <Slider ref="range_state" />
+                    <Slider ref="range_state" min="0" max="100" step="5" default-value={range_default} />
                 </div>
             </Card>
         </template>
         <template slot="api">
             <h3>Slider</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-            <p>注：<code>min</code>/<code>max</code>/<code>step</code>/<code>default_value</code> 是 <code>SliderState</code> 的构造器方法，在 <code>on_loaded</code> 中链式调用，非 RML 标签属性。</p>
+            <p>注：<code>min</code>/<code>max</code>/<code>step</code>/<code>default_value</code> 是 <code>SliderState</code> 的构造器方法，通过 RML 标签属性声明式注入，无需在 <code>on_loaded</code> 中手动初始化。</p>
         </template>
     </CaseDocPage>
 </component>

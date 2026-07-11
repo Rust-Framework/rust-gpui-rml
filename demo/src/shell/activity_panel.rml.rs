@@ -1,8 +1,9 @@
-﻿use gpui::{SharedString, Window};
+use gpui::{SharedString, Window};
 use rml::prelude::*;
 use rml_core::contribution::IconSpec;
+use rml_core::element_ref::ElementRef;
 use rml_core::i18n::t_static;
-use rml_ui::TreeState;
+use rml_ui::{TreeData, TreeState};
 
 use crate::shell::case_view_model::CaseViewModel;
 use crate::shell::MainWindowRef;
@@ -20,7 +21,8 @@ use crate::shell::MainWindowRef;
 #[component]
 #[derive(Default)]
 pub struct ActivityPanel {
-    tree_state: Option<gpui::Entity<TreeState>>,
+    tree_state: ElementRef<TreeState>,
+    tree_items: Vec<TreeData>,
     main: Option<gpui::WeakEntity<crate::shell::MainWindow>>,
 }
 
@@ -53,18 +55,8 @@ impl ActivityPanel {
         } else {
             Vec::new()
         };
-        self.set_tree_items(items, cx);
-    }
-
-    fn set_tree_items(&mut self, items: Vec<rml_ui::TreeItem>, cx: &mut Context<Self>) {
-        if let Some(state) = self.tree_state.as_ref() {
-            state.update(cx, |s, cx| {
-                s.set_items(items, cx);
-            });
-        } else {
-            let state = cx.new(|cx| TreeState::new(cx).items(items));
-            self.tree_state = Some(state);
-        }
+        self.tree_items = items;
+        cx.notify();
     }
 
     #[command]

@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.code_editor.title")}
-        description="CodeEditor 是基于 InputState 的代码编辑器组件，自动应用 mono 字体 + size_full。Stateful 模式，需在 on_loaded 中初始化 InputState Entity 并通过 .code_editor(language).multi_line(true) 配置。"
+        description="CodeEditor 是基于 InputState 的代码编辑器组件，自动应用 mono 字体 + size_full。通过 ref 指令引用 InputState，在 on_loaded 中通过 .code_editor(language).multi_line(true) 配置。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">

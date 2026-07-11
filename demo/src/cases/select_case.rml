@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.select.title")}
-        description="Select 是 RML 的下拉选择器组件，标签为 PascalCase Select 或 kebab-case select。StatefulWithDelegate 模式，构造器 SelectState::new(delegate, None, window, cx) 创建状态，Select::new(&state) 创建视图。delegate 为 SearchableVec<SharedString>，通过 items={field} 绑定提供。支持 placeholder、cleanable、appearance、menu_width、menu_max_h、size 等属性。on_change 通过 cx.subscribe 订阅 SelectEvent::Confirm(Option<SharedString>) 触发，用户方法直接接收 Option<SharedString> 载荷。"
+        description="Select 是 RML 的下拉选择器组件，标签为 PascalCase Select 或 kebab-case select。通过 ref 指令引用 SelectState，items={field} 绑定提供 SearchableVec<SharedString> 委托数据，Select::new(&state) 创建视图。支持 placeholder、cleanable、appearance、menu-width、menu-max-h、size 等属性。on-change 事件接收 Option<SharedString> 载荷。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">

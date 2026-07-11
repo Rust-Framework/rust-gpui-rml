@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.combobox.title")}
-        description="Combobox 是 RML 的多选下拉组件，标签为 PascalCase Combobox 或 kebab-case combobox。StatefulWithDelegate 模式，构造器 ComboboxState::new(delegate, vec![], window, cx) 创建状态，Combobox::new(&state) 创建视图。delegate 为 SearchableVec<SharedString>，通过 items={field} 绑定提供。支持 placeholder、cleanable、appearance、menu-width、menu-max-h、search-placeholder、size 等属性。on_change 通过 cx.subscribe 订阅 ComboboxEvent::Change(Vec<SharedString>) 触发，用户方法直接接收 Vec<SharedString> 载荷。"
+        description="Combobox 是 RML 的多选下拉组件，标签为 PascalCase Combobox 或 kebab-case combobox。通过 ref 指令引用 ComboboxState，items={field} 绑定提供 SearchableVec<SharedString> 委托数据，Combobox::new(&state) 创建视图。支持 placeholder、cleanable、appearance、menu-width、menu-max-h、search-placeholder、size 等属性。on-change 事件接收 Vec<SharedString> 载荷。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">

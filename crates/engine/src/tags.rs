@@ -398,9 +398,10 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
         }),
         "Tree" => Some(ComponentTag {
             ctor_path: "rml_ui::Tree",
-            kind: ComponentKind::Stateful {
+            kind: ComponentKind::StatefulWithDelegate {
                 state_field: "tree_state",
-                state_ctor: "|_w, c| rml_ui::TreeState::new(c)",
+                state_ctor: "move |_w, c| rml_ui::TreeState::new(c).items(rml_ui::TreeData::to_tree_items(__rml_delegate))",
+                delegate_attr: "items",
             },
             container: false,
         }),

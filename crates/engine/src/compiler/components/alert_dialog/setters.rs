@@ -21,8 +21,8 @@
 //! - `close_button="true"` → `.close_button(true)`（AlertDialog 默认 false，需显式开启）
 //! - `keyboard="false"` → `.keyboard(false)`
 //! - `on_close={handler}` → `.on_close(cx.listener(...))`（同 Dialog）
-//! - `on_ok={handler}` → `.on_ok({ entity 捕获闭包，返回 true })`（同 Dialog）
-//! - `on_cancel={handler}` → `.on_cancel({ entity 捕获闭包，返回 true })`（同 Dialog）
+//! - `on_ok={handler}` → `.on_ok({ entity 捕获闭包，返回 handler 方法的 bool 返回值 })`（同 Dialog）
+//! - `on_cancel={handler}` → `.on_cancel({ entity 捕获闭包，返回 handler 方法的 bool 返回值 })`（同 Dialog）
 
 use crate::parser::ast::EventHandler;
 
@@ -120,7 +120,7 @@ fn on_close_setter(handler: &EventHandler) -> String {
     }
 }
 
-/// on_ok / on_cancel setter：手动 entity 捕获闭包，返回 true（与 Dialog 一致）
+/// on_ok / on_cancel setter：手动 entity 捕获闭包，传递 handler 方法的 bool 返回值（与 Dialog 一致）
 fn bool_event_setter(setter_name: &str, handler: &EventHandler) -> String {
     let method = match handler {
         EventHandler::Ident(m) | EventHandler::MethodName(m) => m,
@@ -135,8 +135,7 @@ fn bool_event_setter(setter_name: &str, handler: &EventHandler) -> String {
              move |_ev: &gpui::ClickEvent, _window: &mut gpui::Window, cx: &mut gpui::App| {{\n                        \
              let rml_ev = rml::runtime::event_flow::convert::from_gpui_click(_ev);\n                        \
              entity.update(cx, |this, cx| {{\n                            \
-             this.{}(&rml_ev, cx);\n                        }});\n                        \
-             true\n                    \
+             this.{}(&rml_ev, cx)\n                        }})\n                    \
              }}\n                }})",
             setter_name, method
         ),
@@ -147,8 +146,7 @@ fn bool_event_setter(setter_name: &str, handler: &EventHandler) -> String {
              move |_ev: &gpui::ClickEvent, _window: &mut gpui::Window, cx: &mut gpui::App| {{\n                        \
              let rml_ev = rml::runtime::event_flow::convert::from_gpui_click(_ev);\n                        \
              entity.update(cx, |this, cx| {{\n                            \
-             this.{}(&rml_ev, cx);\n                        }});\n                        \
-             true\n                    \
+             this.{}(&rml_ev, cx)\n                        }})\n                    \
              }}\n                }})",
             setter_name, method
         ),
@@ -161,8 +159,7 @@ fn bool_event_setter(setter_name: &str, handler: &EventHandler) -> String {
                  let p0 = {}.clone();\n                        \
                  let rml_ev = rml::runtime::event_flow::convert::from_gpui_click(_ev);\n                        \
                  entity.update(cx, |this, cx| {{\n                            \
-                 this.{}(p0, &rml_ev, cx);\n                        }});\n                        \
-                 true\n                    \
+                 this.{}(p0, &rml_ev, cx)\n                        }})\n                    \
                  }}\n                }})",
                 setter_name, arg, method
             )
@@ -274,7 +271,7 @@ mod tests {
         assert!(code.starts_with(".on_ok({"));
         assert!(code.contains("let entity = cx.entity();"));
         assert!(code.contains("this.handle_ok"));
-        assert!(code.contains("true"));
+        assert!(!code.contains("\n             true"));
     }
 
     #[test]
@@ -283,7 +280,7 @@ mod tests {
         let code = event_setter("on_cancel", &handler).unwrap();
         assert!(code.starts_with(".on_cancel({"));
         assert!(code.contains("this.handle_cancel"));
-        assert!(code.contains("true"));
+        assert!(!code.contains("\n             true"));
     }
 
     #[test]

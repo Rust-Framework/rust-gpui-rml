@@ -199,3 +199,9 @@ pub mod form_case;
 
 #[path = "sidebar_case.rml.rs"]
 pub mod sidebar_case;
+
+// R3：缺失组件 demo 补全
+#[path = "skeleton_case.rml.rs"]
+pub mod skeleton_case;
+#[path = "breadcrumb_case.rml.rs"]
+pub mod breadcrumb_case;

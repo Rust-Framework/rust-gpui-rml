@@ -56,7 +56,7 @@ pub use table::{
     CellTemplate, DefaultTableDelegate, FooterTemplate, HeaderTemplate, Table, TableColumn,
     TableDelegate, TableRow,
 };
-pub use tree::Tree;
+pub use tree::{Tree, TreeData};
 
 // Phase 1 基础无状态组件 re-exports
 pub use collapsible::Collapsible;

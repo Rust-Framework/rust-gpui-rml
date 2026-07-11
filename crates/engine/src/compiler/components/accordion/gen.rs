@@ -36,10 +36,10 @@ pub fn gen_accordion(
     let lv: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
     let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
 
-    // 预扫描：受控模式 open-ixs 绑定 + 用户自定义 on-toggle-click
+    // 预扫描：受控模式 open-indices 绑定 + 用户自定义 on-toggle-click
     // 注意：RML 属性名在 parser 中已从 kebab-case 规范化为 snake_case
-    let open_ixs_expr = elem.attributes.iter().find_map(|attr| match attr {
-        Attribute::Bind { name, expr, .. } if name == "open_ixs" => Some(
+    let open_indices_expr = elem.attributes.iter().find_map(|attr| match attr {
+        Attribute::Bind { name, expr, .. } if name == "open_indices" => Some(
             crate::compiler::setters::component_bind_rust_expr(expr, &lv, &computed),
         ),
         _ => None,
@@ -53,11 +53,11 @@ pub fn gen_accordion(
 
     for attr in &elem.attributes {
         match attr {
-            // open-ixs 由受控模式统一处理，不生成普通 setter
-            Attribute::Bind { name, .. } if name == "open_ixs" => continue,
-            // on-toggle-click 在存在 open-ixs 时由受控模式生成组合回调
+            // open-indices 由受控模式统一处理，不生成普通 setter
+            Attribute::Bind { name, .. } if name == "open_indices" => continue,
+            // on-toggle-click 在存在 open-indices 时由受控模式生成组合回调
             Attribute::Event { name, handler, .. } if name == "on_toggle_click" => {
-                if open_ixs_expr.is_none() {
+                if open_indices_expr.is_none() {
                     if let Some(s) = super::setters::event_setter(name, handler, "Accordion") {
                         code.push_str(&s);
                     }
@@ -97,14 +97,14 @@ pub fn gen_accordion(
     }
 
     // 3. 子节点 → .item(|__rml_item| ...) 闭包
-    //    若启用受控模式 open-ixs，自动为未显式指定 open 的 item 追加 .open(self.<field>.contains(&ix))
+    //    若启用受控模式 open-indices，自动为未显式指定 open 的 item 追加 .open(self.<field>.contains(&ix))
     let mut item_index: usize = 0;
     for child in &elem.children {
         match child {
             Node::Element(child_elem) if tags::is_item_builder_tag(&child_elem.tag) => {
                 let mut item_code =
                     super::item::gen_item_builder(child_elem, ctx, id_counter, loop_vars)?;
-                if let Some(ref expr) = open_ixs_expr {
+                if let Some(ref expr) = open_indices_expr {
                     let has_explicit_open = child_elem.attributes.iter().any(|attr| match attr {
                         Attribute::Static { name, .. } | Attribute::Bind { name, .. } => {
                             name == "open"
@@ -140,8 +140,8 @@ pub fn gen_accordion(
         }
     }
 
-    // 4. 受控模式：生成 on-toggle-click 回调，同步 open-ixs 字段并可选调用用户回调
-    if let Some(ref expr) = open_ixs_expr {
+    // 4. 受控模式：生成 on-toggle-click 回调，同步 open-indices 字段并可选调用用户回调
+    if let Some(ref expr) = open_indices_expr {
         // expr 可能是 "self.field" 或 "__rml_self_ref.field"（slot 闭包内），
         // 反向同步在 cx.listener 闭包内，应使用 "this.field"，需剥离前缀只保留字段名。
         let field_name = expr
@@ -157,16 +157,16 @@ pub fn gen_accordion(
                     EventHandler::ClosureField(_) => String::new(),
                 };
                 format!(
-                    ".on_toggle_click(cx.listener(move |this, open_ixs: &[usize], _window, cx| {{\n                    \
-                     this.{} = open_ixs.to_vec();\n                    \
-                     this.{}(open_ixs, cx);\n                }}))",
+                    ".on_toggle_click(cx.listener(move |this, open_indices: &[usize], _window, cx| {{\n                    \
+                     this.{} = open_indices.to_vec();\n                    \
+                     this.{}(open_indices, cx);\n                }}))",
                     field_name, method
                 )
             }
             None => format!(
-                ".on_toggle_click(cx.listener(move |this, open_ixs: &[usize], _window, cx| {{\n                    \
-                     this.{} = open_ixs.to_vec();\n                    \
-                     cx.notify();\n                }}))",
+                ".on_toggle_click(cx.listener(move |this, open_indices: &[usize], _window, cx| {{\n                    \
+                 this.{} = open_indices.to_vec();\n                    \
+                 cx.notify();\n                }}))",
                 field_name
             ),
         };
@@ -318,7 +318,7 @@ mod tests {
         let code = gen_accordion(&elem, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".on_toggle_click("));
         assert!(code.contains("cx.listener"));
-        assert!(code.contains("open_ixs: &[usize]"));
+        assert!(code.contains("open_indices: &[usize]"));
         assert!(code.contains("this.on_toggle"));
     }
 

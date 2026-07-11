@@ -39,7 +39,7 @@ impl ILifecycle for CounterCase {
             ("pub 字段", "i32/String/bool", "observable 状态"),
             ("#[computed]", "方法", "缓存计算属性"),
             ("#[command]", "方法", "事件处理 + 状态更新"),
-            ("on-click", "事件", "按钮点击回调"),
+            ("on-click", "事件", "按钮点击回调（参数：&ClickEvent）"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

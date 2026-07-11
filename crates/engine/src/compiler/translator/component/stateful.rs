@@ -34,7 +34,7 @@ impl IRmlTranslator for StatefulComponentTranslator {
 
     fn matches(&self, elem: &Element) -> bool {
         let canonical = tags::canonical_tag(&elem.tag);
-        if matches!(canonical.as_str(), "Tree" | "CodeEditor" | "OtpInput") {
+        if matches!(canonical.as_str(), "Tree" | "CodeEditor" | "OtpInput" | "Input" | "TextInput" | "Slider") {
             return false;
         }
         matches!(

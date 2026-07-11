@@ -1,17 +1,20 @@
 //! Tree 组件 translator
 //!
-//! Tree 构造器使用 `as_ref()` 而非 `&` 引用（与其他 Stateful 组件不同），
-//! 因此从 `StatefulComponentTranslator` 独立出来。
-//! 薄包装 `compiler::tree::gen_tree`，并应用静态/bind/event setter + CSS。
+//! Tree 是 StatefulWithDelegate 组件：通过 `ref="name" items={field}` 声明式绑定。
+//! - `items={field}` 作为委托数据注入 TreeState 构造器
+//! - `ref="name"` 触发 `__rml_state.get_or_init_ref` 惰性创建
+//! - Tree::new 接受 `Option<&Entity<TreeState>>`，与其他 StatefulWithDelegate 组件不同
+//! - on_activate/on_select 使用 Tree 专用 event_setter（生成 .on_activate_rc/.on_select_rc）
 
 use super::super::{ComponentCategory, IRmlTranslator, PrintError, PrinterCtx, TranslatorMetadata};
 use crate::compiler::codegen::attribute::append_css_class_styles;
+use crate::compiler::codegen::extract_field_converter;
 use crate::compiler::setters::{
     component_bind_setter, component_event_setter, component_static_setter,
 };
 use crate::compiler::{CodegenCtx, CodegenError};
 use crate::css::ParentInfo;
-use crate::parser::ast::{Attribute, Element};
+use crate::parser::ast::{Attribute, Directive, Element};
 use crate::tags;
 
 #[derive(Debug)]
@@ -30,22 +33,62 @@ impl IRmlTranslator for TreeTranslator {
         &self,
         elem: &Element,
         ctx: &CodegenCtx,
-        id_counter: &mut usize,
+        _id_counter: &mut usize,
         loop_vars: &[String],
         parents: &[ParentInfo],
     ) -> Result<(String, bool), CodegenError> {
         let tag = &elem.tag;
         let resolved = tags::normalize_component_tag(tag);
-        let component = tags::component_lookup_resolved(tag)
-            .ok_or_else(|| CodegenError {
-                message: format!("unknown component: <{}>", tag),
-                span: Some(elem.span),
-            })?;
+        let component = tags::component_lookup_resolved(tag).ok_or_else(|| CodegenError {
+            message: format!("unknown component: <{}>", tag),
+            span: Some(elem.span),
+        })?;
 
-        let mut code =
-            crate::compiler::components::tree::gen_tree(elem, component, ctx, 0, id_counter, loop_vars)?;
+        let (_state_field, state_ctor, delegate_attr) = match component.kind {
+            tags::ComponentKind::StatefulWithDelegate {
+                state_field,
+                state_ctor,
+                delegate_attr,
+            } => (state_field, state_ctor, delegate_attr),
+            _ => {
+                return Err(CodegenError {
+                    message: "<Tree> component kind mismatch: expected StatefulWithDelegate".into(),
+                    span: Some(elem.span),
+                })
+            }
+        };
 
-        // CSS class 样式（基础层，被后续内联 style / 归一化属性覆盖）
+        let ref_name: &str = elem.directives.iter().find_map(|d| match d {
+            Directive::Ref { name, .. } => Some(name.as_str()),
+            _ => None,
+        }).ok_or_else(|| CodegenError {
+            message: "<Tree> requires `ref=\"name\"` directive for delegate injection".into(),
+            span: Some(elem.span),
+        })?;
+
+        let delegate_expr = elem.attributes.iter().find_map(|attr| {
+            if let Attribute::Bind { name, expr, .. } = attr {
+                (name == delegate_attr).then(|| expr.clone())
+            } else {
+                None
+            }
+        }).ok_or_else(|| CodegenError {
+            message: format!("<{}> requires `{}={{field}}` bind attribute to provide delegate data", tag, delegate_attr),
+            span: Some(elem.span),
+        })?;
+
+        let (delegate_field, _) = extract_field_converter(&delegate_expr);
+
+        let entity_expr = format!(
+            "self.__rml_state.get_or_init_ref(\"{}\", _window, &mut *cx, {{ let __rml_delegate = (self.{}).clone(); {} }})",
+            ref_name, delegate_field, state_ctor
+        );
+
+        let mut code = format!(
+            "({{ let __rml_entity = ({}).clone(); rml_ui::Tree::new(Some(&__rml_entity)) }})",
+            entity_expr
+        );
+
         append_css_class_styles(&mut code, elem, tag, ctx.stylesheet.as_ref(), parents);
 
         let lv: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
@@ -62,6 +105,9 @@ impl IRmlTranslator for TreeTranslator {
                     }
                 }
                 Attribute::Bind { name, expr, .. } => {
+                    if name == delegate_attr {
+                        continue;
+                    }
                     if let Some(setter) =
                         component_bind_setter(name, expr, &lv, &computed, &resolved)
                     {
@@ -73,7 +119,11 @@ impl IRmlTranslator for TreeTranslator {
                     }
                 }
                 Attribute::Event { name, handler, .. } => {
-                    if let Some(setter) = component_event_setter(name, handler, &resolved) {
+                    if let Some(setter) =
+                        crate::compiler::components::tree::setters::event_setter(name, handler, &resolved)
+                    {
+                        code.push_str(&setter);
+                    } else if let Some(setter) = component_event_setter(name, handler, &resolved) {
                         code.push_str(&setter);
                     }
                 }

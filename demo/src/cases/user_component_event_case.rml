@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.user_event.title")}
-        description="用户组件可通过声明 Option<ClickHandler> 字段暴露事件回调。父视图用 on-click={handler} 绑定时，codegen 将父方法包装为闭包并注入到子组件字段。模板内用 on-click={self.on_click} 将回调应用到内部元素。"
+        description="用户组件可通过声明 Option<ClickHandler> 字段暴露事件回调。父视图用 on-click={handler} 绑定时，编译器将父方法包装为闭包并注入到子组件字段。模板内用 on-click={self.on_click} 将回调应用到内部元素。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">

@@ -1,5 +1,6 @@
 use gpui::SharedString;
 use rml::prelude::*;
+use rml_core::element_ref::ElementRef;
 use rml_core::i18n::t_static;
 use rml_ui::{SliderState, TableColumn, TableRow};
 
@@ -15,9 +16,15 @@ use crate::cases::common::{build_api_table, CaseDocPage};
 #[component]
 #[derive(Default)]
 pub struct SliderCase {
-    pub slider_state: Option<gpui::Entity<SliderState>>,
-    pub disabled_state: Option<gpui::Entity<SliderState>>,
-    pub range_state: Option<gpui::Entity<SliderState>>,
+    /// 基础滑块：min=0 max=100 step=1 default=50
+    pub slider_state: ElementRef<SliderState>,
+    /// 禁用滑块：min=0 max=100 default=30
+    pub disabled_state: ElementRef<SliderState>,
+    /// 范围滑块：min=0 max=100 step=5 default=(20, 80)
+    pub range_state: ElementRef<SliderState>,
+    /// 范围滑块默认值，通过 default-value={range_default} 绑定
+    pub range_default: (f32, f32),
+
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
     pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
@@ -36,32 +43,16 @@ impl ILifecycle for SliderCase {
     fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
 
-        self.slider_state = Some(cx.new(|_cx| {
-            SliderState::new()
-                .min(0.0)
-                .max(100.0)
-                .step(1.0)
-                .default_value(50.0)
-        }));
-        self.disabled_state = Some(cx.new(|_cx| {
-            SliderState::new()
-                .min(0.0)
-                .max(100.0)
-                .default_value(30.0)
-        }));
-        self.range_state = Some(cx.new(|_cx| {
-            SliderState::new()
-                .min(0.0)
-                .max(100.0)
-                .step(5.0)
-                .default_value((20.0, 80.0))
-        }));
+        self.range_default = (20.0, 80.0);
+
         let (cols, rows) = build_api_table(&[
-            ("ref", "字符串", "SliderState Entity 引用名（on_loaded 中初始化）"),
+            ("ref", "字符串", "SliderState 元素引用名（配合 ElementRef<SliderState> 字段）"),
+            ("min", "f32（Static）", "最小值（如 min=\"0\"）"),
+            ("max", "f32（Static）", "最大值（如 max=\"100\"）"),
+            ("step", "f32（Static）", "步长（如 step=\"1\"）"),
+            ("default-value", "f32 或 (f32, f32) 绑定", "初始值：Static 单值（default-value=\"50\"）或 Bind 元组（default-value={range_default}）"),
             ("disabled", "布尔/绑定", "禁用滑块交互"),
-            ("SliderState::min/max", "f32", "范围（on_loaded 中设置）"),
-            ("SliderState::step", "f32", "步长"),
-            ("SliderState::default_value", "f32 / (f32, f32)", "初始值（单值或范围）"),
+            ("on-change", "事件", "值变化回调（参数：SliderValue；通过 cx.subscribe 订阅 SliderEvent::Change）"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

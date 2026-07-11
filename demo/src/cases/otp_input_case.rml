@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.otp_input.title")}
-        description="OtpInput 是 RML 的 OTP 验证码输入组件，标签为 PascalCase OtpInput 或 kebab-case otp-input。Stateful 组件，构造器 OtpInput::new(&Entity<OtpState>)。length/masked/default_value 属性由 OtpInputTranslator 注入 state_ctor 闭包，不生成 setter。on-change/on-focus/on-blur 通过 cx.subscribe 订阅 InputEvent 实现。"
+        description="OtpInput 是 RML 的 OTP 验证码输入组件，标签为 PascalCase OtpInput 或 kebab-case otp-input。通过 ref 指令引用 OtpState，OtpInput::new(&state) 创建视图。length/masked/default-value 为构造参数，直接声明式设置。on-change/on-focus/on-blur 事件通过 InputEvent 触发。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
@@ -42,7 +42,7 @@
         <template slot="api">
             <h3>OtpInput</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-            <p>注：length/masked/default-value 由 OtpInputTranslator 注入 state_ctor 闭包，不参与 setter 分发。on-change/on-focus/on-blur 通过 cx.subscribe 订阅 InputEvent 实现，参数为 &amp;OtpState。</p>
+            <p>注：length/masked/default-value 为构造参数，直接声明式设置。on-change/on-focus/on-blur 事件参数为 &amp;OtpState。</p>
         </template>
     </CaseDocPage>
 </component>

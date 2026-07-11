@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.collapsible.title")}
-        description="Collapsible 是 RML 的折叠容器组件，标签为 PascalCase Collapsible。StatelessNoId 组件（无 ElementId，RenderOnce），实现 ParentElement。open 属性控制展开/折叠状态，content 内容仅在 open=true 时显示。"
+        description="Collapsible 是 RML 的折叠容器组件，标签为 PascalCase Collapsible。无 ElementId 构造（RenderOnce），实现 ParentElement。open 属性控制展开/折叠状态，content 内容仅在 open=true 时显示。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">

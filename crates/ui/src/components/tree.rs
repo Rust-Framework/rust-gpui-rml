@@ -6,7 +6,7 @@
 use std::rc::Rc;
 
 use gpui::{
-    App, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px,
+    App, Entity, IntoElement, ParentElement, RenderOnce, SharedString, Styled, Window, div, px,
 };
 use gpui_component::{
     Icon, IconName, Sizable as _,
@@ -127,5 +127,79 @@ impl RenderOnce for Tree {
             item
         })
         .into_any_element()
+    }
+}
+
+/// ViewModel 侧树节点数据 —— `Send + Sync`，可安全存储在 `#[contribute]` 组件字段中。
+///
+/// `TreeItem`（gpui-component）内部使用 `Rc<RefCell<...>>`，不满足 `Send + Sync`，
+/// 无法存储在 `IContribution` 组件上。`TreeData` 作为声明式数据载体，
+/// 在 `TreeState` 构造时经 [`TreeData::to_tree_items`] 转换为 `Vec<TreeItem>`。
+///
+/// Builder API 与 `TreeItem` 一致：`new` / `child` / `children` / `expanded` / `disabled`。
+#[derive(Clone, Default)]
+pub struct TreeData {
+    pub id: SharedString,
+    pub label: SharedString,
+    pub children: Vec<TreeData>,
+    pub expanded: bool,
+    pub disabled: bool,
+}
+
+impl TreeData {
+    pub fn new(id: impl Into<SharedString>, label: impl Into<SharedString>) -> Self {
+        Self {
+            id: id.into(),
+            label: label.into(),
+            children: Vec::new(),
+            expanded: false,
+            disabled: false,
+        }
+    }
+
+    pub fn child(mut self, child: TreeData) -> Self {
+        self.children.push(child);
+        self
+    }
+
+    pub fn children(mut self, children: impl IntoIterator<Item = TreeData>) -> Self {
+        self.children.extend(children);
+        self
+    }
+
+    pub fn expanded(mut self, expanded: bool) -> Self {
+        self.expanded = expanded;
+        self
+    }
+
+    pub fn disabled(mut self, disabled: bool) -> Self {
+        self.disabled = disabled;
+        self
+    }
+
+    /// 将 `Vec<TreeData>` 转换为 `Vec<TreeItem>`（state_ctor 调用，单线程渲染上下文）。
+    pub fn to_tree_items(data: Vec<TreeData>) -> Vec<TreeItem> {
+        data.into_iter().map(TreeItem::from).collect()
+    }
+
+    /// 是否为文件夹节点（有子节点）。
+    pub fn is_folder(&self) -> bool {
+        !self.children.is_empty()
+    }
+}
+
+impl From<TreeData> for TreeItem {
+    fn from(data: TreeData) -> Self {
+        let mut item = TreeItem::new(data.id, data.label);
+        if !data.children.is_empty() {
+            item = item.children(data.children.into_iter().map(TreeItem::from));
+        }
+        if data.expanded {
+            item = item.expanded(true);
+        }
+        if data.disabled {
+            item = item.disabled(true);
+        }
+        item
     }
 }

@@ -1,0 +1,64 @@
+<component>
+    <CaseDocPage
+        title={t("case.skeleton.title")}
+        description="Skeleton 是骨架屏占位组件，标签为 PascalCase Skeleton 或 kebab-case skeleton。无 ElementId 构造（RenderOnce），支持 secondary 布尔属性切换次级颜色。通过 style 控制宽高，适用于内容加载中的占位场景。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <div class="demo-section">
+                <h3>基础用法</h3>
+                <p>Skeleton 默认渲染灰色矩形占位块，通过 style 控制宽度和高度。适用于文本、图片等内容的加载占位。</p>
+                <div class="skeleton-row">
+                    <Skeleton style="width: 200px; height: 20px;" />
+                    <Skeleton style="width: 150px; height: 20px;" />
+                    <Skeleton style="width: 180px; height: 20px;" />
+                </div>
+            </div>
+
+            <div class="demo-section">
+                <h3>secondary 次级颜色</h3>
+                <p>secondary 属性切换为次级颜色（更浅的灰色），适用于多层骨架屏的视觉层次区分。</p>
+                <div class="skeleton-row">
+                    <Skeleton style="width: 200px; height: 20px;" />
+                    <Skeleton secondary="" style="width: 200px; height: 20px;" />
+                </div>
+            </div>
+
+            <div class="demo-section">
+                <h3>与 Card 组合</h3>
+                <p>骨架屏常与 Card 组合，模拟卡片加载中的占位效果。下方演示一个卡片内含标题、头像、文本的骨架屏布局。</p>
+                <Card class="skeleton-card">
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                        <Skeleton style="width: 48px; height: 48px; border-radius: 50%;" />
+                        <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
+                            <Skeleton style="width: 120px; height: 16px;" />
+                            <Skeleton secondary="" style="width: 80px; height: 14px;" />
+                        </div>
+                    </div>
+                    <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 8px;">
+                        <Skeleton style="width: 100%; height: 14px;" />
+                        <Skeleton style="width: 90%; height: 14px;" />
+                        <Skeleton secondary="" style="width: 60%; height: 14px;" />
+                    </div>
+                </Card>
+            </div>
+
+            <div class="demo-section">
+                <h3>不同尺寸</h3>
+                <p>通过 style 控制骨架屏的宽度和高度，适配不同占位场景。</p>
+                <div class="skeleton-row">
+                    <Skeleton style="width: 100px; height: 12px;" />
+                    <Skeleton style="width: 200px; height: 16px;" />
+                    <Skeleton style="width: 300px; height: 24px;" />
+                    <Skeleton style="width: 80px; height: 80px; border-radius: 8px;" />
+                </div>
+            </div>
+        </template>
+
+        <template slot="api">
+            <h3>Skeleton</h3>
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+            <p>注：Skeleton 为 RenderOnce 组件（无 ElementId），通过 style 属性控制宽高，secondary 切换次级颜色。</p>
+        </template>
+    </CaseDocPage>
+</component>

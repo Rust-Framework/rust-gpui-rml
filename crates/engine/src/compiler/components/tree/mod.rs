@@ -1,10 +1,8 @@
 //! Tree 组件 codegen 模块入口。
 //!
-//! Tree 构造器使用 `as_ref()` 而非 `&` 引用（与其他 Stateful 组件不同），
-//! 因此从 `StatefulComponentTranslator` 独立出来。
+//! Tree 是 StatefulWithDelegate 组件，构造逻辑由 `translator::component::tree` 处理。
+//! 本模块仅保留 Tree 专用 event_setter（on_activate/on_select）。
 
-pub mod gen;
 pub mod setters;
 
-pub use gen::gen_tree;
 pub use setters::event_setter;

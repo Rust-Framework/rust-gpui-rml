@@ -1,9 +1,9 @@
-//! 扫描 demo/src 目录构建文件树（Vec<TreeItem>）。
+//! 扫描 demo/src 目录构建文件树（Vec<TreeData>）。
 
 use std::path::Path;
 
 use gpui::SharedString;
-use rml_ui::TreeItem;
+use rml_ui::TreeData;
 
 /// 扫描 `demo/src/` 目录递归构建文件树。
 ///
@@ -12,7 +12,7 @@ use rml_ui::TreeItem;
 ///
 /// 路径解析：编译时 `CARGO_MANIFEST_DIR` 指向 `demo/`，运行时可靠定位 `demo/src`，
 /// 不依赖 `current_dir()`（运行时 cwd 可能是 exe 目录或任意工作目录）。
-pub fn build_source_tree() -> Vec<TreeItem> {
+pub fn build_source_tree() -> Vec<TreeData> {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let src_dir = std::path::Path::new(manifest_dir).join("src");
     if !src_dir.exists() {
@@ -21,7 +21,7 @@ pub fn build_source_tree() -> Vec<TreeItem> {
     scan_dir(&src_dir, "")
 }
 
-fn scan_dir(dir: &Path, prefix: &str) -> Vec<TreeItem> {
+fn scan_dir(dir: &Path, prefix: &str) -> Vec<TreeData> {
     let entries = match std::fs::read_dir(dir) {
         Ok(e) => e,
         Err(_) => return Vec::new(),
@@ -73,7 +73,7 @@ fn scan_dir(dir: &Path, prefix: &str) -> Vec<TreeItem> {
                 .to_string()
                 .into();
             let children = scan_dir(&path, &relative);
-            TreeItem::new(relative, label).children(children)
+            TreeData::new(relative, label).children(children)
         })
         .chain(files.into_iter().map(|(relative, path)| {
             let label: SharedString = path
@@ -82,7 +82,7 @@ fn scan_dir(dir: &Path, prefix: &str) -> Vec<TreeItem> {
                 .unwrap_or(&relative)
                 .to_string()
                 .into();
-            TreeItem::new(relative, label)
+            TreeData::new(relative, label)
         }))
         .collect()
 }

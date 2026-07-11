@@ -46,7 +46,7 @@ impl ILifecycle for ButtonCase {
             ("compact", "布尔标志", "紧凑模式"),
             ("tooltip", "字符串", "悬浮提示"),
             ("font-bold / font-semibold / font-medium ...", "布尔标志", "字体权重"),
-            ("on-click", "事件", "点击回调"),
+            ("on-click", "事件", "点击回调（参数：&ClickEvent）"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

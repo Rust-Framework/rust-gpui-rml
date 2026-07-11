@@ -86,7 +86,7 @@ impl WelcomeCase {
     }
 
     /// 按 group 分组 → 按 group 内最小 order 排序组 → 组内按 order 排序。
-    /// 与 CaseViewModel::build_tree_items 投影逻辑一致，但不依赖 TreeItem。
+    /// 与 CaseViewModel::build_tree_items 投影逻辑一致，但不依赖 TreeData。
     fn compute_grouped_items(items: &[CaseNavItem]) -> Vec<CaseNavItemGroup> {
         let mut by_group: HashMap<Option<String>, Vec<CaseNavItem>> = HashMap::new();
         for item in items {

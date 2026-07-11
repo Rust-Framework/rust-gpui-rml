@@ -11,8 +11,8 @@
 //! - `close_button="false"` → `.close_button(false)`
 //! - `keyboard="false"` → `.keyboard(false)`
 //! - `on_close={handler}` → `.on_close(cx.listener(...))`（事件 setter，同 Sheet）
-//! - `on_ok={handler}` → `.on_ok({ entity 捕获闭包，返回 true })`（bool 返回值，不能用 cx.listener）
-//! - `on_cancel={handler}` → `.on_cancel({ entity 捕获闭包，返回 true })`（bool 返回值，不能用 cx.listener）
+//! - `on_ok={handler}` → `.on_ok({ entity 捕获闭包，返回 handler 方法的 bool 返回值 })`（bool 返回值，不能用 cx.listener）
+//! - `on_cancel={handler}` → `.on_cancel({ entity 捕获闭包，返回 handler 方法的 bool 返回值 })`（bool 返回值，不能用 cx.listener）
 
 use crate::parser::ast::EventHandler;
 
@@ -99,12 +99,12 @@ fn on_close_setter(handler: &EventHandler) -> String {
     }
 }
 
-/// on_ok / on_cancel setter：手动 entity 捕获闭包，返回 true
+/// on_ok / on_cancel setter：手动 entity 捕获闭包，传递 handler 方法的 bool 返回值
 ///
 /// 签名为 `Fn(&ClickEvent, &mut Window, &mut App) -> bool`，
 /// `cx.listener()` 产生 `Fn(&mut T, &ClickEvent, &mut Window, &mut Context<T>)`（无返回值），
 /// 无法适配。改用 `cx.entity()` 捕获 entity，在闭包内 `entity.update(cx, |this, cx| ...)` 调用方法，
-/// 固定返回 `true`（声明式 API 默认关闭对话框）。
+/// `entity.update` 返回 handler 方法的 `bool` 返回值，作为闭包返回值（返回 false 阻止关闭对话框）。
 fn bool_event_setter(setter_name: &str, handler: &EventHandler) -> String {
     let method = match handler {
         EventHandler::Ident(m) | EventHandler::MethodName(m) => m,
@@ -119,8 +119,7 @@ fn bool_event_setter(setter_name: &str, handler: &EventHandler) -> String {
              move |_ev: &gpui::ClickEvent, _window: &mut gpui::Window, cx: &mut gpui::App| {{\n                        \
              let rml_ev = rml::runtime::event_flow::convert::from_gpui_click(_ev);\n                        \
              entity.update(cx, |this, cx| {{\n                            \
-             this.{}(&rml_ev, cx);\n                        }});\n                        \
-             true\n                    \
+             this.{}(&rml_ev, cx)\n                        }})\n                    \
              }}\n                }})",
             setter_name, method
         ),
@@ -131,8 +130,7 @@ fn bool_event_setter(setter_name: &str, handler: &EventHandler) -> String {
              move |_ev: &gpui::ClickEvent, _window: &mut gpui::Window, cx: &mut gpui::App| {{\n                        \
              let rml_ev = rml::runtime::event_flow::convert::from_gpui_click(_ev);\n                        \
              entity.update(cx, |this, cx| {{\n                            \
-             this.{}(&rml_ev, cx);\n                        }});\n                        \
-             true\n                    \
+             this.{}(&rml_ev, cx)\n                        }})\n                    \
              }}\n                }})",
             setter_name, method
         ),
@@ -145,8 +143,7 @@ fn bool_event_setter(setter_name: &str, handler: &EventHandler) -> String {
                  let p0 = {}.clone();\n                        \
                  let rml_ev = rml::runtime::event_flow::convert::from_gpui_click(_ev);\n                        \
                  entity.update(cx, |this, cx| {{\n                            \
-                 this.{}(p0, &rml_ev, cx);\n                        }});\n                        \
-                 true\n                    \
+                 this.{}(p0, &rml_ev, cx)\n                        }})\n                    \
                  }}\n                }})",
                 setter_name, arg, method
             )
@@ -250,7 +247,8 @@ mod tests {
         assert!(code.contains("let entity = cx.entity();"));
         assert!(code.contains("entity.update(cx"));
         assert!(code.contains("this.handle_ok"));
-        assert!(code.contains("true"));
+        // 不再硬编码 true — handler 方法返回 bool 作为 entity.update 的返回值
+        assert!(!code.contains("\n             true"));
     }
 
     #[test]
@@ -260,7 +258,7 @@ mod tests {
         assert!(code.starts_with(".on_cancel({"));
         assert!(code.contains("let entity = cx.entity();"));
         assert!(code.contains("this.handle_cancel"));
-        assert!(code.contains("true"));
+        assert!(!code.contains("\n             true"));
     }
 
     #[test]

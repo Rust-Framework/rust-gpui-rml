@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.native_status_bar.title")}
-        description="NativeStatusBar 是 RML 的原生状态栏组件。无 ElementId 构造（StatelessNoId），容器模式。子节点渲染在中央区域。通常用于 modern-window 的底部状态栏组合。"
+        description="NativeStatusBar 是 RML 的原生状态栏组件。无 ElementId 构造，容器模式。子节点渲染在中央区域。通常用于 modern-window 的底部状态栏组合。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">

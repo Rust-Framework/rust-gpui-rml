@@ -11,7 +11,7 @@ use crate::parser::ast::EventHandler;
 /// 静态属性 → builder 方法映射
 ///
 /// - `label="..."` → `.label("...")`
-/// - `placeholder="..."` → `.placeholder("...")`（Input 支持）
+/// - `placeholder="..."` → `.placeholder("...")`（NumberInput/Select/Combobox/DatePicker 等组件支持；Input/TextInput 由 InputTranslator 注入 state_ctor）
 /// - `primary=""`/`danger=""` → `.primary()` / `.danger()`（Button 专用布尔属性）
 /// - `disabled="true"` → `.disabled(true)`
 /// - `selected`/`compact`/`loading` → 对应方法

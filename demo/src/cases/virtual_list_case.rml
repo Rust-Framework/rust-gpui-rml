@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.virtual_list.title")}
-        description="VirtualList 是 RML 的虚拟列表组件，标签为 PascalCase VirtualList 或 kebab-case virtual-list。构造器为函数 v_virtual_list/h_virtual_list（非 VirtualList::new），由 VirtualListTranslator 特化处理。direction 属性选择 v/h 构造器，item-sizes 作为函数参数传入（Rc&lt;Vec&lt;Size&lt;Pixels&gt;&gt;&gt;），slot=render 注入渲染闭包。闭包签名为 Fn(&amp;mut V, Range&lt;usize&gt;, &amp;mut Window, &amp;mut Context&lt;V&gt;) -&gt; Vec&lt;R&gt;。"
+        description="VirtualList 是 RML 的虚拟列表组件，标签为 PascalCase VirtualList 或 kebab-case virtual-list。构造器为函数 v_virtual_list/h_virtual_list（非 VirtualList::new），由编译器特化处理。direction 属性选择 v/h 构造器，item-sizes 作为函数参数传入（Rc&lt;Vec&lt;Size&lt;Pixels&gt;&gt;&gt;），slot=render 注入渲染闭包。闭包签名为 Fn(&amp;mut V, Range&lt;usize&gt;, &amp;mut Window, &amp;mut Context&lt;V&gt;) -&gt; Vec&lt;R&gt;。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">

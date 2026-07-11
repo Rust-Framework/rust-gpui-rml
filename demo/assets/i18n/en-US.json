@@ -398,7 +398,11 @@
 
   "case.sidebar.title": "Sidebar",
 
-  "case.form.title": "Form"
+  "case.form.title": "Form",
+
+  "case.skeleton.title": "Skeleton",
+
+  "case.breadcrumb.title": "Breadcrumb"
 
 }
 

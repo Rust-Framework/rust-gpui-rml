@@ -72,8 +72,8 @@
         <template slot="api">
             <h3>Sheet</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-            <p>另：sheet 与 Sheet 标签等价（normalize_component_tag 统一为 Sheet）。</p>
-            <p>另：Sheet 构造器为 <code>Sheet::new(&amp;mut Window, &amp;mut App)</code>，codegen 直接使用 render 上下文的 _window 和 cx 变量，不分配 ElementId。</p>
+            <p>另：sheet 与 Sheet 标签等价。</p>
+            <p>另：Sheet 构造器为 <code>Sheet::new(&amp;mut Window, &amp;mut App)</code>，编译器直接使用 render 上下文的 _window 和 cx 变量，不分配 ElementId。</p>
         </template>
     </CaseDocPage>
 </component>
