@@ -21,6 +21,7 @@ use std::sync::Mutex;
 use gpui::{AnyWindowHandle, AppContext, Entity, SharedString};
 
 use crate::InputState;
+use crate::window::actions::{IWindowActions, NotificationKind};
 
 /// 组件运行时状态容器
 ///
@@ -129,6 +130,12 @@ pub struct RmlState {
     /// 使用 `Mutex` 提供内部可变性，使 `get_or_init_focus_handle` 只需 `&self`，
     /// 从而在 slot 闭包（仅有 `&self` via `__rml_self_ref`）内也能使用。
     pub focus_handles: Mutex<HashMap<String, gpui::FocusHandle>>,
+
+    /// 待处理通知队列（延迟到 render 时通过 Window 发送）
+    ///
+    /// 命令回调（`#[command]`）内无 `Window` 参数，调用 `self.notify_info(msg)` 入队，
+    /// render 首帧 `drain_notifications(window, cx)` 消费并调用 `window.notify_*`。
+    pub pending_notifications: Vec<(NotificationKind, SharedString)>,
 }
 
 impl RmlState {
@@ -327,5 +334,40 @@ impl RmlState {
             .unwrap()
             .insert(key.to_string(), handle.clone());
         handle
+    }
+
+    // ── 延迟通知 ──────────────────────────────────────────────────
+
+    /// 入队一条信息通知（命令回调内无 Window，延迟到 render 时发送）
+    pub fn notify_info(&mut self, message: impl Into<SharedString>) {
+        self.pending_notifications
+            .push((NotificationKind::Info, message.into()));
+    }
+
+    /// 入队一条成功通知
+    pub fn notify_success(&mut self, message: impl Into<SharedString>) {
+        self.pending_notifications
+            .push((NotificationKind::Success, message.into()));
+    }
+
+    /// 入队一条警告通知
+    pub fn notify_warning(&mut self, message: impl Into<SharedString>) {
+        self.pending_notifications
+            .push((NotificationKind::Warning, message.into()));
+    }
+
+    /// 入队一条错误通知
+    pub fn notify_error(&mut self, message: impl Into<SharedString>) {
+        self.pending_notifications
+            .push((NotificationKind::Error, message.into()));
+    }
+
+    /// 消费待处理通知队列，通过 Window 发送
+    ///
+    /// 由 codegen 在 render 方法首帧调用（`window` 在 render 作用域可用）。
+    pub fn drain_notifications(&mut self, window: &mut gpui::Window, cx: &mut gpui::App) {
+        while let Some((kind, msg)) = self.pending_notifications.pop() {
+            window.show_notification(msg, kind, cx);
+        }
     }
 }

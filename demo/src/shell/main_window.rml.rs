@@ -435,6 +435,10 @@ impl MainWindow {
     pub(crate) fn apply_switch_en(&mut self, cx: &mut Context<Self>) {
         cx.set_i18n("en-US");
     }
+
+    pub(crate) fn apply_switch_zh(&mut self, cx: &mut Context<Self>) {
+        cx.set_i18n("zh-CN");
+    }
 }
 
 // ──────────────────────────────────────────────────────────────────────────

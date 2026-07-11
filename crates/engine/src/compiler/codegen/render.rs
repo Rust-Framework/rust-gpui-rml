@@ -36,6 +36,7 @@ pub(crate) fn gen_render_impl_from_children(
     out.push_str("            self.__rml_state.loaded = true;\n");
     out.push_str("            rml_core::lifecycle::ILifecycle::on_loaded(self, _window, cx);\n");
     out.push_str("        }\n");
+    out.push_str("        self.__rml_state.drain_notifications(_window, cx);\n");
     out.push_str("        use gpui::{ParentElement, InteractiveElement, StatefulInteractiveElement, IntoElement, Styled};\n");
     out.push_str("        use rml_ui::{ContextMenuExt, DropdownMenu, PopupMenuItem, Side, h_flex};\n");
     out.push_str("        use rml_ui::{ActiveTheme, ButtonVariants, Disableable, GroupBoxVariants, OverflowStyle, ScrollableElement, Sizable, Selectable, StyledExt};\n");

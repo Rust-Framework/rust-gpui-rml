@@ -165,3 +165,56 @@ fn observable_vec_fields_route_to_self_version() {
         code
     );
 }
+
+#[test]
+fn generates_notify_wrapper_methods() {
+    let code = compile(RML_SOURCE, &make_ctx()).expect("compile failed").code;
+    for method in [
+        "__rml_notify_info",
+        "__rml_notify_success",
+        "__rml_notify_warning",
+        "__rml_notify_error",
+    ] {
+        assert!(
+            code.contains(&format!("fn {}", method)),
+            "missing {} method\n{}",
+            method,
+            code
+        );
+    }
+}
+
+#[test]
+fn notify_wrappers_delegate_to_rml_state() {
+    let code = compile(RML_SOURCE, &make_ctx()).expect("compile failed").code;
+    assert!(
+        code.contains("self.__rml_state.notify_info(message)"),
+        "missing notify_info delegation\n{}",
+        code
+    );
+    assert!(
+        code.contains("self.__rml_state.notify_success(message)"),
+        "missing notify_success delegation\n{}",
+        code
+    );
+    assert!(
+        code.contains("self.__rml_state.notify_warning(message)"),
+        "missing notify_warning delegation\n{}",
+        code
+    );
+    assert!(
+        code.contains("self.__rml_state.notify_error(message)"),
+        "missing notify_error delegation\n{}",
+        code
+    );
+}
+
+#[test]
+fn render_drains_pending_notifications() {
+    let code = compile(RML_SOURCE, &make_ctx()).expect("compile failed").code;
+    assert!(
+        code.contains("self.__rml_state.drain_notifications(_window, cx)"),
+        "missing drain_notifications call in render\n{}",
+        code
+    );
+}

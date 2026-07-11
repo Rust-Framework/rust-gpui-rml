@@ -177,6 +177,7 @@
   "menu.help_about": "About RML Showcase",
 
   "menu.lang_en": "English",
+  "menu.lang_zh": "中文",
   "menu.theme_toggle": "Toggle Theme",
 
   "tree.group.menu": "Menu",
@@ -311,6 +312,8 @@
 
   "case.input.title": "Input",
 
+  "case.textarea.title": "TextArea",
+
   "case.tree.title": "Tree",
 
   "case.slider.title": "Slider",
@@ -389,6 +392,8 @@
   "case.sheet.title": "Sheet",
 
   "case.dialog.title": "Dialog",
+
+  "case.dialog_controlled.title": "Dialog (Controlled)",
 
   "case.alert_dialog.title": "AlertDialog",
 

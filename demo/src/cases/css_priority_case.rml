@@ -18,7 +18,7 @@
                 <p>本页 &lt;style&gt; 定义的 .priority-box 类，padding 来自 var(--card-padding)：</p>
                 <div class="priority-box">
                     <p>padding = var(--card-padding) = 16px</p>
-                    <p>background = var(--surface)，border = var(--border-color)</p>
+                    <p>background = var(--surface)，border = var(--border)</p>
                 </div>
             </Card>
 

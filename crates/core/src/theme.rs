@@ -7,19 +7,24 @@
 //! - `theme_color_static("--primary")` 供 `#[computed]` 等无 `App` 上下文场景使用
 //! - `rml::theme::length("--spacing")` / `rml::theme::number("--opacity")` 取非颜色变量
 //!
+//! 框架内置 light/dark 两套默认主题色,即使 `assets/themes/light.css` 和 `dark.css` 为空
+//! 也能获得现代化的亮暗配色。主题 CSS 文件可选择性覆盖内置颜色实现定制。
+//!
+//! 变量优先级（高 → 低）: 主题 CSS 文件 > 框架内置默认 > `set_style` 基础变量。
+//!
+//! 启用 `gpui-component` feature 后,`set_theme` 还会同步 gpui-component 原生主题
+//! （Button/Input 等组件的配色），无需开发者手动调用。
+//!
 //! 主题文件格式(`assets/themes/dark.css`):
 //! ```css
 //! :root {
-//!     --primary-color: #007bff;
-//!     --text-color: #333333;
+//!     --primary: #007bff;
+//!     --text: #333333;
 //!     --spacing: 8px;
 //!     --opacity: 0.5;
 //! }
 //! ```
 //! 解析 `:root` 块中的所有变量: `#hex` 识别为颜色, `Npx`/`Npt` 识别为长度, 纯数字识别为数字。
-//!
-//! `set_style` 加载的基础变量作为默认值,`set_theme` 的主题变量优先级更高:
-//! 主题中定义的变量覆盖基础变量,主题中未定义的变量回退到基础变量。
 
 use std::borrow::{Borrow, BorrowMut};
 use std::collections::HashMap;
@@ -252,6 +257,211 @@ pub fn ensure_theme(cx: &mut App) {
     }
 }
 
+// ─── 框架内置默认主题色 ───
+
+fn rgba_from_hex(hex: u32) -> Rgba {
+    Rgba {
+        r: ((hex >> 16) & 0xFF) as f32 / 255.0,
+        g: ((hex >> 8) & 0xFF) as f32 / 255.0,
+        b: (hex & 0xFF) as f32 / 255.0,
+        a: 1.0,
+    }
+}
+
+/// 内置 light 主题默认 CSS 变量颜色
+fn builtin_light_colors() -> HashMap<String, Rgba> {
+    let mut m = HashMap::new();
+    m.insert("--primary".to_string(), rgba_from_hex(0x007acc));
+    m.insert("--background".to_string(), rgba_from_hex(0xffffff));
+    m.insert("--surface".to_string(), rgba_from_hex(0xf3f4f6));
+    m.insert("--surface-variant".to_string(), rgba_from_hex(0xf9fafb));
+    m.insert("--code-bg".to_string(), rgba_from_hex(0xf1f3f5));
+    m.insert("--text".to_string(), rgba_from_hex(0x111827));
+    m.insert("--text-muted".to_string(), rgba_from_hex(0x6b7280));
+    m.insert("--border".to_string(), rgba_from_hex(0xe5e7eb));
+    m.insert("--success".to_string(), rgba_from_hex(0x059669));
+    m.insert("--warning".to_string(), rgba_from_hex(0xd97706));
+    m.insert("--error".to_string(), rgba_from_hex(0xdc2626));
+    m.insert("--info".to_string(), rgba_from_hex(0x2563eb));
+    m
+}
+
+/// 内置 dark 主题默认 CSS 变量颜色
+fn builtin_dark_colors() -> HashMap<String, Rgba> {
+    let mut m = HashMap::new();
+    m.insert("--primary".to_string(), rgba_from_hex(0x007acc));
+    m.insert("--background".to_string(), rgba_from_hex(0x222427));
+    m.insert("--surface".to_string(), rgba_from_hex(0x2a2b30));
+    m.insert("--surface-variant".to_string(), rgba_from_hex(0x1a1b1d));
+    m.insert("--code-bg".to_string(), rgba_from_hex(0x1a1b1d));
+    m.insert("--text".to_string(), rgba_from_hex(0xd4d4d8));
+    m.insert("--text-muted".to_string(), rgba_from_hex(0x8e8e93));
+    m.insert("--border".to_string(), rgba_from_hex(0x374151));
+    m.insert("--success".to_string(), rgba_from_hex(0x4ec9b0));
+    m.insert("--warning".to_string(), rgba_from_hex(0xcca700));
+    m.insert("--error".to_string(), rgba_from_hex(0xf44747));
+    m.insert("--info".to_string(), rgba_from_hex(0x3794ff));
+    m
+}
+
+/// 按主题名返回内置默认颜色; 未知主题返回空表
+fn builtin_theme_colors(theme: &str) -> HashMap<String, Rgba> {
+    match theme {
+        "dark" => builtin_dark_colors(),
+        "light" => builtin_light_colors(),
+        _ => HashMap::new(),
+    }
+}
+
+/// 以内置默认为底,叠加 CSS 文件提供的颜色与变量,返回合并结果
+fn merge_theme_with_builtin(
+    theme: &str,
+    dir: &str,
+) -> (HashMap<String, Rgba>, HashMap<String, ThemeVar>) {
+    let mut colors = builtin_theme_colors(theme);
+    let mut vars = HashMap::new();
+    if let Ok((css_colors, css_vars)) = load_theme_vars_embedded(theme, dir) {
+        for (k, v) in css_colors {
+            colors.insert(k, v);
+        }
+        for (k, v) in css_vars {
+            vars.insert(k, v);
+        }
+    }
+    (colors, vars)
+}
+
+// ─── gpui-component 原生主题同步（feature-gated） ───
+
+#[cfg(feature = "gpui-component")]
+fn apply_builtin_gpui_theme(theme: &str, cx: &mut App) {
+    match theme {
+        "dark" => apply_dark_theme_config(cx),
+        "light" => apply_light_theme_config(cx),
+        _ => {}
+    }
+}
+
+#[cfg(feature = "gpui-component")]
+fn apply_dark_theme_config(cx: &mut App) {
+    use gpui::{hsla, px};
+
+    gpui_component::theme::Theme::sync_scrollbar_appearance(cx);
+    let t = gpui_component::theme::Theme::global_mut(cx);
+
+    t.highlight_theme = gpui_component::highlighter::HighlightTheme::default_dark();
+
+    t.background = gpui::rgb(0x222427).into();
+    t.secondary = gpui::rgb(0x1a1b1d).into();
+    t.muted = gpui::rgb(0x2a2b30).into();
+    t.title_bar = hsla(0., 0., 0., 0.);
+    t.title_bar_border = hsla(0., 0., 0., 0.);
+    t.sidebar = gpui::rgb(0x1a1b1d).into();
+    t.tab_bar = gpui::transparent_black();
+    t.tab_foreground = gpui::rgb(0xd4d4d8).into();
+    t.tab_active = gpui::rgb(0x222427).into();
+    t.tab_active_foreground = gpui::rgb(0xffffff).into();
+    t.colors.list = gpui::rgb(0x25262a).into();
+    t.input = gpui::rgb(0x2e3035).into();
+
+    t.list_hover = gpui::rgb(0x33353a).into();
+    t.list_active = gpui::rgb(0x2a2b30).into();
+    t.list_active_border = gpui::transparent_black();
+    t.selection = gpui::rgb(0x264f78).into();
+    t.secondary_hover = gpui::rgb(0x3a3b40).into();
+    t.secondary_active = gpui::rgb(0x4a4b50).into();
+    t.secondary_foreground = gpui::rgb(0xd4d4d8).into();
+    t.primary_hover = gpui::rgb(0x1a8ad4).into();
+
+    t.foreground = gpui::rgb(0xd4d4d8).into();
+    t.caret = gpui::rgb(0xffffff).into();
+    t.muted_foreground = gpui::rgb(0x8e8e93).into();
+    t.link = gpui::rgb(0x3794ff).into();
+    t.accent_foreground = gpui::rgb(0xd4d4d8).into();
+
+    t.primary = gpui::rgb(0x007acc).into();
+    t.success = gpui::rgb(0x4ec9b0).into();
+    t.warning = gpui::rgb(0xcca700).into();
+    t.danger = gpui::rgb(0xf44747).into();
+    t.info = gpui::rgb(0x3794ff).into();
+
+    t.scrollbar = gpui::transparent_black();
+    t.scrollbar_thumb = gpui::rgb(0x555555).into();
+    t.scrollbar_thumb_hover = gpui::rgb(0x666666).into();
+
+    t.border = gpui::transparent_black();
+    t.drag_border = gpui::transparent_black();
+    t.popover = gpui::rgb(0x2a2b32).into();
+    t.popover_foreground = gpui::rgb(0xd4d4d8).into();
+    t.accent = gpui::rgb(0x094771).into();
+    t.ring = gpui::rgb(0x007acc).into();
+
+    t.transparent = gpui::transparent_black();
+    t.window_border = gpui::transparent_black();
+    t.font_size = px(14.);
+    t.scrollbar_show = gpui_component::scroll::ScrollbarShow::Scrolling;
+}
+
+#[cfg(feature = "gpui-component")]
+fn apply_light_theme_config(cx: &mut App) {
+    use gpui::px;
+
+    gpui_component::theme::Theme::sync_scrollbar_appearance(cx);
+    let t = gpui_component::theme::Theme::global_mut(cx);
+
+    t.highlight_theme = gpui_component::highlighter::HighlightTheme::default_light();
+
+    t.background = gpui::rgb(0xffffff).into();
+    t.secondary = gpui::rgb(0xf3f4f6).into();
+    t.muted = gpui::rgb(0xf9fafb).into();
+    t.title_bar = gpui::rgb(0xf3f4f6).into();
+    t.title_bar_border = gpui::rgb(0xe5e7eb).into();
+    t.sidebar = gpui::rgb(0xf3f4f6).into();
+    t.tab_bar = gpui::rgb(0xf9fafb).into();
+    t.tab_foreground = gpui::rgb(0x374151).into();
+    t.tab_active = gpui::rgb(0xffffff).into();
+    t.tab_active_foreground = gpui::rgb(0x111827).into();
+    t.colors.list = gpui::rgb(0xf9fafb).into();
+    t.input = gpui::rgb(0xffffff).into();
+
+    t.list_hover = gpui::rgb(0xe5e7eb).into();
+    t.list_active = gpui::rgb(0xd1d5db).into();
+    t.list_active_border = gpui::transparent_black();
+    t.selection = gpui::rgb(0xadd6ff).into();
+    t.secondary_hover = gpui::rgb(0xd1d5db).into();
+    t.secondary_active = gpui::rgb(0x9ca3af).into();
+    t.secondary_foreground = gpui::rgb(0x374151).into();
+    t.primary_hover = gpui::rgb(0x1a8ad4).into();
+
+    t.foreground = gpui::rgb(0x111827).into();
+    t.caret = gpui::rgb(0x000000).into();
+    t.muted_foreground = gpui::rgb(0x6b7280).into();
+    t.link = gpui::rgb(0x2563eb).into();
+    t.accent_foreground = gpui::rgb(0x374151).into();
+
+    t.primary = gpui::rgb(0x007acc).into();
+    t.success = gpui::rgb(0x059669).into();
+    t.warning = gpui::rgb(0xd97706).into();
+    t.danger = gpui::rgb(0xdc2626).into();
+    t.info = gpui::rgb(0x2563eb).into();
+
+    t.scrollbar = gpui::rgb(0xf3f4f6).into();
+    t.scrollbar_thumb = gpui::rgb(0x9ca3af).into();
+    t.scrollbar_thumb_hover = gpui::rgb(0x6b7280).into();
+
+    t.border = gpui::rgb(0xe5e7eb).into();
+    t.drag_border = gpui::rgb(0x007acc).into();
+    t.popover = gpui::rgb(0xffffff).into();
+    t.popover_foreground = gpui::rgb(0x111827).into();
+    t.accent = gpui::rgb(0xdbeafe).into();
+    t.ring = gpui::rgb(0x007acc).into();
+
+    t.transparent = gpui::transparent_black();
+    t.window_border = gpui::rgb(0xe5e7eb).into();
+    t.font_size = px(14.);
+    t.scrollbar_show = gpui_component::scroll::ScrollbarShow::Scrolling;
+}
+
 /// `Context` / `App` 主题扩展
 pub trait ThemeExt {
     /// 指定主题目录并加载主题(同时设置默认目录供后续 `set_theme` 使用)
@@ -275,13 +485,14 @@ impl ThemeExt for App {
         let theme = theme.as_ref().to_string();
         let dir = dir.as_ref().to_string();
         ensure_theme(self);
-        if let Ok((colors, vars)) = load_theme_vars_embedded(&theme, &dir) {
-            self.update_global::<ThemeState, _>(|state, _| {
-                state.set_dir(&dir);
-                state.load_theme(&theme, colors);
-                state.load_theme_vars(&theme, vars);
-            });
-        }
+        let (colors, vars) = merge_theme_with_builtin(&theme, &dir);
+        self.update_global::<ThemeState, _>(|state, _| {
+            state.set_dir(&dir);
+            state.load_theme(&theme, colors);
+            state.load_theme_vars(&theme, vars);
+        });
+        #[cfg(feature = "gpui-component")]
+        apply_builtin_gpui_theme(&theme, self);
     }
 
     fn set_theme(&mut self, theme: impl AsRef<str>) {
@@ -291,18 +502,19 @@ impl ThemeExt for App {
             .read_global(|state: &ThemeState, _| state.themes.contains_key(&theme));
         if !has_theme {
             let dir = self.read_global(|state: &ThemeState, _| state.dir().to_string());
-            if let Ok((colors, vars)) = load_theme_vars_embedded(&theme, &dir) {
-                self.update_global::<ThemeState, _>(|state, _| {
-                    state.load_theme(&theme, colors);
-                    state.load_theme_vars(&theme, vars);
-                });
-            }
+            let (colors, vars) = merge_theme_with_builtin(&theme, &dir);
+            self.update_global::<ThemeState, _>(|state, _| {
+                state.load_theme(&theme, colors);
+                state.load_theme_vars(&theme, vars);
+            });
         }
         let mut switched = false;
         self.update_global::<ThemeState, _>(|state, _| {
             switched = state.switch_theme(&theme);
         });
         if switched {
+            #[cfg(feature = "gpui-component")]
+            apply_builtin_gpui_theme(&theme, self);
             self.refresh_windows();
         }
     }

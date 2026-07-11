@@ -31,10 +31,18 @@ use gpui::{
 };
 use gpui_component::{ActiveTheme, Sizable, Size, StyledExt};
 
+/// 单元格编辑提交回调类型
+/// `Fn(row, col, new_value, app)`
+pub type CellEditHandler = Rc<dyn Fn(usize, usize, SharedString, &mut App)>;
+
 use super::table_column::TableColumn;
 use super::table_delegate::{DefaultTableDelegate, TableDelegate};
 use super::table_row::TableRow;
 use super::table_template::{CellTemplate, FooterTemplate, HeaderTemplate};
+
+/// 重新渲染通知回调类型
+/// `Fn(&mut App)` —— 调用时触发 ViewModel 重新渲染
+pub type NotifyCallback = Rc<dyn Fn(&mut App)>;
 
 /// Table 组件 —— WPF DataGrid 风格的声明式表格
 #[derive(IntoElement)]
@@ -47,6 +55,8 @@ pub struct Table {
     header_template: Option<HeaderTemplate>,
     cell_templates: HashMap<SharedString, CellTemplate>,
     footer_template: Option<FooterTemplate>,
+    on_cell_edit: Option<CellEditHandler>,
+    notify: Option<NotifyCallback>,
     bordered: bool,
     stripe: bool,
     size: Size,
@@ -64,6 +74,8 @@ impl Table {
             header_template: None,
             cell_templates: HashMap::new(),
             footer_template: None,
+            on_cell_edit: None,
+            notify: None,
             bordered: true,
             stripe: false,
             size: Size::default(),
@@ -137,6 +149,22 @@ impl Table {
         self.stripe = stripe;
         self
     }
+
+    /// 单元格编辑提交回调。
+    ///
+    /// 当可编辑列的单元格编辑完成时调用，回调签名为 `Fn(row, col, new_value, app)`。
+    /// 由 codegen 从 `on-cell-edit={handler}` 生成，使用 `cx.weak_entity()` 桥接回 ViewModel。
+    pub fn on_cell_edit(mut self, handler: CellEditHandler) -> Self {
+        self.on_cell_edit = Some(handler);
+        self
+    }
+
+    /// 设置重新渲染通知回调。由 codegen 自动生成，使用 `cx.weak_entity()` 桥接。
+    /// Table 在 render 时将此回调注入 delegate，使 delegate 能在编辑状态变更时触发重新渲染。
+    pub fn notify(mut self, notify: NotifyCallback) -> Self {
+        self.notify = Some(notify);
+        self
+    }
 }
 
 impl Styled for Table {
@@ -161,7 +189,7 @@ impl Sizable for Table {
 }
 
 impl RenderOnce for Table {
-    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let (border_color, header_bg, stripe_bg, radius) = {
             let theme = cx.theme();
             (theme.border, theme.muted, theme.muted, theme.radius)
@@ -179,6 +207,14 @@ impl RenderOnce for Table {
         let cell_templates = self.cell_templates;
         let footer_template = self.footer_template;
         let delegate = self.delegate;
+        let notify = self.notify;
+
+        // 将通知回调注入 delegate，使 delegate 在编辑状态变更时能触发重新渲染
+        if let Some(d) = &delegate {
+            if let Some(n) = &notify {
+                d.set_notify(n.clone());
+            }
+        }
 
         // 渲染列头行
         let header_row: Option<AnyElement> = if !columns.is_empty() {
@@ -220,49 +256,69 @@ impl RenderOnce for Table {
         };
 
         // 渲染数据行
-        let body_rows: Vec<AnyElement> = rows
-            .iter()
-            .enumerate()
-            .map(|(row_idx, row_data)| {
-                let mut cells: Vec<AnyElement> = Vec::with_capacity(columns.len());
-                let mut skip_count = 0usize;
+        let mut body_rows: Vec<AnyElement> = Vec::with_capacity(rows.len());
+        for (row_idx, row_data) in rows.iter().enumerate() {
+            let mut cells: Vec<AnyElement> = Vec::with_capacity(columns.len());
+            let mut skip_count = 0usize;
 
-                for (col_idx, column) in columns.iter().enumerate() {
-                    // 处理合并列：跳过被前一个单元格覆盖的列
-                    if skip_count > 0 {
-                        skip_count -= 1;
-                        continue;
-                    }
+            for (col_idx, column) in columns.iter().enumerate() {
+                // 处理合并列：跳过被前一个单元格覆盖的列
+                if skip_count > 0 {
+                    skip_count -= 1;
+                    continue;
+                }
 
-                    let content: AnyElement =
-                        if let Some(tpl) = cell_templates.get(&column.key) {
-                            tpl(row_idx, col_idx, row_data, column, cx)
-                        } else if let Some(d) = &delegate {
-                            d.render_cell(row_idx, col_idx, column, row_data, cx)
-                        } else {
-                            DefaultTableDelegate.render_cell(row_idx, col_idx, column, row_data, cx)
-                        };
+                // 检查合并列跨度
+                let col_span = row_data.col_spans.get(&column.key).copied().unwrap_or(1);
+                if col_span > 1 {
+                    skip_count = col_span - 1;
+                }
 
-                    // 检查合并列跨度
-                    let col_span = row_data.col_spans.get(&column.key).copied().unwrap_or(1);
-                    if col_span > 1 {
-                        skip_count = col_span - 1;
-                    }
+                let stripe_bg_val = if self.stripe && row_idx % 2 == 1 {
+                    Some(stripe_bg)
+                } else {
+                    None
+                };
 
-                    let stripe_bg = if self.stripe && row_idx % 2 == 1 {
-                        Some(stripe_bg)
-                    } else {
-                        None
-                    };
+                // 判断单元格是否可编辑 / 正在编辑
+                let is_editable = delegate
+                    .as_ref()
+                    .map_or(false, |d| d.can_edit(row_idx, col_idx, column));
+                let is_editing =
+                    is_editable && delegate.as_ref().unwrap().is_editing(row_idx, col_idx);
 
-                    let cell = div()
+                // 渲染单元格内容
+                let content: AnyElement = if is_editing {
+                    delegate
+                        .as_ref()
+                        .unwrap()
+                        .render_editor(row_idx, col_idx, column, row_data, window, cx)
+                } else if let Some(tpl) = cell_templates.get(&column.key) {
+                    tpl(row_idx, col_idx, row_data, column, cx)
+                } else if let Some(d) = &delegate {
+                    d.render_cell(row_idx, col_idx, column, row_data, cx)
+                } else {
+                    DefaultTableDelegate.render_cell(row_idx, col_idx, column, row_data, cx)
+                };
+
+                // 构建单元格容器：可编辑且非编辑态时添加点击进入编辑
+                let cell: AnyElement = if is_editable && !is_editing {
+                    let d = delegate.as_ref().unwrap().clone();
+                    let n = notify.clone();
+                    div()
+                        .id(("editable_cell", row_idx * 10000 + col_idx))
+                        .on_click(move |_, _window, cx| {
+                            d.start_edit(row_idx, col_idx);
+                            if let Some(n) = &n {
+                                n(cx);
+                            }
+                        })
                         .px(cell_px)
                         .py(cell_py)
                         .text_size(text_size)
                         .min_w(px(0.))
                         .when_some(column.width, |this, w| {
                             if col_span > 1 {
-                                // 合并列：宽度 = span * 单列宽度
                                 this.w(w * col_span as f32)
                             } else {
                                 this.w(w)
@@ -279,18 +335,48 @@ impl RenderOnce for Table {
                             TextAlign::Right => this.text_right(),
                             _ => this.text_left(),
                         })
-                        .when_some(stripe_bg, |this, bg| this.bg(bg))
-                        .child(content);
-                    cells.push(cell.into_any_element());
-                }
+                        .when_some(stripe_bg_val, |this, bg| this.bg(bg))
+                        .child(content)
+                        .into_any_element()
+                } else {
+                    div()
+                        .px(cell_px)
+                        .py(cell_py)
+                        .text_size(text_size)
+                        .min_w(px(0.))
+                        .when_some(column.width, |this, w| {
+                            if col_span > 1 {
+                                this.w(w * col_span as f32)
+                            } else {
+                                this.w(w)
+                            }
+                        })
+                        .when(col_span > 1 && column.width.is_none(), |this| {
+                            this.flex_grow(col_span as f32)
+                        })
+                        .when(col_span <= 1 && column.width.is_none(), |this| {
+                            this.flex_1()
+                        })
+                        .when_some(column.align, |this, align| match align {
+                            TextAlign::Center => this.text_center(),
+                            TextAlign::Right => this.text_right(),
+                            _ => this.text_left(),
+                        })
+                        .when_some(stripe_bg_val, |this, bg| this.bg(bg))
+                        .child(content)
+                        .into_any_element()
+                };
+                cells.push(cell);
+            }
 
+            body_rows.push(
                 div()
                     .flex()
                     .when(bordered, |this| this.border_b_1().border_color(border_color))
                     .children(cells)
-                    .into_any_element()
-            })
-            .collect();
+                    .into_any_element(),
+            );
+        }
 
         // 渲染底部
         let footer: Option<AnyElement> = footer_template.as_ref().map(|tpl| {

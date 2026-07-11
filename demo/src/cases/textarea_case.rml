@@ -1,0 +1,48 @@
+<component>
+    <CaseDocPage
+        title={t("case.textarea.title")}
+        description="textarea 是 RML 的多行文本输入组件。通过 value=bind 自动双向绑定到 ViewModel 字段，框架自动启用 InputState 的 multi_line 模式，支持多行文本编辑、换行、自动高度调整。与 input 共用 InputState 双向同步机制，区别在于 textarea 创建时自动调用 .multi_line(true)。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <div class="demo-section">
+                <h3>1. 基础多行文本</h3>
+                <p>textarea 通过 value=bind 绑定到 String 字段，自动启用多行模式。输入内容实时同步到 ViewModel。</p>
+                <textarea value={bio} placeholder="请输入个人简介..." />
+                <p>当前内容（{char_count} 字）：{bio}</p>
+            </div>
+
+            <div class="demo-section">
+                <h3>2. 带字数统计的备注</h3>
+                <p>结合 computed 计算属性，实时展示字数统计。textarea 的多行模式支持换行输入。</p>
+                <textarea value={remark} placeholder="请输入备注信息..." />
+                <p>字数：{remark_count} / 200</p>
+            </div>
+
+            <div class="demo-section">
+                <h3>3. input 与 textarea 对比</h3>
+                <p>同样的 value=bind 绑定，input 为单行模式，textarea 为多行模式。框架自动区分。</p>
+                <div display="flex" flex-direction="column" gap="8px">
+                    <input value={single_line} placeholder="单行输入 (input)" />
+                    <textarea value={multi_line} placeholder="多行输入 (textarea)" />
+                </div>
+                <p>单行值：{single_line}</p>
+                <p>多行值：{multi_line}</p>
+            </div>
+        </template>
+
+        <template slot="api">
+            <div>
+                <h3>textarea 属性</h3>
+                <Table columns={api_columns} rows={api_rows} bordered stripe />
+            </div>
+            <div>
+                <h3>说明</h3>
+                <p>textarea 标签仅支持 value=bind 双向绑定路径，不支持 ref 指令。</p>
+                <p>value 属性仅支持简单字段引用（如 value=bio），不支持复杂表达式。</p>
+                <p>框架在创建 InputState 时自动调用 .multi_line(true)，启用多行编辑模式。</p>
+                <p>placeholder 属性作为静态字符串传入 InputState builder。</p>
+            </div>
+        </template>
+    </CaseDocPage>
+</component>

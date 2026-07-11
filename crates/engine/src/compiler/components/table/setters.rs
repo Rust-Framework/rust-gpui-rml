@@ -63,6 +63,15 @@ pub fn static_setter(name: &str, value: &str, tag: &str) -> Option<String> {
                 };
                 Some(format!(".align(gpui::TextAlign::{})", align))
             }
+            "editable" => {
+                // editable="" 或 editable="true" → .editable()
+                // editable="false" → 不生成 setter（列默认不可编辑）
+                if value.is_empty() || value.eq_ignore_ascii_case("true") {
+                    Some(".editable()".to_string())
+                } else {
+                    None
+                }
+            }
             _ => None,
         },
         _ => None,
@@ -169,6 +178,17 @@ mod tests {
     #[test]
     fn static_setter_column_lowercase_tag() {
         assert_eq!(static_setter("width", "100", "column").unwrap(), ".width(gpui::px(100.))");
+    }
+
+    #[test]
+    fn static_setter_column_editable_true() {
+        assert_eq!(static_setter("editable", "", "Column").unwrap(), ".editable()");
+        assert_eq!(static_setter("editable", "true", "Column").unwrap(), ".editable()");
+    }
+
+    #[test]
+    fn static_setter_column_editable_false_returns_none() {
+        assert!(static_setter("editable", "false", "Column").is_none());
     }
 
     // ─── Table bind_setter ───

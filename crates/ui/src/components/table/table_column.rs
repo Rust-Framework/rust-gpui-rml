@@ -19,6 +19,8 @@ pub struct TableColumn {
     pub width: Option<Pixels>,
     /// 对齐方式，None 表示默认左对齐
     pub align: Option<TextAlign>,
+    /// 是否可编辑（标记此列的单元格支持行内编辑）
+    pub editable: bool,
 }
 
 impl TableColumn {
@@ -29,6 +31,7 @@ impl TableColumn {
             title: title.into(),
             width: None,
             align: None,
+            editable: false,
         }
     }
 
@@ -41,6 +44,12 @@ impl TableColumn {
     /// 设置对齐方式。
     pub fn align(mut self, align: TextAlign) -> Self {
         self.align = Some(align);
+        self
+    }
+
+    /// 标记此列为可编辑（单元格支持行内编辑）。
+    pub fn editable(mut self) -> Self {
+        self.editable = true;
         self
     }
 }

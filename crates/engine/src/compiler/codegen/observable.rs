@@ -96,6 +96,26 @@ impl {view_name} {{
         self.__rml_state.bump_version(field);
     }}
 
+    /// 入队信息通知（命令回调内无 Window，延迟到 render 时发送）
+    fn __rml_notify_info(&mut self, message: impl Into<gpui::SharedString>) {{
+        self.__rml_state.notify_info(message);
+    }}
+
+    /// 入队成功通知
+    fn __rml_notify_success(&mut self, message: impl Into<gpui::SharedString>) {{
+        self.__rml_state.notify_success(message);
+    }}
+
+    /// 入队警告通知
+    fn __rml_notify_warning(&mut self, message: impl Into<gpui::SharedString>) {{
+        self.__rml_state.notify_warning(message);
+    }}
+
+    /// 入队错误通知
+    fn __rml_notify_error(&mut self, message: impl Into<gpui::SharedString>) {{
+        self.__rml_state.notify_error(message);
+    }}
+
     /// 读取字段当前版本号
     ///
     /// ObservableVec<T> 字段路由到 `self.field.version()`（内部 AtomicU64），
@@ -195,13 +215,14 @@ pub(super) fn gen_input_state_impl(ctx: &CodegenCtx) -> String {
     out.push_str("        &mut self,\n");
     out.push_str("        field: &'static str,\n");
     out.push_str("        placeholder: Option<&'static str>,\n");
+    out.push_str("        multi_line: bool,\n");
     out.push_str("        window: &mut gpui::Window,\n");
     out.push_str("        cx: &mut gpui::Context<Self>,\n");
     out.push_str("    ) -> gpui::Entity<rml_ui::InputState> {\n");
     out.push_str("        if !self.__rml_state.input_states.contains_key(field) {\n");
     out.push_str("            let entity = match placeholder {\n");
-    out.push_str("                Some(p) => cx.new(|cx| rml_ui::InputState::new(window, cx).placeholder(p)),\n");
-    out.push_str("                None => cx.new(|cx| rml_ui::InputState::new(window, cx)),\n");
+    out.push_str("                Some(p) => cx.new(|cx| rml_ui::InputState::new(window, cx).placeholder(p).multi_line(multi_line)),\n");
+    out.push_str("                None => cx.new(|cx| rml_ui::InputState::new(window, cx).multi_line(multi_line)),\n");
     out.push_str("            };\n");
     out.push_str("            let initial_value: gpui::SharedString = match field {\n");
     out.push_str(&forward_arms);

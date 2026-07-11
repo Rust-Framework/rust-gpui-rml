@@ -77,4 +77,24 @@ impl NotificationCase {
     pub fn rust_sample(&self) -> String {
         include_str!("notification_case.rml.rs").to_string()
     }
+
+    #[command]
+    pub fn on_info(&mut self, _: &ClickEvent, _: &mut Context<Self>) {
+        self.__rml_notify_info("这是一条信息通知（来自命令回调）");
+    }
+
+    #[command]
+    pub fn on_success(&mut self, _: &ClickEvent, _: &mut Context<Self>) {
+        self.__rml_notify_success("操作成功完成（来自命令回调）");
+    }
+
+    #[command]
+    pub fn on_warning(&mut self, _: &ClickEvent, _: &mut Context<Self>) {
+        self.__rml_notify_warning("请注意潜在风险（来自命令回调）");
+    }
+
+    #[command]
+    pub fn on_error(&mut self, _: &ClickEvent, _: &mut Context<Self>) {
+        self.__rml_notify_error("操作执行失败（来自命令回调）");
+    }
 }

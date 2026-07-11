@@ -68,6 +68,17 @@
                     </Notification>
                 </div>
             </div>
+
+            <div class="demo-section">
+                <h3>命令回调 API</h3>
+                <p>在 #[command] 回调内（无 Window 参数）可调用 self.__rml_notify_info / success / warning / error 入队通知，render 首帧自动通过 Window 发送。适用于业务逻辑中按条件弹出通知的场景。</p>
+                <div class="notification-row">
+                    <Button label="notify_info" on-click={on_info} />
+                    <Button label="notify_success" on-click={on_success} />
+                    <Button label="notify_warning" on-click={on_warning} />
+                    <Button label="notify_error" on-click={on_error} />
+                </div>
+            </div>
         </template>
 
         <template slot="api">
@@ -76,6 +87,12 @@
             <p>注意：RML &lt;Notification&gt; 编译为 NotificationTrigger（RenderOnce 包装器），非 gpui-component Notification。</p>
             <p>另：variant 布尔属性（success/info/warning/error）为独立属性，可组合使用（后者覆盖前者），不设置时默认 Info。</p>
             <p>另：slot=trigger 为唯一支持的子节点，不支持其余子节点（NotificationTrigger 不实现 ParentElement）。</p>
+            <h3>命令回调 API</h3>
+            <p>在 #[command] 方法内可调用以下方法入队通知（延迟到 render 时通过 Window 发送）：</p>
+            <p>- self.__rml_notify_info(msg) — 信息通知</p>
+            <p>- self.__rml_notify_success(msg) — 成功通知</p>
+            <p>- self.__rml_notify_warning(msg) — 警告通知</p>
+            <p>- self.__rml_notify_error(msg) — 错误通知</p>
         </template>
     </CaseDocPage>
 </component>

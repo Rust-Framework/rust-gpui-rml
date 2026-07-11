@@ -491,6 +491,28 @@ pub fn component_event_setter(name: &str, handler: &EventHandler, tag: &str) -> 
         ));
     }
 
+    // Table 专用：on_cell_edit 单元格编辑提交回调
+    // `<Table on-cell-edit={handle_edit} />` →
+    // `.on_cell_edit(Rc::new({ let weak = cx.weak_entity(); move |row, col, new_value, app| { ... } }))`
+    // 用户方法签名约定：`fn handle_edit(&mut self, row: usize, col: usize, new_value: SharedString, cx: &mut Context<Self>)`
+    if name == "on_cell_edit" && crate::tags::canonical_tag(tag) == "Table" {
+        let method = match handler {
+            EventHandler::Ident(m) | EventHandler::MethodName(m) => m,
+            EventHandler::WithArgs(m, _) => m,
+            EventHandler::ClosureField(_) => "",
+        };
+        return Some(format!(
+            ".on_cell_edit(std::rc::Rc::new({{\n                    \
+             let weak = cx.weak_entity();\n                    \
+             move |row: usize, col: usize, new_value: gpui::SharedString, app: &mut gpui::App| {{\n                        \
+             if let Some(entity) = weak.upgrade() {{\n                            \
+             entity.update(app, |this, cx| {{ this.{}(row, col, new_value, cx); }});\n                        \
+             }}\n                    \
+             }}\n                }}))",
+            method
+        ));
+    }
+
     match name {
         "on_click" => {
             let method = match handler {

@@ -25,6 +25,7 @@ pub(crate) fn gen_model_input(
     _ctx: &CodegenCtx,
     _id_counter: &mut usize,
     field: String,
+    multi_line: bool,
     parents: &[css::ParentInfo],
 ) -> Result<String, CodegenError> {
     let placeholder = elem.attributes.iter().find_map(|attr| {
@@ -38,8 +39,8 @@ pub(crate) fn gen_model_input(
     };
 
     let mut input_code = format!(
-        "rml_ui::Input::new(&self.__rml_get_or_init_input_state({:?}, {}, _window, cx))",
-        field, placeholder_arg
+        "rml_ui::Input::new(&self.__rml_get_or_init_input_state({:?}, {}, {}, _window, cx))",
+        field, placeholder_arg, multi_line
     );
 
     for attr in &elem.attributes {

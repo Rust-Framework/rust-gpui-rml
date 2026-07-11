@@ -21,7 +21,7 @@ regex = "1"
 [features]
 default = ["gpui-component"]
 hot-reload = ["dep:notify"]
-gpui-component = ["dep:gpui-component"]
+gpui-component = ["dep:gpui-component", "rust-rml-core/gpui-component"]
 
 [dependencies.notify]
 version = "6"

@@ -109,6 +109,18 @@ pub fn gen_table(
         }
     }
 
+    // 4. 自动注入 .notify(...) 回调 —— 使用 cx.weak_entity() 桥接，
+    //    使 delegate 在编辑状态变更时能触发 ViewModel 重新渲染。
+    code.push_str(
+        "\n            .notify(std::rc::Rc::new({\n                \
+         let weak = cx.weak_entity();\n                \
+         move |app: &mut gpui::App| {\n                    \
+         if let Some(entity) = weak.upgrade() {\n                        \
+         entity.update(app, |_, cx| cx.notify());\n                    \
+         }\n                \
+         }\n            }))",
+    );
+
     Ok(code)
 }
 
@@ -323,6 +335,54 @@ mod tests {
         let result = gen_table(&table, None, id, &ctx(), &mut id, &Vec::new(), &[]);
         assert!(result.is_err());
         assert!(result.unwrap_err().message.contains("仅支持"));
+    }
+
+    #[test]
+    fn gen_table_auto_injects_notify() {
+        // 所有 Table 都应自动注入 .notify(...) 回调，用于 delegate 编辑状态变更时触发重新渲染
+        let elem = make_element("Table", vec![], vec![]);
+        let mut id = 0;
+        let code = gen_table(&elem, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
+        assert!(code.contains(".notify("), "expected .notify() in: {}", code);
+        assert!(code.contains("cx.weak_entity()"), "expected cx.weak_entity() in: {}", code);
+        assert!(code.contains("cx.notify()"), "expected cx.notify() in: {}", code);
+    }
+
+    #[test]
+    fn gen_table_with_editable_column() {
+        // <Table><Column key="name" title="Name" editable /></Table>
+        let column = make_element(
+            "Column",
+            vec![
+                Attribute::Static { name: "key".into(), value: "name".into(), span: Span::empty() },
+                Attribute::Static { name: "title".into(), value: "Name".into(), span: Span::empty() },
+                Attribute::Static { name: "editable".into(), value: "".into(), span: Span::empty() },
+            ],
+            vec![],
+        );
+        let table = make_element("Table", vec![], vec![Node::Element(column)]);
+        let mut id = 0;
+        let code = gen_table(&table, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
+        assert!(code.contains(".editable()"), "expected .editable() in: {}", code);
+    }
+
+    #[test]
+    fn gen_table_with_on_cell_edit_event() {
+        // <Table on-cell-edit={handle_edit} /> → .on_cell_edit(Rc::new(...))
+        let elem = make_element(
+            "Table",
+            vec![Attribute::Event {
+                name: "on_cell_edit".into(),
+                handler: crate::parser::ast::EventHandler::Ident("handle_edit".into()),
+                span: Span::empty(),
+            }],
+            vec![],
+        );
+        let mut id = 0;
+        let code = gen_table(&elem, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
+        assert!(code.contains(".on_cell_edit("), "expected .on_cell_edit() in: {}", code);
+        assert!(code.contains("handle_edit"), "expected handle_edit method name in: {}", code);
+        assert!(code.contains("cx.weak_entity()"), "expected cx.weak_entity() in: {}", code);
     }
 
     #[test]

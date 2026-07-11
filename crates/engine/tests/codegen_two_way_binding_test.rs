@@ -668,3 +668,42 @@ fn textarea_value_bind_generates_twoway_input_state() {
         code
     );
 }
+
+#[test]
+fn textarea_generates_multi_line_true() {
+    let ctx = make_ctx_with_field_types();
+    let source = r#"
+<component>
+    <textarea value={name} placeholder="详情" />
+</component>
+"#;
+    let code = compile(source, &ctx).expect("compile failed").code;
+
+    assert!(
+        code.contains("__rml_get_or_init_input_state(\"name\", Some(\"详情\"), true,"),
+        "textarea 调用应传 multi_line=true，实际：\n{}",
+        code
+    );
+    assert!(
+        code.contains(".multi_line(multi_line)"),
+        "InputState 构造应链式调用 .multi_line(multi_line)，实际：\n{}",
+        code
+    );
+}
+
+#[test]
+fn input_does_not_generate_multi_line_true() {
+    let ctx = make_ctx_with_field_types();
+    let source = r#"
+<component>
+    <input value={name} placeholder="姓名" />
+</component>
+"#;
+    let code = compile(source, &ctx).expect("compile failed").code;
+
+    assert!(
+        code.contains("__rml_get_or_init_input_state(\"name\", Some(\"姓名\"), false,"),
+        "input 调用应传 multi_line=false，实际：\n{}",
+        code
+    );
+}

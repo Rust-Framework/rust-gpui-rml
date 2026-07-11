@@ -178,6 +178,8 @@
 
   "menu.lang_en": "English",
 
+  "menu.lang_zh": "中文",
+
   "menu.theme_toggle": "切换主题",
 
   "tree.group.menu": "菜单",
@@ -312,6 +314,8 @@
 
   "case.input.title": "输入框 Input",
 
+  "case.textarea.title": "多行文本框 TextArea",
+
   "case.tree.title": "树视图 Tree",
 
   "case.slider.title": "滑块 Slider",
@@ -390,6 +394,8 @@
   "case.sheet.title": "侧边抽屉 Sheet",
 
   "case.dialog.title": "模态对话框 Dialog",
+
+  "case.dialog_controlled.title": "受控对话框 Dialog",
 
   "case.alert_dialog.title": "警示对话框 AlertDialog",
 

@@ -1,4 +1,4 @@
-<dialog title={t("shell.system_settings")} width="640">
+<dialog title={t("shell.system_settings")} width="640" height="480">
     <settings id="system-settings" sidebar-width="160px">
         <setting-page title="通用" icon="Settings" description="应用基础配置">
             <setting-group title="外观">

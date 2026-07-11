@@ -1,8 +1,7 @@
-:root {
-    --primary-color: #007bff;
-    --text-color: #333333;
-    --text-muted: #6b7280;
-    --bg-color: #f8f9fa;
-    --code-bg: #f1f3f5;
-    --border-color: #e5e7eb;
-}
+/* Light theme CSS overrides.
+   框架已内置 light 主题默认色,此文件为空即可获得完整配色。
+   如需定制,在 :root 中覆盖对应变量,例如:
+   :root {
+       --primary: #ff6600;
+   }
+*/

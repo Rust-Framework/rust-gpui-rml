@@ -100,6 +100,20 @@ pub(crate) fn gen_dialog_impl(elem: &Element, ctx: &CodegenCtx) -> Result<String
     let width = extract_static_attr(elem, "width")
         .and_then(|s| s.parse::<f32>().ok())
         .unwrap_or(480.0);
+    let height = extract_static_attr(elem, "height")
+        .and_then(|s| s.parse::<f32>().ok());
+
+    let (height_line, content_body) = if let Some(h) = height {
+        (
+            format!("        let __rml_height: gpui::Pixels = gpui::px({h:?});\n"),
+            "                    use gpui::Styled;\n                    __rml_content.min_h(__rml_height).child(__rml_entity.clone())",
+        )
+    } else {
+        (
+            String::new(),
+            "                    __rml_content.child(__rml_entity.clone())",
+        )
+    };
 
     let code = format!(
         r#"impl {view_name} {{
@@ -113,7 +127,7 @@ pub(crate) fn gen_dialog_impl(elem: &Element, ctx: &CodegenCtx) -> Result<String
         let __rml_parent_handle = window.window_handle();
         let __rml_title: String = {title:?}.to_string();
         let __rml_width: gpui::Pixels = gpui::px({width:?});
-        let __rml_entity = cx.new(|_| {{
+{height_line}        let __rml_entity = cx.new(|_| {{
             let mut __rml_this = self;
             __rml_this.__rml_state.window_handle = Some(__rml_parent_handle);
             __rml_this
@@ -124,7 +138,7 @@ pub(crate) fn gen_dialog_impl(elem: &Element, ctx: &CodegenCtx) -> Result<String
                 .title(__rml_title.clone())
                 .width(__rml_width)
                 .content(move |__rml_content, _, _| {{
-                    __rml_content.child(__rml_entity.clone())
+{content_body}
                 }})
         }});
     }}
@@ -142,6 +156,8 @@ pub(crate) fn gen_dialog_impl(elem: &Element, ctx: &CodegenCtx) -> Result<String
         view_name = view_name,
         title = title,
         width = width,
+        height_line = height_line,
+        content_body = content_body,
     );
 
     Ok(code)

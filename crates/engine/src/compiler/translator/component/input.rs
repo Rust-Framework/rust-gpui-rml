@@ -63,7 +63,7 @@ impl IRmlTranslator for InputTranslator {
             }
         }) {
             let (field, _) = extract_field_converter(&expr);
-            let code = gen_model_input(elem, ctx, _id_counter, field, parents)?;
+            let code = gen_model_input(elem, ctx, _id_counter, field, false, parents)?;
             return Ok((code, false));
         }
 

@@ -151,9 +151,9 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
         "closable", "preview",
     ]),
     // Table 专用（WPF DataGrid 风格表格）
-    ("Table", &["columns", "rows", "delegate", "bordered", "borderless", "stripe"]),
+    ("Table", &["columns", "rows", "delegate", "bordered", "borderless", "stripe", "on_cell_edit"]),
     // Column 专用（item builder 子标签，不在 component_lookup 中）
-    ("Column", &["key", "title", "width", "align", "field"]),
+    ("Column", &["key", "title", "width", "align", "field", "editable"]),
     // DescriptionList 专用（无 ElementId 容器，vertical/bordered/columns/label_width/items）
     ("DescriptionList", &["vertical", "bordered", "columns", "label_width", "items"]),
     // DescriptionItem 专用（item builder 子标签，label 为构造器参数，value/span 为 setter）
@@ -168,7 +168,7 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
     ("Sheet", &["title", "footer", "size", "resizable", "overlay", "overlay_closable", "on_close"]),
     // Dialog 专用（模态对话框：title/footer + width + overlay/overlay_closable/close_button/keyboard + on_close/on_ok/on_cancel）
     // 构造器 Dialog::new(cx: &mut App)，仅需 render 上下文的 cx 变量
-    ("Dialog", &["title", "footer", "width", "overlay", "overlay_closable", "close_button", "keyboard", "on_close", "on_ok", "on_cancel"]),
+    ("Dialog", &["title", "footer", "width", "overlay", "overlay_closable", "close_button", "keyboard", "open", "on_close", "on_ok", "on_cancel"]),
     // AlertDialog 专用（警示对话框：title/description + width + confirm/show_cancel + overlay_closable/close_button/keyboard + on_close/on_ok/on_cancel）
     // 构造器 AlertDialog::new(cx: &mut App)，仅需 render 上下文的 cx 变量
     // 与 Dialog 区别：默认 close_button(false)+overlay_closable(false)，提供 description/confirm/show_cancel 便捷方法
@@ -465,6 +465,16 @@ mod tests {
         assert!(bind.contains(&"icon"));
         // 通用属性仍可用
         assert!(static_props.contains(&"disabled"));
+    }
+
+    #[test]
+    fn table_and_column_editable_props_registered() {
+        // Table 支持 on_cell_edit 事件
+        assert!(is_prop_registered("Table", "on_cell_edit"));
+        assert!(is_prop_registered("table", "on_cell_edit"));
+        // Column 支持 editable 标记
+        assert!(is_prop_registered("Column", "editable"));
+        assert!(is_prop_registered("column", "editable"));
     }
 
     #[test]

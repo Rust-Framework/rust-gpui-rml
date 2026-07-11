@@ -1,4 +1,4 @@
-﻿//! 菜单命令贡献 —— 7 个叶子命令 + 5 个 submenu root，全部经 `#[contribute]` 注册到 `demo.shell`。
+//! 菜单命令贡献 —— 8 个叶子命令 + 5 个 submenu root，全部经 `#[contribute]` 注册到 `demo.shell`。
 //!
 //! 叶子命令实现 `IContribution` + `ICommand`，经 `as_command()` 查询；
 //! submenu root 仅实现 `IContribution`（无命令），作为分组节点。
@@ -247,6 +247,35 @@ impl ICommand for SwitchEnCommand {
     fn execute(&self, ctx: &mut CallContext) {
         with_main_window(ctx, |this, cx| {
             this.apply_switch_en(cx);
+        });
+    }
+}
+
+#[contribute(
+    host_id = "demo.shell",
+    id = "menu.view.lang.zh",
+    parent_id = "menu.view",
+    command,
+    kind = "menu",
+    order = 3,
+    label = "menu.lang_zh"
+)]
+#[derive(Default)]
+pub struct SwitchZhCommand;
+
+impl IContribution for SwitchZhCommand {
+    fn id(&self) -> &str {
+        Self::CONTRIBUTION_ID
+    }
+    fn name(&self) -> SharedString {
+        t_static("menu.lang_zh")
+    }
+}
+
+impl ICommand for SwitchZhCommand {
+    fn execute(&self, ctx: &mut CallContext) {
+        with_main_window(ctx, |this, cx| {
+            this.apply_switch_zh(cx);
         });
     }
 }

@@ -1,0 +1,54 @@
+<component>
+    <CaseDocPage
+        title={t("case.dialog_controlled.title")}
+        description="Dialog 受控模式：通过 open=bind 属性由 ViewModel 状态驱动对话框显示/隐藏。当 open 为 true 时渲染对话框，为 false 时渲染空元素。对话框关闭时（点击关闭按钮、遮罩、ESC）自动回写 field=false，实现双向绑定。可同时声明 on-close 回调，框架自动合并自动回写与用户回调。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <div class="demo-section">
+                <h3>基础受控模式</h3>
+                <p>点击按钮设置 show_basic=true 打开对话框。对话框内的关闭按钮、遮罩点击、ESC 键都会自动回写 show_basic=false。</p>
+                <Button label="打开受控对话框" on-click={open_basic} primary />
+                <Dialog open={show_basic} title="受控对话框">
+                    <div class="dialog-content">
+                        <p>此对话框由 ViewModel 的 show_basic 字段控制。</p>
+                        <p>点击关闭按钮、遮罩或按 ESC 键即可关闭。</p>
+                    </div>
+                </Dialog>
+            </div>
+
+            <div class="demo-section">
+                <h3>带 on-close 合并回调</h3>
+                <p>open 属性与 on-close 回调可同时使用。框架自动合并：先回写 field=false，再调用用户 handler。</p>
+                <Button label="打开带回调的对话框" on-click={open_with_callback} primary />
+                <Dialog open={show_with_callback} title="带回调的受控对话框" on-close={on_dialog_closed}>
+                    <div class="dialog-content">
+                        <p>关闭此对话框时，框架先回写 show_with_callback=false，再调用 on_dialog_closed 回调。</p>
+                        <p>关闭次数：{close_count}</p>
+                    </div>
+                </Dialog>
+            </div>
+
+            <div class="demo-section">
+                <h3>表单弹窗</h3>
+                <p>受控模式适用于表单弹窗场景：打开对话框填写表单，关闭后处理数据。</p>
+                <Button label="打开表单弹窗" on-click={open_form} primary />
+                <Dialog open={show_form} title="用户信息" width="500px" on-close={on_form_closed}>
+                    <div class="dialog-panel">
+                        <p class="hint">请输入用户信息：</p>
+                        <Input ref="form_name" placeholder="姓名" />
+                        <Input ref="form_email" placeholder="邮箱" />
+                    </div>
+                </Dialog>
+            </div>
+        </template>
+
+        <template slot="api">
+            <h3>Dialog 受控模式</h3>
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+            <p>open 属性仅支持简单字段引用（如 open=show_dialog），不支持复杂表达式或字面量。</p>
+            <p>受控模式下，slot=trigger 被忽略（由 ViewModel 状态驱动，无需触发器）。</p>
+            <p>on-close 回调与自动回写合并执行：先 this.field = false，再调用用户 handler。</p>
+        </template>
+    </CaseDocPage>
+</component>

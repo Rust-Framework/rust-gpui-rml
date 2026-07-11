@@ -23,7 +23,9 @@
 //! }
 //! ```
 
-use gpui::{AnyElement, App, IntoElement, ParentElement, Styled, div};
+use std::rc::Rc;
+
+use gpui::{AnyElement, App, IntoElement, ParentElement, SharedString, Styled, Window, div};
 
 use super::table_column::TableColumn;
 use super::table_row::TableRow;
@@ -59,6 +61,56 @@ pub trait TableDelegate: 'static {
             .overflow_hidden()
             .child(text)
             .into_any_element()
+    }
+
+    /// 是否允许编辑指定单元格。默认实现返回 `column.editable`。
+    fn can_edit(&self, _row: usize, _col: usize, column: &TableColumn) -> bool {
+        column.editable
+    }
+
+    /// 指定单元格是否处于编辑模式。默认实现返回 `false`。
+    /// 用户应通过 `RefCell<Option<(usize, usize)>>` 跟踪编辑状态并覆写此方法。
+    fn is_editing(&self, _row: usize, _col: usize) -> bool {
+        false
+    }
+
+    /// 进入编辑模式。默认实现为空操作。
+    /// 用户应覆写此方法记录正在编辑的 (row, col)，并在内部触发重新渲染。
+    fn start_edit(&self, _row: usize, _col: usize) {}
+
+    /// 退出编辑模式。默认实现为空操作。
+    fn stop_edit(&self) {}
+
+    /// 设置重新渲染通知回调。Table 在每次 render 时调用此方法，
+    /// 将通知回调注入 delegate，使 delegate 在编辑状态变更时能触发重新渲染。
+    /// 默认实现为空操作，用户应覆写此方法存储回调。
+    fn set_notify(&self, _notify: Rc<dyn Fn(&mut App)>) {}
+
+    /// 渲染编辑器。当单元格处于编辑模式时调用，返回编辑器元素（如 Input）。
+    /// 默认实现返回空 div，用户应覆写此方法提供自定义编辑器。
+    /// 编辑器应自行处理 Enter 提交 / Escape 取消 / Blur 提交等事件，
+    /// 并在提交时调用 `self.on_cell_commit()` + `self.stop_edit()` + 通知回调。
+    fn render_editor(
+        &self,
+        _row: usize,
+        _col: usize,
+        _column: &TableColumn,
+        _row_data: &TableRow,
+        _window: &mut Window,
+        _cx: &mut App,
+    ) -> AnyElement {
+        div().into_any_element()
+    }
+
+    /// 单元格编辑提交回调。编辑完成时调用，`new_value` 为编辑后的新值。
+    /// 默认实现为空操作，用户应覆写此方法处理数据更新。
+    fn on_cell_commit(
+        &self,
+        _row: usize,
+        _col: usize,
+        _new_value: SharedString,
+        _cx: &mut App,
+    ) {
     }
 }
 

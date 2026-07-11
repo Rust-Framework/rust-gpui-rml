@@ -6,7 +6,7 @@ license.workspace = true
 description = "RML 应用启动器（WPF 风格 Application + main_window 内置 API）"
 
 [dependencies]
-rust-rml-core = { workspace = true }
+rust-rml-core = { workspace = true, features = ["gpui-component"] }
 gpui = { workspace = true }
 gpui_platform = { workspace = true }
 gpui-component = { workspace = true }

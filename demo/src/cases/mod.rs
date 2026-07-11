@@ -67,6 +67,8 @@ pub mod checkbox_case;
 pub mod switch_case;
 #[path = "input_case.rml.rs"]
 pub mod input_case;
+#[path = "textarea_case.rml.rs"]
+pub mod textarea_case;
 #[path = "tree_case.rml.rs"]
 pub mod tree_case;
 #[path = "slider_case.rml.rs"]
@@ -188,6 +190,8 @@ pub mod hover_card_case;
 pub mod sheet_case;
 #[path = "dialog_case.rml.rs"]
 pub mod dialog_case;
+#[path = "dialog_controlled_case.rml.rs"]
+pub mod dialog_controlled_case;
 #[path = "alert_dialog_case.rml.rs"]
 pub mod alert_dialog_case;
 #[path = "notification_case.rml.rs"]

@@ -44,7 +44,7 @@ impl IRmlTranslator for TextAreaTranslator {
             }
         }) {
             let (field, _) = extract_field_converter(&expr);
-            let code = gen_model_input(elem, ctx, id_counter, field, parents)?;
+            let code = gen_model_input(elem, ctx, id_counter, field, true, parents)?;
             return Ok((code, false));
         }
         BuiltinTranslator { meta: META }.to_rust(elem, ctx, id_counter, loop_vars, parents)
