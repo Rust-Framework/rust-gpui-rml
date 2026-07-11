@@ -7,7 +7,7 @@
         <template slot="demo">
             <Card title="基础用法">
                 <p>包裹子元素作为状态栏内容。</p>
-                <div style="border: 1px solid #e0e0e0; overflow: hidden; border-radius: 4px;">
+                <div style="border: 1px solid var(--border); overflow: hidden; border-radius: 4px;">
                     <NativeStatusBar>
                         <span>就绪</span>
                     </NativeStatusBar>
@@ -22,7 +22,7 @@
                     <Button label="错误" danger on-click={on_show_error} />
                 </div>
                 <p>当前状态: {status_text}</p>
-                <div style="border: 1px solid #e0e0e0; overflow: hidden; border-radius: 4px;">
+                <div style="border: 1px solid var(--border); overflow: hidden; border-radius: 4px;">
                     <NativeStatusBar>
                         <span>{status_text}</span>
                     </NativeStatusBar>

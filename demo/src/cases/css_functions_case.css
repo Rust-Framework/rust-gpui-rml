@@ -3,14 +3,29 @@
  * 本文件通过 <style source="css_functions_case.css" /> 引入，
  * 展示 rgb()/rgba()/hsl()/hsla() 颜色函数、em/rem/vw/vh 单位、
  * 以及 CSS 变量动态注入（:root 变量在运行时通过 rml::theme 查询）。
+ *
+ * 所有 class 颜色均使用 var(--*)，确保暗/亮主题切换时视觉一致。
  */
 
 :root {
-    /* 颜色变量 —— 现在支持 rgb()/hsl() 函数值（运行时主题查询） */
+    /* 颜色函数变量 —— 仍展示 rgb()/hsl() 语法 */
     --brand-rgb: rgb(0, 102, 204);
     --brand-hsl: hsl(280, 100%, 50%);
     --accent-rgba: rgba(255, 140, 0, 0.8);
     --danger-rgba: rgba(220, 53, 69, 0.9);
+
+    /* Demo 语义变量 —— 跟随当前主题 */
+    --demo-surface: var(--surface);
+    --demo-surface-variant: var(--surface-variant);
+    --demo-background: var(--background);
+    --demo-border: var(--border);
+    --demo-text: var(--text);
+    --demo-text-muted: var(--text-muted);
+    --demo-primary-fg: var(--primary-foreground);
+    --demo-info: var(--info);
+    --demo-warning: var(--warning);
+    --demo-error: var(--error);
+    --demo-success: var(--success);
 
     /* 长度变量 —— 支持 em/rem 单位（基准字号 16px） */
     --base-spacing: 1rem;
@@ -20,29 +35,31 @@
 
 /* rgb() 颜色函数 —— 构建期内联为 gpui::rgb() */
 .rgb-card {
-    background: rgb(240, 248, 255);
-    border: 1px solid rgb(173, 216, 230);
+    background: var(--demo-surface-variant);
+    border: 1px solid var(--demo-border);
     border-radius: var(--card-radius);
     padding: var(--base-spacing);
 }
 
 /* rgba() 带透明度 */
 .rgba-overlay {
-    background: rgba(100, 149, 237, 0.3);
+    background: var(--demo-info);
+    opacity: 0.3;
     padding: var(--base-spacing);
     border-radius: 4px;
 }
 
 /* hsl()/hsla() 颜色函数 */
 .hsl-card {
-    background: hsl(120, 60%, 90%);
-    border: 1px solid hsl(120, 60%, 50%);
+    background: var(--demo-success);
+    border: 1px solid var(--demo-success);
     border-radius: var(--card-radius);
     padding: var(--large-spacing);
 }
 
 .hsla-gradient {
-    background: hsla(30, 100%, 50%, 0.4);
+    background: var(--demo-warning);
+    opacity: 0.4;
     padding: var(--base-spacing);
     border-radius: 4px;
 }
@@ -52,8 +69,8 @@
     padding: 0.5em 1em;
     margin: 0.5rem 0;
     font-size: 1.25rem;
-    background: rgb(255, 250, 240);
-    border: 1px solid rgb(255, 200, 100);
+    background: var(--demo-surface);
+    border: 1px solid var(--demo-border);
     border-radius: 4px;
 }
 
@@ -62,22 +79,22 @@
     width: 50vw;
     min-height: 8vh;
     padding: var(--base-spacing);
-    background: hsl(200, 80%, 95%);
-    border: 1px solid hsl(200, 80%, 70%);
+    background: var(--demo-surface);
+    border: 1px solid var(--demo-border);
     border-radius: 4px;
 }
 
 /* CSS 变量颜色注入 —— 运行时 rml::theme::color() 查询 */
 .var-color-box {
     background: var(--brand-rgb);
-    color: #ffffff;
+    color: var(--demo-primary-fg);
     padding: var(--base-spacing);
     border-radius: var(--card-radius);
 }
 
 .var-hsl-box {
     background: var(--brand-hsl);
-    color: #ffffff;
+    color: var(--demo-primary-fg);
     padding: var(--base-spacing);
     border-radius: 4px;
 }
@@ -88,21 +105,13 @@
     border-radius: 4px;
 }
 
-/* 动态主题切换 */
-.theme-light {
-    background: rgb(248, 249, 250);
-    color: rgb(33, 37, 41);
+/* 动态主题切换 —— 统一使用主题变量，不再区分 light/dark class */
+.theme-box {
+    background: var(--demo-surface);
+    color: var(--demo-text);
     padding: var(--large-spacing);
     border-radius: var(--card-radius);
-    border: 1px solid rgb(222, 226, 230);
-}
-
-.theme-dark {
-    background: rgb(33, 37, 41);
-    color: rgb(248, 249, 250);
-    padding: var(--large-spacing);
-    border-radius: var(--card-radius);
-    border: 1px solid rgb(73, 80, 87);
+    border: 1px solid var(--demo-border);
 }
 
 /* 嵌套容器 */
@@ -111,7 +120,7 @@
     flex-direction: column;
     gap: 0.5em;
     padding: var(--large-spacing);
-    background: rgb(250, 250, 250);
+    background: var(--demo-surface-variant);
     border-radius: var(--card-radius);
 }
 

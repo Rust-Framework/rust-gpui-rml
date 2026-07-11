@@ -251,6 +251,15 @@ fn format_directive(d: &Directive, out: &mut String) {
             out.push_str(name);
             out.push('"');
         }
+        Directive::Animate { name, duration_ms, .. } => {
+            out.push_str("animate=\"");
+            out.push_str(name);
+            if *duration_ms != 300 {
+                out.push(':');
+                out.push_str(&duration_ms.to_string());
+            }
+            out.push('"');
+        }
     }
 }
 

@@ -14,7 +14,7 @@
 //! RML `<Table>` / `<table>` 编译为 `rml_ui::Table::new(...).<setters>...`：
 //! - `columns={expr}` → `.columns(self.expr.clone())`
 //! - `rows={expr}` → `.rows(self.expr.clone())`
-//! - `delegate={expr}` → `.delegate(self.expr.clone())`（Rc<dyn TableDelegate>）
+//! - `delegate={expr}` → `.delegate(self.expr.clone())`（Arc<dyn TableDelegate>）
 //! - `bordered=""` → `.bordered(true)` / `stripe=""` → `.stripe(true)`
 //! - `<Column key="..." title="..." />` 子标签 → `.column(TableColumn::new(...))`
 //! - `<template slot="header">` → `.header_template(Arc::new(...))`
@@ -22,7 +22,7 @@
 //! - `<template slot="footer">` → `.footer_template(Arc::new(...))`
 
 use std::collections::HashMap;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use gpui::prelude::FluentBuilder as _;
 use gpui::{
@@ -33,7 +33,7 @@ use gpui_component::{ActiveTheme, Sizable, Size, StyledExt};
 
 /// 单元格编辑提交回调类型
 /// `Fn(row, col, new_value, app)`
-pub type CellEditHandler = Rc<dyn Fn(usize, usize, SharedString, &mut App)>;
+pub type CellEditHandler = Arc<dyn Fn(usize, usize, SharedString, &mut App) + Send + Sync>;
 
 use super::table_column::TableColumn;
 use super::table_delegate::{DefaultTableDelegate, TableDelegate};
@@ -42,7 +42,7 @@ use super::table_template::{CellTemplate, FooterTemplate, HeaderTemplate};
 
 /// 重新渲染通知回调类型
 /// `Fn(&mut App)` —— 调用时触发 ViewModel 重新渲染
-pub type NotifyCallback = Rc<dyn Fn(&mut App)>;
+pub type NotifyCallback = Arc<dyn Fn(&mut App) + Send + Sync>;
 
 /// Table 组件 —— WPF DataGrid 风格的声明式表格
 #[derive(IntoElement)]
@@ -51,7 +51,7 @@ pub struct Table {
     id: ElementId,
     columns: Vec<TableColumn>,
     rows: Vec<TableRow>,
-    delegate: Option<Rc<dyn TableDelegate>>,
+    delegate: Option<Arc<dyn TableDelegate>>,
     header_template: Option<HeaderTemplate>,
     cell_templates: HashMap<SharedString, CellTemplate>,
     footer_template: Option<FooterTemplate>,
@@ -102,9 +102,9 @@ impl Table {
 
     /// 模板委托（自定义渲染，用于复杂事件处理场景）。
     ///
-    /// 用户在 .rml.rs 中持有 `Rc<dyn TableDelegate>` 字段，
-    /// codegen 生成 `.delegate(self.field.clone())`（Rc clone 廉价）。
-    pub fn delegate(mut self, delegate: Rc<dyn TableDelegate>) -> Self {
+    /// 用户在 .rml.rs 中持有 `Arc<dyn TableDelegate>` 字段，
+    /// codegen 生成 `.delegate(self.field.clone())`（Arc clone 廉价）。
+    pub fn delegate(mut self, delegate: Arc<dyn TableDelegate>) -> Self {
         self.delegate = Some(delegate);
         self
     }
@@ -192,7 +192,7 @@ impl RenderOnce for Table {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let (border_color, header_bg, stripe_bg, radius) = {
             let theme = cx.theme();
-            (theme.border, theme.muted, theme.muted, theme.radius)
+            (theme.border, theme.table_head, theme.table_even, theme.radius)
         };
 
         let (text_size, cell_px, cell_py) = match self.size {

@@ -189,6 +189,17 @@ fn emit_directive_token(
                 token_modifier::DECLARATION,
             ));
         }
+        Directive::Animate { name, .. } => {
+            emit_keyword_token("animate", directive_span, source, result);
+            // animate 名称：STRING
+            let name_span = find_string_value_span_in(directive_span, source, name)
+                .unwrap_or(directive_span);
+            result.tokens.push(SpannedSemanticToken::new(
+                name_span,
+                token_type::STRING,
+                0,
+            ));
+        }
     }
 
     // 诊断（保持原有逻辑，Except Each 已提前 return）
@@ -214,7 +225,8 @@ fn directive_span(d: &Directive) -> Span {
         | Directive::Show { span, .. }
         | Directive::Once { span }
         | Directive::Html { span, .. }
-        | Directive::Ref { span, .. } => *span,
+        | Directive::Ref { span, .. }
+        | Directive::Animate { span, .. } => *span,
     }
 }
 

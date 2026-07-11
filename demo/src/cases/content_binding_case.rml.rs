@@ -1,4 +1,5 @@
 use gpui::{AnyElement, IntoElement, ParentElement, SharedString, Styled, Window, div, px};
+use gpui_component::ActiveTheme as _;
 use rml::prelude::*;
 use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
@@ -14,12 +15,12 @@ struct CounterBadge {
 }
 
 impl IVisual for CounterBadge {
-    fn render(&self, _window: &mut Window, _cx: &mut gpui::App) -> AnyElement {
+    fn render(&self, _window: &mut Window, cx: &mut gpui::App) -> AnyElement {
         div()
             .px(px(12.))
             .py(px(4.))
-            .bg(gpui::rgb(0x1677ff))
-            .text_color(gpui::rgb(0xffffff))
+            .bg(cx.theme().primary)
+            .text_color(cx.theme().primary_foreground)
             .rounded(px(6.))
             .child(format!("IVisual 渲染：{}", self.value))
             .into_any_element()
@@ -115,12 +116,12 @@ impl ContentBindingCase {
     ///
     /// `content={self.render_badge(_window, cx)}` 生成
     /// `.child(rml_core::content::into_content(self.render_badge(_window, cx), _window, cx))`
-    pub fn render_badge(&self, _window: &mut Window, _cx: &mut gpui::App) -> AnyElement {
+    pub fn render_badge(&self, _window: &mut Window, cx: &mut gpui::App) -> AnyElement {
         div()
             .px(px(12.))
             .py(px(4.))
-            .bg(gpui::rgb(0x52c41a))
-            .text_color(gpui::rgb(0xffffff))
+            .bg(cx.theme().success)
+            .text_color(cx.theme().success_foreground)
             .rounded(px(6.))
             .child(format!("AnyElement 方法：count={}", self.count))
             .into_any_element()

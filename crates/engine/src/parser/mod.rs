@@ -245,6 +245,12 @@ impl Parser {
                         directives.push(Directive::Ref { name: s, span: attr.span });
                     }
                 }
+                "animate" => {
+                    if let AttrValue::Static(s) = attr.value {
+                        let (name, duration_ms) = parse_animate_value(&s);
+                        directives.push(Directive::Animate { name, duration_ms, span: attr.span });
+                    }
+                }
                 // `slot="name"` 属性：标记此元素为具名插槽内容载体（Vue 风格 `<template slot="x">`）
                 // 不再 push 到 directives，而是设置 Element.slot_name 字段，
                 // 供 codegen 路由到目标组件的对应 slot setter。
@@ -419,6 +425,16 @@ fn parse_text_segments(raw: &str, base_offset: usize) -> Vec<TextSegment> {
 /// 单词属性（如 `onclick`、`bordered`、`columns`）无 `-`，原样返回。
 fn normalize_attr_name(name: &str) -> String {
     name.replace('-', "_")
+}
+
+/// 解析 `animate` 属性值：`"fade"` → `("fade", 300)`，`"fade:500"` → `("fade", 500)`
+fn parse_animate_value(s: &str) -> (String, u32) {
+    if let Some((name, dur)) = s.rsplit_once(':') {
+        if let Ok(ms) = dur.parse::<u32>() {
+            return (name.to_string(), ms);
+        }
+    }
+    (s.to_string(), 300)
 }
 
 #[cfg(test)]

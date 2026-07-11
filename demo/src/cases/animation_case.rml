@@ -1,0 +1,56 @@
+<component>
+    <CaseDocPage
+        title={t("case.animation.title")}
+        description="animate 指令为元素添加入场动画。基于 GPUI AnimationExt 实现，支持 fade / slide-up / slide-down / slide-left 四种预设。语法：animate=&#123;fade&#125; 或 animate=&#123;fade:500&#125;（冒号后指定毫秒时长）。与 if 组合可重播动画（元素重新挂载时触发）；与 show 组合时 show 降级为 if 语义（AnimationElement 不实现 Styled，invisible 不可用）。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <Card title="animate 指令演示">
+                <p>visible = {visible}（点击切换以重播动画）</p>
+                <div display="flex" flex-direction="row" gap="16px">
+                    <Button label="切换可见性" on-click={on_toggle_visible} />
+                </div>
+
+                <div display="flex" flex-direction="column" gap="12px">
+                    <div if={visible} animate="fade"
+                        style="padding: 16px; background: #1a1a2e; border-radius: 8px; color: #e0e0e0;">
+                        fade — 淡入（opacity 0→1，300ms）
+                    </div>
+                    <div if={visible} animate="slide-up"
+                        style="padding: 16px; background: #16213e; border-radius: 8px; color: #e0e0e0;">
+                        slide-up — 从下滑入（top + opacity，300ms）
+                    </div>
+                    <div if={visible} animate="slide-down"
+                        style="padding: 16px; background: #0f3460; border-radius: 8px; color: #e0e0e0;">
+                        slide-down — 从上滑入（top + opacity，300ms）
+                    </div>
+                    <div if={visible} animate="slide-left"
+                        style="padding: 16px; background: #533483; border-radius: 8px; color: #e0e0e0;">
+                        slide-left — 从右滑入（left + opacity，300ms）
+                    </div>
+                    <div if={visible} animate="fade:600"
+                        style="padding: 16px; background: #e94560; border-radius: 8px; color: #ffffff;">
+                        fade:600 — 自定义时长 600ms
+                    </div>
+                </div>
+            </Card>
+
+            <Card title="animate + show 组合">
+                <p>show_card = {show_card}（show 降级为 if 语义）</p>
+                <div display="flex" flex-direction="row" gap="16px">
+                    <Button label="切换 show" on-click={on_toggle_show} />
+                </div>
+                <div display="flex" flex-direction="column" gap="12px">
+                    <div show={show_card} animate="slide-up"
+                        style="padding: 16px; background: #2d3436; border-radius: 8px; color: #e0e0e0;">
+                        show + slide-up — show 降级为条件渲染（不占布局空间）
+                    </div>
+                </div>
+            </Card>
+        </template>
+
+        <template slot="api">
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+        </template>
+    </CaseDocPage>
+</component>

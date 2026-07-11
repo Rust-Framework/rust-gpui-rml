@@ -35,6 +35,8 @@ pub mod menu_custom_case;
 pub mod status_bar_case;
 #[path = "table_case.rml.rs"]
 pub mod table_case;
+#[path = "table_editable_case.rml.rs"]
+pub mod table_editable_case;
 #[path = "description_list_case.rml.rs"]
 pub mod description_list_case;
 
@@ -71,6 +73,8 @@ pub mod input_case;
 pub mod textarea_case;
 #[path = "tree_case.rml.rs"]
 pub mod tree_case;
+#[path = "virtual_tree_case.rml.rs"]
+pub mod virtual_tree_case;
 #[path = "slider_case.rml.rs"]
 pub mod slider_case;
 #[path = "code_editor_case.rml.rs"]
@@ -93,6 +97,16 @@ pub mod slot_scope_case;
 pub mod validation_case;
 #[path = "theme_case.rml.rs"]
 pub mod theme_case;
+#[path = "theme_switcher_case.rml.rs"]
+pub mod theme_switcher_case;
+#[path = "key_binding_case.rml.rs"]
+pub mod key_binding_case;
+#[path = "grid_case.rml.rs"]
+pub mod grid_case;
+#[path = "markdown_case.rml.rs"]
+pub mod markdown_case;
+#[path = "dock_case.rml.rs"]
+pub mod dock_case;
 
 #[path = "css_priority_case.rml.rs"]
 pub mod css_priority_case;
@@ -112,6 +126,9 @@ pub mod key_case;
 pub mod show_case;
 #[path = "ref_case.rml.rs"]
 pub mod ref_case;
+
+#[path = "animation_case.rml.rs"]
+pub mod animation_case;
 
 // M2'.1：Icon 组件 demo
 #[path = "icon_case.rml.rs"]

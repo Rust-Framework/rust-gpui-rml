@@ -283,6 +283,9 @@ fn builtin_light_colors() -> HashMap<String, Rgba> {
     m.insert("--warning".to_string(), rgba_from_hex(0xd97706));
     m.insert("--error".to_string(), rgba_from_hex(0xdc2626));
     m.insert("--info".to_string(), rgba_from_hex(0x2563eb));
+    m.insert("--primary-foreground".to_string(), rgba_from_hex(0xffffff));
+    m.insert("--title-bar".to_string(), rgba_from_hex(0xf3f4f6));
+    m.insert("--status-bar".to_string(), rgba_from_hex(0xf3f4f6));
     m
 }
 
@@ -301,6 +304,9 @@ fn builtin_dark_colors() -> HashMap<String, Rgba> {
     m.insert("--warning".to_string(), rgba_from_hex(0xcca700));
     m.insert("--error".to_string(), rgba_from_hex(0xf44747));
     m.insert("--info".to_string(), rgba_from_hex(0x3794ff));
+    m.insert("--primary-foreground".to_string(), rgba_from_hex(0xffffff));
+    m.insert("--title-bar".to_string(), rgba_from_hex(0x1a1b1d));
+    m.insert("--status-bar".to_string(), rgba_from_hex(0x1a1b1d));
     m
 }
 
@@ -344,7 +350,7 @@ fn apply_builtin_gpui_theme(theme: &str, cx: &mut App) {
 
 #[cfg(feature = "gpui-component")]
 fn apply_dark_theme_config(cx: &mut App) {
-    use gpui::{hsla, px};
+    use gpui::px;
 
     gpui_component::theme::Theme::sync_scrollbar_appearance(cx);
     let t = gpui_component::theme::Theme::global_mut(cx);
@@ -354,10 +360,11 @@ fn apply_dark_theme_config(cx: &mut App) {
     t.background = gpui::rgb(0x222427).into();
     t.secondary = gpui::rgb(0x1a1b1d).into();
     t.muted = gpui::rgb(0x2a2b30).into();
-    t.title_bar = hsla(0., 0., 0., 0.);
-    t.title_bar_border = hsla(0., 0., 0., 0.);
+    t.title_bar = gpui::rgb(0x1a1b1d).into();
+    t.title_bar_border = gpui::rgb(0x0f1012).into();
     t.sidebar = gpui::rgb(0x1a1b1d).into();
     t.tab_bar = gpui::transparent_black();
+    t.tab_bar_segmented = gpui::rgb(0x1a1b1d).into();
     t.tab_foreground = gpui::rgb(0xd4d4d8).into();
     t.tab_active = gpui::rgb(0x222427).into();
     t.tab_active_foreground = gpui::rgb(0xffffff).into();
@@ -380,10 +387,13 @@ fn apply_dark_theme_config(cx: &mut App) {
     t.accent_foreground = gpui::rgb(0xd4d4d8).into();
 
     t.primary = gpui::rgb(0x007acc).into();
+    t.primary_foreground = gpui::rgb(0xffffff).into();
     t.success = gpui::rgb(0x4ec9b0).into();
     t.warning = gpui::rgb(0xcca700).into();
     t.danger = gpui::rgb(0xf44747).into();
     t.info = gpui::rgb(0x3794ff).into();
+
+    t.status_bar = gpui::rgb(0x1a1b1d).into();
 
     t.scrollbar = gpui::transparent_black();
     t.scrollbar_thumb = gpui::rgb(0x555555).into();
@@ -400,6 +410,8 @@ fn apply_dark_theme_config(cx: &mut App) {
     t.window_border = gpui::transparent_black();
     t.font_size = px(14.);
     t.scrollbar_show = gpui_component::scroll::ScrollbarShow::Scrolling;
+
+    t.tokens = gpui_component::theme::ThemeTokens::from(&t.colors);
 }
 
 #[cfg(feature = "gpui-component")]
@@ -418,6 +430,7 @@ fn apply_light_theme_config(cx: &mut App) {
     t.title_bar_border = gpui::rgb(0xe5e7eb).into();
     t.sidebar = gpui::rgb(0xf3f4f6).into();
     t.tab_bar = gpui::rgb(0xf9fafb).into();
+    t.tab_bar_segmented = gpui::rgb(0xf3f4f6).into();
     t.tab_foreground = gpui::rgb(0x374151).into();
     t.tab_active = gpui::rgb(0xffffff).into();
     t.tab_active_foreground = gpui::rgb(0x111827).into();
@@ -440,10 +453,13 @@ fn apply_light_theme_config(cx: &mut App) {
     t.accent_foreground = gpui::rgb(0x374151).into();
 
     t.primary = gpui::rgb(0x007acc).into();
+    t.primary_foreground = gpui::rgb(0xffffff).into();
     t.success = gpui::rgb(0x059669).into();
     t.warning = gpui::rgb(0xd97706).into();
     t.danger = gpui::rgb(0xdc2626).into();
     t.info = gpui::rgb(0x2563eb).into();
+
+    t.status_bar = gpui::rgb(0xf3f4f6).into();
 
     t.scrollbar = gpui::rgb(0xf3f4f6).into();
     t.scrollbar_thumb = gpui::rgb(0x9ca3af).into();
@@ -460,6 +476,8 @@ fn apply_light_theme_config(cx: &mut App) {
     t.window_border = gpui::rgb(0xe5e7eb).into();
     t.font_size = px(14.);
     t.scrollbar_show = gpui_component::scroll::ScrollbarShow::Scrolling;
+
+    t.tokens = gpui_component::theme::ThemeTokens::from(&t.colors);
 }
 
 /// `Context` / `App` 主题扩展

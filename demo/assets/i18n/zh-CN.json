@@ -284,6 +284,8 @@
 
   "case.table.title": "表格组件",
 
+  "case.table_editable.title": "可编辑表格",
+
   "case.description_list.title": "描述列表",
 
   "case.badge.title": "徽标 Badge",
@@ -338,6 +340,12 @@
 
   "case.theme.title": "主题切换 Theme",
 
+  "case.theme_switcher.title": "主题切换器 ThemeSwitcher",
+  "case.key_binding.title": "键盘快捷键 KeyBinding",
+  "case.grid.title": "Grid 布局 Grid",
+  "case.markdown.title": "Markdown 富文本 Markdown",
+  "case.dock.title": "Dock 面板布局 Dock",
+
   "case.else.title": "else 指令 Else",
 
   "case.once.title": "once 指令 Once",
@@ -349,6 +357,8 @@
   "case.show.title": "show 指令 Show",
 
   "case.ref.title": "ref 指令 Ref",
+
+  "case.animation.title": "动画指令 Animate",
 
   "case.focus_event.title": "焦点事件 Focus/Blur",
 
@@ -385,6 +395,7 @@
   "case.select.title": "下拉选择器 Select",
   "case.combobox.title": "多选下拉 Combobox",
   "case.virtual_list.title": "虚拟列表 VirtualList",
+  "case.virtual_tree.title": "虚拟树 VirtualTree",
   "case.resizable.title": "可调整面板 Resizable",
 
   "case.settings.title": "设置面板 Settings",

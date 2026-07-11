@@ -112,7 +112,7 @@ pub fn gen_table(
     // 4. 自动注入 .notify(...) 回调 —— 使用 cx.weak_entity() 桥接，
     //    使 delegate 在编辑状态变更时能触发 ViewModel 重新渲染。
     code.push_str(
-        "\n            .notify(std::rc::Rc::new({\n                \
+        "\n            .notify(std::sync::Arc::new({\n                \
          let weak = cx.weak_entity();\n                \
          move |app: &mut gpui::App| {\n                    \
          if let Some(entity) = weak.upgrade() {\n                        \
@@ -344,6 +344,8 @@ mod tests {
         let mut id = 0;
         let code = gen_table(&elem, None, id, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
         assert!(code.contains(".notify("), "expected .notify() in: {}", code);
+        assert!(code.contains("std::sync::Arc::new"), "expected Arc::new in: {}", code);
+        assert!(!code.contains("std::rc::Rc::new"), "expected no Rc::new in: {}", code);
         assert!(code.contains("cx.weak_entity()"), "expected cx.weak_entity() in: {}", code);
         assert!(code.contains("cx.notify()"), "expected cx.notify() in: {}", code);
     }

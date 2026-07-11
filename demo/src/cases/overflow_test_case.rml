@@ -7,7 +7,7 @@
         <template slot="demo">
             <Card title="垂直滚动 overflow-y-auto">
                 <p>50 个条目，固定高度 200px，验证 overflow-y 映射：</p>
-                <div class="scroll-vertical" overflow-y-auto="" style="height: 200px; border: 1px solid #e0e0e0; padding: 8px;">
+                <div class="scroll-vertical" overflow-y-auto="" style="height: 200px; border: 1px solid var(--border); padding: 8px;">
                     <p each={item in items}>{item}</p>
                 </div>
             </Card>

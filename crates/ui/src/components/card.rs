@@ -20,7 +20,7 @@
 use gpui::prelude::FluentBuilder as _;
 use gpui::{
     AnyElement, App, BoxShadow, Div, ElementId, InteractiveElement, IntoElement, ParentElement,
-    RenderOnce, StatefulInteractiveElement, Styled, Window, div, hsla, point, px,
+    RenderOnce, StatefulInteractiveElement, Styled, Window, div, point, px,
 };
 use gpui_component::{ActiveTheme, Sizable, Size, StyledExt, h_flex};
 
@@ -220,23 +220,25 @@ impl RenderOnce for Card {
                 this.border_1().border_color(border_color)
             })
             .when(hoverable && shadow_enabled, |this| {
+                let shadow_base = cx.theme().foreground;
+                let transparent = cx.theme().transparent;
                 let hover_shadow = vec![
                     BoxShadow {
-                        color: hsla(0., 0., 0., 0.16),
+                        color: shadow_base.opacity(0.08),
                         offset: point(px(0.), px(1.)),
                         blur_radius: px(2.),
                         spread_radius: px(-2.),
                         inset: false,
                     },
                     BoxShadow {
-                        color: hsla(0., 0., 0., 0.12),
+                        color: shadow_base.opacity(0.06),
                         offset: point(px(0.), px(3.)),
                         blur_radius: px(6.),
                         spread_radius: px(0.),
                         inset: false,
                     },
                     BoxShadow {
-                        color: hsla(0., 0., 0., 0.09),
+                        color: shadow_base.opacity(0.04),
                         offset: point(px(0.), px(5.)),
                         blur_radius: px(12.),
                         spread_radius: px(4.),
@@ -245,7 +247,7 @@ impl RenderOnce for Card {
                 ];
                 this.hover(move |s| {
                     let s = if apply_border {
-                        s.border_color(hsla(0., 0., 0., 0.))
+                        s.border_color(transparent)
                     } else {
                         s
                     };

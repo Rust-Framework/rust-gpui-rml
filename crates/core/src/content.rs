@@ -79,6 +79,15 @@ impl<T: Render> IntoContent for gpui::Entity<T> {
     }
 }
 
+impl<T: Render> IntoContent for Option<gpui::Entity<T>> {
+    fn into_content(self, _window: &mut Window, _cx: &mut App) -> AnyElement {
+        match self {
+            Some(entity) => entity.into_any_element(),
+            None => gpui::div().into_any_element(),
+        }
+    }
+}
+
 // ── ToString 类型：格式化为 SharedString ──
 
 macro_rules! impl_into_content_to_string {

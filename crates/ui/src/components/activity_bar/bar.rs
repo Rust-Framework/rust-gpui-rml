@@ -123,13 +123,13 @@ impl Render for ActivityBar {
             .h_full()
             .flex_shrink_0()
             .justify_between()
-            .bg(cx.theme().title_bar)
+            .bg(cx.theme().sidebar)
             .child(v_flex().w_full().items_center().children(panel_buttons))
             .child(v_flex().w_full().items_center().children(action_buttons));
 
         // ── 面板内容 ──
-        // panel_body 背景用 title_bar：亮色主题接近白色，暗色主题比窗口主色略亮形成色差。
-        // icon_bar 背景透明，与窗口背景一致；两者之间无边框线。
+        // icon_bar 使用 sidebar 背景与窗口主色形成色差；panel_body 保持透明，
+        // 由外层窗口主色背景透出，确保主色调落在窗口内容区。
         let active_id_for_body = self.active_id.clone();
         let panel_body = if let Some(active) = active_id_for_body.as_deref() {
             match self.panels.iter().find(|p| p.id() == active) {

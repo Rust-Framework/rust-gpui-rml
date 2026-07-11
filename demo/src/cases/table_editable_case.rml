@@ -1,0 +1,29 @@
+<component>
+    <CaseDocPage
+        title={t("case.table_editable.title")}
+        description="Table 组件支持单元格内联编辑。通过 Column 的 editable 标记指定可编辑列，配合自定义 TableDelegate 实现编辑状态管理和编辑器渲染。点击单元格进入编辑模式，按 Enter 提交，按 Escape 取消。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <div class="demo-section">
+                <h3>1. 可编辑表格</h3>
+                <p>点击姓名或邮箱列进入编辑模式。Enter 提交，Escape 取消。</p>
+                <Table delegate={edit_delegate} rows={editable_rows} bordered="" stripe="">
+                    <Column key="name" title="姓名" width="160" editable="" />
+                    <Column key="age" title="年龄" width="80" align="center" />
+                    <Column key="email" title="邮箱" editable="" />
+                </Table>
+            </div>
+
+            <div class="demo-section">
+                <h3>2. 编辑记录</h3>
+                <p>最近编辑：{last_edit_info}</p>
+            </div>
+        </template>
+
+        <template slot="api">
+            <h3>可编辑相关 API</h3>
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+        </template>
+    </CaseDocPage>
+</component>

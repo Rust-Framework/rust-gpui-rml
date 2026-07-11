@@ -75,7 +75,7 @@
                 <p>appearance=&quot;false&quot; 关闭默认样式（背景/边框/阴影），适用于完全自定义卡片样式的场景。</p>
                 <HoverCard appearance="false">
                     <Button slot="trigger" label="无默认样式" />
-                    <div class="hover-card-tip" style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 8px;">appearance=false：自定义黄色背景，无默认边框/阴影</div>
+                    <div class="hover-card-tip" style="background: var(--surface); border: 1px solid var(--border); padding: 8px;">appearance=false：使用主题 surface 背景，无边框/阴影</div>
                 </HoverCard>
             </div>
 

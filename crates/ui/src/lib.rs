@@ -25,6 +25,7 @@
 // 包名统一为 rust-rml-* 前缀，通过 extern crate 别名保留源码中的短名引用
 extern crate rust_rml_core as rml_core;
 
+pub mod animation;
 pub mod prelude;
 pub mod components;
 pub mod state;
@@ -104,9 +105,14 @@ pub use components::{
     SelectState, SelectEvent, StringSelectState, StringSelectEvent,
     ComboboxState, ComboboxEvent, StringComboboxState, StringComboboxEvent,
     HoverCardState,
+    KeyBinding,
+    Grid, GridItem,
+    Markdown,
+    DockArea, DockEvent, DockItem, DockPlacement, Panel, PanelControl, PanelEvent, PanelStyle,
+    PanelView, SimplePanel, StackPanel, TabPanel, register_panel,
     Scroll,
     Sidebar, SidebarCollapsible, SidebarEntry, SidebarFooter, SidebarHeader, SidebarMenu,
-    SidebarMenuItem, SidebarToggleButton,
+    SidebarMenuItem, SidebarToggleButton, ThemeSwitcher,
     h_resizable, h_virtual_list, resizable_panel, v_resizable, v_virtual_list,
     configure_menu_bar_popup, menu_bar_button,
     AnySettingField, GroupBoxVariant, NumberFieldOptions, RenderOptions, SelectIndex,

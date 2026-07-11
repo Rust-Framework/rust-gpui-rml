@@ -1,0 +1,16 @@
+<component>
+    <CaseDocPage
+        title={t("case.dock.title")}
+        description="Dock 系统集成：基于 gpui-component DockArea 实现的 IDE 风格可拖拽面板布局。支持左侧文件树、中间编辑器标签页、底部终端面板，标签页可拖拽移动、面板可调整大小。通过 SimplePanel 适配器将任意视图包装为 Panel，在 on_loaded 中命令式构建布局，RML 侧通过 content 绑定透明渲染。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <Card title="IDE 风格 Dock 布局">
+                <p>左侧文件树面板、中间编辑器标签页（支持拖拽）、底部终端面板。拖拽标签页可在面板间移动，面板边界可拖拽调整大小。</p>
+                <div style="margin-top: 12px; height: 480px; border: 1px solid var(--border); overflow: hidden; border-radius: 4px;">
+                    <component content={dock_area} />
+                </div>
+            </Card>
+        </template>
+    </CaseDocPage>
+</component>

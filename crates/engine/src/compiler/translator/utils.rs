@@ -52,6 +52,13 @@ pub fn print_element(
             Directive::Html { expr, .. } => out.push_str(&format!(" html={{{}}}", expr)),
             Directive::Ref { name, .. } => out.push_str(&format!(" ref=\"{}\"", name)),
             Directive::Key { expr, .. } => out.push_str(&format!(" key={{{}}}", expr)),
+            Directive::Animate { name, duration_ms, .. } => {
+                if *duration_ms == 300 {
+                    out.push_str(&format!(" animate=\"{}\"", name));
+                } else {
+                    out.push_str(&format!(" animate=\"{}:{}\"", name, duration_ms));
+                }
+            }
             Directive::Else { .. } => {}
         }
     }

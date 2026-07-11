@@ -70,7 +70,7 @@
                 <div class="popover-row">
                     <Popover appearance="false">
                         <Button slot="trigger" label="无默认样式" />
-                        <div class="popover-tip" style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 8px;">appearance=false：自定义黄色背景，无默认边框/阴影</div>
+                        <div class="popover-tip" style="background: var(--surface); border: 1px solid var(--border); padding: 8px;">appearance=false：使用主题 surface 背景，无边框/阴影</div>
                     </Popover>
                     <Popover overlay-closable="false">
                         <Button slot="trigger" label="禁用外部关闭" />

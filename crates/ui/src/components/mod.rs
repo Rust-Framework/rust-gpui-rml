@@ -11,10 +11,14 @@ pub mod collapsible;
 pub mod color_picker;
 pub mod combobox;
 pub mod date_picker;
+pub mod dock;
 pub mod form;
 pub mod group_box;
+pub mod grid;
 pub mod hover_card;
+pub mod key_binding;
 pub mod link;
+pub mod markdown;
 pub mod menu;
 pub mod notification_trigger;
 pub mod number_input;
@@ -34,6 +38,7 @@ pub mod status_bar;
 pub mod stepper;
 pub mod tab;
 pub mod table;
+pub mod theme_switcher;
 pub mod tree;
 pub mod virtual_list;
 
@@ -63,15 +68,23 @@ pub use collapsible::Collapsible;
 pub use color_picker::{ColorPicker, ColorPickerEvent, ColorPickerState};
 pub use combobox::{Combobox, ComboboxEvent, ComboboxState, StringComboboxEvent, StringComboboxState};
 pub use date_picker::{DatePicker, DatePickerEvent, DatePickerState};
+pub use dock::{
+    DockArea, DockEvent, DockItem, DockPlacement, Panel, PanelControl, PanelEvent, PanelStyle,
+    PanelView, SimplePanel, StackPanel, TabPanel, register_panel,
+};
 pub use form::{Field, FieldBuilder, Form};
 pub use group_box::{GroupBox, GroupBoxVariants};
+pub use grid::{Grid, GridItem};
 pub use hover_card::{HoverCard, HoverCardState};
+pub use key_binding::KeyBinding;
 pub use link::Link;
+pub use markdown::Markdown;
 pub use notification_trigger::NotificationTrigger;
 pub use number_input::{NumberInput, NumberInputEvent};
 pub use otp_input::{OtpInput, OtpState};
 pub use pagination::Pagination;
 pub use radio::{Radio, RadioGroup};
+pub use theme_switcher::ThemeSwitcher;
 pub use rating::Rating;
 pub use resizable::{
     ResizablePanel, ResizablePanelEvent, ResizablePanelGroup, ResizableState, h_resizable,

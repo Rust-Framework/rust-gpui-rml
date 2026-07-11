@@ -548,6 +548,43 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             kind: ComponentKind::StatelessNoId,
             container: true,
         }),
+        // ThemeSwitcher：声明式主题切换器（RenderOnce 无 ElementId、无 cx、非容器）
+        // ThemeSwitcher::new() 构造，.value(impl Into<SharedString>) 绑定当前主题名。
+        // render 时自动调用 cx.set_theme(value)，不渲染可见内容。
+        "ThemeSwitcher" => Some(ComponentTag {
+            ctor_path: "rml_ui::ThemeSwitcher",
+            kind: ComponentKind::StatelessNoId,
+            container: false,
+        }),
+        // KeyBinding：声明式键盘快捷键（RenderOnce + ParentElement，无 ElementId、无 cx）
+        // KeyBinding::new() 构造，.key("Ctrl+S") 设置快捷键，.when(bool) 条件控制，.on_press(Fn) 回调。
+        // 通过 div().on_key_down() 监听子树键盘事件，匹配后触发 on_press。
+        "KeyBinding" => Some(ComponentTag {
+            ctor_path: "rml_ui::KeyBinding",
+            kind: ComponentKind::StatelessNoId,
+            container: true,
+        }),
+        // Grid：声明式等宽网格布局容器（RenderOnce + ParentElement，无 ElementId、无 cx）
+        // Grid::new() 构造，.columns(u16)/.rows(u16) 设置列数/行数，底层 div().grid().grid_cols(n)
+        "Grid" => Some(ComponentTag {
+            ctor_path: "rml_ui::Grid",
+            kind: ComponentKind::StatelessNoId,
+            container: true,
+        }),
+        // GridItem：Grid 子项，控制 col-span/row-span/col-start/col-end/row-start/row-end
+        // GridItem::new() 构造，底层 div().col_span(n).col_start(n) 等
+        "GridItem" => Some(ComponentTag {
+            ctor_path: "rml_ui::GridItem",
+            kind: ComponentKind::StatelessNoId,
+            container: true,
+        }),
+        // Markdown：声明式 Markdown 富文本渲染（RenderOnce + Styled，无 ElementId、无 cx）
+        // Markdown::new() 构造，.content(impl Into<SharedString>) 设置内容，底层 TextView::markdown
+        "Markdown" => Some(ComponentTag {
+            ctor_path: "rml_ui::Markdown",
+            kind: ComponentKind::StatelessNoId,
+            container: false,
+        }),
         // Form：声明式表单容器（RenderOnce，非 ParentElement）
         // Form::horizontal() / Form::vertical() 构造器选择（默认 vertical）
         // .label_width(px) / .columns(usize) / .child(impl Into<Field>)

@@ -5,3 +5,8 @@
        --primary: #ff6600;
    }
 */
+:root {
+    --primary-foreground: #ffffff;
+    --title-bar: #1a1b1d;
+    --status-bar: #1a1b1d;
+}

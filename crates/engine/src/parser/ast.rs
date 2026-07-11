@@ -101,6 +101,8 @@ pub enum Directive {
     Html { expr: String, span: Span },
     /// `ref="name"` 元素引用
     Ref { name: String, span: Span },
+    /// `animate="fade"` 或 `animate="fade:300"` 入场动画
+    Animate { name: String, duration_ms: u32, span: Span },
 }
 
 /// `each` 子句

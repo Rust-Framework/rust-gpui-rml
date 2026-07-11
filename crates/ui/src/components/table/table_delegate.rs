@@ -23,7 +23,7 @@
 //! }
 //! ```
 
-use std::rc::Rc;
+use std::sync::Arc;
 
 use gpui::{AnyElement, App, IntoElement, ParentElement, SharedString, Styled, Window, div};
 
@@ -31,7 +31,7 @@ use super::table_column::TableColumn;
 use super::table_row::TableRow;
 
 /// 表格模板委托 —— 支持自定义列头和单元格渲染
-pub trait TableDelegate: 'static {
+pub trait TableDelegate: 'static + Send + Sync {
     /// 渲染列头。默认实现返回 `column.title` 文本。
     fn render_header(
         &self,
@@ -69,7 +69,7 @@ pub trait TableDelegate: 'static {
     }
 
     /// 指定单元格是否处于编辑模式。默认实现返回 `false`。
-    /// 用户应通过 `RefCell<Option<(usize, usize)>>` 跟踪编辑状态并覆写此方法。
+    /// 用户应通过 `Mutex<Option<(usize, usize)>>` 跟踪编辑状态并覆写此方法。
     fn is_editing(&self, _row: usize, _col: usize) -> bool {
         false
     }
@@ -84,7 +84,7 @@ pub trait TableDelegate: 'static {
     /// 设置重新渲染通知回调。Table 在每次 render 时调用此方法，
     /// 将通知回调注入 delegate，使 delegate 在编辑状态变更时能触发重新渲染。
     /// 默认实现为空操作，用户应覆写此方法存储回调。
-    fn set_notify(&self, _notify: Rc<dyn Fn(&mut App)>) {}
+    fn set_notify(&self, _notify: Arc<dyn Fn(&mut App) + Send + Sync>) {}
 
     /// 渲染编辑器。当单元格处于编辑模式时调用，返回编辑器元素（如 Input）。
     /// 默认实现返回空 div，用户应覆写此方法提供自定义编辑器。

@@ -379,6 +379,40 @@ pub mod builtin_engine {
             code = format!("{{\n    {}\n    {}\n}}", pre, code);
         }
 
+        // 4c. 处理 animate 指令：入场动画
+        //
+        // 在 if/show 之前包装，因为 AnimationElement<E> 不实现 Styled，
+        // .when()/.invisible() 无法作用于动画元素。
+        // 包装后立即 .into_any_element()，使后续 if/show 分支统一以 AnyElement 处理。
+        let animate_directive = elem.directives.iter().find_map(|d| match d {
+            Directive::Animate { name, duration_ms, .. } => Some((name.clone(), *duration_ms)),
+            _ => None,
+        });
+        let has_animate = animate_directive.is_some();
+        if let Some((name, duration_ms)) = animate_directive {
+            let preset_fn = match name.as_str() {
+                "fade" => "fade",
+                "slide-up" => "slide_up",
+                "slide-down" => "slide_down",
+                "slide-left" => "slide_left",
+                _ => {
+                    return Err(CodegenError {
+                        message: format!(
+                            "unknown animation preset: `{}` (supported: fade, slide-up, slide-down, slide-left)",
+                            name
+                        ),
+                        span: Some(elem.span),
+                    });
+                }
+            };
+            let anim_id = *id_counter;
+            *id_counter += 1;
+            code = format!(
+                "rml_ui::animation::{}({}, (\"rml_anim\", {}usize), {}).into_any_element()",
+                preset_fn, code, anim_id, duration_ms
+            );
+        }
+
         // 5. 处理 if / show 指令
         let if_cond: Option<String> = elem.directives.iter().find_map(|d| match d {
             Directive::If { expr: c, .. } => Some(c.clone()),
@@ -400,10 +434,18 @@ pub mod builtin_engine {
                 .and_then(|s| s.strip_suffix(')'))
                 .map(|s| s.to_string())
                 .unwrap_or(cond_code);
-            code = format!(
-                "if {} {{ {}.into_any_element() }} else {{ gpui::Empty.into_any_element() }}",
-                cond_code, code
-            );
+            // has_animate 时 code 已是 AnyElement，无需再 .into_any_element()
+            if has_animate {
+                code = format!(
+                    "if {} {{ {} }} else {{ gpui::Empty.into_any_element() }}",
+                    cond_code, code
+                );
+            } else {
+                code = format!(
+                    "if {} {{ {}.into_any_element() }} else {{ gpui::Empty.into_any_element() }}",
+                    cond_code, code
+                );
+            }
         } else if let Some(cond) = show_cond {
             let cond_code = gen_expr_code(&cond, &lv, &computed);
             let cond_code = cond_code
@@ -411,7 +453,16 @@ pub mod builtin_engine {
                 .and_then(|s| s.strip_suffix(')'))
                 .map(|s| s.to_string())
                 .unwrap_or(cond_code);
-            code = format!("{}.when(!{}, |d| d.invisible())", code, cond_code);
+            // has_animate 时 AnimationElement 不实现 Styled，.when()/.invisible() 不可用，
+            // 将 show 降级为 if 分支（语义等价：条件渲染 vs 条件隐藏）
+            if has_animate {
+                code = format!(
+                    "if {} {{ {} }} else {{ gpui::Empty.into_any_element() }}",
+                    cond_code, code
+                );
+            } else {
+                code = format!("{}.when(!{}, |d| d.invisible())", code, cond_code);
+            }
         }
 
         // 6. 处理 each 指令
@@ -487,6 +538,13 @@ pub mod builtin_engine {
                 Directive::Html { expr, .. } => out.push_str(&format!(" html={{{}}}", expr)),
                 Directive::Ref { name, .. } => out.push_str(&format!(" ref=\"{}\"", name)),
                 Directive::Key { expr, .. } => out.push_str(&format!(" key={{{}}}", expr)),
+                Directive::Animate { name, duration_ms, .. } => {
+                    if *duration_ms == 300 {
+                        out.push_str(&format!(" animate=\"{}\"", name));
+                    } else {
+                        out.push_str(&format!(" animate=\"{}:{}\"", name, duration_ms));
+                    }
+                }
                 Directive::Else { .. } => {}
             }
         }

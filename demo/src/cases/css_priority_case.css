@@ -7,7 +7,7 @@
  */
 
 :root {
-    --accent-color: #0066cc;
+    --accent-color: var(--primary);
     --card-padding: 16px;
     --spacing-sm: 8px;
     --spacing-md: 16px;
@@ -25,8 +25,8 @@
 /* 用于优先级对比：padding=8px 作为基准，被 L3 style/归一化属性覆盖 */
 .style-override {
     padding: 8px;
-    background: #fff3cd;
-    border: 1px solid #ffe08a;
+    background: var(--surface-variant);
+    border: 1px solid var(--border);
     border-radius: 4px;
 }
 
@@ -34,7 +34,7 @@
 .var-demo {
     padding: var(--spacing-md);
     background: var(--accent-color);
-    color: #ffffff;
+    color: var(--primary-foreground);
     border-radius: 4px;
 }
 
@@ -44,7 +44,7 @@
     flex-direction: column;
     gap: var(--spacing-sm);
     padding: var(--spacing-lg);
-    background: #fafafa;
+    background: var(--surface);
     border-radius: 6px;
 }
 
@@ -58,14 +58,14 @@
 /* 动态样式：if 条件切换 class */
 .dynamic-active {
     padding: 12px;
-    background: #d4edda;
-    border: 2px solid #28a745;
+    background: var(--surface-variant);
+    border: 2px solid var(--success);
     border-radius: 4px;
 }
 
 .dynamic-inactive {
     padding: 12px;
-    background: #f8d7da;
-    border: 2px solid #dc3545;
+    background: var(--surface-variant);
+    border: 2px solid var(--error);
     border-radius: 4px;
 }

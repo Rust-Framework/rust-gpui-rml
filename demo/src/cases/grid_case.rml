@@ -1,0 +1,81 @@
+<component>
+    <CaseDocPage
+        title={t("case.grid.title")}
+        description="声明式 Grid 布局：通过 <Grid columns='3'> 创建等宽网格，<GridItem col-span='2'> 控制子项跨度。适用于 IDE 面板布局、仪表盘卡片排列、表单分组等场景。需要非等宽布局时请使用 Resizable + ResizablePanel。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <Card title="基础 Grid 布局">
+                <p>3 列等宽网格，每个格子显示编号：</p>
+                <Grid columns="3" gap="12px" style="margin-top: 12px;">
+                    <div style="background: var(--color-bg-2); padding: 16px; text-align: center; border-radius: 4px;">1</div>
+                    <div style="background: var(--color-bg-2); padding: 16px; text-align: center; border-radius: 4px;">2</div>
+                    <div style="background: var(--color-bg-2); padding: 16px; text-align: center; border-radius: 4px;">3</div>
+                    <div style="background: var(--color-bg-2); padding: 16px; text-align: center; border-radius: 4px;">4</div>
+                    <div style="background: var(--color-bg-2); padding: 16px; text-align: center; border-radius: 4px;">5</div>
+                    <div style="background: var(--color-bg-2); padding: 16px; text-align: center; border-radius: 4px;">6</div>
+                </Grid>
+            </Card>
+
+            <Card title="col-span 跨列布局">
+                <p>3 列网格，第一个元素跨 2 列：</p>
+                <Grid columns="3" gap="12px" style="margin-top: 12px;">
+                    <GridItem col-span="2">
+                        <div style="background: var(--color-primary-bg); padding: 16px; text-align: center; border-radius: 4px; color: var(--color-primary);">跨 2 列</div>
+                    </GridItem>
+                    <div style="background: var(--color-bg-2); padding: 16px; text-align: center; border-radius: 4px;">1 列</div>
+                    <div style="background: var(--color-bg-2); padding: 16px; text-align: center; border-radius: 4px;">1 列</div>
+                    <GridItem col-span="2">
+                        <div style="background: var(--color-primary-bg); padding: 16px; text-align: center; border-radius: 4px; color: var(--color-primary);">跨 2 列</div>
+                    </GridItem>
+                </Grid>
+            </Card>
+
+            <Card title="IDE 面板布局示例">
+                <p>模拟 IDE 布局：3 列网格 + col-span 实现编辑器区域占 2 列</p>
+                <Grid columns="3" rows="3" gap="4px" style="margin-top: 12px; height: 300px;">
+                    <GridItem col-span="3">
+                        <div style="background: var(--color-bg-3); padding: 8px 12px; border-radius: 4px; font-size: 13px;">菜单栏 Menu Bar</div>
+                    </GridItem>
+                    <div style="background: var(--color-bg-2); padding: 12px; border-radius: 4px; font-size: 13px; overflow: hidden;">
+                        侧边栏 / 文件树
+                    </div>
+                    <GridItem col-span="2" row-span="2">
+                        <div style="background: var(--color-primary-bg); padding: 12px; border-radius: 4px; font-size: 13px; color: var(--color-primary); height: 100%; overflow: hidden;">
+                            编辑器区域 Editor Area（占 2 列 2 行）
+                        </div>
+                    </GridItem>
+                    <div style="background: var(--color-bg-2); padding: 12px; border-radius: 4px; font-size: 13px; overflow: hidden;">
+                        大纲 / Outline
+                    </div>
+                    <GridItem col-span="3">
+                        <div style="background: var(--color-bg-3); padding: 8px 12px; border-radius: 4px; font-size: 13px;">状态栏 Status Bar</div>
+                    </GridItem>
+                </Grid>
+            </Card>
+
+            <Card title="表单分组布局">
+                <p>2 列网格用于表单字段排列：</p>
+                <Grid columns="2" gap="12px" style="margin-top: 12px;">
+                    <div>
+                        <p style="margin-bottom: 4px; font-size: 13px;">字段一</p>
+                        <Input ref="field1_input" placeholder="输入字段一" />
+                    </div>
+                    <div>
+                        <p style="margin-bottom: 4px; font-size: 13px;">字段二</p>
+                        <Input ref="field2_input" placeholder="输入字段二" />
+                    </div>
+                    <GridItem col-span="2">
+                        <p style="margin-bottom: 4px; font-size: 13px;">备注（跨 2 列）</p>
+                        <Input ref="remark_input" placeholder="输入备注信息" />
+                    </GridItem>
+                </Grid>
+            </Card>
+        </template>
+
+        <template slot="api">
+            <h3>Grid / GridItem 相关 API</h3>
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+        </template>
+    </CaseDocPage>
+</component>

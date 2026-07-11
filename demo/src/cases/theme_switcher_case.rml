@@ -1,0 +1,31 @@
+<component>
+    <ThemeSwitcher value={current_theme} />
+    <CaseDocPage
+        title={t("case.theme_switcher.title")}
+        description="声明式主题切换：通过 <ThemeSwitcher value={current_theme} /> 绑定 ViewModel 字段，render 时自动调用 cx.set_theme() 切换全局主题。点击按钮更新 current_theme 字段，主题切换由 ThemeSwitcher 自动完成，无需手写 cx.set_theme() 调用。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <Card title="主题切换">
+                <p>当前主题：{current_theme}</p>
+                <div display="flex" flex-direction="row" gap="16px">
+                    <Button label="浅色 Light" on-click={on_light} />
+                    <Button label="深色 Dark" on-click={on_dark} />
+                </div>
+            </Card>
+
+            <Card title="主题效果预览">
+                <p>以下元素会根据主题自动切换配色：</p>
+                <div display="flex" flex-direction="row" gap="16px">
+                    <Button primary label="主要按钮" />
+                    <Button label="默认按钮" />
+                </div>
+            </Card>
+        </template>
+
+        <template slot="api">
+            <h3>ThemeSwitcher 相关 API</h3>
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+        </template>
+    </CaseDocPage>
+</component>

@@ -77,7 +77,7 @@
 .tag-list > * {
     padding: 4px 10px;
     background: var(--primary);
-    color: #ffffff;
+    color: var(--primary-foreground);
     border-radius: 4px;
     font-size: 13px;
 }

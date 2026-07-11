@@ -182,6 +182,26 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
     // 构造器 Scroll::new()（RenderOnce 无 ElementId、无 cx，ParentElement）
     // variant 布尔属性: vertical/horizontal/both → .vertical()/.horizontal()/.both()，默认 vertical
     ("Scroll", &["vertical", "horizontal", "both"]),
+    // ThemeSwitcher 专用（声明式主题切换器：value 绑定当前主题名）
+    // 构造器 ThemeSwitcher::new()（RenderOnce 无 ElementId、无 cx、非容器）
+    // .value(impl Into<SharedString>) → cx.set_theme(value)
+    ("ThemeSwitcher", &["value"]),
+    // KeyBinding 专用（声明式键盘快捷键：key 静态 + when 条件 + on_press 事件）
+    // 构造器 KeyBinding::new()（RenderOnce + ParentElement，无 ElementId、无 cx）
+    // .key("Ctrl+S") 设置快捷键，.when(bool) 条件控制，.on_press(Fn(&mut Window, &mut App)) 回调
+    ("KeyBinding", &["key", "when", "on_press"]),
+    // Grid 专用（声明式等宽网格布局容器：columns/rows 设置列数/行数）
+    // 构造器 Grid::new()（RenderOnce + ParentElement，无 ElementId、无 cx）
+    // .columns(u16)/.rows(u16) → div().grid().grid_cols(n).grid_rows(n)
+    ("Grid", &["columns", "rows"]),
+    // GridItem 专用（Grid 子项：col-span/row-span/col-start/col-end/row-start/row-end）
+    // 构造器 GridItem::new()（RenderOnce + ParentElement，无 ElementId、无 cx）
+    // .col_span(u16)/.row_span(u16)/.col_start(i16)/.col_end(i16)/.row_start(i16)/.row_end(i16)
+    ("GridItem", &["col_span", "row_span", "col_start", "col_end", "row_start", "row_end"]),
+    // Markdown 专用（声明式 Markdown 富文本渲染：content 为内容属性）
+    // 构造器 Markdown::new()（RenderOnce + Styled，无 ElementId、无 cx、非容器）
+    // .content(impl Into<SharedString>) 设置 Markdown 源文本，底层 TextView::markdown
+    ("Markdown", &["content"]),
     // Form 专用（声明式表单容器：variant 构造器 + label_width + columns）
     // 构造器 Form::vertical()（默认）/ Form::horizontal()（horizontal 属性切换）
     // .child(impl Into<Field>)，子节点必须为 <Field> 元素
@@ -420,6 +440,29 @@ mod tests {
         assert!(!is_prop_registered("menu-bar", "items"));
         assert!(!is_prop_registered("status-bar", "items"));
         assert!(!is_prop_registered("StatusBar", "items"));
+        // ThemeSwitcher：声明式主题切换器，仅支持 value 绑定
+        assert!(is_prop_registered("ThemeSwitcher", "value"));
+        assert!(!is_prop_registered("ThemeSwitcher", "title"));
+        // KeyBinding：声明式键盘快捷键，支持 key/when/on_press
+        assert!(is_prop_registered("KeyBinding", "key"));
+        assert!(is_prop_registered("KeyBinding", "when"));
+        assert!(is_prop_registered("KeyBinding", "on_press"));
+        assert!(!is_prop_registered("KeyBinding", "title"));
+        // Grid：声明式网格布局，支持 columns/rows
+        assert!(is_prop_registered("Grid", "columns"));
+        assert!(is_prop_registered("Grid", "rows"));
+        assert!(!is_prop_registered("Grid", "title"));
+        // GridItem：Grid 子项，支持 col-span/row-span/col-start/col-end/row-start/row-end
+        assert!(is_prop_registered("GridItem", "col_span"));
+        assert!(is_prop_registered("GridItem", "row_span"));
+        assert!(is_prop_registered("GridItem", "col_start"));
+        assert!(is_prop_registered("GridItem", "col_end"));
+        assert!(is_prop_registered("GridItem", "row_start"));
+        assert!(is_prop_registered("GridItem", "row_end"));
+        assert!(!is_prop_registered("GridItem", "title"));
+        // Markdown：声明式 Markdown 富文本渲染，支持 content
+        assert!(is_prop_registered("Markdown", "content"));
+        assert!(!is_prop_registered("Markdown", "title"));
     }
 
     #[test]

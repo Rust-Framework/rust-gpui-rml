@@ -7,30 +7,30 @@
         code-rust={rust_sample}>
         <template slot="demo">
             <Card title="rgb() 颜色函数">
-                <p>CSS class 使用 rgb(240,248,255) 背景 + rgb(173,216,230) 边框：</p>
+                <p>CSS class 使用 var(--demo-surface-variant) 背景 + var(--demo-border) 边框：</p>
                 <div class="rgb-card">
-                    <p>background = rgb(240, 248, 255)</p>
-                    <p>border = 1px solid rgb(173, 216, 230)</p>
+                    <p>background = var(--demo-surface-variant)</p>
+                    <p>border = 1px solid var(--demo-border)</p>
                 </div>
-                <p>内联 style 使用 rgba(100,149,237,0.3) 半透明背景：</p>
+                <p>内联 style 使用 var(--demo-info) 半透明背景：</p>
                 <div class="rgba-overlay">
-                    <p>background = rgba(100, 149, 237, 0.3)</p>
+                    <p>background = var(--demo-info) + opacity 0.3</p>
                 </div>
-                <p>归一化属性 background="rgb(200,230,200)"：</p>
-                <div padding="8px" background="rgb(200, 230, 200)" border-radius="4px">
-                    <p>归一化属性: background=rgb(200,230,200)</p>
+                <p>归一化属性 background="var(--demo-success)":</p>
+                <div padding="8px" background="var(--demo-success)" border-radius="4px">
+                    <p>归一化属性: background=var(--demo-success)</p>
                 </div>
             </Card>
 
             <Card title="hsl()/hsla() 颜色函数">
-                <p>CSS class 使用 hsl(120,60%,90%) 背景 + hsl(120,60%,50%) 边框：</p>
+                <p>CSS class 使用 var(--demo-success) 背景 + 边框：</p>
                 <div class="hsl-card">
-                    <p>background = hsl(120, 60%, 90%)</p>
-                    <p>border = 1px solid hsl(120, 60%, 50%)</p>
+                    <p>background = var(--demo-success)</p>
+                    <p>border = 1px solid var(--demo-success)</p>
                 </div>
-                <p>内联 style 使用 hsla(30,100%,50%,0.4)：</p>
+                <p>内联 style 使用 var(--demo-warning) + opacity 0.4：</p>
                 <div class="hsla-gradient">
-                    <p>background = hsla(30, 100%, 50%, 0.4)</p>
+                    <p>background = var(--demo-warning) + opacity 0.4</p>
                 </div>
             </Card>
 
@@ -42,7 +42,7 @@
                     <p>font-size: 1.25rem = 20px</p>
                 </div>
                 <p>归一化属性 padding="1em" gap="0.5em"：</p>
-                <div padding="1em" gap="0.5em" display="flex" flex-direction="column" background="rgb(245,245,255)">
+                <div padding="1em" gap="0.5em" display="flex" flex-direction="column" background="var(--demo-surface)">
                     <p>padding = 1em = 16px</p>
                     <p>gap = 0.5em = 8px</p>
                 </div>
@@ -74,26 +74,23 @@
                 <div class="button-row">
                     <Button label="切换主题" on-click={on_toggle_theme} primary />
                 </div>
-                <div if={is_dark} class="theme-dark">
-                    <p>深色主题：rgb(33,37,41) 背景 + rgb(248,249,250) 文字</p>
-                </div>
-                <div if={!is_dark} class="theme-light">
-                    <p>浅色主题：rgb(248,249,250) 背景 + rgb(33,37,41) 文字</p>
+                <div class="theme-box">
+                    <p>背景 = var(--demo-surface)，文字 = var(--demo-text)</p>
                 </div>
             </Card>
 
             <Card title="复杂嵌套（颜色函数 + 单位 + 组件）">
                 <div class="nested-container">
-                    <div class="nested-row" style="background: rgba(0, 102, 204, 0.1);">
+                    <div class="nested-row" style="background: var(--demo-info); opacity: 0.1;">
                         <Button label="rgb 按钮" primary />
                         <Tag>rgba 标签</Tag>
                         <Icon name="Bell" />
                     </div>
-                    <div class="nested-row" style="background: hsla(120, 100%, 50%, 0.1);">
+                    <div class="nested-row" style="background: var(--demo-success); opacity: 0.1;">
                         <Icon name="Search" />
                         <Label>hsla 行（padding=0.25em 0.5em）</Label>
                     </div>
-                    <div class="nested-row" padding="0.5em" gap="0.75em" background="rgb(255,248,225)">
+                    <div class="nested-row" padding="0.5em" gap="0.75em" background="var(--demo-warning)">
                         <Icon name="Star" />
                         <Label>归一化属性行（em 单位）</Label>
                     </div>

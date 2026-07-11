@@ -837,7 +837,7 @@ impl RenderOnce for TabWindowShell {
             .w_full()
             .flex_shrink_0()
             .items_center()
-            .bg(cx.theme().tokens.title_bar)
+            .bg(cx.theme().title_bar)
             .when(cfg!(target_os = "macos"), |this| this.pl(px(80.)))
             .when_some(chrome_toggle, |this, toggle| this.child(toggle))
             .child(title_row)
@@ -854,6 +854,7 @@ impl RenderOnce for TabWindowShell {
 
         let body = resizable_panel()
             .flex_1()
+            .bg(cx.theme().background)
             .child(
                 div()
                     .id("tab-window-body")
@@ -861,6 +862,7 @@ impl RenderOnce for TabWindowShell {
                     .min_h_0()
                     .size_full()
                     .relative()
+                    .bg(cx.theme().background)
                     .child(
                         div()
                             .id("tab-window-scroll-area")
@@ -892,7 +894,7 @@ impl RenderOnce for TabWindowShell {
                     .w_full()
                     .text_xs()
                     .text_color(cx.theme().muted_foreground)
-                    .bg(cx.theme().muted)
+                    .bg(cx.theme().sidebar)
                     .border_t_1()
                     .border_color(cx.theme().border)
                     .child(bottom);
@@ -924,6 +926,7 @@ impl RenderOnce for TabWindowShell {
                 .flex_1()
                 .min_w_0()
                 .h_full()
+                .bg(cx.theme().background)
                 .child(center_col)
                 .child(d)
                 .into_any_element()
@@ -933,7 +936,11 @@ impl RenderOnce for TabWindowShell {
 
         // main_row：折叠的 left/right 移出 h_resizable，避免 resize handle 残留
         // 且不污染 ResizableState 的 panel_ix 映射。
-        let mut row = h_flex().w_full().h_full().min_h_0();
+        let mut row = h_flex()
+            .w_full()
+            .h_full()
+            .min_h_0()
+            .bg(cx.theme().background);
         let mut main_h = h_resizable("tab-window-main-row").with_state(&h_state);
 
         match left_elem {
@@ -943,6 +950,7 @@ impl RenderOnce for TabWindowShell {
                         .w(self.left_width)
                         .flex_none()
                         .h_full()
+                        .bg(cx.theme().sidebar)
                         .child(left),
                 );
             }
@@ -952,6 +960,7 @@ impl RenderOnce for TabWindowShell {
                         .size(self.left_width)
                         .flex_none()
                         .size_range(px(48.)..px(600.))
+                        .bg(cx.theme().sidebar)
                         .child(left),
                 );
             }
@@ -971,6 +980,7 @@ impl RenderOnce for TabWindowShell {
                         .size(self.right_width)
                         .flex_none()
                         .size_range(px(160.)..px(800.))
+                        .bg(cx.theme().sidebar)
                         .child(right),
                 );
             }
@@ -984,14 +994,22 @@ impl RenderOnce for TabWindowShell {
                     .w(self.right_width)
                     .flex_none()
                     .h_full()
+                    .bg(cx.theme().sidebar)
                     .child(right),
             );
         }
 
         v_flex()
             .size_full()
+            .bg(cx.theme().background)
             .child(title_bar)
-            .child(div().flex_1().min_h_0().child(row))
+            .child(
+                div()
+                    .flex_1()
+                    .min_h_0()
+                    .bg(cx.theme().background)
+                    .child(row),
+            )
             .when_some(footer_elem, |this, slot| this.child(slot))
     }
 }

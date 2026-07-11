@@ -293,14 +293,14 @@ impl Tabs {
                     div()
                         .w_full()
                         .h(inner_height)
-                        .bg(cx.theme().tokens.background)
+                        .bg(cx.theme().background)
                         .rounded(inner_radius)
                         .shadow_xs(),
                 ),
                 TabVariant::Pill => el.flex().items_center().child(
                     div()
                         .size_full()
-                        .bg(cx.theme().tokens.primary)
+                        .bg(cx.theme().primary)
                         .rounded(px(99.)),
                 ),
                 TabVariant::Underline => el.child(
@@ -310,7 +310,7 @@ impl Tabs {
                         .right_0()
                         .bottom_0()
                         .h(px(2.))
-                        .bg(cx.theme().tokens.primary),
+                        .bg(cx.theme().primary),
                 ),
                 _ => el,
             })
@@ -426,12 +426,12 @@ impl RenderOnce for Tabs {
         let (bg, paddings, gap): (Background, _, _) = match self.variant {
             TabVariant::Tab | TabVariant::Flat => {
                 let padding = Edges::all(px(0.));
-                (cx.theme().tokens.tab_bar.into(), padding, px(0.))
+                (cx.theme().tab_bar.into(), padding, px(0.))
             }
             TabVariant::Outline => {
                 let padding = Edges::all(px(0.));
                 let bg = if has_body {
-                    cx.theme().tokens.tab_bar.into()
+                    cx.theme().tab_bar.into()
                 } else {
                     cx.theme().transparent.into()
                 };
@@ -440,7 +440,7 @@ impl RenderOnce for Tabs {
             TabVariant::Pill => {
                 let padding = Edges::all(px(0.));
                 let bg = if has_body {
-                    cx.theme().tokens.tab_bar.into()
+                    cx.theme().tab_bar.into()
                 } else {
                     cx.theme().transparent.into()
                 };
@@ -458,7 +458,7 @@ impl RenderOnce for Tabs {
                     ..Default::default()
                 };
 
-                (cx.theme().tokens.tab_bar_segmented.into(), padding, px(2.))
+                (cx.theme().tab_bar_segmented.into(), padding, px(2.))
             }
             TabVariant::Underline => {
                 // This gap is same as the tab inner_paddings
@@ -848,7 +848,7 @@ impl RenderOnce for Tabs {
                     div()
                         .flex_1()
                         .min_h_0()
-                        .bg(cx.theme().tokens.background)
+                        .bg(cx.theme().background)
                         .child(body),
                 )
                 .into_any_element(),

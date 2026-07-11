@@ -282,6 +282,8 @@
 
   "case.table.title": "Table Component",
 
+  "case.table_editable.title": "Editable Table",
+
   "case.description_list.title": "Description List",
 
   "case.badge.title": "Badge",
@@ -336,6 +338,12 @@
 
   "case.theme.title": "Theme",
 
+  "case.theme_switcher.title": "Theme Switcher",
+  "case.key_binding.title": "Key Binding",
+  "case.grid.title": "Grid Layout",
+  "case.markdown.title": "Markdown Rich Text",
+  "case.dock.title": "Dock Panel Layout",
+
   "case.else.title": "Else Directive",
 
   "case.once.title": "Once Directive",
@@ -347,6 +355,8 @@
   "case.show.title": "Show Directive",
 
   "case.ref.title": "Ref Directive",
+
+  "case.animation.title": "Animate Directive",
 
   "case.focus_event.title": "Focus/Blur Events",
 
@@ -383,6 +393,7 @@
   "case.select.title": "Select",
   "case.combobox.title": "Combobox",
   "case.virtual_list.title": "VirtualList",
+  "case.virtual_tree.title": "VirtualTree",
   "case.resizable.title": "Resizable",
 
   "case.settings.title": "Settings",

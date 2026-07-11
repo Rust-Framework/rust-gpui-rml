@@ -7,7 +7,7 @@
         <template slot="demo">
             <Card title="基础用法">
                 <p>包裹子元素作为标题栏中央内容。窗口控制按钮自动渲染。</p>
-                <div style="border: 1px solid #e0e0e0; overflow: hidden; border-radius: 4px;">
+                <div style="border: 1px solid var(--border); overflow: hidden; border-radius: 4px;">
                     <TitleBar>
                         <span>RML Showcase</span>
                     </TitleBar>
@@ -21,7 +21,7 @@
                 <div class="button-row">
                     <Button label="重置标题" on-click={on_reset_title} />
                 </div>
-                <div style="border: 1px solid #e0e0e0; overflow: hidden; border-radius: 4px;">
+                <div style="border: 1px solid var(--border); overflow: hidden; border-radius: 4px;">
                     <TitleBar>
                         <span>{title}</span>
                     </TitleBar>

@@ -1,0 +1,48 @@
+<component>
+    <CaseDocPage
+        title={t("case.key_binding.title")}
+        description="声明式键盘快捷键：通过 <KeyBinding key='Ctrl+S' on-press={on_save} /> 绑定快捷键组合，在子树获得焦点时监听 keydown 事件，匹配后自动触发回调。支持 when 条件控制是否启用。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <Card title="键盘快捷键演示">
+                <p>点击下方输入框获取焦点，然后按下快捷键：</p>
+                <KeyBinding key="Ctrl+S" on-press={on_save}>
+                    <KeyBinding key="Ctrl+O" on-press={on_open}>
+                        <KeyBinding key="Escape" on-press={on_clear}>
+                            <Input placeholder="点击此处获取焦点，然后按 Ctrl+S / Ctrl+O / Escape" style="margin-bottom: 12px;" />
+                        </KeyBinding>
+                    </KeyBinding>
+                </KeyBinding>
+
+                <div display="flex" flex-direction="column" gap="8px" style="margin-top: 12px;">
+                    <p>最近触发的快捷键：{last_triggered}</p>
+                    <p>触发次数：{trigger_count}</p>
+                </div>
+
+                <div display="flex" flex-direction="row" gap="16px" style="margin-top: 12px;">
+                    <Button primary label="Save" on-click={on_save_click} />
+                    <Button label="Open" on-click={on_open_click} />
+                    <Button label="Clear" on-click={on_clear_click} />
+                </div>
+            </Card>
+
+            <Card title="条件快捷键 (when)">
+                <p>切换下方开关启用/禁用 Ctrl+D 快捷键：</p>
+                <div display="flex" flex-direction="row" gap="12px" style="align-items: center; margin-bottom: 12px;">
+                    <Switch checked={shortcut_enabled} />
+                    <span>快捷键 {shortcut_status}</span>
+                </div>
+                <KeyBinding key="Ctrl+D" when={shortcut_enabled} on-press={on_debug}>
+                    <Input placeholder="Ctrl+D（条件启用/禁用）" />
+                </KeyBinding>
+                <p style="margin-top: 8px;">调试触发次数：{debug_count}</p>
+            </Card>
+        </template>
+
+        <template slot="api">
+            <h3>KeyBinding 相关 API</h3>
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+        </template>
+    </CaseDocPage>
+</component>
