@@ -9,4 +9,6 @@
     --primary-foreground: #ffffff;
     --title-bar: #f3f4f6;
     --status-bar: #f3f4f6;
+    --chrome-surface: #f3f4f6;
+    --editor-surface: #ffffff;
 }

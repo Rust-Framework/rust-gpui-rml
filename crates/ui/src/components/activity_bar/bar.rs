@@ -128,8 +128,8 @@ impl Render for ActivityBar {
             .child(v_flex().w_full().items_center().children(action_buttons));
 
         // ── 面板内容 ──
-        // icon_bar 使用 sidebar 背景与窗口主色形成色差；panel_body 保持透明，
-        // 由外层窗口主色背景透出，确保主色调落在窗口内容区。
+        // icon_bar 使用 sidebar（chrome）；panel_body 使用 tab_active（editor 工作面），
+        // 与 Tab Body / 激活 Tab 同色，并与图标栏形成可识别色差。
         let active_id_for_body = self.active_id.clone();
         let panel_body = if let Some(active) = active_id_for_body.as_deref() {
             match self.panels.iter().find(|p| p.id() == active) {
@@ -138,6 +138,7 @@ impl Render for ActivityBar {
                     .h_full()
                     .min_w_0()
                     .overflow_hidden()
+                    .bg(cx.theme().tab_active)
                     .child(panel.render(window, cx))
                     .into_any_element(),
                 None => div().w_0().h_full().into_any_element(),

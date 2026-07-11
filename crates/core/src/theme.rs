@@ -286,6 +286,8 @@ fn builtin_light_colors() -> HashMap<String, Rgba> {
     m.insert("--primary-foreground".to_string(), rgba_from_hex(0xffffff));
     m.insert("--title-bar".to_string(), rgba_from_hex(0xf3f4f6));
     m.insert("--status-bar".to_string(), rgba_from_hex(0xf3f4f6));
+    m.insert("--chrome-surface".to_string(), rgba_from_hex(0xf3f4f6));
+    m.insert("--editor-surface".to_string(), rgba_from_hex(0xffffff));
     m
 }
 
@@ -307,6 +309,8 @@ fn builtin_dark_colors() -> HashMap<String, Rgba> {
     m.insert("--primary-foreground".to_string(), rgba_from_hex(0xffffff));
     m.insert("--title-bar".to_string(), rgba_from_hex(0x1a1b1d));
     m.insert("--status-bar".to_string(), rgba_from_hex(0x1a1b1d));
+    m.insert("--chrome-surface".to_string(), rgba_from_hex(0x1a1b1d));
+    m.insert("--editor-surface".to_string(), rgba_from_hex(0x222427));
     m
 }
 
@@ -363,6 +367,7 @@ fn apply_dark_theme_config(cx: &mut App) {
     t.title_bar = gpui::rgb(0x1a1b1d).into();
     t.title_bar_border = gpui::rgb(0x0f1012).into();
     t.sidebar = gpui::rgb(0x1a1b1d).into();
+    t.sidebar_accent = gpui::rgb(0x2a2b30).into();
     t.tab_bar = gpui::transparent_black();
     t.tab_bar_segmented = gpui::rgb(0x1a1b1d).into();
     t.tab_foreground = gpui::rgb(0xd4d4d8).into();
@@ -399,8 +404,8 @@ fn apply_dark_theme_config(cx: &mut App) {
     t.scrollbar_thumb = gpui::rgb(0x555555).into();
     t.scrollbar_thumb_hover = gpui::rgb(0x666666).into();
 
-    t.border = gpui::transparent_black();
-    t.drag_border = gpui::transparent_black();
+    t.border = gpui::rgb(0x374151).into();
+    t.drag_border = gpui::rgb(0x007acc).into();
     t.popover = gpui::rgb(0x2a2b32).into();
     t.popover_foreground = gpui::rgb(0xd4d4d8).into();
     t.accent = gpui::rgb(0x094771).into();
@@ -429,7 +434,8 @@ fn apply_light_theme_config(cx: &mut App) {
     t.title_bar = gpui::rgb(0xf3f4f6).into();
     t.title_bar_border = gpui::rgb(0xe5e7eb).into();
     t.sidebar = gpui::rgb(0xf3f4f6).into();
-    t.tab_bar = gpui::rgb(0xf9fafb).into();
+    t.sidebar_accent = gpui::rgb(0xe5e7eb).into();
+    t.tab_bar = gpui::rgb(0xf3f4f6).into();
     t.tab_bar_segmented = gpui::rgb(0xf3f4f6).into();
     t.tab_foreground = gpui::rgb(0x374151).into();
     t.tab_active = gpui::rgb(0xffffff).into();

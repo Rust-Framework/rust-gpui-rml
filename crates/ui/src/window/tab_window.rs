@@ -854,7 +854,7 @@ impl RenderOnce for TabWindowShell {
 
         let body = resizable_panel()
             .flex_1()
-            .bg(cx.theme().background)
+            .bg(cx.theme().tab_active)
             .child(
                 div()
                     .id("tab-window-body")
@@ -862,7 +862,7 @@ impl RenderOnce for TabWindowShell {
                     .min_h_0()
                     .size_full()
                     .relative()
-                    .bg(cx.theme().background)
+                    .bg(cx.theme().tab_active)
                     .child(
                         div()
                             .id("tab-window-scroll-area")
@@ -894,7 +894,7 @@ impl RenderOnce for TabWindowShell {
                     .w_full()
                     .text_xs()
                     .text_color(cx.theme().muted_foreground)
-                    .bg(cx.theme().sidebar)
+                    .bg(cx.theme().tab_active)
                     .border_t_1()
                     .border_color(cx.theme().border)
                     .child(bottom);
@@ -926,7 +926,7 @@ impl RenderOnce for TabWindowShell {
                 .flex_1()
                 .min_w_0()
                 .h_full()
-                .bg(cx.theme().background)
+                .bg(cx.theme().tab_active)
                 .child(center_col)
                 .child(d)
                 .into_any_element()
@@ -940,7 +940,7 @@ impl RenderOnce for TabWindowShell {
             .w_full()
             .h_full()
             .min_h_0()
-            .bg(cx.theme().background);
+            .bg(cx.theme().tab_active);
         let mut main_h = h_resizable("tab-window-main-row").with_state(&h_state);
 
         match left_elem {
@@ -950,7 +950,7 @@ impl RenderOnce for TabWindowShell {
                         .w(self.left_width)
                         .flex_none()
                         .h_full()
-                        .bg(cx.theme().sidebar)
+                        .bg(cx.theme().transparent)
                         .child(left),
                 );
             }
@@ -960,7 +960,7 @@ impl RenderOnce for TabWindowShell {
                         .size(self.left_width)
                         .flex_none()
                         .size_range(px(48.)..px(600.))
-                        .bg(cx.theme().sidebar)
+                        .bg(cx.theme().transparent)
                         .child(left),
                 );
             }
@@ -980,7 +980,7 @@ impl RenderOnce for TabWindowShell {
                         .size(self.right_width)
                         .flex_none()
                         .size_range(px(160.)..px(800.))
-                        .bg(cx.theme().sidebar)
+                        .bg(cx.theme().transparent)
                         .child(right),
                 );
             }
@@ -994,20 +994,20 @@ impl RenderOnce for TabWindowShell {
                     .w(self.right_width)
                     .flex_none()
                     .h_full()
-                    .bg(cx.theme().sidebar)
+                    .bg(cx.theme().transparent)
                     .child(right),
             );
         }
 
         v_flex()
             .size_full()
-            .bg(cx.theme().background)
+            .bg(cx.theme().tab_active)
             .child(title_bar)
             .child(
                 div()
                     .flex_1()
                     .min_h_0()
-                    .bg(cx.theme().background)
+                    .bg(cx.theme().tab_active)
                     .child(row),
             )
             .when_some(footer_elem, |this, slot| this.child(slot))
