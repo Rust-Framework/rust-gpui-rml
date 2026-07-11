@@ -266,6 +266,20 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
         "title", "field_type", "value", "options", "on_change", "default_value",
         "description", "layout", "keywords", "min", "max", "step",
     ]),
+    // Sidebar 专用（侧边栏容器：side/collapsible/collapsed）
+    // 构造器 Sidebar::new(id)，需 ElementId（Stateless），支持 ref 指令稳定 id
+    // side="left"/"right" → .side(Side::Left/Right)
+    // collapsible="icon"/"offcanvas"/"none" → .collapsible(SidebarCollapsible::X)
+    // collapsed → .collapsed(bool)（支持 bind 绑定）
+    ("Sidebar", &["side", "collapsible", "collapsed"]),
+    // SidebarMenu 专用（侧边栏菜单分组，无专用属性，仅通用 Styled 属性）
+    // 构造器 SidebarMenu::new()（无 ElementId、无 cx），实现 Styled
+    ("SidebarMenu", &[]),
+    // SidebarMenuItem 专用（侧边栏菜单项）
+    // 构造器 SidebarMenuItem::new(label)（label 为构造器参数，无 ElementId）
+    // icon → .icon(IconName::X)，active/default_open/click_to_open/click_to_toggle → bool
+    // disabled → .disable(bool)（注意方法名），on_click 走通用事件
+    ("SidebarMenuItem", &["label", "icon", "active", "default_open", "click_to_open", "click_to_toggle", "disabled", "on_click"]),
 ];
 
 /// 查询组件的所有已注册属性（通用 + 专用）

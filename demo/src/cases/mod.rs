@@ -196,3 +196,6 @@ pub mod notification_case;
 pub mod scroll_case;
 #[path = "form_case.rml.rs"]
 pub mod form_case;
+
+#[path = "sidebar_case.rml.rs"]
+pub mod sidebar_case;

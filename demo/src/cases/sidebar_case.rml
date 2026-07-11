@@ -1,0 +1,123 @@
+<component>
+    <CaseDocPage
+        title={t("case.sidebar.title")}
+        description="Sidebar 是侧边栏导航容器组件，标签为 PascalCase Sidebar 或 kebab-case sidebar。层级结构为 Sidebar &gt; SidebarMenu &gt; SidebarMenuItem。Sidebar 需 ElementId（Stateless），支持 side（left/right）、collapsible（icon/offcanvas/none）、collapsed 属性，以及 header/footer 插槽。SidebarMenu 是菜单分组容器（无 ElementId，实现 Styled）。SidebarMenuItem 是菜单项，label 为构造器参数，支持 icon/active/default_open/click_to_open/click_to_toggle/disabled/on_click，子节点为子菜单（嵌套 SidebarMenuItem）。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <div class="demo-section">
+                <h3>基础侧边栏</h3>
+                <p>默认左侧、不可折叠。SidebarMenu 分组，SidebarMenuItem 菜单项支持 icon 图标与 active 高亮。点击菜单项触发 on-click 回调。</p>
+                <div style="height: 320px; display: flex; border: 1px solid var(--color_border);">
+                    <Sidebar side="left" ref="basic_sidebar">
+                        <SidebarMenu>
+                            <SidebarMenuItem label="首页" icon="Frame" active="" on-click={on_item_click} />
+                            <SidebarMenuItem label="搜索" icon="Search" on-click={on_item_click} />
+                            <SidebarMenuItem label="通知" icon="Bell" on-click={on_item_click} />
+                        </SidebarMenu>
+                        <SidebarMenu>
+                            <SidebarMenuItem label="设置" icon="Settings" on-click={on_item_click} />
+                            <SidebarMenuItem label="帮助" icon="Info" on-click={on_item_click} />
+                        </SidebarMenu>
+                    </Sidebar>
+                    <div style="flex: 1; padding: 16px;">
+                        <p>主内容区域</p>
+                        <p>Sidebar 通过 SidebarEntry 枚举包装子节点，SidebarMenu → Menu 变体，SidebarMenuItem → Item 变体。</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="demo-section">
+                <h3>可折叠侧边栏</h3>
+                <p>collapsible="icon" 启用图标折叠模式，collapsed 绑定状态字段控制展开/折叠。折叠时仅显示图标，悬停可展开。点击菜单项同样触发回调。</p>
+                <div style="height: 320px; display: flex; border: 1px solid var(--color_border);">
+                    <Sidebar side="left" collapsible="icon" collapsed={is_collapsed} ref="collapsible_sidebar">
+                        <SidebarMenu>
+                            <SidebarMenuItem label="仪表盘" icon="LayoutDashboard" on-click={on_item_click} />
+                            <SidebarMenuItem label="分析" icon="ChartPie" on-click={on_item_click} />
+                            <SidebarMenuItem label="报告" icon="File" on-click={on_item_click} />
+                        </SidebarMenu>
+                    </Sidebar>
+                    <div style="flex: 1; padding: 16px;">
+                        <p>折叠状态：&#123;is_collapsed&#125;</p>
+                        <Button label="切换折叠" on-click={on_toggle_collapse} />
+                    </div>
+                </div>
+            </div>
+
+            <div class="demo-section">
+                <h3>带 header/footer 插槽</h3>
+                <p>slot="header" 注入顶部内容（如品牌标识），slot="footer" 注入底部内容（如用户信息）。插槽通过 .header() / .footer() builder 方法注入。</p>
+                <div style="height: 360px; display: flex; border: 1px solid var(--color_border);">
+                    <Sidebar side="left">
+                        <div slot="header" style="padding: 12px; font-weight: bold; font-size: 16px;">
+                            🚀 RML Framework
+                        </div>
+                        <SidebarMenu>
+                            <SidebarMenuItem label="项目" icon="Folder" on-click={on_item_click} />
+                            <SidebarMenuItem label="团队" icon="User" on-click={on_item_click} />
+                            <SidebarMenuItem label="文档" icon="BookOpen" on-click={on_item_click} />
+                        </SidebarMenu>
+                        <div slot="footer" style="padding: 12px; border-top: 1px solid var(--color_border);">
+                            <p style="font-size: 12px; margin: 0;">当前用户：admin</p>
+                        </div>
+                    </Sidebar>
+                    <div style="flex: 1; padding: 16px;">
+                        <p>header/footer 通过 slot 属性路由到 .header() / .footer() 方法。</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="demo-section">
+                <h3>子菜单嵌套</h3>
+                <p>SidebarMenuItem 可嵌套子菜单：子节点为 SidebarMenuItem，通过 .children(vec![...]) 注入。default-open 控制子菜单默认展开，click-to-toggle 允许点击切换展开/折叠。</p>
+                <div style="height: 360px; display: flex; border: 1px solid var(--color_border);">
+                    <Sidebar side="left">
+                        <SidebarMenu>
+                            <SidebarMenuItem label="文件" icon="File" default-open="" on-click={on_item_click}>
+                                <SidebarMenuItem label="新建文件" on-click={on_item_click} />
+                                <SidebarMenuItem label="打开文件" on-click={on_item_click} />
+                                <SidebarMenuItem label="最近打开" on-click={on_item_click} />
+                            </SidebarMenuItem>
+                            <SidebarMenuItem label="编辑" icon="Copy" default-open="" on-click={on_item_click}>
+                                <SidebarMenuItem label="撤销" on-click={on_item_click} />
+                                <SidebarMenuItem label="重做" on-click={on_item_click} />
+                            </SidebarMenuItem>
+                            <SidebarMenuItem label="视图" icon="Eye" on-click={on_item_click} />
+                        </SidebarMenu>
+                    </Sidebar>
+                    <div style="flex: 1; padding: 16px;">
+                        <p>子菜单通过 .children(vec![...]) 注入，支持多级嵌套。</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="demo-section">
+                <h3>禁用菜单项</h3>
+                <p>disabled 属性禁用菜单项（映射到 .disable(bool) 方法），禁用项不可点击。右侧侧边栏演示 side="right"。</p>
+                <div style="height: 320px; display: flex; border: 1px solid var(--color_border);">
+                    <div style="flex: 1; padding: 16px;">
+                        <p>主内容区域（右侧侧边栏演示）</p>
+                    </div>
+                    <Sidebar side="right">
+                        <SidebarMenu>
+                            <SidebarMenuItem label="可用操作" icon="Check" on-click={on_item_click} />
+                            <SidebarMenuItem label="禁用操作" icon="Close" disabled="true" on-click={on_item_click} />
+                            <SidebarMenuItem label="另一操作" icon="Plus" on-click={on_item_click} />
+                        </SidebarMenu>
+                    </Sidebar>
+                </div>
+            </div>
+        </template>
+
+        <template slot="api">
+            <h3>Sidebar</h3>
+            <Table columns={sidebar_api_columns} rows={sidebar_api_rows} bordered="" stripe="" />
+            <h3>SidebarMenu</h3>
+            <Table columns={menu_api_columns} rows={menu_api_rows} bordered="" stripe="" />
+            <h3>SidebarMenuItem</h3>
+            <Table columns={item_api_columns} rows={item_api_rows} bordered="" stripe="" />
+            <p>另：Sidebar 通过 SidebarEntry 枚举包装子节点（Menu/Item 变体），使泛型 Sidebar&lt;E: SidebarItem&gt; 可在 RML 中使用。SidebarMenu 实现 Styled 支持 CSS 样式，SidebarMenuItem 不实现 Styled。label 为 SidebarMenuItem 构造器参数（非 setter），disabled 映射到 .disable() 方法（注意方法名）。</p>
+        </template>
+    </CaseDocPage>
+</component>

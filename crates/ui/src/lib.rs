@@ -105,6 +105,8 @@ pub use components::{
     ComboboxState, ComboboxEvent, StringComboboxState, StringComboboxEvent,
     HoverCardState,
     Scroll,
+    Sidebar, SidebarCollapsible, SidebarEntry, SidebarFooter, SidebarHeader, SidebarMenu,
+    SidebarMenuItem, SidebarToggleButton,
     h_resizable, h_virtual_list, resizable_panel, v_resizable, v_virtual_list,
     configure_menu_bar_popup, menu_bar_button,
     AnySettingField, GroupBoxVariant, NumberFieldOptions, RenderOptions, SelectIndex,

@@ -26,6 +26,7 @@ pub mod resizable;
 pub mod select;
 pub mod scroll;
 pub mod settings;
+pub mod sidebar;
 pub mod sheet;
 pub mod skeleton;
 pub mod spinner;
@@ -85,6 +86,10 @@ pub use sheet::Sheet;
 pub use skeleton::Skeleton;
 pub use select::{IndexPath, SearchableVec, Select, SelectEvent, SelectState, StringSelectEvent, StringSelectState};
 pub use scroll::Scroll;
+pub use sidebar::{
+    Sidebar, SidebarCollapsible, SidebarEntry, SidebarFooter, SidebarHeader, SidebarMenu,
+    SidebarMenuItem, SidebarToggleButton,
+};
 pub use spinner::Spinner;
 pub use stepper::{Stepper, StepperItem};
 pub use virtual_list::{VirtualList, VirtualListScrollHandle, h_virtual_list, v_virtual_list};

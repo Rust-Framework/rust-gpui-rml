@@ -728,6 +728,29 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             kind: ComponentKind::Stateless,
             container: true,
         }),
+        // Sidebar：侧边栏容器，构造器 Sidebar::new(id)，需 ElementId（Stateless）
+        // 支持 ref 指令稳定 id、header/footer 插槽、可折叠
+        // 子节点为 <SidebarMenu> / <SidebarMenuItem>，通过 SidebarEntry 枚举包装注入
+        "Sidebar" | "sidebar" => Some(ComponentTag {
+            ctor_path: "rml_ui::Sidebar",
+            kind: ComponentKind::Stateless,
+            container: true,
+        }),
+        // SidebarMenu：侧边栏菜单分组，构造器 SidebarMenu::new()（无 ElementId、无 cx）
+        // 实现 Styled，子节点为 <SidebarMenuItem>
+        "SidebarMenu" | "sidebar-menu" => Some(ComponentTag {
+            ctor_path: "rml_ui::SidebarMenu",
+            kind: ComponentKind::StatelessNoId,
+            container: true,
+        }),
+        // SidebarMenuItem：侧边栏菜单项，构造器 SidebarMenuItem::new(label)
+        // label 为构造器参数，支持 icon/active/default_open/click_to_open/click_to_toggle/disabled/on_click
+        // 不实现 Styled，子节点为 <SidebarMenuItem>（子菜单）通过 .children(vec![...]) 注入
+        "SidebarMenuItem" | "sidebar-menu-item" => Some(ComponentTag {
+            ctor_path: "rml_ui::SidebarMenuItem",
+            kind: ComponentKind::StatelessNoId,
+            container: true,
+        }),
         _ => None,
     }
 }

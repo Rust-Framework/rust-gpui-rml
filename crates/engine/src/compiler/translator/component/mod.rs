@@ -31,6 +31,9 @@ pub mod scroll;
 pub mod separator;
 pub mod settings;
 pub mod sheet;
+pub mod sidebar;
+pub mod sidebar_menu;
+pub mod sidebar_menu_item;
 pub mod stateful;
 pub mod stateless;
 pub mod stepper;
@@ -137,6 +140,9 @@ pub fn register_all(registry: &mut crate::compiler::translator::TranslatorRegist
     virtual_list::register(registry);
     resizable::register(registry);
     settings::register(registry);
+    sidebar::register(registry);
+    sidebar_menu::register(registry);
+    sidebar_menu_item::register(registry);
     activity_bar::register(registry);
     registry.register(ComponentTranslator);
 }
