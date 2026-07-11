@@ -1,0 +1,2 @@
+﻿[1m[91merror[0m: could not compile `rust-rml-demo` (bin "rust-rml-demo") due to 3 previous errors; 12 warnings emitt
+ed

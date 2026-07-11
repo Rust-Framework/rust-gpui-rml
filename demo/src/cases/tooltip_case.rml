@@ -19,7 +19,7 @@
                 <h3>动态绑定</h3>
                 <p>tooltip={dynamic_tooltip} 绑定到 computed 方法，可动态切换提示文本。点击按钮循环切换 tooltip 内容。</p>
                 <div class="button-row">
-                    <Button label="切换 Tooltip" on-click={on_cycle_tooltip} variant="primary" />
+                    <Button label="切换 Tooltip" on-click={on_cycle_tooltip} primary />
                     <Button label="悬浮查看" tooltip={dynamic_tooltip} />
                 </div>
                 <p>当前 tooltip 内容：{dynamic_tooltip}</p>
@@ -29,9 +29,9 @@
                 <h3>不同 variant 按钮的 tooltip</h3>
                 <p>所有 Button variant 均支持 tooltip 属性。</p>
                 <div class="button-row">
-                    <Button label="Primary" variant="primary" tooltip="主要操作" />
-                    <Button label="Danger" variant="danger" tooltip="危险操作" />
-                    <Button label="Ghost" variant="ghost" tooltip="幽灵按钮" />
+                    <Button label="Primary" primary tooltip="主要操作" />
+                    <Button label="Danger" danger tooltip="危险操作" />
+                    <Button label="Ghost" ghost tooltip="幽灵按钮" />
                 </div>
             </div>
 

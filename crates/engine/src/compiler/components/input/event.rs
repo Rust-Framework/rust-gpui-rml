@@ -34,7 +34,7 @@
 use crate::parser::ast::EventHandler;
 use crate::tags;
 
-/// 检测属性是否为 Input 事件（Input / TextInput / CodeEditor / OtpInput 支持）
+/// 检测属性是否为 Input 事件（Input / TextInput / NumberInput / CodeEditor / OtpInput 支持）
 pub fn is_input_event(name: &str, tag: &str) -> bool {
     let canonical = tags::canonical_tag(tag);
     // OtpInput 支持 on_change/on_focus/on_blur（OtpState: EventEmitter<InputEvent>），
@@ -42,7 +42,7 @@ pub fn is_input_event(name: &str, tag: &str) -> bool {
     if canonical == "OtpInput" {
         return matches!(name, "on_change" | "on_focus" | "on_blur");
     }
-    if canonical != "Input" && canonical != "TextInput" && canonical != "CodeEditor" {
+    if canonical != "Input" && canonical != "TextInput" && canonical != "CodeEditor" && canonical != "NumberInput" {
         return false;
     }
     matches!(name, "on_change" | "on_enter" | "on_focus" | "on_blur")
@@ -119,6 +119,10 @@ mod tests {
         assert!(is_input_event("on_enter", "Input"));
         assert!(is_input_event("on_focus", "TextInput"));
         assert!(is_input_event("on_blur", "CodeEditor"));
+        assert!(is_input_event("on_change", "NumberInput"));
+        assert!(is_input_event("on_enter", "NumberInput"));
+        assert!(is_input_event("on_focus", "number-input"));
+        assert!(is_input_event("on_blur", "number-input"));
     }
 
     #[test]

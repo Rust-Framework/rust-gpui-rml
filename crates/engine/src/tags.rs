@@ -51,6 +51,9 @@ pub fn canonical_tag(tag: &str) -> String {
         "separator" => "DescriptionSeparator".to_string(),
         "breadcrumb" => "Breadcrumb".to_string(),
         "stepper" => "Stepper".to_string(),
+        "select" => "Select".to_string(),
+        "calendar" => "Calendar".to_string(),
+        "combobox" => "Combobox".to_string(),
         // resizable 小写别名映射（normalize_component_tag 不转为 PascalCase）
         "resizable" => "Resizable".to_string(),
         // settings 小写别名映射（normalize_component_tag 不转为 PascalCase）
@@ -208,6 +211,26 @@ pub enum ComponentKind {
         state_field: &'static str,
         state_ctor: &'static str,
     },
+    /// 有状态组件 + 委托注入：构造调用形如 `Select::new(&entity)`
+    ///
+    /// 与 `Stateful` 类似，但 state 构造需要额外的 **委托参数**（delegate），
+    /// 委托数据来自 ViewModel 字段（通过 `delegate_attr` 指定的 bind 属性）。
+    ///
+    /// codegen 在 state_ctor 闭包前生成 `let __rml_delegate = self.<field>.clone();`，
+    /// state_ctor 闭包以 `move` 捕获 `__rml_delegate`，签名 `(w, c) -> T`。
+    ///
+    /// 典型场景：`<Select items={my_items} />` →
+    /// `SelectState::new(delegate, None, w, c)`，其中 delegate = `self.my_items`
+    ///
+    /// - `state_field`：默认字段名（同 Stateful）
+    /// - `state_ctor`：state 构造闭包表达式字符串，引用 `__rml_delegate` 变量，
+    ///   签名 `move |w, c| State::new(__rml_delegate, ..., w, c)`
+    /// - `delegate_attr`：bind 属性名，如 `"items"`，用于从 ViewModel 提取委托数据
+    StatefulWithDelegate {
+        state_field: &'static str,
+        state_ctor: &'static str,
+        delegate_attr: &'static str,
+    },
     /// Entity 引用组件：从 Host 的 `Entity<T>` 字段直接 clone
     /// 配合 `ref="field_name"` 指令指定字段名
     /// 生成 `self.<field>.as_ref().expect("init in on_loaded").clone()`
@@ -246,7 +269,7 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             kind: ComponentKind::Stateless,
             container: false,
         }),
-        // Alert：variant 关联函数 + message 构造器参数，委托到 compiler/alert 专属处理
+        // Alert：variant 布尔属性 + message 构造器参数，委托到 compiler/alert 专属处理
         // PascalCase: <Alert>，小写别名: <alert>（参考 Accordion 模式）
         "Alert" | "alert" => Some(ComponentTag {
             ctor_path: "rml_ui::Alert",
@@ -322,6 +345,17 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
         }),
         "TextInput" => Some(ComponentTag {
             ctor_path: "rml_ui::Input",
+            kind: ComponentKind::Stateful {
+                state_field: "input_state",
+                state_ctor: "|w, c| rml_ui::InputState::new(w, c)",
+            },
+            container: false,
+        }),
+        // NumberInput：数字输入框，复用 InputState（同 Input/TextInput）
+        // 构造器 NumberInput::new(&Entity<InputState>)，步进按钮默认内部处理
+        // value={field} 双向绑定走 InputStateBridge（同 Input），on_change 走 InputEvent 订阅
+        "NumberInput" | "number-input" => Some(ComponentTag {
+            ctor_path: "rml_ui::NumberInput",
             kind: ComponentKind::Stateful {
                 state_field: "input_state",
                 state_ctor: "|w, c| rml_ui::InputState::new(w, c)",
@@ -526,6 +560,60 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             kind: ComponentKind::Stateful {
                 state_field: "otp_state",
                 state_ctor: "|w, c| rml_ui::OtpState::new(6usize, w, c)",
+            },
+            container: false,
+        }),
+        // ColorPicker：Stateful 颜色选择器，构造器 ColorPicker::new(&Entity<ColorPickerState>)
+        // ColorPickerState::new(w, c) 标准构造，on_change 走 ColorPickerEvent 订阅（state_event.rs）
+        "ColorPicker" | "color-picker" => Some(ComponentTag {
+            ctor_path: "rml_ui::ColorPicker",
+            kind: ComponentKind::Stateful {
+                state_field: "color_picker_state",
+                state_ctor: "|w, c| rml_ui::ColorPickerState::new(w, c)",
+            },
+            container: false,
+        }),
+        // Calendar：Stateful 日历选择器，构造器 Calendar::new(&Entity<CalendarState>)
+        // CalendarState::new(w, c) 标准构造，on_select 走 CalendarEvent 订阅（state_event.rs）
+        "Calendar" | "calendar" => Some(ComponentTag {
+            ctor_path: "rml_ui::Calendar",
+            kind: ComponentKind::Stateful {
+                state_field: "calendar_state",
+                state_ctor: "|w, c| rml_ui::CalendarState::new(w, c)",
+            },
+            container: false,
+        }),
+        // DatePicker：Stateful 日期选择器，构造器 DatePicker::new(&Entity<DatePickerState>)
+        // DatePickerState::new(w, c) 标准构造，on_change 走 DatePickerEvent 订阅（state_event.rs）
+        "DatePicker" | "date-picker" => Some(ComponentTag {
+            ctor_path: "rml_ui::DatePicker",
+            kind: ComponentKind::Stateful {
+                state_field: "date_picker_state",
+                state_ctor: "|w, c| rml_ui::DatePickerState::new(w, c)",
+            },
+            container: false,
+        }),
+        // Select：StatefulWithDelegate 下拉选择器，构造器 Select::new(&Entity<SelectState<D>>)
+        // SelectState::new(delegate, None, w, c) 需要委托参数，通过 items={field} bind 注入
+        // 委托类型为 SearchableVec<SharedString>（StringSelectState 别名），on_change 走 SelectEvent 订阅
+        "Select" | "select" => Some(ComponentTag {
+            ctor_path: "rml_ui::Select",
+            kind: ComponentKind::StatefulWithDelegate {
+                state_field: "select_state",
+                state_ctor: "move |w, c| rml_ui::SelectState::new(__rml_delegate, None, w, c)",
+                delegate_attr: "items",
+            },
+            container: false,
+        }),
+        // Combobox：StatefulWithDelegate 多选下拉，构造器 Combobox::new(&Entity<ComboboxState<D>>)
+        // ComboboxState::new(delegate, vec![], w, c) 需要委托参数，通过 items={field} bind 注入
+        // 委托类型为 SearchableVec<SharedString>（StringComboboxState 别名），on_change 走 ComboboxEvent 订阅
+        "Combobox" | "combobox" => Some(ComponentTag {
+            ctor_path: "rml_ui::Combobox",
+            kind: ComponentKind::StatefulWithDelegate {
+                state_field: "combobox_state",
+                state_ctor: "move |w, c| rml_ui::ComboboxState::new(__rml_delegate, vec![], w, c)",
+                delegate_attr: "items",
             },
             container: false,
         }),

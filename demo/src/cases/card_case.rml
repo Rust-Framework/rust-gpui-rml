@@ -32,7 +32,7 @@
                 <input value={card_body} placeholder="输入卡片内容" />
                 <p>当前 hoverable: {hoverable}</p>
                 <div class="button-row">
-                    <Button label="切换 hoverable" variant="primary" on-click={on_toggle_hoverable} />
+                    <Button label="切换 hoverable" primary on-click={on_toggle_hoverable} />
                 </div>
                 <Card title={card_title} hoverable={hoverable}>
                     <p>{card_body}</p>

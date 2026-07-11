@@ -11,7 +11,7 @@
                 <p>以下 content 绑定 bool 字段 active（当前值：{active}）：</p>
                 <div class="content-box" content={self.active} />
                 <div class="button-row">
-                    <Button label="count +1" variant="primary" on-click={on_inc} />
+                    <Button label="count +1" primary on-click={on_inc} />
                     <Button label="toggle active" on-click={on_toggle} />
                 </div>
             </Card>

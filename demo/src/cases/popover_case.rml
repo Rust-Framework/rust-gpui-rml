@@ -83,12 +83,12 @@
                 <h3>富内容 Rich Content</h3>
                 <p>气泡内容支持任意 GPUI 元素，包括表单、按钮、列表等。下方演示一个含标题、输入框和操作按钮的富内容气泡。</p>
                 <Popover>
-                    <Button slot="trigger" label="打开设置面板" variant="primary" />
+                    <Button slot="trigger" label="打开设置面板" primary />
                     <div class="popover-panel">
                         <h4>用户设置</h4>
                         <p class="hint">在此面板中放置表单或操作按钮。</p>
                         <div class="popover-row">
-                            <Button label="保存" variant="primary" size="small" />
+                            <Button label="保存" primary size="small" />
                             <Button label="取消" size="small" />
                         </div>
                     </div>

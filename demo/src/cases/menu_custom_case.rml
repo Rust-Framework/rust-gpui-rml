@@ -12,7 +12,7 @@
                     <h3>自定义菜单项</h3>
                     <p>header="" 作为分组标题，menu-separator 分隔不同功能区：</p>
                     <dropdown-menu>
-                        <Button label="Settings" variant="ghost" />
+                        <Button label="Settings" ghost />
                         <menu-item header="" label="Display" />
                         <menu-item label="Dark Mode" on-click={on_toggle_dark} />
                         <menu-separator />
@@ -25,7 +25,7 @@
                     <h3>主题切换</h3>
                     <p>点击 Dark Mode 切换 dark_mode 字段，当前状态：{dark_mode_label}</p>
                     <dropdown-menu>
-                        <Button label="Theme" variant="ghost" />
+                        <Button label="Theme" ghost />
                         <menu-item label="Dark Mode" checked={dark_mode} on-click={on_toggle_dark} />
                     </dropdown-menu>
                 </div>
@@ -34,7 +34,7 @@
                     <h3>链接项与登出</h3>
                     <p>Help Center 为外链，Sign Out 触发命令更新状态：</p>
                     <dropdown-menu>
-                        <Button label="Account" variant="ghost" />
+                        <Button label="Account" ghost />
                         <menu-item label="Help Center" href="https://rml.dev/help/" icon="Info" />
                         <menu-separator />
                         <menu-item label="Sign Out" icon="ExternalLink" on-click={on_sign_out} />

@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.tab_bar.title")}
-        description="RML 标签栏组件分为两种：TabBar（原生 header-only 标签栏，纯 header 切换）与 Tabs（WPF TabControl 风格，header + body 一体化切换）。子项统一用 Tab 标签（底层为 TabItem），label 指定标题，icon 添加图标。5 种 variant（underline/pill/flat/outline/segmented）通过同名属性切换；尺寸用 size 属性；prefix/suffix 注入首尾元素；menu 模式启用下拉；on-click 事件回调选中索引。内容面板（body）与 bordered 边框包裹为 Tabs 专属能力。"
+        description="RML 标签栏组件分为两种：TabBar（原生 header-only 标签栏，纯 header 切换）与 Tabs（WPF TabControl 风格，header + body 一体化切换）。子项统一用 Tab 标签（底层为 TabItem），label 指定标题，icon 添加图标。5 种 variant（underline/pill/flat/outline/segmented）通过独立布尔属性切换；尺寸用 size 属性；prefix/suffix 注入首尾元素；menu 模式启用下拉；on-click 事件回调选中索引。内容面板（body）与 bordered 边框包裹为 Tabs 专属能力。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
@@ -23,19 +23,19 @@
                         <Tab label="Underline" />
                         <Tab label="B" />
                     </TabBar>
-                    <TabBar variant="pill">
+                    <TabBar pill>
                         <Tab label="Pill" />
                         <Tab label="B" />
                     </TabBar>
-                    <TabBar variant="flat">
+                    <TabBar flat>
                         <Tab label="Flat" />
                         <Tab label="B" />
                     </TabBar>
-                    <TabBar variant="outline">
+                    <TabBar outline>
                         <Tab label="Outline" />
                         <Tab label="B" />
                     </TabBar>
-                    <TabBar variant="segmented">
+                    <TabBar segmented>
                         <Tab label="Segmented" />
                         <Tab label="B" />
                     </TabBar>

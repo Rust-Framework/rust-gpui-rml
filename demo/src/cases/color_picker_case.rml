@@ -1,0 +1,43 @@
+<component>
+    <CaseDocPage
+        title={t("case.color_picker.title")}
+        description="ColorPicker 是 RML 的颜色选择器组件，标签为 PascalCase ColorPicker 或 kebab-case color-picker。Stateful 模式，构造器 ColorPickerState::new(window, cx) 创建状态，ColorPicker::new(&state) 创建视图。支持 label、icon、size 等属性。on_change 通过 cx.subscribe 订阅 ColorPickerEvent::Change(Option<Hsla>) 触发，用户方法直接接收 Option<Hsla> 载荷。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <div class="demo-section">
+                <h3>1. 基础用法 + on_change 事件</h3>
+                <p>ColorPicker 通过 ref 指令绑定到 ElementRef ColorPickerState 字段。选择颜色后触发 ColorPickerEvent::Change，参数为 Option&lt;Hsla&gt;。</p>
+                <p>当前颜色：{current_color}</p>
+                <ColorPicker ref="basic_picker" on-change={on_color_change} />
+            </div>
+
+            <div class="demo-section">
+                <h3>2. label 属性</h3>
+                <p>label 设置标签文本，走通用 static setter 映射到 .label()。</p>
+                <ColorPicker ref="labeled_picker" label="主题色" />
+            </div>
+
+            <div class="demo-section">
+                <h3>3. icon 属性</h3>
+                <p>icon 设置图标，映射到 .icon(rml_ui::Icon::new(rml_ui::IconName::Value))。</p>
+                <ColorPicker ref="icon_picker" icon="Palette" />
+            </div>
+
+            <div class="demo-section">
+                <h3>4. 尺寸 size</h3>
+                <p>size 属性走通用 Sizable setter：xsmall / small / medium / large。点击按钮循环切换尺寸。</p>
+                <p>当前尺寸：{size_label}</p>
+                <div class="button-row">
+                    <Button label="切换尺寸" on-click={on_cycle_size} />
+                    <ColorPicker ref="sized_picker" size={size_value} />
+                </div>
+            </div>
+
+            <div class="demo-section">
+                <h3>API</h3>
+                <Table columns={api_columns} rows={api_rows} bordered />
+            </div>
+        </template>
+    </CaseDocPage>
+</component>

@@ -39,7 +39,7 @@
                 <p>点击按钮增减头像数量，观察 AvatarGroup 实时变化（演示 if 条件渲染）：</p>
                 <p>当前头像数: {avatar_count}</p>
                 <div class="button-row">
-                    <Button label="添加头像" variant="primary" on-click={on_add_avatar} />
+                    <Button label="添加头像" primary on-click={on_add_avatar} />
                     <Button label="移除头像" on-click={on_remove_avatar} />
                 </div>
                 <AvatarGroup limit="5" ellipsis="">

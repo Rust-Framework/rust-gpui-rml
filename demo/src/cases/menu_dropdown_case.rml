@@ -12,7 +12,7 @@
                     <h3>基础下拉</h3>
                     <p>anchor="TopRight" 锚定右上角弹出，点击 Button 触发：</p>
                     <dropdown-menu anchor="TopRight">
-                        <Button label="Options" variant="ghost" />
+                        <Button label="Options" ghost />
                         <menu-item label="Custom Action" icon="Star" on-click={on_custom} />
                         <menu-separator />
                         <menu-item label="Standard Action" on-click={on_standard} />
@@ -25,7 +25,7 @@
                     <h3>分隔符与图标</h3>
                     <p>menu-separator 分组，icon 添加图标，观察菜单项视觉分组：</p>
                     <dropdown-menu anchor="TopRight">
-                        <Button label="带图标的菜单" variant="ghost" />
+                        <Button label="带图标的菜单" ghost />
                         <menu-item label="Custom Action" icon="Star" on-click={on_custom} />
                         <menu-separator />
                         <menu-item label="Standard Action" icon="Check" on-click={on_standard} />

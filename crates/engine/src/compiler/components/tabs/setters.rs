@@ -15,20 +15,20 @@ use crate::parser::ast::EventHandler;
 
 /// 静态属性 → builder 方法
 ///
-/// - `variant="underline"` / `"pill"` / `"flat"` / `"outline"` / `"segmented"` → `.<variant>()`（仅 Tabs）
-/// - `variant="tab"` = 默认，no-op
+/// - `underline` / `pill` / `flat` / `outline` / `segmented` 布尔属性 → `.<name>()`（仅 Tabs）
 /// - `menu="true"` → `.menu(true)`（仅 Tabs）
 /// - `bordered=""` / `bordered="true"` / `bordered="false"` → `.bordered(<bool>)`（仅 Tabs）
 /// - `icon="User"` → `.icon(rml_ui::IconName::User)`（仅 Tab）
 /// - `closable` / `closable="true"` → `.closable(true)`（Tab / TabItem 共用）
 pub fn static_setter(name: &str, value: &str, tag: &str) -> Option<String> {
     match name {
-        // variant="underline" → .underline() 等（仅 Tabs 支持，TabItem 无这些方法）
-        // variant="tab" = 默认 TabVariant::Tab，no-op
-        "variant" if tag == "Tabs" => match value {
-            "flat" | "outline" | "pill" | "segmented" | "underline" => Some(format!(".{}()", value)),
-            "tab" => Some(String::new()),
-            _ => None,
+        // variant 布尔属性: underline → .underline() 等（仅 Tabs 支持，TabItem 无这些方法）
+        "flat" | "outline" | "pill" | "segmented" | "underline" if tag == "Tabs" => {
+            if value.is_empty() || value.eq_ignore_ascii_case("true") {
+                Some(format!(".{}()", name))
+            } else {
+                None
+            }
         },
         "menu" if tag == "Tabs" => {
             let bool_val = if value.is_empty() || value.eq_ignore_ascii_case("true") {
@@ -193,26 +193,24 @@ mod tests {
 
     #[test]
     fn static_setter_tabs_variants() {
-        assert_eq!(static_setter("variant", "underline", "Tabs").unwrap(), ".underline()");
-        assert_eq!(static_setter("variant", "pill", "Tabs").unwrap(), ".pill()");
-        assert_eq!(static_setter("variant", "flat", "Tabs").unwrap(), ".flat()");
-        assert_eq!(static_setter("variant", "outline", "Tabs").unwrap(), ".outline()");
-        assert_eq!(static_setter("variant", "segmented", "Tabs").unwrap(), ".segmented()");
+        assert_eq!(static_setter("underline", "", "Tabs").unwrap(), ".underline()");
+        assert_eq!(static_setter("pill", "", "Tabs").unwrap(), ".pill()");
+        assert_eq!(static_setter("flat", "", "Tabs").unwrap(), ".flat()");
+        assert_eq!(static_setter("outline", "", "Tabs").unwrap(), ".outline()");
+        assert_eq!(static_setter("segmented", "", "Tabs").unwrap(), ".segmented()");
     }
 
     #[test]
-    fn static_setter_tabs_variant_tab_default_no_op() {
-        // variant="tab" = 默认 TabVariant::Tab，返回空字符串 no-op
-        assert_eq!(static_setter("variant", "tab", "Tabs").unwrap(), "");
+    fn static_setter_tabs_variant_false_returns_none() {
+        // variant 布尔属性值为 "false" 时不生成调用
+        assert!(static_setter("underline", "false", "Tabs").is_none());
     }
 
     #[test]
-    fn static_setter_tab_variants() {
-        // variant 仅 Tabs 支持（Tab 底层 TabItem 无这些方法）
-        assert_eq!(static_setter("variant", "underline", "Tabs").unwrap(), ".underline()");
-        assert_eq!(static_setter("variant", "pill", "Tabs").unwrap(), ".pill()");
-        // Tab 上 variant 属性返回 None（不处理）
-        assert!(static_setter("variant", "underline", "Tab").is_none());
+    fn static_setter_tab_variants_not_supported() {
+        // variant 布尔属性仅 Tabs 支持（Tab 底层 TabItem 无这些方法）
+        assert!(static_setter("underline", "", "Tab").is_none());
+        assert!(static_setter("pill", "", "Tab").is_none());
     }
 
     #[test]
@@ -222,13 +220,6 @@ mod tests {
         assert_eq!(static_setter("selected", "true", "Tab").unwrap(), "");
         assert_eq!(static_setter("prefix", "x", "Tab").unwrap(), "");
         assert_eq!(static_setter("suffix", "x", "Tab").unwrap(), "");
-    }
-
-    #[test]
-    fn static_setter_variant_invalid_returns_none() {
-        // 无效 variant 值返回 None
-        assert!(static_setter("variant", "invalid", "Tabs").is_none());
-        assert!(static_setter("variant", "false", "Tabs").is_none());
     }
 
     #[test]

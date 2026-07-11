@@ -40,6 +40,7 @@ impl IRmlTranslator for StatefulComponentTranslator {
         matches!(
             tags::component_lookup_resolved(&elem.tag).map(|c| c.kind),
             Some(tags::ComponentKind::Stateful { .. })
+                | Some(tags::ComponentKind::StatefulWithDelegate { .. })
         )
     }
 
@@ -101,19 +102,37 @@ impl IRmlTranslator for StatefulComponentTranslator {
 
         let state_field = match component.kind {
             tags::ComponentKind::Stateful { state_field, .. } => state_field,
+            tags::ComponentKind::StatefulWithDelegate { state_field, .. } => state_field,
             _ => unreachable!(),
         };
         let state_ctor = match component.kind {
             tags::ComponentKind::Stateful { state_ctor, .. } => state_ctor,
+            tags::ComponentKind::StatefulWithDelegate { state_ctor, .. } => state_ctor,
             _ => unreachable!(),
         };
 
-        let mut code = gen_stateful_body(elem, &component, ref_name, state_field, state_ctor, loop_vars)?;
+        let delegate_attr: Option<&str> = match component.kind {
+            tags::ComponentKind::StatefulWithDelegate { delegate_attr, .. } => Some(delegate_attr),
+            _ => None,
+        };
+
+        let mut code = match component.kind {
+            tags::ComponentKind::Stateful { .. } => {
+                gen_stateful_body(elem, &component, ref_name, state_field, state_ctor, loop_vars)?
+            }
+            tags::ComponentKind::StatefulWithDelegate { delegate_attr, .. } => {
+                gen_stateful_with_delegate_body(
+                    elem, &component, ref_name, state_field, state_ctor, delegate_attr, loop_vars,
+                )?
+            }
+            _ => unreachable!(),
+        };
 
         // CSS class 样式（基础层，被后续内联 style / 归一化属性覆盖）
         append_css_class_styles(&mut code, elem, tag, ctx.stylesheet.as_ref(), parents);
 
         // 应用静态/bind/event setter（Input 事件由 gen_stateful_body 内部处理，setter 返回 None）
+        // StatefulWithDelegate 的 delegate_attr 已在构造器中消费，跳过 setter 循环
         let lv: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
         let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
         for attr in &elem.attributes {
@@ -126,6 +145,9 @@ impl IRmlTranslator for StatefulComponentTranslator {
                     }
                 }
                 Attribute::Bind { name, expr, .. } => {
+                    if Some(name.as_str()) == delegate_attr {
+                        continue;
+                    }
                     if let Some(setter) = component_bind_setter(name, expr, &lv, &computed, &resolved) {
                         code.push_str(&setter);
                     } else {
@@ -166,7 +188,7 @@ pub(crate) fn gen_stateful_body(
     let tag = &elem.tag;
     let resolved = tags::normalize_component_tag(tag);
 
-    // 收集 Input 事件处理器
+    // 收集 Input 事件处理器（Input/TextInput/NumberInput/CodeEditor/OtpInput 的 on_change/on_enter/on_focus/on_blur）
     let input_event_handlers: Vec<(&str, &EventHandler)> = elem
         .attributes
         .iter()
@@ -183,9 +205,26 @@ pub(crate) fn gen_stateful_body(
         })
         .collect();
 
+    // 收集 State 事件处理器（ColorPicker/Calendar/DatePicker 等拥有独立 Event 类型的 Stateful 组件）
+    let state_event_handlers: Vec<(&str, &EventHandler)> = elem
+        .attributes
+        .iter()
+        .filter_map(|attr| {
+            if let Attribute::Event { name, handler, .. } = attr {
+                if crate::compiler::components::state_event::is_state_event(name, &resolved) {
+                    Some((name.as_str(), handler))
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+        .collect();
+
     let self_prefix = expr::current_self_alias().unwrap_or("self");
 
-    if !input_event_handlers.is_empty() {
+    if !input_event_handlers.is_empty() || !state_event_handlers.is_empty() {
         let entity_expr = if let Some(name) = ref_name {
             format!(
                 "self.__rml_state.get_or_init_ref(\"{}\", _window, &mut *cx, {})",
@@ -195,13 +234,23 @@ pub(crate) fn gen_stateful_body(
             format!("{}.{}.clone()", self_prefix, state_field)
         };
         let ref_key = ref_name.unwrap_or(state_field);
-        let subscribe_code: String = input_event_handlers
+        let input_subscribe_code: String = input_event_handlers
             .iter()
             .map(|(event_name, handler)| {
                 crate::compiler::components::input::gen_input_event_subscribe(ref_key, event_name, handler)
             })
             .collect::<Vec<_>>()
             .join(" ");
+        let state_subscribe_code: String = state_event_handlers
+            .iter()
+            .map(|(event_name, handler)| {
+                crate::compiler::components::state_event::gen_state_event_subscribe(
+                    ref_key, event_name, handler, &resolved,
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(" ");
+        let subscribe_code = format!("{} {}", input_subscribe_code, state_subscribe_code);
         // .clone() 确保 Fn 闭包内可重复使用 Entity 句柄（slot 场景下 __rml_slot_demo_entity_N 不会被 move）
         Ok(format!(
             "({{ let __rml_entity = ({entity_expr}).clone(); {subscribe_code} {}::new(&__rml_entity) }})",
@@ -220,7 +269,117 @@ pub(crate) fn gen_stateful_body(
     }
 }
 
-/// 注册有状态扩展组件 translator
+/// 生成带委托注入的 Stateful 组件构造表达式
+///
+/// 与 `gen_stateful_body` 类似，但在 state_ctor 闭包前提取 ViewModel 的委托字段，
+/// 通过 `move` 闭包捕获 `__rml_delegate` 变量传入 state 构造器。
+///
+/// 生成代码形如：
+/// ```ignore
+/// ({
+///     let __rml_delegate = (self.field).clone();
+///     let __rml_entity = (self.__rml_state.get_or_init_ref("ref", _window, &mut *cx, move |w, c| ...)).clone();
+///     {subscribe_code}
+///     Component::new(&__rml_entity)
+/// })
+/// ```
+pub(crate) fn gen_stateful_with_delegate_body(
+    elem: &Element,
+    component: &tags::ComponentTag,
+    ref_name: Option<&str>,
+    state_field: &str,
+    state_ctor: &str,
+    delegate_attr: &str,
+    _loop_vars: &[String],
+) -> Result<String, CodegenError> {
+    let tag = &elem.tag;
+    let resolved = tags::normalize_component_tag(tag);
+
+    // 从 bind 属性提取委托字段名（如 items={my_items} → "my_items"）
+    let delegate_expr = elem.attributes.iter().find_map(|attr| {
+        if let Attribute::Bind { name, expr, .. } = attr {
+            (name == delegate_attr).then(|| expr.clone())
+        } else {
+            None
+        }
+    });
+
+    let _ = state_field; // StatefulWithDelegate 要求 ref，state_field 仅用于文档一致性
+
+    let ref_name = ref_name.ok_or_else(|| CodegenError {
+        message: format!(
+            "<{}> is a StatefulWithDelegate component and requires `ref=\"name\"` directive for delegate injection",
+            tag
+        ),
+        span: Some(elem.span),
+    })?;
+
+    let delegate_field = delegate_expr.ok_or_else(|| CodegenError {
+        message: format!(
+            "<{}> requires `{}={{field}}` bind attribute to provide delegate data",
+            tag, delegate_attr
+        ),
+        span: Some(elem.span),
+    })?;
+
+    let (delegate_field, _converter) = extract_field_converter(&delegate_field);
+
+    // 收集 State 事件处理器（同 gen_stateful_body）
+    let state_event_handlers: Vec<(&str, &EventHandler)> = elem
+        .attributes
+        .iter()
+        .filter_map(|attr| {
+            if let Attribute::Event { name, handler, .. } = attr {
+                if crate::compiler::components::state_event::is_state_event(name, &resolved) {
+                    Some((name.as_str(), handler))
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    // 将 delegate 提取内联到 get_or_init_ref 的构造器参数中，形成 block 表达式：
+    //   self.__rml_state.get_or_init_ref("ref", _window, &mut *cx, {
+    //       let __rml_delegate = (self.field).clone();
+    //       move |w, c| SelectState::new(__rml_delegate, None, w, c)
+    //   })
+    // 使用 `self.__rml_state` 和 `self.field`（而非 self_prefix）使 extract_state_refs
+    // 能检测并预提取整个调用到 slot 闭包外的 render 作用域（此处 self 可变），
+    // delegate 提取也在 block 内一并带出，避免 slot 闭包内 &Self 无法 &mut __rml_state 的问题。
+    let entity_expr = format!(
+        "self.__rml_state.get_or_init_ref(\"{}\", _window, &mut *cx, {{ let __rml_delegate = (self.{}).clone(); {} }})",
+        ref_name, delegate_field, state_ctor
+    );
+
+    if !state_event_handlers.is_empty() {
+        let ref_key = ref_name;
+        let state_subscribe_code: String = state_event_handlers
+            .iter()
+            .map(|(event_name, handler)| {
+                crate::compiler::components::state_event::gen_state_event_subscribe(
+                    ref_key, event_name, handler, &resolved,
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(" ");
+        Ok(format!(
+            "({{ let __rml_entity = ({entity_expr}).clone(); {subscribe_code} {}::new(&__rml_entity) }})",
+            component.ctor_path,
+            entity_expr = entity_expr,
+            subscribe_code = state_subscribe_code,
+        ))
+    } else {
+        Ok(format!(
+            "({{ let __rml_entity = ({entity_expr}).clone(); {}::new(&__rml_entity) }})",
+            component.ctor_path,
+            entity_expr = entity_expr,
+        ))
+    }
+}
+
 pub fn register(registry: &mut crate::compiler::translator::TranslatorRegistry) {
     registry.register(StatefulComponentTranslator);
 }

@@ -5,16 +5,22 @@ pub mod alert;
 pub mod alert_dialog;
 pub mod avatar;
 pub mod breadcrumb;
+pub mod calendar;
 pub mod card;
 pub mod collapsible;
+pub mod color_picker;
+pub mod combobox;
+pub mod date_picker;
 pub mod group_box;
 pub mod link;
 pub mod menu;
+pub mod number_input;
 pub mod otp_input;
 pub mod pagination;
 pub mod radio;
 pub mod rating;
 pub mod resizable;
+pub mod select;
 pub mod settings;
 pub mod skeleton;
 pub mod spinner;
@@ -31,6 +37,7 @@ pub use activity_bar::{
 pub use alert::{Alert, AlertVariant};
 pub use avatar::{Avatar, AvatarGroup};
 pub use breadcrumb::{Breadcrumb, BreadcrumbItem, BreadcrumbSibling};
+pub use calendar::{Calendar, CalendarEvent, CalendarState, Date};
 pub use card::{Card, CardVariant};
 pub use alert_dialog::{
     AlertDialog, DialogAction, DialogButtonProps, DialogClose, DialogContent, DialogDescription,
@@ -47,8 +54,12 @@ pub use tree::Tree;
 
 // Phase 1 基础无状态组件 re-exports
 pub use collapsible::Collapsible;
+pub use color_picker::{ColorPicker, ColorPickerEvent, ColorPickerState};
+pub use combobox::{Combobox, ComboboxEvent, ComboboxState, StringComboboxEvent, StringComboboxState};
+pub use date_picker::{DatePicker, DatePickerEvent, DatePickerState};
 pub use group_box::{GroupBox, GroupBoxVariants};
 pub use link::Link;
+pub use number_input::{NumberInput, NumberInputEvent};
 pub use otp_input::{OtpInput, OtpState};
 pub use pagination::Pagination;
 pub use radio::{Radio, RadioGroup};
@@ -63,6 +74,7 @@ pub use settings::{
     Settings,
 };
 pub use skeleton::Skeleton;
+pub use select::{IndexPath, SearchableVec, Select, SelectEvent, SelectState, StringSelectEvent, StringSelectState};
 pub use spinner::Spinner;
 pub use stepper::{Stepper, StepperItem};
 pub use virtual_list::{VirtualList, VirtualListScrollHandle, h_virtual_list, v_virtual_list};

@@ -1,0 +1,64 @@
+<component>
+    <CaseDocPage
+        title={t("case.number_input.title")}
+        description="NumberInput 是 RML 的数字输入框组件，标签为 PascalCase NumberInput 或 kebab-case number-input。Stateful 模式，复用 InputState（同 Input/TextInput）。步进按钮（增减）默认由 InputState 内部处理，直接更新值并触发 InputEvent::Change。支持 value 双向绑定、placeholder、appearance、disabled、size 等属性。on_change/on_enter/on_focus/on_blur 通过 cx.subscribe 订阅 InputEvent 触发。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <div class="demo-section">
+                <h3>1. 基础用法 + ref 指令</h3>
+                <p>NumberInput 通过 ref 指令绑定到 ElementRef InputState 字段。步进按钮默认步长为 1，点击 +/− 按钮或按 Up/Down 键即可增减值。</p>
+                <NumberInput ref="basic_input" />
+            </div>
+
+            <div class="demo-section">
+                <h3>2. placeholder + on_change 事件</h3>
+                <p>placeholder 设置占位文本，on-change 绑定回调方法。输入或步进时触发 InputEvent::Change，参数为 &amp;Entity&lt;InputState&gt;。</p>
+                <p>当前值：{current_value}</p>
+                <NumberInput ref="change_input" placeholder="请输入数字" on-change={on_num_change} />
+            </div>
+
+            <div class="demo-section">
+                <h3>3. value 双向绑定</h3>
+                <p>value={bound_value} 自动启用双向绑定（InputStateBridge）：VM 字段 → InputState 正向同步，InputEvent::Change → VM 字段反向同步。输入框与下方文本同步更新。</p>
+                <p>绑定值：{bound_value}</p>
+                <NumberInput ref="bound_input" value={bound_value} placeholder="双向绑定" />
+            </div>
+
+            <div class="demo-section">
+                <h3>4. disabled 禁用</h3>
+                <p>disabled 是 Disableable trait 通用属性，通过绑定切换禁用状态。</p>
+                <p>当前状态：{disabled_status_text}</p>
+                <div class="button-row">
+                    <Button label="切换禁用" on-click={on_toggle_disabled} />
+                    <NumberInput ref="disabled_input" disabled={is_disabled} placeholder="禁用态" />
+                </div>
+            </div>
+
+            <div class="demo-section">
+                <h3>5. 尺寸 size</h3>
+                <p>size 属性走通用 Sizable setter：xsmall / small / medium / large。点击按钮循环切换尺寸。</p>
+                <p>当前尺寸：{size_label}</p>
+                <div class="button-row">
+                    <Button label="切换尺寸" on-click={on_cycle_size} />
+                    <NumberInput ref="sized_input" size={size_value} placeholder="尺寸变体" />
+                </div>
+            </div>
+
+            <div class="demo-section">
+                <h3>6. appearance 无边框</h3>
+                <p>appearance="false" 移除边框和背景，适合嵌入卡片等容器内使用。默认 appearance 为 true（有边框）。</p>
+                <div display="flex" gap="12px" align-items="center">
+                    <NumberInput ref="bordered_input" placeholder="有边框" />
+                    <NumberInput ref="borderless_input" appearance="false" placeholder="无边框" />
+                </div>
+            </div>
+        </template>
+
+        <template slot="api">
+            <h3>NumberInput</h3>
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+            <p>注：NumberInput 复用 InputState，value 绑定走 InputStateBridge（同 Input/TextInput）。步进按钮默认内部处理（步长 1），如需外部接管步进逻辑，在 on_loaded 中调用 state.set_step(None, window, cx)。</p>
+        </template>
+    </CaseDocPage>
+</component>

@@ -11,7 +11,7 @@
                 <div class="button-row">
                     <ButtonGroup>
                         <Button label="上一步" />
-                        <Button label="下一步" variant="primary" />
+                        <Button label="下一步" primary />
                     </ButtonGroup>
                 </div>
             </div>
@@ -21,9 +21,9 @@
                 <p>用于对齐排列的操作按钮，混合 variant 展示语义差异。</p>
                 <div class="button-row">
                     <ButtonGroup>
-                        <Button label="保存" variant="primary" />
-                        <Button label="取消" variant="ghost" />
-                        <Button label="删除" variant="danger" />
+                        <Button label="保存" primary />
+                        <Button label="取消" ghost />
+                        <Button label="删除" danger />
                     </ButtonGroup>
                 </div>
             </div>
@@ -52,15 +52,15 @@
                 <p>点击按钮增减 Button 数量，观察 ButtonGroup 实时变化（演示 if 条件渲染）。</p>
                 <p>当前按钮数: {button_count}</p>
                 <div class="button-row">
-                    <Button label="添加按钮" variant="primary" on-click={on_add_button} />
+                    <Button label="添加按钮" primary on-click={on_add_button} />
                     <Button label="移除按钮" on-click={on_remove_button} />
                 </div>
                 <ButtonGroup>
                     <Button label="按钮 1" if={button_count >= 1} />
-                    <Button label="按钮 2" variant="primary" if={button_count >= 2} />
-                    <Button label="按钮 3" variant="ghost" if={button_count >= 3} />
-                    <Button label="按钮 4" variant="danger" if={button_count >= 4} />
-                    <Button label="按钮 5" variant="warning" if={button_count >= 5} />
+                    <Button label="按钮 2" primary if={button_count >= 2} />
+                    <Button label="按钮 3" ghost if={button_count >= 3} />
+                    <Button label="按钮 4" danger if={button_count >= 4} />
+                    <Button label="按钮 5" warning if={button_count >= 5} />
                 </ButtonGroup>
             </div>
 

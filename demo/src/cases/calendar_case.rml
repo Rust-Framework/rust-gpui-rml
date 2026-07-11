@@ -1,0 +1,31 @@
+<component>
+    <CaseDocPage
+        title={t("case.calendar.title")}
+        description="Calendar 是 RML 的日历选择器组件，标签为 PascalCase Calendar 或小写 calendar。Stateful 模式，构造器 CalendarState::new(window, cx) 创建状态，Calendar::new(&state) 创建视图。支持 size 尺寸属性。on_select 通过 cx.subscribe 订阅 CalendarEvent::Selected(Date) 触发，用户方法直接接收 Date 载荷。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <div class="demo-section">
+                <h3>1. 基础用法 + on_select 事件</h3>
+                <p>Calendar 通过 ref 指令绑定到 ElementRef CalendarState 字段。选择日期后触发 CalendarEvent::Selected，参数为 Date。</p>
+                <p>选中日期：{selected_date}</p>
+                <Calendar ref="basic_calendar" on-select={on_date_select} />
+            </div>
+
+            <div class="demo-section">
+                <h3>2. 尺寸 size</h3>
+                <p>size 属性走通用 Sizable setter：xsmall / small / medium / large。点击按钮循环切换尺寸。</p>
+                <p>当前尺寸：{size_label}</p>
+                <div class="button-row">
+                    <Button label="切换尺寸" on-click={on_cycle_size} />
+                </div>
+                <Calendar ref="sized_calendar" size={size_value} />
+            </div>
+
+            <div class="demo-section">
+                <h3>API</h3>
+                <Table columns={api_columns} rows={api_rows} bordered />
+            </div>
+        </template>
+    </CaseDocPage>
+</component>

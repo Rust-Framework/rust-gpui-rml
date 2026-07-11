@@ -1,0 +1,45 @@
+<component>
+    <CaseDocPage
+        title={t("case.date_picker.title")}
+        description="DatePicker 是 RML 的日期选择器组件，标签为 PascalCase DatePicker 或 kebab-case date-picker。Stateful 模式，构造器 DatePickerState::new(window, cx) 创建状态，DatePicker::new(&state) 创建视图。支持 placeholder、cleanable、appearance、number_of_months、size 等属性。on_change 通过 cx.subscribe 订阅 DatePickerEvent::Change(Date) 触发，用户方法直接接收 Date 载荷。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <div class="demo-section">
+                <h3>1. 基础用法 + on_change 事件</h3>
+                <p>DatePicker 通过 ref 指令绑定到 ElementRef DatePickerState 字段。选择日期后触发 DatePickerEvent::Change，参数为 Date。</p>
+                <p>选中日期：{selected_date}</p>
+                <DatePicker ref="basic_picker" on-change={on_date_change} />
+            </div>
+
+            <div class="demo-section">
+                <h3>2. placeholder + cleanable</h3>
+                <p>placeholder 设置占位文本，cleanable 启用清除按钮（默认关闭）。</p>
+                <DatePicker ref="cleanable_picker" placeholder="请选择日期" cleanable on-change={on_cleanable_change} />
+                <p>清除后日期：{cleanable_date}</p>
+            </div>
+
+            <div class="demo-section">
+                <h3>3. appearance=false 最小样式</h3>
+                <p>appearance 默认 true，设为 false 移除边框与背景，适合自定义容器内嵌套使用。</p>
+                <DatePicker ref="minimal_picker" appearance="false" on-change={on_minimal_change} />
+                <p>最小样式日期：{minimal_date}</p>
+            </div>
+
+            <div class="demo-section">
+                <h3>4. 尺寸 size</h3>
+                <p>size 属性走通用 Sizable setter：xsmall / small / medium / large。点击按钮循环切换尺寸。</p>
+                <p>当前尺寸：{size_label}</p>
+                <div class="button-row">
+                    <Button label="切换尺寸" on-click={on_cycle_size} />
+                    <DatePicker ref="sized_picker" size={size_value} />
+                </div>
+            </div>
+
+            <div class="demo-section">
+                <h3>API</h3>
+                <Table columns={api_columns} rows={api_rows} bordered />
+            </div>
+        </template>
+    </CaseDocPage>
+</component>

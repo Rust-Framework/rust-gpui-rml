@@ -5,13 +5,12 @@
 //! ## 声明式语法
 //!
 //! ```rml
-//! <Alert info="" title="提示" message="操作成功" />
-//! <Alert warning="" on-close={handle_close}>这是一条警告消息</Alert>
+//! <Alert info title="提示" message="操作成功" />
+//! <Alert warning on-close={handle_close}>这是一条警告消息</Alert>
 //! ```
 //!
-//! variant 通过两种形式声明：
-//! - 布尔属性：`info=""` / `success=""` / `warning=""` / `error=""` → 关联函数构造
-//! - `variant="info"` → builder 方法 `.with_variant(AlertVariant::Info)`
+//! variant 通过独立布尔属性声明：
+//! - `info` / `success` / `warning` / `error` → `.with_variant(AlertVariant::*)`
 //!
 //! `message` 属性优先于文本子节点（构造器第二参数）。
 

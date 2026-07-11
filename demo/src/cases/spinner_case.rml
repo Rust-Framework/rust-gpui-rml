@@ -45,7 +45,7 @@
                 <p>点击按钮切换加载状态，观察 Spinner 与 Skeleton 的显示效果（演示 if 条件渲染 + 字段绑定）。</p>
                 <p>当前状态：{loading_label}</p>
                 <div class="button-row">
-                    <Button label="切换加载" variant="primary" on-click={on_toggle_loading} />
+                    <Button label="切换加载" primary on-click={on_toggle_loading} />
                 </div>
                 <div display="flex" flex-direction="column" gap="8px">
                     <div if={is_loading} display="flex" flex-direction="row" gap="8px" align-items="center">

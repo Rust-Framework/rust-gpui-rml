@@ -1,0 +1,52 @@
+<dialog title={t("shell.system_settings")} width="640">
+    <settings id="system-settings" sidebar-width="160px">
+        <setting-page title="通用" icon="Settings" description="应用基础配置">
+            <setting-group title="外观">
+                <setting-item
+                    title="暗色主题"
+                    description="切换暗色模式"
+                    field-type="switch"
+                    value={is_dark}
+                    on-change={on_dark_change}
+                    default-value="false" />
+                <setting-item
+                    title="界面语言"
+                    description="选择显示语言"
+                    field-type="dropdown"
+                    value={language}
+                    options={language_options}
+                    on-change={on_language_change}
+                    default-value="zh-CN" />
+            </setting-group>
+        </setting-page>
+
+        <setting-page title="编辑器" icon="File" description="代码编辑器配置">
+            <setting-group title="字体">
+                <setting-item
+                    title="字体大小"
+                    description="编辑器字体大小（px）"
+                    field-type="number-input"
+                    min="8"
+                    max="32"
+                    step="1"
+                    value={font_size}
+                    on-change={on_font_size_change}
+                    default-value="14" />
+            </setting-group>
+            <setting-group title="行为">
+                <setting-item
+                    title="自动保存"
+                    description="失去焦点时自动保存文件"
+                    field-type="switch"
+                    value={auto_save}
+                    on-change={on_auto_save_change} />
+                <setting-item
+                    title="显示行号"
+                    description="在编辑器中显示行号"
+                    field-type="switch"
+                    value={show_line_numbers}
+                    on-change={on_line_numbers_change} />
+            </setting-group>
+        </setting-page>
+    </settings>
+</dialog>

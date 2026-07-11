@@ -38,6 +38,8 @@
 
   "shell.lsp_explorer": "LSP Explorer",
 
+  "shell.system_settings": "System Settings",
+
   "shell.status_ready": "Ready — pick a sample from the tree",
 
   "shell.status_lsp": "LSP Status",
@@ -371,6 +373,12 @@
 
   "case.rating.title": "Rating",
   "case.otp_input.title": "OtpInput",
+  "case.number_input.title": "NumberInput",
+  "case.color_picker.title": "ColorPicker",
+  "case.calendar.title": "Calendar",
+  "case.date_picker.title": "DatePicker",
+  "case.select.title": "Select",
+  "case.combobox.title": "Combobox",
   "case.virtual_list.title": "VirtualList",
   "case.resizable.title": "Resizable",
 

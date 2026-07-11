@@ -45,7 +45,7 @@
                 <p>当前图标：{current_icon_name}（icon_index = {icon_index}）</p>
                 <div display="flex" flex-direction="row" gap="16px" align-items="center">
                     <Icon name={current_icon} size="large" />
-                    <Button label="切换图标" variant="primary" on-click={on_rotate_icon} />
+                    <Button label="切换图标" primary on-click={on_rotate_icon} />
                 </div>
             </div>
 

@@ -14,6 +14,7 @@ use rml_ui::{ActivityBar, IActivityPanel, VisualActivityPanel};
 
 use crate::lsp::lsp_explorer_panel::LspExplorerPanel;
 use crate::lsp::{ensure_lsp_status_item_registered, LspStatusState, LspStatusStateRef};
+use crate::shell::activity_act::SettingsAct;
 use crate::shell::activity_panel::ActivityPanel;
 use crate::shell::case_view_model::CaseViewModel;
 use crate::shell::menu_view_model::MenuViewModel;
@@ -200,7 +201,10 @@ impl MainWindow {
         self.activity_bar = Some(cx.new(|_| ActivityBar::new(self.activities.clone())));
 
         if let Some(bar) = &self.activity_bar {
-            bar.update(cx, |bar, cx| bar.activate_first(cx));
+            bar.update(cx, |bar, cx| {
+                bar.activate_first(cx);
+                bar.set_actions(vec![SettingsAct.into_arc()], cx);
+            });
         }
 
         self.show_chrome = true;

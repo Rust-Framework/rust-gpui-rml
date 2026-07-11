@@ -27,6 +27,7 @@ pub mod otp_input;
 pub mod popover;
 pub mod radio_group;
 pub mod separator;
+pub mod state_event;
 pub mod stepper;
 pub mod tab_bar;
 pub mod table;

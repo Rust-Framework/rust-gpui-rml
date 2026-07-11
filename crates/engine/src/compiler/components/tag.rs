@@ -1,9 +1,10 @@
 //! Tag 组件 codegen
 //!
-//! Tag 的 variant 属性（primary/secondary/danger/success/warning/info）是关联函数
-//! 而非方法，需在构造器选择阶段决定使用 `Tag::new()` 还是 `Tag::primary()` 等。
+//! Tag 构造器统一为 `Tag::new()`，variant 通过独立布尔属性
+//! `primary` / `secondary` / `danger` / `success` / `warning` / `info`
+//! 映射到 `.with_variant(TagVariant::*)`。
 //!
-//! 其他属性（size/disabled/compact 等）走通用 setter。
+//! 其他属性（size/outline 等）走通用 setter 或 Tag 专属 setter。
 
 use crate::compiler::codegen::attribute::append_css_class_styles;
 use crate::compiler::codegen::gen_node;
@@ -20,29 +21,13 @@ pub fn gen_tag(
     loop_vars: &[String],
     parents: &[ParentInfo],
 ) -> Result<String, CodegenError> {
-    // 1. 扫描 variant 属性，决定构造器
-    // variant="primary" → Tag::primary()，不写 variant = 默认 Tag::new()
-    let mut ctor = "rml_ui::Tag::new()".to_string();
-    for attr in &elem.attributes {
-        if let Attribute::Static { name, value, .. } = attr {
-            if name == "variant" {
-                match value.as_str() {
-                    "primary" | "secondary" | "danger" | "success" | "warning" | "info" => {
-                        ctor = format!("rml_ui::Tag::{}()", value);
-                        break;
-                    }
-                    _ => {}
-                }
-            }
-        }
-    }
-
-    let mut code = ctor;
+    // 1. 构造器统一为 Tag::new()，variant 由独立布尔属性 + .with_variant() 设置
+    let mut code = "rml_ui::Tag::new()".to_string();
 
     // CSS class 样式（基础层，被后续内联 style / 归一化属性覆盖）
     append_css_class_styles(&mut code, elem, "Tag", ctx.stylesheet.as_ref(), parents);
 
-    // 2. 处理其他属性（跳过 variant 属性，已用于构造器）
+    // 2. 处理属性
     let resolved = tags::normalize_component_tag(&elem.tag);
     let lv: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
     let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
@@ -50,8 +35,11 @@ pub fn gen_tag(
     for attr in &elem.attributes {
         match attr {
             Attribute::Static { name, value, .. } => {
-                // variant 属性已用于构造器，跳过
-                if name == "variant" {
+                // variant 布尔属性: primary/secondary/danger/success/warning/info → .with_variant(TagVariant::*)
+                if let Some(variant_name) = tag_variant_from_attr(name) {
+                    if value.is_empty() || value.eq_ignore_ascii_case("true") {
+                        code.push_str(&format!(".with_variant(rml_ui::TagVariant::{})", variant_name));
+                    }
                     continue;
                 }
                 // Tag 专用：outline="" → .outline()（描边样式，透明背景）
@@ -98,6 +86,22 @@ pub fn gen_tag(
     Ok(code)
 }
 
+/// Tag variant 布尔属性名 → TagVariant 枚举变体名
+///
+/// `primary` → `Primary`，`secondary` → `Secondary`，`danger` → `Danger`，
+/// `success` → `Success`，`warning` → `Warning`，`info` → `Info`
+fn tag_variant_from_attr(name: &str) -> Option<&'static str> {
+    match name {
+        "primary" => Some("Primary"),
+        "secondary" => Some("Secondary"),
+        "danger" => Some("Danger"),
+        "success" => Some("Success"),
+        "warning" => Some("Warning"),
+        "info" => Some("Info"),
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -134,46 +138,49 @@ mod tests {
 
     #[test]
     fn gen_tag_primary_variant() {
+        // <Tag primary /> → Tag::new().with_variant(TagVariant::Primary)
         let elem = make_element(
             "Tag",
             vec![Attribute::Static {
-                name: "variant".into(),
-                value: "primary".into(),
+                name: "primary".into(),
+                value: "".into(),
                 span: Span::empty(),
             }],
             vec![],
         );
         let mut id = 0;
         let code = gen_tag(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
-        assert!(code.contains("rml_ui::Tag::primary()"));
-        // 确保没有重复的 .primary() 调用
-        assert!(!code.contains(".primary()"));
+        assert!(code.contains("rml_ui::Tag::new()"));
+        assert!(code.contains(".with_variant(rml_ui::TagVariant::Primary)"));
     }
 
     #[test]
     fn gen_tag_danger_variant() {
+        // <Tag danger /> → Tag::new().with_variant(TagVariant::Danger)
         let elem = make_element(
             "Tag",
             vec![Attribute::Static {
-                name: "variant".into(),
-                value: "danger".into(),
+                name: "danger".into(),
+                value: "".into(),
                 span: Span::empty(),
             }],
             vec![],
         );
         let mut id = 0;
         let code = gen_tag(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
-        assert!(code.contains("rml_ui::Tag::danger()"));
+        assert!(code.contains("rml_ui::Tag::new()"));
+        assert!(code.contains(".with_variant(rml_ui::TagVariant::Danger)"));
     }
 
     #[test]
     fn gen_tag_with_size() {
+        // <Tag primary size="small" />
         let elem = make_element(
             "Tag",
             vec![
                 Attribute::Static {
-                    name: "variant".into(),
-                    value: "primary".into(),
+                    name: "primary".into(),
+                    value: "".into(),
                     span: Span::empty(),
                 },
                 Attribute::Static {
@@ -186,18 +193,19 @@ mod tests {
         );
         let mut id = 0;
         let code = gen_tag(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
-        assert!(code.contains("rml_ui::Tag::primary()"));
+        assert!(code.contains(".with_variant(rml_ui::TagVariant::Primary)"));
         assert!(code.contains(".with_size(rml_ui::Size::Small)"));
     }
 
     #[test]
     fn gen_tag_outline() {
+        // <Tag primary outline />
         let elem = make_element(
             "Tag",
             vec![
                 Attribute::Static {
-                    name: "variant".into(),
-                    value: "primary".into(),
+                    name: "primary".into(),
+                    value: "".into(),
                     span: Span::empty(),
                 },
                 Attribute::Static {
@@ -210,7 +218,7 @@ mod tests {
         );
         let mut id = 0;
         let code = gen_tag(&elem, &ctx(), &mut id, &Vec::new(), &[]).unwrap();
-        assert!(code.contains("rml_ui::Tag::primary()"));
+        assert!(code.contains(".with_variant(rml_ui::TagVariant::Primary)"));
         assert!(code.contains(".outline()"));
     }
 }

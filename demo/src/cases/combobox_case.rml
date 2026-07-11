@@ -1,0 +1,45 @@
+<component>
+    <CaseDocPage
+        title={t("case.combobox.title")}
+        description="Combobox 是 RML 的多选下拉组件，标签为 PascalCase Combobox 或 kebab-case combobox。StatefulWithDelegate 模式，构造器 ComboboxState::new(delegate, vec![], window, cx) 创建状态，Combobox::new(&state) 创建视图。delegate 为 SearchableVec<SharedString>，通过 items={field} 绑定提供。支持 placeholder、cleanable、appearance、menu-width、menu-max-h、search-placeholder、size 等属性。on_change 通过 cx.subscribe 订阅 ComboboxEvent::Change(Vec<SharedString>) 触发，用户方法直接接收 Vec<SharedString> 载荷。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <div class="demo-section">
+                <h3>1. 基础用法 + on_change 事件</h3>
+                <p>Combobox 通过 ref 指令绑定到 ElementRef ComboboxState 字段，items 绑定提供 SearchableVec 委托数据。选择后触发 ComboboxEvent::Change，参数为 Vec&lt;SharedString&gt;。</p>
+                <p>选中值：{selected_values}</p>
+                <Combobox ref="basic_combobox" items={basic_items} on-change={on_basic_change} />
+            </div>
+
+            <div class="demo-section">
+                <h3>2. placeholder + cleanable + search-placeholder</h3>
+                <p>placeholder 设置占位文本，cleanable 启用清除按钮，search-placeholder 设置搜索框占位文本（需在 code-behind 中启用 searchable 后生效）。</p>
+                <Combobox ref="multi_combobox" items={tag_items} placeholder="选择标签" cleanable search-placeholder="搜索标签..." on-change={on_tag_change} />
+                <p>选中标签：{selected_tags}</p>
+            </div>
+
+            <div class="demo-section">
+                <h3>3. appearance=false + menu-width/menu-max-h</h3>
+                <p>appearance 默认 true，设为 false 移除边框与背景。menu-width/menu-max-h 控制下拉菜单宽度与最大高度。</p>
+                <Combobox ref="minimal_combobox" items={lang_items} appearance="false" menu-width="280px" menu-max-h="180px" on-change={on_lang_change} />
+                <p>选中语言：{selected_langs}</p>
+            </div>
+
+            <div class="demo-section">
+                <h3>4. 尺寸 size</h3>
+                <p>size 属性走通用 Sizable setter：xsmall / small / medium / large。点击按钮循环切换尺寸。</p>
+                <p>当前尺寸：{size_label}</p>
+                <div class="button-row">
+                    <Button label="切换尺寸" on-click={on_cycle_size} />
+                    <Combobox ref="sized_combobox" items={basic_items} size={size_value} />
+                </div>
+            </div>
+
+            <div class="demo-section">
+                <h3>API</h3>
+                <Table columns={api_columns} rows={api_rows} bordered />
+            </div>
+        </template>
+    </CaseDocPage>
+</component>

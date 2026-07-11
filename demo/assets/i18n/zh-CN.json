@@ -38,6 +38,8 @@
 
   "shell.lsp_explorer": "LSP 资源管理器",
 
+  "shell.system_settings": "系统配置",
+
   "shell.status_ready": "就绪 — 请从左侧案例树选择示例",
 
   "shell.status_lsp": "LSP 状态",
@@ -372,6 +374,12 @@
 
   "case.rating.title": "星级评分 Rating",
   "case.otp_input.title": "OTP 输入 OtpInput",
+  "case.number_input.title": "数字输入 NumberInput",
+  "case.color_picker.title": "颜色选择器 ColorPicker",
+  "case.calendar.title": "日历选择器 Calendar",
+  "case.date_picker.title": "日期选择器 DatePicker",
+  "case.select.title": "下拉选择器 Select",
+  "case.combobox.title": "多选下拉 Combobox",
   "case.virtual_list.title": "虚拟列表 VirtualList",
   "case.resizable.title": "可调整面板 Resizable",
 

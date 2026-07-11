@@ -90,7 +90,7 @@
                 </div>
                 <p>当前 variant: {variant_label} | count: {count} | max_val: {max_val} | 显示: {count_display}</p>
                 <div class="button-row">
-                    <Button label="count +1" variant="primary" on-click={on_increment} />
+                    <Button label="count +1" primary on-click={on_increment} />
                     <Button label="count +10" on-click={on_increment_10} />
                     <Button label="reset" on-click={on_reset} />
                     <Button label="切换 Number/Dot" on-click={on_toggle_dot} />

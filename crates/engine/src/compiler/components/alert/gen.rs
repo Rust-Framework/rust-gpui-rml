@@ -1,12 +1,12 @@
 //! Alert 组件 codegen
 //!
-//! Alert 构造器统一为 `Alert::new(id, message)`，variant 通过 `variant="info"` 属性
-//! 映射到 `.with_variant(AlertVariant::Info)` builder 方法。
+//! Alert 构造器统一为 `Alert::new(id, message)`，variant 通过独立布尔属性
+//! `info` / `success` / `warning` / `error` 映射到 `.with_variant(AlertVariant::*)`。
 //!
-//! ## variant 属性
+//! ## variant 布尔属性
 //!
-//! `variant="info"` / `"success"` / `"warning"` / `"error"` / `"default"` → `.with_variant(AlertVariant::*）`
-//! 不写 variant = 默认 Default。
+//! `info=""` / `success=""` / `warning=""` / `error=""` → `.with_variant(AlertVariant::*）`
+//! 各 variant 为独立布尔属性，不写 = 默认 Default。
 //!
 //! ## message 来源
 //!
@@ -72,7 +72,7 @@ pub fn gen_alert(
         format!("(\"rml_el\", {}usize)", id_val)
     };
 
-    // 3. 构造器统一为 Alert::new(id, message)，variant 由 variant 属性 + .with_variant() 设置
+    // 3. 构造器统一为 Alert::new(id, message)，variant 由独立布尔属性 + .with_variant() 设置
     let mut code = format!("rml_ui::Alert::new({}, {})", id_code, message_code);
 
     // CSS class 样式（基础层，被后续内联 style / 归一化属性覆盖）
@@ -86,12 +86,12 @@ pub fn gen_alert(
                 if name == "message" {
                     continue;
                 }
-                // variant="info" → .with_variant(AlertVariant::Info)
-                if name == "variant" {
-                    if let Some(v) = parse_variant(value) {
-                        code.push_str(&format!(".with_variant(rml_ui::AlertVariant::{})", v));
-                        continue;
+                // variant 布尔属性: info/success/warning/error → .with_variant(AlertVariant::*)
+                if let Some(variant_name) = alert_variant_from_attr(name) {
+                    if value.is_empty() || value.eq_ignore_ascii_case("true") {
+                        code.push_str(&format!(".with_variant(rml_ui::AlertVariant::{})", variant_name));
                     }
+                    continue;
                 }
                 // banner="" → .banner()
                 if name == "banner" && (value.is_empty() || value.eq_ignore_ascii_case("true")) {
@@ -125,12 +125,6 @@ pub fn gen_alert(
             }
             Attribute::Bind { name, expr, .. } => {
                 if name == "message" {
-                    continue;
-                }
-                // variant={expr} → .with_variant(expr)
-                if name == "variant" {
-                    let rust_expr = crate::compiler::setters::component_bind_rust_expr(expr, &lv, &computed);
-                    code.push_str(&format!(".with_variant({})", rust_expr));
                     continue;
                 }
                 // banner={cond} → .when(cond, |a| a.banner())
@@ -196,14 +190,15 @@ pub fn gen_alert(
     Ok(code)
 }
 
-/// 解析 `variant="info"` 静态值为 AlertVariant 枚举变体名
-fn parse_variant(value: &str) -> Option<&'static str> {
-    match value {
-        "default" | "Default" => Some("Default"),
-        "info" | "Info" => Some("Info"),
-        "success" | "Success" => Some("Success"),
-        "warning" | "Warning" => Some("Warning"),
-        "error" | "Error" => Some("Error"),
+/// Alert variant 布尔属性名 → AlertVariant 枚举变体名
+///
+/// `info` → `Info`，`success` → `Success`，`warning` → `Warning`，`error` → `Error`
+fn alert_variant_from_attr(name: &str) -> Option<&'static str> {
+    match name {
+        "info" => Some("Info"),
+        "success" => Some("Success"),
+        "warning" => Some("Warning"),
+        "error" => Some("Error"),
         _ => None,
     }
 }
@@ -287,12 +282,12 @@ mod tests {
 
     #[test]
     fn gen_alert_info_variant() {
-        // <Alert variant="info">提示</Alert> → Alert::new(id, "提示").with_variant(AlertVariant::Info)
+        // <Alert info>提示</Alert> → Alert::new(id, "提示").with_variant(AlertVariant::Info)
         let elem = make_element(
             "Alert",
             vec![Attribute::Static {
-                name: "variant".into(),
-                value: "info".into(),
+                name: "info".into(),
+                value: "".into(),
                 span: Span::empty(),
             }],
             vec![Node::Text("提示".into())],
@@ -309,8 +304,8 @@ mod tests {
         let elem = make_element(
             "Alert",
             vec![Attribute::Static {
-                name: "variant".into(),
-                value: "success".into(),
+                name: "success".into(),
+                value: "".into(),
                 span: Span::empty(),
             }],
             vec![Node::Text("成功".into())],
@@ -323,13 +318,13 @@ mod tests {
 
     #[test]
     fn gen_alert_variant_attr() {
-        // <Alert variant="warning" message="警告" />
+        // <Alert warning message="警告" />
         let elem = make_element(
             "Alert",
             vec![
                 Attribute::Static {
-                    name: "variant".into(),
-                    value: "warning".into(),
+                    name: "warning".into(),
+                    value: "".into(),
                     span: Span::empty(),
                 },
                 Attribute::Static {
@@ -352,13 +347,13 @@ mod tests {
 
     #[test]
     fn gen_alert_with_title_and_banner() {
-        // <Alert variant="info" title="提示" banner="">消息</Alert>
+        // <Alert info title="提示" banner="">消息</Alert>
         let elem = make_element(
             "Alert",
             vec![
                 Attribute::Static {
-                    name: "variant".into(),
-                    value: "info".into(),
+                    name: "info".into(),
+                    value: "".into(),
                     span: Span::empty(),
                 },
                 Attribute::Static {
@@ -484,7 +479,7 @@ mod tests {
 
     #[test]
     fn gen_alert_icon_attr() {
-        // <Alert icon="Bell" variant="info">消息</Alert>
+        // <Alert icon="Bell" info>消息</Alert>
         let elem = make_element(
             "Alert",
             vec![
@@ -494,8 +489,8 @@ mod tests {
                     span: Span::empty(),
                 },
                 Attribute::Static {
-                    name: "variant".into(),
-                    value: "info".into(),
+                    name: "info".into(),
+                    value: "".into(),
                     span: Span::empty(),
                 },
             ],

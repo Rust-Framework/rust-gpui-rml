@@ -16,7 +16,7 @@
 //!
 //! ## 属性分类
 //!
-//! - **static**：静态属性 `label="..."` / `variant="primary"`，由 `component_static_setter` 处理
+//! - **static**：静态属性 `label="..."` / `primary=""`，由 `component_static_setter` 处理
 //! - **bind**：绑定属性 `value={field}`，由 `component_bind_setter` 处理
 //! - **event**：事件属性（声明式 `on-click={fn}` kebab-case，normalize 后内部 `on_click` snake_case），
 //!   由 `component_event_setter` 处理
@@ -117,30 +117,30 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
     ("Badge", &["count", "max", "dot", "icon"]),
     // Card 专用（Ant Design 风格卡片，title/extra/cover/footer/bordered/borderless/hoverable）
     ("Card", &["title", "extra", "cover", "footer", "bordered", "borderless", "hoverable"]),
-    // Button 专用（variant 属性：primary/secondary/danger/success/warning/info/ghost/link/text）
-    // variant="primary" → .primary()，不写 variant = 默认 Secondary
-    ("Button", &["variant"]),
-    // Tag 专用（variant 选择构造器：variant="primary" → Tag::primary()）
+    // Button variant 布尔属性：primary/secondary/danger/success/warning/info/ghost/link/text
+    // <Button primary /> → .primary()，各 variant 为独立布尔属性，可自由组合
+    ("Button", &["primary", "secondary", "danger", "success", "warning", "info", "ghost", "link", "text"]),
+    // Tag variant 布尔属性：primary/secondary/danger/success/warning/info → .with_variant(TagVariant::*)
     // outline 为 Tag 专属描边样式
-    ("Tag", &["variant", "outline"]),
+    ("Tag", &["primary", "secondary", "danger", "success", "warning", "info", "outline"]),
     // Separator 专用（无 new() 构造器，通过 vertical/dashed 选择 horizontal/vertical/dashed 构造）
     ("Separator", &["vertical", "dashed"]),
     // Tabs 专用（WPF TabControl：header + body，全量属性含 on_close/bordered）
-    // variant="underline" / "pill" / "flat" / "outline" / "segmented" → .with_variant(TabVariant::*）
+    // variant 布尔属性: underline/pill/flat/outline/segmented → .underline() 等
     ("Tabs", &[
         "selected_index", "on_click", "on_close", "on_close_all", "on_close_others", "on_promote",
         "prefix", "suffix", "last_empty_space",
         "menu", "track_scroll",
         "bordered",
-        "variant",
+        "underline", "pill", "flat", "outline", "segmented",
     ]),
     // TabBar 专用（原生形态：纯 header，不含 on_close*/bordered）
-    // variant 同 Tabs
+    // variant 布尔属性同 Tabs
     ("TabBar", &[
         "selected_index", "on_click",
         "prefix", "suffix", "last_empty_space",
         "menu", "track_scroll",
-        "variant",
+        "underline", "pill", "flat", "outline", "segmented",
     ]),
     // Tab 专用（统一底层为 TabItem：label→title, icon→title_icon, body 通过子节点注入）
     // <tab-item> 已弃用移除，统一用 <tab>
@@ -165,10 +165,10 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
     ("Kbd", &["key", "outline", "appearance"]),
     // Breadcrumb 专用（RenderOnce 无 ElementId，items 数据绑定 + on_select 同级选择回调）
     ("Breadcrumb", &["items", "on_select"]),
-    // Alert 专用（variant 关联函数 + message 构造器参数）
-    // variant="info" → .with_variant(AlertVariant::Info)
+    // Alert 专用（variant 布尔属性: info/success/warning/error → .with_variant(AlertVariant::*)
+    // + message 构造器参数）
     // on_close 走 event 分类（前缀 "on"）
-    ("Alert", &["variant", "message", "title", "banner", "visible", "icon", "on_close"]),
+    ("Alert", &["info", "success", "warning", "error", "message", "title", "banner", "visible", "icon", "on_close"]),
     // ── Phase 1 基础无状态组件 ──
     // Spinner：.icon(impl Into<Icon>)，color 暂不支持（Hsla 解析复杂），size 走通用 Sizable
     ("Spinner", &["icon"]),
@@ -178,8 +178,8 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
     ("Link", &["href"]),
     // Collapsible：.open(bool) 控制展开，content slot 待后续支持
     ("Collapsible", &["open"]),
-    // GroupBox：.title(impl IntoElement)，variant="fill"/"normal"/"outline" → .fill()/.normal()/.outline()
-    ("GroupBox", &["title", "variant"]),
+    // GroupBox：.title(impl IntoElement)，fill/normal/outline 布尔属性 → .fill()/.normal()/.outline()
+    ("GroupBox", &["title", "fill", "normal", "outline"]),
     // Pagination：.current_page(usize)/.total_pages(usize)/.visible_pages(usize)/.compact()
     // on_click 签名为 Fn(&usize, ...)，走 event 分类但需专属代码生成
     ("Pagination", &["current_page", "total_pages", "visible_pages", "compact", "on_click"]),
@@ -199,6 +199,23 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
     ("Rating", &["value", "max", "color", "on_click"]),
     // OtpInput：OTP 输入，length/masked/default_value 注入 state_ctor，on_change/on_focus/on_blur 走事件订阅
     ("OtpInput", &["length", "groups", "masked", "default_value", "on_change", "on_focus", "on_blur"]),
+    // NumberInput：数字输入框，复用 InputState（同 Input）
+    // placeholder/appearance 为组件属性，on_change/on_enter/on_focus/on_blur 走 InputEvent 订阅
+    ("NumberInput", &["placeholder", "appearance", "on_change", "on_enter", "on_focus", "on_blur"]),
+    // ColorPicker：Stateful 颜色选择器，icon 为组件属性，on_change 走 ColorPickerEvent 订阅（state_event.rs）
+    // label 走通用 static setter，size 走通用 Sizable
+    ("ColorPicker", &["icon", "on_change"]),
+    // Calendar：Stateful 日历选择器，on_select 走 CalendarEvent 订阅（state_event.rs）
+    // size 走通用 Sizable
+    ("Calendar", &["on_select"]),
+    // DatePicker：Stateful 日期选择器，on_change 走 DatePickerEvent 订阅（state_event.rs）
+    // placeholder/cleanable/appearance/number_of_months 为组件属性，size 走通用 Sizable
+    ("DatePicker", &["placeholder", "cleanable", "appearance", "number_of_months", "on_change"]),
+    // Select：StatefulWithDelegate 下拉选择器，items bind 提供委托数据
+    // placeholder/cleanable/appearance/menu_width/menu_max_h 为组件属性，size 走通用 Sizable
+    // on_change 走 SelectEvent<SearchableVec<SharedString>> 订阅（state_event.rs）
+    ("Select", &["placeholder", "cleanable", "appearance", "menu_width", "menu_max_h", "items", "on_change"]),
+    ("Combobox", &["placeholder", "cleanable", "appearance", "menu_width", "menu_max_h", "search_placeholder", "items", "on_change"]),
     // VirtualList：direction 选择 v/h 构造器，item-sizes 作为函数参数，slot="render" 注入闭包
     ("VirtualList", &["direction", "item_sizes", "on_scroll"]),
     // Resizable：direction 选择 h/v 构造器，size 为组高度/宽度，on_resize 为调整回调
@@ -363,8 +380,9 @@ mod tests {
     #[test]
     fn common_props_recognized_for_any_tag() {
         assert!(is_prop_registered("Button", "label"));
-        assert!(is_prop_registered("Button", "variant"));
-        assert!(!is_prop_registered("Button", "primary"));
+        assert!(!is_prop_registered("Button", "variant"));
+        assert!(is_prop_registered("Button", "primary"));
+        assert!(is_prop_registered("Button", "ghost"));
         assert!(is_prop_registered("Button", "on_click"));
         assert!(is_prop_registered("Badge", "disabled"));
     }
@@ -419,12 +437,14 @@ mod tests {
         assert!(is_prop_registered("Tabs", "menu"));
         assert!(is_prop_registered("Tabs", "track_scroll"));
         assert!(is_prop_registered("Tabs", "bordered"));
-        assert!(is_prop_registered("Tabs", "variant"));
-        // 布尔 variant 属性已移除，改用 variant="underline" 等
-        assert!(!is_prop_registered("Tabs", "underline"));
-        assert!(!is_prop_registered("Tabs", "pill"));
-        assert!(!is_prop_registered("Tabs", "flat"));
-        assert!(!is_prop_registered("Tabs", "segmented"));
+        // variant 布尔属性: underline/pill/flat/outline/segmented
+        assert!(is_prop_registered("Tabs", "underline"));
+        assert!(is_prop_registered("Tabs", "pill"));
+        assert!(is_prop_registered("Tabs", "flat"));
+        assert!(is_prop_registered("Tabs", "outline"));
+        assert!(is_prop_registered("Tabs", "segmented"));
+        // variant 字符串属性已移除
+        assert!(!is_prop_registered("Tabs", "variant"));
     }
 
     #[test]
@@ -437,14 +457,18 @@ mod tests {
         assert!(is_prop_registered("TabBar", "last_empty_space"));
         assert!(is_prop_registered("TabBar", "menu"));
         assert!(is_prop_registered("TabBar", "track_scroll"));
-        assert!(is_prop_registered("TabBar", "variant"));
+        // variant 布尔属性: underline/pill/flat/outline/segmented
+        assert!(is_prop_registered("TabBar", "underline"));
+        assert!(is_prop_registered("TabBar", "pill"));
+        assert!(is_prop_registered("TabBar", "flat"));
+        assert!(is_prop_registered("TabBar", "outline"));
+        assert!(is_prop_registered("TabBar", "segmented"));
         // 不支持 on_close/bordered
         assert!(!is_prop_registered("TabBar", "on_close"));
         assert!(!is_prop_registered("TabBar", "on_close_all"));
         assert!(!is_prop_registered("TabBar", "bordered"));
-        // 布尔 variant 属性已移除
-        assert!(!is_prop_registered("TabBar", "underline"));
-        assert!(!is_prop_registered("TabBar", "pill"));
+        // variant 字符串属性已移除
+        assert!(!is_prop_registered("TabBar", "variant"));
     }
 
     #[test]
@@ -467,7 +491,7 @@ mod tests {
     fn tab_bar_kebab_alias_props_registered() {
         // <tab-bar> kebab-case 别名也应命中 TabBar 属性
         assert!(is_prop_registered("tab-bar", "selected_index"));
-        assert!(is_prop_registered("tab-bar", "variant"));
+        assert!(is_prop_registered("tab-bar", "underline"));
     }
 
     #[test]
@@ -487,26 +511,27 @@ mod tests {
 
     #[test]
     fn props_for_tabs_tab_bar_and_tab() {
-        // Tabs 支持 on_close/bordered/variant
+        // Tabs 支持 on_close/bordered + variant 布尔属性
         let (_, bind, event) = props_for("Tabs");
         assert!(bind.contains(&"selected_index"));
         assert!(bind.contains(&"bordered"));
-        assert!(bind.contains(&"variant"));
+        assert!(bind.contains(&"underline"));
+        assert!(bind.contains(&"pill"));
         assert!(event.contains(&"on_click"));
         assert!(event.contains(&"on_close"));
 
-        // TabBar 不支持 on_close/bordered，但支持 variant
+        // TabBar 不支持 on_close/bordered，但支持 variant 布尔属性
         let (_, bind, event) = props_for("TabBar");
         assert!(bind.contains(&"selected_index"));
         assert!(!bind.contains(&"bordered"));
-        assert!(bind.contains(&"variant"));
+        assert!(bind.contains(&"underline"));
         assert!(event.contains(&"on_click"));
         assert!(!event.contains(&"on_close"));
 
         let (_, bind, event) = props_for("Tab");
         assert!(bind.contains(&"label"));
         assert!(bind.contains(&"icon"));
-        assert!(!bind.contains(&"variant"));
+        assert!(!bind.contains(&"underline"));
         assert!(event.contains(&"on_click"));
     }
 

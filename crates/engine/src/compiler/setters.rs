@@ -12,7 +12,7 @@ use crate::parser::ast::EventHandler;
 ///
 /// - `label="..."` → `.label("...")`
 /// - `placeholder="..."` → `.placeholder("...")`（Input 支持）
-/// - `variant="primary"`/`variant="danger"` → `.primary()` / `.danger()`（Button 专用）
+/// - `primary=""`/`danger=""` → `.primary()` / `.danger()`（Button 专用布尔属性）
 /// - `disabled="true"` → `.disabled(true)`
 /// - `selected`/`compact`/`loading` → 对应方法
 /// - `size` → Sizable 尺寸方法（`size="small"` → `.with_size(rml_ui::Size::Small)`）
@@ -72,27 +72,33 @@ pub fn component_static_setter(name: &str, value: &str, tag: &str) -> Option<Str
         }
         // Link: href="url" → .href("url")
         "href" if tag == "Link" => Some(format!(".href({:?})", value)),
-        // Spinner: icon="Loader" → .icon(rml_ui::Icon::new(rml_ui::IconName::Loader))
-        "icon" if tag == "Spinner" => {
+        // Spinner / ColorPicker: icon="Loader" → .icon(rml_ui::Icon::new(rml_ui::IconName::Loader))
+        "icon" if tag == "Spinner" || tag == "ColorPicker" => {
             Some(format!(".icon(rml_ui::Icon::new(rml_ui::IconName::{}))", value))
         }
         // Collapsible: open="true" → .open(true)
         "open" if tag == "Collapsible" => Some(format!(".open({})", parse_bool(value))),
         // GroupBox: title="..." → .title("...")
         "title" if tag == "GroupBox" => Some(format!(".title({:?})", value)),
-        // GroupBox variant 字符串属性: variant="fill" → .fill()
-        "variant" if tag == "GroupBox" => match value {
-            "normal" => Some(".normal()".to_string()),
-            "fill" => Some(".fill()".to_string()),
-            "outline" => Some(".outline()".to_string()),
-            _ => None,
-        },
-        // Button variant: variant="primary" → .primary()，variant="danger" → .danger() 等
-        // 不写 variant = 默认 Secondary（ButtonVariant::Secondary 为 #[default]）
-        "variant" if tag == "Button" => match value {
-            "primary" | "secondary" | "danger" | "success" | "warning" | "info" | "ghost"
-            | "link" | "text" => Some(format!(".{}()", value)),
-            _ => None,
+        // GroupBox variant 布尔属性: fill → .fill(), outline → .outline(), normal → .normal()
+        // 各 variant 为独立布尔属性，可与其他属性自由组合
+        "fill" | "normal" | "outline" if tag == "GroupBox" => {
+            if value.is_empty() || value.eq_ignore_ascii_case("true") {
+                Some(format!(".{}()", name))
+            } else {
+                None
+            }
+        }
+        // Button variant 布尔属性: primary → .primary(), ghost → .ghost() 等
+        // 各 variant 为独立布尔属性，可与其他属性自由组合（如 <Button primary compact />）
+        // secondary 为默认值（ButtonVariant::Secondary 为 #[default]）
+        "primary" | "secondary" | "danger" | "success" | "warning" | "info" | "ghost"
+        | "link" | "text" if tag == "Button" => {
+            if value.is_empty() || value.eq_ignore_ascii_case("true") {
+                Some(format!(".{}()", name))
+            } else {
+                None
+            }
         },
         // Pagination 数值属性
         "current_page" | "total_pages" | "visible_pages" if tag == "Pagination" => {
@@ -108,6 +114,71 @@ pub fn component_static_setter(name: &str, value: &str, tag: &str) -> Option<Str
         // Rating: value="3" → .value(3usize), max="5" → .max(5usize)
         "value" if tag == "Rating" => Some(format!(".value({}usize)", value)),
         "max" if tag == "Rating" => Some(format!(".max({}usize)", value)),
+        // NumberInput: appearance 默认 true，仅在 false 时显式设置
+        "appearance" if tag == "NumberInput" => {
+            if value.eq_ignore_ascii_case("false") {
+                Some(".appearance(false)".to_string())
+            } else {
+                Some(String::new())
+            }
+        }
+        // DatePicker: appearance 默认 true，仅在 false 时显式设置（同 NumberInput）
+        "appearance" if tag == "DatePicker" => {
+            if value.eq_ignore_ascii_case("false") {
+                Some(".appearance(false)".to_string())
+            } else {
+                Some(String::new())
+            }
+        }
+        // DatePicker: cleanable 默认 false，仅在 true（或空属性）时显式设置
+        "cleanable" if tag == "DatePicker" => {
+            if value.is_empty() || value.eq_ignore_ascii_case("true") {
+                Some(".cleanable(true)".to_string())
+            } else {
+                Some(String::new())
+            }
+        }
+        // DatePicker: number_of_months="2" → .number_of_months(2usize)
+        "number_of_months" if tag == "DatePicker" => {
+            Some(format!(".number_of_months({}usize)", value))
+        }
+        // Select/Combobox: cleanable 默认 false，仅在 true（或空属性）时显式设置
+        "cleanable" if tag == "Select" || tag == "Combobox" => {
+            if value.is_empty() || value.eq_ignore_ascii_case("true") {
+                Some(".cleanable(true)".to_string())
+            } else {
+                Some(String::new())
+            }
+        }
+        // Select/Combobox: appearance 默认 true，仅在 false 时显式设置（同 NumberInput/DatePicker）
+        "appearance" if tag == "Select" || tag == "Combobox" => {
+            if value.eq_ignore_ascii_case("false") {
+                Some(".appearance(false)".to_string())
+            } else {
+                Some(String::new())
+            }
+        }
+        // Select/Combobox: menu_width="200px" → .menu_width(gpui::px(200.0))
+        // 仅支持 px 数值，复杂 Length 类型用户可在 code-behind 中命令式设置
+        "menu_width" if tag == "Select" || tag == "Combobox" => {
+            if let Some(px_val) = parse_px(value) {
+                Some(format!(".menu_width(gpui::px({}.))", px_val))
+            } else {
+                None
+            }
+        }
+        // Select/Combobox: menu_max_h="300px" → .menu_max_h(gpui::px(300.0))
+        "menu_max_h" if tag == "Select" || tag == "Combobox" => {
+            if let Some(px_val) = parse_px(value) {
+                Some(format!(".menu_max_h(gpui::px({}.))", px_val))
+            } else {
+                None
+            }
+        }
+        // Combobox: search_placeholder="搜索..." → .search_placeholder("...")
+        "search_placeholder" if tag == "Combobox" => {
+            Some(format!(".search_placeholder({:?})", value))
+        }
         // Sizable 尺寸：size="xsmall" / size="small" / size="large"
         // medium/default 为组件原生默认（Size::Medium 由 #[default] 指定），
         // 遵循原生写法不生成 .with_size() 调用，避免冗余加工。
@@ -575,6 +646,13 @@ pub fn parse_bool(value: &str) -> &'static str {
     } else {
         "false"
     }
+}
+
+/// 解析 RML 属性值中的像素数值（如 "200px" / "200" → 200.0）
+fn parse_px(value: &str) -> Option<f64> {
+    let trimmed = value.trim();
+    let stripped = trimmed.strip_suffix("px").unwrap_or(trimmed).trim();
+    stripped.parse::<f64>().ok()
 }
 
 #[cfg(test)]

@@ -53,7 +53,7 @@
 
 ---
 
-### B1. Stepper（StatelessWithItems）— 验证 items builder 模式
+### B1. Stepper（StatelessWithItems）— ✅ 完成
 
 **gpui-component API**（已验证，`stepper/stepper.rs` + `stepper/item.rs`）：
 - `Stepper::new(id: impl Into<ElementId>)` — 构造器
@@ -131,7 +131,7 @@
 
 ---
 
-### B2. Rating（Stateless）— 验证 Stateless + on_click &usize 双向绑定
+### B2. Rating（Stateless）— ✅ 完成
 
 **gpui-component 来源**：`gpui_component::rating::{Rating, RatingEvent}`
 
@@ -157,26 +157,32 @@
 
 ---
 
-### B3. NumberInput（Stateful, 复用 InputState）— 验证状态复用
+### B3. NumberInput（Stateful, 复用 InputState）— ✅ 完成
 
-**gpui-component 来源**：`gpui_component::input::number_input::{NumberInput, NumberInputEvent}`
+**gpui-component 来源**：`gpui_component::input::{NumberInput, NumberInputEvent}`
 
 | 项 | 内容 |
 |----|------|
 | 构造 | `NumberInput::new(&Entity<InputState>)` — 复用 InputState |
 | ComponentKind | `Stateful { state_field: "input_state", state_ctor: "\|w, c\| InputState::new(w, c)" }` |
-| 属性 | 同 Input + `precision`、`step`、`min`、`max` |
-| 事件 | `NumberInputEvent`（需在 subscribe 回调中区分 NumberInputEvent vs InputEvent） |
-| 专属 translator | **可能**（若 NumberInputEvent 需 downcast 区分） |
+| 属性 | placeholder、appearance、disabled、size（通用 Sizable） |
+| 事件 | on_change/on_enter/on_focus/on_blur 走 InputEvent 订阅（同 Input） |
+| 专属 translator | **无需**（复用 StatefulComponentTranslator） |
 | container | false |
 
-**关键差异**：codegen 需生成 `cx.subscribe(&entity, move |_, event, cx| { if let Ok(e) = event.downcast_ref::<NumberInputEvent>() {...} })` 处理 NumberInputEvent。
+**实现结论**：NumberInput 步进按钮默认由 InputState 内部处理（步长 1），直接更新值并触发 InputEvent::Change，无需 NumberInputEvent::Step 订阅。value={field} 双向绑定走 InputStateBridge（C2），与 Input/TextInput 完全一致。appearance="false" → .appearance(false) 移除边框。
 
-**实施时需读 `number_input.rs` 源码确认**：NumberInputEvent 的具体变体、precision/step/min/max 的 setter 方法签名。
+**交付物**：
+1. ✅ `crates/ui/src/components/number_input.rs` — re-export NumberInput + NumberInputEvent
+2. ✅ `crates/engine/src/tags.rs` — NumberInput | number-input → Stateful
+3. ✅ `crates/engine/src/compiler/components/input/event.rs` — is_input_event 添加 NumberInput
+4. ✅ `crates/engine/src/compiler/props_registry.rs` — NumberInput 专用属性
+5. ✅ `crates/engine/src/compiler/setters.rs` — appearance 静态 setter
+6. ✅ `demo/src/cases/number_input_case.rml` + `.rml.rs` — 6 个演示场景
 
 ---
 
-### B4. OtpInput（Stateful, OtpState）— 验证构造器参数注入
+### B4. OtpInput（Stateful, OtpState）— ✅ 完成
 
 **gpui-component 来源**：`gpui_component::input::otp_input::{OtpInput, OtpState}`
 
@@ -195,81 +201,140 @@
 
 ---
 
-### B5. ColorPicker（Stateful, ColorPickerState）— 标准 Stateful
+### B5. ColorPicker（Stateful, ColorPickerState）— ✅ 完成
 
 **gpui-component 来源**：`gpui_component::color_picker::{ColorPicker, ColorPickerState, ColorPickerEvent}`
 
 | 项 | 内容 |
 |----|------|
-| 构造 | `ColorPickerState::new()` + `ColorPicker::new(&Entity<ColorPickerState>)` |
-| ComponentKind | `Stateful { state_field: "color_picker_state", state_ctor: "\|_w, _c\| ColorPickerState::new()" }` |
-| 属性 | `default_value`（Hsla）、`placeholder` |
-| 事件 | `ColorPickerEvent` |
-| 专属 translator | **否**（标准 Stateful）——除非 ColorPickerEvent 需特殊处理 |
+| 构造 | `ColorPickerState::new(w, c)` + `ColorPicker::new(&Entity<ColorPickerState>)` |
+| ComponentKind | `Stateful { state_field: "color_picker_state", state_ctor: "\|w, c\| rml_ui::ColorPickerState::new(w, c)" }` |
+| 属性 | `label`（通用 static）、`icon`（static setter）、`size`（通用 Sizable） |
+| 事件 | `ColorPickerEvent::Change(Option<Hsla>)` → `on_change`，通过 state_event.rs 订阅，用户方法接收 `Option<Hsla>` 载荷 |
+| 专属 translator | **否**（标准 Stateful） |
 | container | false |
+
+**实现结论**：ColorPickerEvent::Change(Option<Hsla>) 带载荷，通过 `STATE_EVENT_REGISTRY` 注册的 StateEventSpec 订阅。call_template 使用 `(*color).clone()` 解引用+克隆载荷（因 subscribe 回调中 event 为引用，payload 绑定为 `&Option<Hsla>`）。default_value/featured_colors/anchor 涉及复杂类型（Hsla/Vec<Hsla>/Anchor），暂不支持声明式设置，用户可在 on_loaded 中命令式调用。
+
+**交付物**：
+1. ✅ `crates/ui/src/components/color_picker.rs` — re-export ColorPicker + ColorPickerState + ColorPickerEvent
+2. ✅ `crates/engine/src/tags.rs` — ColorPicker | color-picker → Stateful
+3. ✅ `crates/engine/src/compiler/components/state_event.rs` — ColorPicker on_change StateEventSpec
+4. ✅ `crates/engine/src/compiler/props_registry.rs` — ColorPicker 专用属性（icon, on_change）
+5. ✅ `crates/engine/src/compiler/setters.rs` — icon static setter（Spinner/ColorPicker 共用）
+6. ✅ `demo/src/cases/color_picker_case.rml` + `.rml.rs` — 4 个演示场景
 
 ---
 
-### B6. Calendar（Stateful, CalendarState）— 跨模块 re-export
+### B6. Calendar（Stateful, CalendarState）— ✅ 完成
 
-**gpui-component 来源**：`gpui_component::time::calendar::{Calendar, CalendarState, CalendarEvent}`
+**gpui-component 来源**：`gpui_component::calendar::{Calendar, CalendarState, CalendarEvent, Date}`（time 模块为私有，calendar 直接 re-export）
 
 | 项 | 内容 |
 |----|------|
-| 构造 | `CalendarState::new()` + `Calendar::new(&Entity<CalendarState>)` |
-| ComponentKind | `Stateful { state_field: "calendar_state", state_ctor: "\|_w, _c\| CalendarState::new()" }` |
-| 属性 | `year_range`（暂不支持高级 matcher） |
-| 事件 | `CalendarEvent` |
-| UI re-export | `pub use gpui_component::time::calendar::{Calendar, CalendarState, CalendarEvent};` |
+| 构造 | `CalendarState::new(w, c)` + `Calendar::new(&Entity<CalendarState>)` |
+| ComponentKind | `Stateful { state_field: "calendar_state", state_ctor: "\|w, c\| rml_ui::CalendarState::new(w, c)" }` |
+| 属性 | `size`（通用 Sizable） |
+| 事件 | `CalendarEvent::Selected(Date)` → `on_select`，通过 state_event.rs 订阅，用户方法接收 `Date` 载荷 |
+| UI re-export | `pub use gpui_component::calendar::{Calendar, CalendarEvent, CalendarState, Date};` |
 | container | false |
+
+**实现结论**：gpui_component 的 `time` 模块为私有，但 `calendar` 子模块通过 `pub use time::{calendar, date_picker};` 直接 re-export，因此导入路径为 `gpui_component::calendar::*` 而非 `gpui_component::time::calendar::*`。CalendarEvent::Selected(Date) 带载荷，通过 STATE_EVENT_REGISTRY 注册。
+
+**交付物**：
+1. ✅ `crates/ui/src/components/calendar.rs` — re-export Calendar + CalendarState + CalendarEvent + Date
+2. ✅ `crates/engine/src/tags.rs` — Calendar | calendar → Stateful
+3. ✅ `crates/engine/src/compiler/components/state_event.rs` — Calendar on_select StateEventSpec
+4. ✅ `crates/engine/src/compiler/props_registry.rs` — Calendar 专用属性（on_select）
+5. ✅ `demo/src/cases/calendar_case.rml` + `.rml.rs` — 2 个演示场景
 
 ---
 
-### B7. DatePicker（Stateful, DatePickerState）— 依赖 Calendar
+### B7. DatePicker（Stateful, DatePickerState）— ✅ 完成
 
-**gpui-component 来源**：`gpui_component::time::date_picker::{DatePicker, DatePickerState}`
+**gpui-component 来源**：`gpui_component::date_picker::{DatePicker, DatePickerState, DatePickerEvent}`（time 模块为私有，date_picker 直接 re-export）
 
 | 项 | 内容 |
 |----|------|
-| 构造 | `DatePickerState::new()` + `DatePicker::new(&Entity<DatePickerState>)` |
-| ComponentKind | `Stateful { state_field: "date_picker_state", state_ctor: "\|_w, _c\| DatePickerState::new()" }` |
-| 属性 | `placeholder`、`cleanable`（bool）、`default_value` |
-| 事件 | DatePicker 事件（位于 time 模块） |
-| UI re-export | `pub use gpui_component::time::date_picker::{DatePicker, DatePickerState};` |
+| 构造 | `DatePickerState::new(w, c)` + `DatePicker::new(&Entity<DatePickerState>)` |
+| ComponentKind | `Stateful { state_field: "date_picker_state", state_ctor: "\|w, c\| rml_ui::DatePickerState::new(w, c)" }` |
+| 属性 | `placeholder`（通用 static）、`cleanable`（bool，默认 false）、`appearance`（bool，默认 true）、`number_of_months`（usize）、`size`（通用 Sizable） |
+| 事件 | `DatePickerEvent::Change(Date)` → `on_change`，通过 state_event.rs 订阅，用户方法接收 `Date` 载荷 |
+| UI re-export | `pub use gpui_component::date_picker::{DatePicker, DatePickerEvent, DatePickerState};` |
 | container | false |
+
+**实现结论**：DatePickerState::new(w, c) 需要 `w, c` 参数（与 CalendarState 一致），原计划 `|_w, _c| DatePickerState::new()` 有误。DatePickerEvent::Change(Date) 带载荷，通过 STATE_EVENT_REGISTRY 注册，call_template 使用 `(*date).clone()` 解引用+克隆载荷。cleanable 默认 false（空属性或 "true" → `.cleanable(true)`），appearance 默认 true（同 NumberInput，仅 "false" 时生成 `.appearance(false)`），number_of_months 为 usize 数值属性。Date 类型已在 calendar 模块 re-export，DatePickerEvent::Change 复用同一 Date 类型。
+
+**交付物**：
+1. ✅ `crates/ui/src/components/date_picker.rs` — re-export DatePicker + DatePickerState + DatePickerEvent
+2. ✅ `crates/engine/src/tags.rs` — DatePicker | date-picker → Stateful
+3. ✅ `crates/engine/src/compiler/components/state_event.rs` — DatePicker on_change StateEventSpec + 2 个单元测试
+4. ✅ `crates/engine/src/compiler/props_registry.rs` — DatePicker 专用属性（placeholder, cleanable, appearance, number_of_months, on_change）
+5. ✅ `crates/engine/src/compiler/setters.rs` — cleanable/appearance/number_of_months 专用 setter
+6. ✅ `demo/src/cases/date_picker_case.rml` + `.rml.rs` — 4 个演示场景
 
 ---
 
-### B8. Select（Stateful, SelectState）— 验证 items 绑定
+### B8. Select（StatefulWithDelegate, SelectState）— ✅ 完成
 
-**gpui-component 来源**：`gpui_component::select::{Select, SelectState, SelectEvent}`
+**gpui-component 来源**：`gpui_component::select::{Select, SelectState, SelectEvent}`（泛型 `SelectState<D>` where `D: SearchableListDelegate`）
+
+**框架扩展**：Select 的 `SelectState::new(delegate, None, w, c)` 需要 delegate 参数，现有 `Stateful` kind 无法表达。新增 `StatefulWithDelegate` ComponentKind，支持 delegate 注入。
 
 | 项 | 内容 |
 |----|------|
-| 构造 | `SelectState::new()` + `Select::new(&Entity<SelectState>)` |
-| ComponentKind | `Stateful { state_field: "select_state", state_ctor: "\|_w, _c\| SelectState::new()" }` |
-| 属性 | `placeholder`、`menu_width`、`menu_max_h`、`icon`、`value`（bind）、`items`（bind） |
-| 事件 | `SelectEvent`、`DismissEvent` |
-| 专属 translator | **可能**（items 绑定需生成 `.items(vec)` 调用） |
+| 构造 | `SelectState::new(delegate, None, w, c)` + `Select::new(&Entity<SelectState<D>>)` |
+| ComponentKind | `StatefulWithDelegate { state_field: "select_state", state_ctor: "move \|w, c\| SelectState::new(__rml_delegate, None, w, c)", delegate_attr: "items" }` |
+| delegate 类型 | `SearchableVec<SharedString>`（字符串下拉的常用委托），UI 层定义 `StringSelectState = SelectState<SearchableVec<SharedString>>` 类型别名 |
+| 属性 | `placeholder`（通用 static）、`cleanable`（bool，默认 false）、`appearance`（bool，默认 true）、`menu_width`/`menu-max-h`（px 值）、`size`（通用 Sizable） |
+| 事件 | `SelectEvent::Confirm(Option<SharedString>)` → `on_change`，通过 state_event.rs 订阅，用户方法接收 `Option<SharedString>` 载荷 |
 | container | false |
 
-**复杂度中高**：需处理选项数据绑定。方案：通过 `items={vec}` bind 传入 `Vec<SelectItem>`，codegen 生成 `.items(vec)` 调用。
+**关键实现决策**：
+1. `StatefulWithDelegate` kind：codegen 将 `self.field.clone()` 内联到 `get_or_init_ref` 的构造器参数 block 中（`{ let __rml_delegate = (self.field).clone(); move |w, c| ... }`），使 `extract_state_refs` 能将整个调用（含 delegate）预提取到 slot 闭包外
+2. `items={field}` bind 属性在 setter 循环中跳过（已在构造器中消费）
+3. 事件模式 `if let rml_ui::SelectEvent::Confirm(value) = event` 不含泛型参数（Rust 模式匹配中无法指定泛型，由编译器推断）
+4. `canonical_tag` 新增 `"select" => "Select"` 和 `"calendar" => "Calendar"` 小写别名映射
 
-**实施时需读 `select.rs` 源码确认**：SelectState::new 签名、items/value setter、SelectItem 类型。
+**交付物**：
+1. ✅ `crates/ui/src/components/select.rs` — re-export Select + SelectState + SelectEvent + SearchableVec + StringSelectState/StringSelectEvent 类型别名
+2. ✅ `crates/engine/src/tags.rs` — Select | select → StatefulWithDelegate + canonical_tag 小写别名
+3. ✅ `crates/engine/src/compiler/translator/component/stateful.rs` — `gen_stateful_with_delegate_body` 函数 + setter 循环跳过 delegate_attr
+4. ✅ `crates/engine/src/compiler/components/state_event.rs` — Select on_change StateEventSpec + 2 个单元测试
+5. ✅ `crates/engine/src/compiler/props_registry.rs` — Select 专用属性（placeholder, cleanable, appearance, menu_width, menu_max_h, items, on_change）
+6. ✅ `crates/engine/src/compiler/setters.rs` — cleanable/appearance/menu_width/menu_max_h 专用 setter + parse_px 辅助函数
+7. ✅ `demo/src/cases/select_case.rml` + `.rml.rs` — 4 个演示场景
 
 ---
 
-### B9. ComboBox（Stateful, ComboboxState）— 复用 Select 模式
+### B9. ComboBox（StatefulWithDelegate, ComboboxState）— ✅ 完成
 
-**gpui-component 来源**：`gpui_component::combobox::{Combobox, ComboboxState, ComboboxEvent}`
+**gpui-component 来源**：`gpui_component::combobox::{Combobox, ComboboxState, ComboboxEvent}`（泛型 `ComboboxState<D>` where `D: SearchableListDelegate`）
+
+**框架复用**：复用 B8 Select 引入的 `StatefulWithDelegate` ComponentKind，Combobox 的 `ComboboxState::new(delegate, vec![], w, c)` 同样需要 delegate 参数。
 
 | 项 | 内容 |
 |----|------|
-| 构造 | `ComboboxState::new()` + `Combobox::new(&Entity<ComboboxState>)` |
-| ComponentKind | `Stateful { state_field: "combobox_state", state_ctor: "\|_w, _c\| ComboboxState::new()" }` |
-| 属性 | 同 Select + `search_placeholder` |
-| 事件 | `ComboboxEvent`、`DismissEvent` |
+| 构造 | `ComboboxState::new(delegate, vec![], w, c)` + `Combobox::new(&Entity<ComboboxState<D>>)` |
+| ComponentKind | `StatefulWithDelegate { state_field: "combobox_state", state_ctor: "move \|w, c\| ComboboxState::new(__rml_delegate, vec![], w, c)", delegate_attr: "items" }` |
+| delegate 类型 | `SearchableVec<SharedString>`（字符串多选的常用委托），UI 层定义 `StringComboboxState = ComboboxState<SearchableVec<SharedString>>` 类型别名 |
+| 属性 | `placeholder`（通用 static）、`cleanable`（bool，默认 false）、`appearance`（bool，默认 true）、`menu-width`/`menu-max-h`（px 值）、`search-placeholder`（字符串）、`size`（通用 Sizable） |
+| 事件 | `ComboboxEvent::Change(Vec<SharedString>)` → `on_change`，通过 state_event.rs 订阅，用户方法接收 `Vec<SharedString>` 载荷 |
 | container | false |
+
+**关键实现决策**：
+1. 复用 B8 的 `StatefulWithDelegate` kind，delegate 注入机制完全一致（`items={field}` bind 属性在 setter 循环中跳过，已内联到 `get_or_init_ref` 构造器参数中）
+2. `multiple`/`searchable` 是 `ComboboxState` 的方法而非 `Combobox` builder 方法，不作为 RML 属性支持（需在 code-behind 中命令式设置）
+3. 事件模式 `if let rml_ui::ComboboxEvent::Change(values) = event` 不含泛型参数（Rust 模式匹配中无法指定泛型，由编译器推断）
+4. `canonical_tag` 新增 `"combobox" => "Combobox"` 小写别名映射
+
+**交付物**：
+1. ✅ `crates/ui/src/components/combobox.rs` — re-export Combobox + ComboboxState + ComboboxEvent + StringComboboxState/StringComboboxEvent 类型别名
+2. ✅ `crates/engine/src/tags.rs` — Combobox | combobox → StatefulWithDelegate + canonical_tag 小写别名
+3. ✅ `crates/engine/src/compiler/components/state_event.rs` — Combobox on_change StateEventSpec + 2 个单元测试
+4. ✅ `crates/engine/src/compiler/props_registry.rs` — Combobox 专用属性（placeholder, cleanable, appearance, menu_width, menu_max_h, search_placeholder, items, on_change）
+5. ✅ `crates/engine/src/compiler/setters.rs` — cleanable/appearance/menu_width/menu_max_h/search_placeholder 专用 setter（复用 Select 的 parse_px）
+6. ✅ `demo/src/cases/combobox_case.rml` + `.rml.rs` — 4 个演示场景
 
 ---
 

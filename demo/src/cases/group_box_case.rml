@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.group_box.title")}
-        description="GroupBox 是 RML 的分组容器组件，标签为 PascalCase GroupBox。StatelessNoId 组件（无 ElementId，RenderOnce），实现 ParentElement。提供 title 标题与 3 种 variant（normal/fill/outline），通过 variant 属性或同名空属性切换。"
+        description="GroupBox 是 RML 的分组容器组件，标签为 PascalCase GroupBox。StatelessNoId 组件（无 ElementId，RenderOnce），实现 ParentElement。提供 title 标题与 3 种 variant（normal/fill/outline），通过独立布尔属性切换。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
@@ -14,34 +14,34 @@
             </Card>
 
             <Card title="fill 填充背景">
-                <p><code>variant="fill"</code> 切换为填充背景样式。</p>
-                <GroupBox title="设置面板" variant="fill">
+                <p><code>fill</code> 切换为填充背景样式。</p>
+                <GroupBox title="设置面板" fill>
                     <p>主题：暗色</p>
                     <p>语言：简体中文</p>
                 </GroupBox>
             </Card>
 
             <Card title="outline 描边">
-                <p><code>variant="outline"</code> 切换为描边样式。</p>
-                <GroupBox title="高级选项" variant="outline">
+                <p><code>outline</code> 切换为描边样式。</p>
+                <GroupBox title="高级选项" outline>
                     <p>启用通知：是</p>
                     <p>自动更新：否</p>
                 </GroupBox>
             </Card>
 
-            <Card title="variant 属性">
-                <p>使用 <code>variant="fill"</code> / <code>variant="outline"</code> / <code>variant="normal"</code> 字符串属性切换 variant。</p>
-                <GroupBox title="示例" variant="fill">
-                    <p>通过 variant 属性设置</p>
+            <Card title="variant 布尔属性">
+                <p>使用 <code>fill</code> / <code>outline</code> / <code>normal</code> 独立布尔属性切换 variant。</p>
+                <GroupBox title="示例" fill>
+                    <p>通过 fill 布尔属性设置</p>
                 </GroupBox>
-                <GroupBox title="示例" variant="outline">
-                    <p>通过 variant 属性设置</p>
+                <GroupBox title="示例" outline>
+                    <p>通过 outline 布尔属性设置</p>
                 </GroupBox>
             </Card>
 
             <Card title="title 动态绑定">
                 <p><code>title=&#123;dynamic_title&#125;</code> 绑定动态标题字段：</p>
-                <GroupBox title={dynamic_title} variant="fill">
+                <GroupBox title={dynamic_title} fill>
                     <p>当前标题：{dynamic_title}</p>
                     <div class="button-row">
                         <Button label="切换标题" on-click={on_cycle_title} />
@@ -51,7 +51,7 @@
 
             <Card title="无标题">
                 <p>不写 <code>title</code> 属性则无标题，仅作为分组容器：</p>
-                <GroupBox variant="fill">
+                <GroupBox fill>
                     <p>无标题的分组内容</p>
                 </GroupBox>
             </Card>
