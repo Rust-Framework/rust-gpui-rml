@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.resizable.title")}
-        description="Resizable 是可调整面板组组件，标签为 PascalCase Resizable 或 kebab-case resizable。构造器为函数 h_resizable(id)/v_resizable(id)（非 ResizablePanelGroup::new），由编译器特化处理。direction 属性选择 h/v 构造器。子节点 resizable-panel 实现 Styled + ParentElement，支持 CSS 样式和子节点。非 panel 子节点通过 From&lt;T: Into&lt;AnyElement&gt;&gt; for ResizablePanel 自动包裹。"
+        description="Resizable 是可调整面板组组件，标签为 PascalCase Resizable 或 kebab-case resizable。direction 属性选择水平/垂直方向。子节点 resizable-panel 支持样式属性和子节点。非 panel 子节点自动包裹为 panel。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
@@ -45,7 +45,7 @@
 
             <div class="demo-section">
                 <h3>非 Panel 子节点自动包裹</h3>
-                <p>直接放置 div 等元素，通过 From impl 自动包裹为 ResizablePanel：</p>
+                <p>直接放置 div 等元素，自动包裹为 panel：</p>
                 <resizable direction="horizontal" height="120px">
                     <div style="background: var(--surface); padding: 12px; flex: 1;">
                         <p font-bold="">自动包裹 1</p>
@@ -62,7 +62,7 @@
         <template slot="api">
             <h3>Resizable</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-            <p>注：direction 为静态属性（选择 h/v 构造器），size 支持静态和绑定两种形式（如 size="400px" 或 size=&#123;height&#125;）。ResizablePanelGroup 不实现 Styled trait，CSS 样式仅作用于 resizable-panel 子节点。resizable-panel 实现 Styled + ParentElement，支持 size/size_range/visible 属性及所有样式属性。</p>
+            <p>注：direction 为静态属性（选择 h/v 方向），size 支持静态和绑定两种形式（如 size="400px" 或 size=&#123;height&#125;）。ResizablePanelGroup 不支持样式属性，CSS 样式仅作用于 resizable-panel 子节点。resizable-panel 支持子节点及所有样式属性，另有 size/size_range/visible 属性。</p>
         </template>
     </CaseDocPage>
 </component>

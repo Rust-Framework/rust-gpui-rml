@@ -47,7 +47,7 @@ impl ILifecycle for DialogControlledCase {
             ("open", "bool / binding", "受控开关，如 open={show_dialog}；true 显示对话框，false 隐藏"),
             ("on-close", "event", "关闭时回调；框架自动将 open 回写为 false，再执行用户回调"),
             ("title", "string", "对话框标题文本"),
-            ("width", "长度", "对话框宽度，支持 px/裸数字，如 500px / 600"),
+            ("width", "number", "对话框宽度，支持 px/裸数字，如 500px / 600"),
             ("overlay", "bool", "是否显示背景遮罩，默认 true"),
             ("overlay-closable", "bool", "点击遮罩是否关闭对话框，默认 true"),
             ("close-button", "bool", "是否显示关闭按钮，默认 true"),

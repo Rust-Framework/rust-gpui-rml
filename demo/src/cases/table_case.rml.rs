@@ -61,7 +61,7 @@ impl ILifecycle for TableCase {
         let (cols, rows) = build_api_table(&[
             ("template slot=\"header\"", "slot", "自定义列头模板（替换默认列头渲染）"),
             ("template slot=\"footer\"", "slot", "表格底部插槽（如统计信息、分页等）"),
-            ("template slot=\"cell\" field=\"name\"", "scoped slot", "单元格模板（field 指定列，模板内可引用 row_idx 闭包参数）"),
+            ("template slot=\"cell\" field=\"name\"", "slot", "单元格模板（field 指定列，模板内可引用 row_idx 闭包参数）"),
         ]);
         self.slot_api_columns = cols;
         self.slot_api_rows = rows;

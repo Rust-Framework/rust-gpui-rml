@@ -37,8 +37,8 @@ impl ILifecycle for MenuContextCase {
             ("menu-item label", "string", "菜单项文案"),
             ("menu-item icon", "string", "菜单项图标"),
             ("menu-item on-click", "event", "点击回调"),
-            ("menu-separator", "标签", "分组分隔线"),
-            ("menu-item 子节点", "menu-item", "子菜单"),
+            ("menu-separator", "slot", "分组分隔线"),
+            ("menu-item 子节点", "slot", "子菜单"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

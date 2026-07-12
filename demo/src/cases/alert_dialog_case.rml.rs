@@ -36,7 +36,7 @@ impl ILifecycle for AlertDialogCase {
         let (cols, rows) = build_api_table(&[
             ("title", "string", "对话框标题文本"),
             ("description", "string", "对话框描述文本（AlertDialog 专属，Dialog 无此属性）"),
-            ("width", "长度", "对话框宽度，支持 px/裸数字，如 420px / 500，默认 420px"),
+            ("width", "number", "对话框宽度，支持 px/裸数字，如 420px / 500，默认 420px"),
             ("confirm", "bool", "布尔属性，存在即显示取消按钮（等同 show-cancel=true）"),
             ("show-cancel", "bool", "是否显示取消按钮，默认 false；show-cancel=true 显示"),
             ("overlay-closable", "bool", "点击遮罩是否关闭，默认 false（AlertDialog 专属默认值）；overlay-closable=true 开启"),

@@ -36,7 +36,7 @@ impl ILifecycle for SheetCase {
         let (cols, rows) = build_api_table(&[
             ("title", "string", "抽屉标题文本，渲染在标题栏左侧"),
             ("footer", "string", "抽屉页脚文本，渲染在底部区域"),
-            ("size", "长度", "抽屉面板尺寸，支持 px/百分比/裸数字，如 350px / 50% / 400"),
+            ("size", "number", "抽屉面板尺寸，支持 px/百分比/裸数字，如 350px / 50% / 400"),
             ("resizable", "bool", "是否可拖拽调整大小，默认 true；resizable=false 禁用"),
             ("overlay", "bool", "是否显示背景遮罩，默认 true；overlay=false 关闭"),
             ("overlay-closable", "bool", "点击遮罩是否关闭抽屉，默认 true；overlay-closable=false 禁用"),

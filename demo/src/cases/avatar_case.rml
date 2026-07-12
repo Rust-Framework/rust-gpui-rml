@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.avatar.title")}
-        description="Avatar 是 RML 的头像组件，标签为 PascalCase Avatar 或小写 avatar（均合法）。无需 ElementId。支持三种内容模式（src 图片 / name 首字母 / placeholder 占位图标），优先级 src &gt; name &gt; placeholder。四种尺寸（xsmall/small/medium/large），支持 on-click 事件。AvatarGroup 容器组合多个 Avatar，支持 limit 限制与 ellipsis 折叠。"
+        description="Avatar 是 RML 的头像组件，标签为 PascalCase Avatar 或小写 avatar（均合法）。支持三种内容模式（src 图片 / name 首字母 / placeholder 占位图标），优先级 src &gt; name &gt; placeholder。四种尺寸（xsmall/small/medium/large），支持 on-click 事件。AvatarGroup 容器组合多个 Avatar，支持 limit 限制与 ellipsis 折叠。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
@@ -27,7 +27,7 @@
 
             <div class="demo-section">
                 <h3>内容模式：placeholder 占位图标</h3>
-                <p>无 src/name 时显示 IconName 图标作为占位符。值为 IconName 枚举名（PascalCase，如 CircleUser/Building2/Bell）。常用于匿名用户或组织头像。</p>
+                <p>无 src/name 时显示图标作为占位符。值为图标名称（如 CircleUser/Building2/Bell）。常用于匿名用户或组织头像。</p>
                 <div class="avatar-row">
                     <Avatar size="large" placeholder="CircleUser" />
                     <Avatar placeholder="Building2" />
@@ -37,7 +37,7 @@
 
             <div class="demo-section">
                 <h3>尺寸 size</h3>
-                <p>size 属性控制头像大小：xsmall / small / medium / large，走通用 Sizable trait。</p>
+                <p>size 属性控制头像大小：xsmall / small / medium / large，为通用尺寸属性。</p>
                 <div class="avatar-row">
                     <Avatar name="XS" size="xsmall" />
                     <Avatar name="S" size="small" />
@@ -83,7 +83,7 @@
             <Table columns={avatar_api_columns} rows={avatar_api_rows} bordered="" stripe="" />
             <h3>AvatarGroup</h3>
             <Table columns={group_api_columns} rows={group_api_rows} bordered="" stripe="" />
-            <p>另：size 属性来自 Sizable trait，disabled 等通用属性对所有组件生效。</p>
+            <p>另：size 属性为通用尺寸属性，disabled 等通用属性对所有组件生效。</p>
             <p>另：avatar 与 Avatar 标签等价。</p>
         </template>
     </CaseDocPage>

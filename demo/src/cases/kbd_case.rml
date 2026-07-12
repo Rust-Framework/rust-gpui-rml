@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.kbd.title")}
-        description="Kbd 是 RML 的键盘按键展示组件，标签为 PascalCase Kbd。构造器接受 Keystroke 类型，通过 key 属性解析（如 key=&quot;cmd-a&quot; 生成 Keystroke::parse）。RenderOnce 无 ElementId，平台自适应显示：macOS 显示 ⌘A 符号，Windows/Linux 显示 Ctrl+A 文本。适合快捷键提示、菜单项右侧键标识。"
+        description="Kbd 是键盘按键展示组件。通过 key 属性解析快捷键（如 key=&quot;cmd-a&quot;），平台自适应显示：macOS 显示 ⌘A 符号，Windows/Linux 显示 Ctrl+A 文本。适合快捷键提示、菜单项右侧键标识。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">

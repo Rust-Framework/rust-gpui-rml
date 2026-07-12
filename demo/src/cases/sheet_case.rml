@@ -7,7 +7,7 @@
         <template slot="demo">
             <div class="demo-section">
                 <h3>基础用法</h3>
-                <p>Sheet 包裹若干子节点作为 content。设置 title 属性显示标题栏，默认从右侧滑入。注意：Sheet 是 RenderOnce 组件，直接在 render 树中渲染为覆盖层。</p>
+                <p>Sheet 包裹若干子节点作为 content。设置 title 属性显示标题栏，默认从右侧滑入，直接渲染为覆盖层。</p>
                 <Sheet title="基础抽屉">
                     <div class="sheet-content">
                         <p>这是抽屉内容区域。</p>
@@ -73,7 +73,6 @@
             <h3>Sheet</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
             <p>另：sheet 与 Sheet 标签等价。</p>
-            <p>另：Sheet 构造器为 <code>Sheet::new(&amp;mut Window, &amp;mut App)</code>，编译器直接使用 render 上下文的 _window 和 cx 变量，不分配 ElementId。</p>
         </template>
     </CaseDocPage>
 </component>

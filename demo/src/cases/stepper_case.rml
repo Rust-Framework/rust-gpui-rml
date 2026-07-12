@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.stepper.title")}
-        description="Stepper 是 RML 的步骤指示器组件，标签为 PascalCase Stepper。构造器接受 ElementId。子节点为 step-item（或 StepperItem），支持 icon 属性和文本子节点。支持 selected-index、direction、text-center 等属性，on-click 事件签名为 Fn(&amp;usize, ...)（步骤索引）。"
+        description="Stepper 是 RML 的步骤指示器组件，标签为 PascalCase Stepper。子节点为 step-item（或 StepperItem），支持 icon 属性和文本子节点。支持 selected-index、direction、text-center 等属性，on-click 事件签名为 Fn(&amp;usize, ...)（步骤索引）。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">

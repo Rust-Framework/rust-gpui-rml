@@ -37,7 +37,7 @@
 
             <div class="demo-section">
                 <h3>{t("case.accordion.sizes")}</h3>
-                <p>size 属性控制尺寸：small / large。size 走通用 Sizable setter，影响标题字号和内边距。下方演示 small 和 large 两种尺寸对比。</p>
+                <p>size 属性控制尺寸：small / large。size 为通用尺寸属性，影响标题字号和内边距。下方演示 small 和 large 两种尺寸对比。</p>
                 <accordion size="small" bordered="" open-indices={sizes_small_open} on-toggle-click={on_toggle}>
                     <item title={t("case.accordion.small")}>
                         <p>{t("case.accordion.content1")}</p>
@@ -52,7 +52,7 @@
 
             <div class="demo-section">
                 <h3>{t("case.accordion.with_icon")}</h3>
-                <p>item 的 icon 属性添加标题图标（IconName 枚举值，如 Settings/Bell），disabled 属性禁用面板（禁用面板无法点击展开）。on-toggle-click 回调在展开状态变化时触发，参数为当前展开项索引列表。</p>
+                <p>item 的 icon 属性添加标题图标（值为图标名称，如 Settings/Bell），disabled 属性禁用面板（禁用面板无法点击展开）。on-toggle-click 回调在展开状态变化时触发，参数为当前展开项索引列表。</p>
                 <accordion bordered="" open-indices={with_icon_open} on-toggle-click={on_toggle}>
                     <item title={t("case.accordion.settings")} icon="Settings">
                         <p>{t("case.accordion.content1")}</p>

@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.group_box.title")}
-        description="GroupBox 是 RML 的分组容器组件，标签为 PascalCase GroupBox。StatelessNoId 组件（无 ElementId，RenderOnce），实现 ParentElement。提供 title 标题与 3 种 variant（normal/fill/outline），通过独立布尔属性切换。"
+        description="GroupBox 是分组容器组件。提供 title 标题与 3 种 variant（normal/fill/outline），通过独立布尔属性切换。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">

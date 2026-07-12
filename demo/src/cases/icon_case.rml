@@ -1,13 +1,13 @@
 <component>
     <CaseDocPage
         title={t("case.icon.title")}
-        description="Icon 是 RML 的矢量图标组件，标签为 PascalCase Icon。RenderOnce 无 ElementId，由专属 compiler/icon 模块处理 name/path 属性提取。name 属性值为 IconName 枚举名（如 Settings），生成 Icon::new(IconName::Settings)；path 属性值为文件路径（如 icons/foo.svg），生成 Icon::empty().path(...)。基于 Lucide.dev 图标库，支持尺寸、颜色、旋转定制。"
+        description="Icon 是矢量图标组件。name 属性指定图标名称（如 name=&quot;Settings&quot;），path 属性指定自定义 SVG 路径。基于 Lucide.dev 图标库，支持尺寸、颜色、旋转定制。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
             <div class="demo-section">
                 <h3>基础用法</h3>
-                <p>name 属性指定 IconName 枚举变体名，生成 Icon::new(IconName::Settings) 等。</p>
+                <p>name 属性指定图标名称（如 Settings、Bell、User 等）。</p>
                 <div display="flex" flex-direction="row" gap="16px" align-items="center">
                     <Icon name="Settings" />
                     <Icon name="Bell" />
@@ -19,7 +19,7 @@
 
             <div class="demo-section">
                 <h3>尺寸 size</h3>
-                <p>size 属性走通用 Sizable setter：xsmall / small / medium / large。默认跟随文字大小。</p>
+                <p>size 属性设置图标尺寸：xsmall / small / medium / large。默认跟随文字大小。</p>
                 <div display="flex" flex-direction="row" gap="16px" align-items="center">
                     <Icon name="Settings" size="xsmall" />
                     <Icon name="Settings" size="small" />
@@ -30,7 +30,7 @@
 
             <div class="demo-section">
                 <h3>颜色 text_color</h3>
-                <p>text_color 属性来自 Styled trait，设置图标颜色。值为 CSS 变量名或颜色值。</p>
+                <p>text_color 属性设置图标颜色。值为 CSS 变量名或颜色值。</p>
                 <div display="flex" flex-direction="row" gap="16px" align-items="center">
                     <Icon name="Heart" text-color="--danger" size="large" />
                     <Icon name="Check" text-color="--success" size="large" />
@@ -41,7 +41,7 @@
 
             <div class="demo-section">
                 <h3>动态切换</h3>
-                <p>name 属性绑定到 current_icon computed 方法，返回 IconName 枚举值。点击按钮循环切换图标。</p>
+                <p>name 属性绑定到 current_icon computed 方法，返回图标名称。点击按钮循环切换图标。</p>
                 <p>当前图标：{current_icon_name}（icon_index = {icon_index}）</p>
                 <div display="flex" flex-direction="row" gap="16px" align-items="center">
                     <Icon name={current_icon} size="large" />
@@ -51,14 +51,14 @@
 
             <div class="demo-section">
                 <h3>自定义路径 path</h3>
-                <p>path 属性指定自定义图标路径（相对 assets 目录），生成 Icon::empty().path(...)。</p>
+                <p>path 属性指定自定义图标路径（相对 assets 目录）。</p>
                 <Icon path="icons/custom.svg" size="medium" />
                 <p>注：path 指向 assets 目录下的 SVG 文件，需确保文件存在。</p>
             </div>
 
             <div class="demo-section">
                 <h3>常用图标一览</h3>
-                <p>IconName 枚举涵盖 Lucide.dev 图标库，以下为常用图标分组展示。</p>
+                <p>图标名称涵盖 Lucide.dev 图标库，以下为常用图标分组展示。</p>
                 <div display="flex" flex-direction="row" gap="16px" flex-wrap="wrap" align-items="center">
                     <Icon name="ArrowUp" />
                     <Icon name="ArrowDown" />

@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.html.title")}
-        description="html 指令渲染 HTML 字符串。GPUI 无原生 HTML 渲染能力，html=&#123;raw&#125; 降级为 rml_ui::Label::new(raw) 文本节点，HTML 标签作为字面量文本显示。支持与 if/show/each 组合。"
+        description="html 指令渲染 HTML 字符串。GPUI 无原生 HTML 渲染能力，html=&#123;raw&#125; 降级为文本节点，HTML 标签作为字面量文本显示。支持与 if/show/each 组合。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">

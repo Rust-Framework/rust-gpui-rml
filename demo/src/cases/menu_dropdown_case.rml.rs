@@ -34,12 +34,12 @@ impl ILifecycle for MenuDropdownCase {
     fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         let (cols, rows) = build_api_table(&[
-            ("anchor", "枚举", "弹出锚点位置"),
-            ("第一个子节点", "组件", "触发器（通常 Button）"),
+            ("anchor", "string", "弹出锚点位置"),
+            ("第一个子节点", "slot", "触发器（通常 Button）"),
             ("menu-item label", "string", "菜单项文案"),
             ("menu-item icon", "string", "菜单项图标"),
             ("menu-item on-click", "event", "点击回调"),
-            ("menu-separator", "标签", "分组分隔线"),
+            ("menu-separator", "slot", "分组分隔线"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

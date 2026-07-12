@@ -40,11 +40,11 @@ impl ILifecycle for SidebarCase {
         self.is_collapsed = false;
 
         let (cols, rows) = build_api_table(&[
-            ("side", "left/right", "侧边栏位置（默认 left）"),
-            ("collapsible", "icon/offcanvas/none", "折叠模式（icon 图标折叠，offcanvas 抽屉，none 不可折叠）"),
-            ("collapsed", "bool 绑定", "折叠状态（受控模式，配合 collapsible 使用）"),
-            ("header", "slot 插槽", "顶部内容插槽（slot=\"header\"）"),
-            ("footer", "slot 插槽", "底部内容插槽（slot=\"footer\"）"),
+            ("side", "string", "侧边栏位置：left / right（默认 left）"),
+            ("collapsible", "string", "折叠模式：icon 图标折叠 / offcanvas 抽屉 / none 不可折叠"),
+            ("collapsed", "bool / binding", "折叠状态（受控模式，配合 collapsible 使用）"),
+            ("header", "slot", "顶部内容插槽（slot=\"header\"）"),
+            ("footer", "slot", "底部内容插槽（slot=\"footer\"）"),
             ("ref", "string", "元素引用名，如 ref=\"sidebar\""),
             ("SidebarMenu", "slot", "菜单分组容器"),
             ("SidebarMenuItem", "slot", "菜单项"),

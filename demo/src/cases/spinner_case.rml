@@ -1,13 +1,13 @@
 <component>
     <CaseDocPage
         title={t("case.spinner.title")}
-        description="Spinner 和 Skeleton 是 RML 的加载指示组件。Spinner 为旋转图标动画，Skeleton 为骨架屏占位。两者均为无 ElementId 构造（RenderOnce）。Spinner 支持 icon 自定义图标和 size 尺寸控制；Skeleton 支持 secondary 切换次级颜色。常用于异步请求、内容加载等需要即时反馈的场景。"
+        description="Spinner 和 Skeleton 是加载指示组件。Spinner 为旋转图标动画，Skeleton 为骨架屏占位。Spinner 支持 icon 自定义图标和 size 尺寸控制；Skeleton 支持 secondary 切换次级颜色。常用于异步请求、内容加载等需要即时反馈的场景。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
             <div class="demo-section">
                 <h3>Spinner 基础</h3>
-                <p>默认 Spinner 使用 Loader 图标，size 控制尺寸。来自 Sizable trait。</p>
+                <p>默认 Spinner 使用 Loader 图标，size 控制尺寸，为通用尺寸属性。</p>
                 <div display="flex" flex-direction="row" gap="16px" align-items="center">
                     <Spinner />
                     <Spinner size="small" />
@@ -18,7 +18,7 @@
 
             <div class="demo-section">
                 <h3>Spinner 自定义图标</h3>
-                <p>icon 属性设置自定义图标（值为 IconName 枚举变体名，如 Loader / LoaderCircle / Bell / Settings）。</p>
+                <p>icon 属性设置自定义图标（值为图标名称，如 Loader / LoaderCircle / Bell / Settings）。</p>
                 <div display="flex" flex-direction="row" gap="16px" align-items="center">
                     <Spinner icon="Loader" />
                     <Spinner icon="LoaderCircle" size="large" />
@@ -63,7 +63,7 @@
         <template slot="api">
             <h3>Spinner</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-            <p>另：size 属性来自 Sizable trait。</p>
+            <p>另：size 属性为通用尺寸属性。</p>
 
             <h3>Skeleton</h3>
             <Table columns={api_columns} rows={skeleton_rows} bordered="" stripe="" />

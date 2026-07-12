@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.alert.title")}
-        description="Alert 是 RML 的警告提示组件，标签为 PascalCase Alert 或小写 alert（均合法）。构造器接受 (ElementId, message) 两个参数。支持 5 种 variant（Default/Info/Success/Warning/Error），通过独立布尔属性切换。支持 title 标题、banner 横幅、icon 自定义图标、on-close 关闭事件、size 尺寸等能力。"
+        description="Alert 是 RML 的警告提示组件，标签为 PascalCase Alert 或小写 alert（均合法）。支持 5 种 variant（Default/Info/Success/Warning/Error），通过独立布尔属性切换。支持 title 标题、banner 横幅、icon 自定义图标、on-close 关闭事件、size 尺寸等能力。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
@@ -50,7 +50,7 @@
 
             <div class="demo-section">
                 <h3>icon 自定义</h3>
-                <p>icon 属性设置自定义图标，值为 rml_ui::IconName 枚举变体名（如 Info/Check/Bell/CircleX）。不设置 icon 时，Alert 会根据 variant 自动选择对应图标。</p>
+                <p>icon 属性设置自定义图标，值为图标名称（如 Info/Check/Bell/CircleX）。不设置 icon 时，Alert 会根据 variant 自动选择对应图标。</p>
                 <div class="alert-col">
                     <Alert info icon="Info" message="自定义 Info 图标" />
                     <Alert success icon="Check" message="自定义 Check 图标" />
@@ -72,7 +72,7 @@
 
             <div class="demo-section">
                 <h3>尺寸 size</h3>
-                <p>size 属性控制提示大小：xsmall / small / medium / large，走通用 Sizable trait。影响图标尺寸、字号和内边距。</p>
+                <p>size 属性控制提示大小：xsmall / small / medium / large，为通用尺寸属性。影响图标尺寸、字号和内边距。</p>
                 <div class="alert-col">
                     <Alert info size="small" message="small 尺寸的提示" />
                     <Alert info size="medium" message="medium 尺寸的提示" />
@@ -85,7 +85,7 @@
             <h3>Alert</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
             <p>另：info / success / warning / error 为独立布尔属性，映射到 .with_variant(AlertVariant::*)。</p>
-            <p>另：size 属性来自 Sizable trait，disabled 等通用属性对所有组件生效。</p>
+            <p>另：size 属性为通用尺寸属性，disabled 等通用属性对所有组件生效。</p>
             <p>另：alert 与 Alert 标签等价。</p>
         </template>
     </CaseDocPage>

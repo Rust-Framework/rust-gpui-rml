@@ -43,7 +43,7 @@
 
             <div class="demo-section">
                 <h3>Icon variant</h3>
-                <p>icon 属性切换为 Icon variant，在右下角显示图标徽标。值为 IconName 枚举变体名（如 Bell、Check、Star）。</p>
+                <p>icon 属性切换为图标徽标，在右下角显示图标。值为图标名称（如 Bell、Check、Star）。</p>
                 <div class="button-row">
                     <Badge icon="Bell">
                         <Avatar name="Heidi" />
@@ -59,7 +59,7 @@
 
             <div class="demo-section">
                 <h3>尺寸 size</h3>
-                <p>size 属性控制徽标大小：xsmall / small / medium / large。来自 Sizable trait。</p>
+                <p>size 属性控制徽标大小：xsmall / small / medium / large，为通用尺寸属性。</p>
                 <div class="button-row">
                     <Badge count="5" size="xsmall">
                         <Avatar name="A" />
@@ -101,7 +101,7 @@
         <template slot="api">
             <h3>Badge</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-            <p>另：size 属性来自 Sizable trait，disabled 等通用属性对所有组件生效。</p>
+            <p>另：size 属性为通用尺寸属性，disabled 等通用属性对所有组件生效。</p>
         </template>
     </CaseDocPage>
 </component>

@@ -63,7 +63,7 @@
         <template slot="api">
             <h3>ProgressCircle</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-            <p>另：<code>size</code> 属性来自 Sizable trait。</p>
+            <p>另：<code>size</code> 属性为通用尺寸属性。</p>
         </template>
     </CaseDocPage>
 </component>

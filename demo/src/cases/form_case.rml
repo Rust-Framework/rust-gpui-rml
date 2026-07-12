@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.form.title")}
-        description="Form 是声明式表单容器组件，标签为 PascalCase Form / Field。Form 封装 gpui-component 的 Form::horizontal() / Form::vertical() 构造器，通过独立布尔属性 horizontal/vertical 选择布局方向（默认 vertical）。label-width 设置标签宽度，columns 设置列数。Field 是表单字段容器，实现 ParentElement，可包含任意表单控件。Field 支持 label、description、required、visible、col-span 等属性。Form 的 .child() 方法接受 impl Into&lt;Field&gt;，子节点必须为 Field 元素。"
+        description="Form 是声明式表单容器组件。通过独立布尔属性 horizontal/vertical 选择布局方向（默认 vertical），label-width 设置标签宽度，columns 设置列数。Field 是表单字段容器，支持 label、description、required、visible、col-span 等属性，可包含任意表单控件。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
@@ -94,7 +94,7 @@
             <Table columns={form_api_columns} rows={form_api_rows} bordered="" stripe="" />
             <h3>Field</h3>
             <Table columns={field_api_columns} rows={field_api_rows} bordered="" stripe="" />
-            <p>注意：Form 的 .child() 方法接受 impl Into&lt;Field&gt;，非 Field 子节点会编译失败。</p>
+            <p>注意：Form 子节点必须为 Field 元素。</p>
             <p>另：variant 布尔属性（horizontal/vertical）为互斥布局选择，不设置时默认 vertical。</p>
         </template>
     </CaseDocPage>

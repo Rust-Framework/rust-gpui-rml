@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.sidebar.title")}
-        description="Sidebar 是侧边栏导航容器组件，标签为 PascalCase Sidebar 或 kebab-case sidebar。层级结构为 Sidebar &gt; SidebarMenu &gt; SidebarMenuItem。Sidebar 需 ElementId（Stateless），支持 side（left/right）、collapsible（icon/offcanvas/none）、collapsed 属性，以及 header/footer 插槽。SidebarMenu 是菜单分组容器（无 ElementId，实现 Styled）。SidebarMenuItem 是菜单项，label 为构造器参数，支持 icon/active/default_open/click_to_open/click_to_toggle/disabled/on_click，子节点为子菜单（嵌套 SidebarMenuItem）。"
+        description="Sidebar 是侧边栏导航容器组件，标签为 PascalCase Sidebar 或 kebab-case sidebar。层级结构为 Sidebar &gt; SidebarMenu &gt; SidebarMenuItem。支持 side（left/right）、collapsible（icon/offcanvas/none）、collapsed 属性，以及 header/footer 插槽。SidebarMenu 是菜单分组容器，支持样式属性。SidebarMenuItem 是菜单项，支持 icon/active/default_open/click_to_open/click_to_toggle/disabled/on_click，子节点为子菜单（嵌套 SidebarMenuItem）。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">

@@ -33,7 +33,7 @@
         <template slot="api">
             <h3>VirtualList</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-            <p>注：direction 为静态属性（选择 v/h 构造器），item-sizes 为绑定属性（Rc&lt;Vec&lt;Size&lt;Pixels&gt;&gt;&gt;），slot="render" 必须使用 each=&#123;i in range&#125; 声明循环变量。VirtualList 实现 Styled trait，支持所有样式属性。</p>
+            <p>注：direction 为静态属性（选择 v/h 方向），item-sizes 为绑定属性，slot="render" 必须使用 each=&#123;i in range&#125; 声明循环变量。VirtualList 支持所有样式属性。</p>
         </template>
     </CaseDocPage>
 </component>

@@ -58,7 +58,7 @@
         <template slot="api">
             <h3>Skeleton</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-            <p>注：Skeleton 为 RenderOnce 组件（无 ElementId），通过 style 属性控制宽高，secondary 切换次级颜色。</p>
+            <p>注：通过 style 属性控制宽高，secondary 切换次级颜色。</p>
         </template>
     </CaseDocPage>
 </component>

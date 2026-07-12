@@ -44,7 +44,7 @@
 
             <div class="demo-section">
                 <h3>样式定制</h3>
-                <p>Checkbox 继承 Styled trait，可通过 text-size / text-color / font-weight 等样式属性定制外观。</p>
+                <p>Checkbox 可通过 text-size / text-color / font-weight 等样式属性定制外观。</p>
                 <div display="flex" flex-direction="column" gap="8px">
                     <Checkbox label="小字号" text-size="xs" />
                     <Checkbox label="正常字号" text-size="sm" />
@@ -58,7 +58,7 @@
             <h3>Checkbox</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
             <p>另：checked 属性为绑定类型（bind），映射到 .checked(bool)。</p>
-            <p>另：text_size / text_color / font_weight 等样式属性来自 Styled trait。</p>
+            <p>另：text_size / text_color / font_weight 等为通用样式属性。</p>
             <p>另：on-click 回调签名为 Fn(&bool, ...)（切换后的新状态），不同于 Button 的 ClickEvent。</p>
         </template>
     </CaseDocPage>

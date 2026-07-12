@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.key.title")}
-        description="key 指令为 each 列表项提供稳定 ElementId，使 GPUI 在列表重排时能正确识别移动项，保留元素状态（焦点、动画、内部 state）。key 表达式在 each 作用域内求值，直接引用循环变量（如 item.id）。"
+        description="key 指令为 each 列表项提供稳定标识，使 GPUI 在列表重排时能正确识别移动项，保留元素状态（焦点、动画、内部 state）。key 表达式在 each 作用域内求值，直接引用循环变量（如 item.id）。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
@@ -18,7 +18,7 @@
                         <Tag>{item.label}</Tag>
                     </div>
                 </div>
-                <p>注：key=&#123;item.id&#125; 确保头部插入新项时，已有项的 ElementId 保持稳定，避免状态丢失。</p>
+                <p>注：key=&#123;item.id&#125; 确保头部插入新项时，已有项的标识保持稳定，避免状态丢失。</p>
             </div>
         </template>
 

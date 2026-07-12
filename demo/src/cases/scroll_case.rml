@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.scroll.title")}
-        description="Scroll 是声明式滚动容器组件，标签为 PascalCase Scroll。封装 gpui-component 的 ScrollableElement trait，底层使用 div().overflow_y_scrollbar() 等方法返回 Scrollable&lt;Div&gt; 包装器，自带滚动条 UI。通过独立布尔属性 vertical/horizontal/both 选择滚动方向，默认 vertical。子节点通过 .child() 注入。构造器 Scroll::new()（RenderOnce 无 ElementId、无 cx）。"
+        description="Scroll 是声明式滚动容器组件。通过独立布尔属性 vertical/horizontal/both 选择滚动方向（默认 vertical），自带滚动条 UI。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">

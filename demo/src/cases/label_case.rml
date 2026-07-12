@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.label.title")}
-        description="Label 是 RML 的文本标签组件，标签为 PascalCase Label。构造器接受 label 文本作为参数（非 ElementId），通过 label 属性或文本子节点设置。继承 Styled trait，支持 text_color / text_size / font_weight / text_align 等样式属性，适合表单标签、说明文字、通用文本展示。"
+        description="Label 是 RML 的文本标签组件，标签为 PascalCase Label。通过 label 属性或文本子节点设置。支持 text_color / text_size / font_weight / text_align 等样式属性，适合表单标签、说明文字、通用文本展示。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
@@ -23,7 +23,7 @@
 
             <div class="demo-section">
                 <h3>样式定制</h3>
-                <p>Label 继承 Styled trait，支持 text_color / text_size / font_weight / text_align 等样式属性。</p>
+                <p>Label 支持 text_color / text_size / font_weight / text_align 等样式属性。</p>
                 <div display="flex" flex-direction="column" gap="8px">
                     <Label label="大标题" text-size="xl" font-bold="" />
                     <Label label="中标题" text-size="lg" font-semibold="" />
@@ -46,7 +46,7 @@
         <template slot="api">
             <h3>Label</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-            <p>另：text_color / text_size / font_weight / text_align 等样式属性来自 Styled trait。</p>
+            <p>另：text_color / text_size / font_weight / text_align 等为通用样式属性。</p>
         </template>
     </CaseDocPage>
 </component>

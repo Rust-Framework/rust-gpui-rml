@@ -53,11 +53,11 @@ impl ILifecycle for MenuFeaturesCase {
             ("max-h", "number", "最大高度（像素）"),
             ("menu-item disabled", "bool", "禁用项"),
             ("menu-item checked", "bool", "勾选状态"),
-            ("menu-item href", "URL", "外链跳转"),
+            ("menu-item href", "string", "外链跳转"),
             ("menu-item icon", "string", "菜单项图标"),
             ("menu-item header", "bool", "分组标题"),
-            ("menu-item 子节点", "menu-item", "子菜单"),
-            ("menu-item command", "Arc<RelayCommand>", "声明式命令绑定"),
+            ("menu-item 子节点", "slot", "子菜单"),
+            ("menu-item command", "binding", "声明式命令绑定"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

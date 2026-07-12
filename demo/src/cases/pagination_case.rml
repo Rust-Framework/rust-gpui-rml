@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.pagination.title")}
-        description="Pagination 是 RML 的分页组件，标签为 PascalCase Pagination。构造器接受 ElementId。支持 current-page、total-pages、visible-pages、compact 等属性（kebab-case），on-click 事件签名为 Fn(&amp;usize, ...)（页码）。"
+        description="Pagination 是 RML 的分页组件，标签为 PascalCase Pagination。支持 current-page、total-pages、visible-pages、compact 等属性（kebab-case），on-click 事件签名为 Fn(&amp;usize, ...)（页码）。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">

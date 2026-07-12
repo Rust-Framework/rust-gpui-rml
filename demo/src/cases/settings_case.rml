@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.settings.title")}
-        description="Settings 是多层嵌套设置面板组件，标签为 PascalCase Settings 或 kebab-case settings。层级结构为 Settings &gt; SettingPage &gt; SettingGroup &gt; SettingItem。Settings 不实现 Styled，仅 RenderOnce。SettingGroup 实现 Styled，支持 CSS 样式。SettingItem 通过 field-type 属性选择 SettingField 构造器（switch/checkbox/input/dropdown/number-input），value 绑定提供 getter 闭包，on-change 事件提供 setter 闭包，闭包使用 cx.weak_entity() 模式访问 ViewModel。"
+        description="Settings 是多层嵌套设置面板组件。层级结构为 Settings > SettingPage > SettingGroup > SettingItem。SettingItem 通过 field-type 属性选择字段类型（switch/checkbox/input/dropdown/number-input），value 绑定读取数据，on-change 事件处理变更。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
@@ -89,7 +89,7 @@
         <template slot="api">
             <h3>Settings</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-            <p>注：Settings 不实现 Styled trait，CSS 样式不作用于 settings 标签。sidebar-width 为侧边栏宽度（px），group-variant 为分组框样式（normal/fill/outline），default-selected-page 为默认选中页面索引。SettingGroup 实现 Styled，支持 CSS 样式。SettingItem 的 field-type 决定字段类型，value 绑定提供 getter（读取 ViewModel 字段），on-change 事件提供 setter（调用 ViewModel 方法），闭包使用 cx.weak_entity() 模式。</p>
+            <p>注：Settings 不支持样式属性，CSS 样式不作用于 settings 标签。sidebar-width 为侧边栏宽度（px），group-variant 为分组框样式（normal/fill/outline），default-selected-page 为默认选中页面索引。SettingGroup 支持样式属性。SettingItem 的 field-type 决定字段类型，value 绑定提供 getter（读取 ViewModel 字段），on-change 事件提供 setter（调用 ViewModel 方法）。</p>
         </template>
     </CaseDocPage>
 </component>

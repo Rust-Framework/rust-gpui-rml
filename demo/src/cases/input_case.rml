@@ -35,7 +35,7 @@
 
             <div class="demo-section">
                 <h3>5. 尺寸 size</h3>
-                <p>size 属性走通用 Sizable setter：xsmall / small / medium / large。点击按钮循环切换尺寸。size 绑定需返回 rml_ui::Size 枚举值（size_value computed）。</p>
+                <p>size 属性设置尺寸：xsmall / small / medium / large。点击按钮循环切换尺寸。size 绑定需返回尺寸枚举值（size_value computed）。</p>
                 <p>当前尺寸：{size_label}</p>
                 <div class="button-row">
                     <Button label="切换尺寸" on-click={on_cycle_size} />
@@ -66,7 +66,7 @@
         <template slot="api">
             <h3>Input</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-            <p>另：size 属性来自 Sizable trait，disabled/selected 等通用属性对所有组件生效。PascalCase Input 与小写 input 是两种不同路径：前者通过 ref 指令引用状态并订阅事件，后者通过 value 双向绑定自动同步。小写 input 的 value 双向绑定演示见 two-way-case。</p>
+            <p>另：size 属性为通用尺寸属性，disabled/selected 等通用属性对所有组件生效。PascalCase Input 与小写 input 是两种不同路径：前者通过 ref 指令引用状态并订阅事件，后者通过 value 双向绑定自动同步。小写 input 的 value 双向绑定演示见 two-way-case。</p>
         </template>
     </CaseDocPage>
 </component>

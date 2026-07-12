@@ -28,7 +28,7 @@
 
             <div class="demo-section">
                 <h3>4. 尺寸 size</h3>
-                <p>size 属性走通用 Sizable setter：xsmall / small / medium / large。点击按钮循环切换尺寸。</p>
+                <p>size 属性设置尺寸：xsmall / small / medium / large。点击按钮循环切换尺寸。</p>
                 <p>当前尺寸：{size_label}</p>
                 <div class="button-row">
                     <Button label="切换尺寸" on-click={on_cycle_size} />
