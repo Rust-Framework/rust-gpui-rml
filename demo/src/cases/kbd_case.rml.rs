@@ -34,8 +34,8 @@ impl ILifecycle for KbdCase {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         let (cols, rows) = build_api_table(&[
             ("key", "string / binding", "按键组合，如 key=\"cmd-a\" 或 key=\"ctrl-shift-c\""),
-            ("outline", "布尔标志", "描边样式（透明背景 + 彩色边框/文字）"),
-            ("appearance", "布尔", "是否显示默认外观（默认 true，false 时仅显示文本）"),
+            ("outline", "bool", "描边样式（透明背景 + 彩色边框/文字）"),
+            ("appearance", "bool", "是否显示默认外观（默认 true，false 时仅显示文本）"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

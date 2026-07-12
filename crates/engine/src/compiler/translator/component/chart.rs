@@ -2,7 +2,7 @@
 //!
 //! 处理 5 种 gpui_component::chart 图表：
 //! - LineChart：单系列折线图，`.x(|d| d.x.clone()).y(|d| d.y).stroke(color).tick_margin(n)`
-//! - BarChart：柱状图，`.x().y().fill(|d|...).label(|d|...).tick_margin(n)`
+//! - BarChart：柱状图，`.band().value().fill(|d,_,_,_|...).label(|d|...).tick_margin(n)`
 //! - AreaChart：多系列面积图，`.x()` + `<Area y-field="..." stroke="..." fill="..." />` 子标签
 //! - PieChart：饼图，`.value(|d|...).color(|d|...).outer_radius(f32).inner_radius(f32).pad_angle(f32)`
 //! - CandlestickChart：K 线图，`.x().open().high().low().close().body_width_ratio(f32).tick_margin(n)`
@@ -126,20 +126,32 @@ fn gen_chart(
 
     // 2. 字段路径闭包（chart 类型专属）
     match kind {
-        ChartKind::Line | ChartKind::Bar | ChartKind::Area | ChartKind::Candlestick => {
+        ChartKind::Line | ChartKind::Area | ChartKind::Candlestick => {
             // x_field → .x(|d| d.field.clone())  （x 通常是 String）
             if let Some(field) = static_attr(elem, "x_field") {
                 code.push_str(&format!(".x(|d| d.{}.clone())", field));
+            }
+        }
+        ChartKind::Bar => {
+            // BarChart 使用 .band() 而非 .x()（分类轴）
+            if let Some(field) = static_attr(elem, "x_field") {
+                code.push_str(&format!(".band(|d| d.{}.clone())", field));
             }
         }
         ChartKind::Pie => {} // PieChart 无 x 轴
     }
 
     match kind {
-        ChartKind::Line | ChartKind::Bar => {
+        ChartKind::Line => {
             // y_field → .y(|d| d.field)  （y 通常是 f64，Copy）
             if let Some(field) = static_attr(elem, "y_field") {
                 code.push_str(&format!(".y(|d| d.{})", field));
+            }
+        }
+        ChartKind::Bar => {
+            // BarChart 使用 .value() 而非 .y()（数值轴）
+            if let Some(field) = static_attr(elem, "y_field") {
+                code.push_str(&format!(".value(|d| d.{})", field));
             }
         }
         ChartKind::Area => {
@@ -177,29 +189,29 @@ fn gen_chart(
         }
     }
 
-    // 3. BarChart 专属：fill_field / label_field
+    // 3. BarChart 专属：fill_field（4 参数闭包）/ label_field
+    //    BarChart.fill() 签名为 Fn(&T, Bounds<f32>, Bounds<f32>, BarAlignment) -> Bg
+    //    不支持静态 stroke/fill 颜色（与 LineChart/AreaChart 不同）
     if kind == ChartKind::Bar {
         if let Some(field) = static_attr(elem, "fill_field") {
-            code.push_str(&format!(".fill(|d| d.{})", field));
+            code.push_str(&format!(".fill(|d, _, _, _| d.{})", field));
         }
         if let Some(field) = static_attr(elem, "label_field") {
             code.push_str(&format!(".label(|d| d.{}.to_string())", field));
         }
     }
 
-    // 4. 通用属性：stroke/fill（主题名或绑定）、tick_margin、半径、布尔标志
+    // 4. 通用属性：stroke（仅 LineChart）、tick_margin、半径、布尔标志
+    //    AreaChart 的 stroke/fill 由 <Area> 子标签处理（见上方）
+    //    BarChart 无 stroke/fill 方法（fill_field 走 4 参数闭包）
+    //    PieChart/CandlestickChart 无 stroke/fill 方法
     for attr in &elem.attributes {
         match attr {
             Attribute::Static { name, value, .. } => {
                 match name.as_str() {
-                    "stroke" => {
+                    "stroke" if kind == ChartKind::Line => {
                         if let Some(c) = theme_color(value) {
                             code.push_str(&format!(".stroke({})", c));
-                        }
-                    }
-                    "fill" => {
-                        if let Some(c) = theme_color(value) {
-                            code.push_str(&format!(".fill({})", c));
                         }
                     }
                     "tick_margin" => {
@@ -230,13 +242,9 @@ fn gen_chart(
                 }
             }
             Attribute::Bind { name, expr, .. } => match name.as_str() {
-                "stroke" => {
+                "stroke" if kind == ChartKind::Line => {
                     let rust_expr = component_bind_rust_expr(expr, &lv, &computed);
                     code.push_str(&format!(".stroke({})", rust_expr));
-                }
-                "fill" => {
-                    let rust_expr = component_bind_rust_expr(expr, &lv, &computed);
-                    code.push_str(&format!(".fill({})", rust_expr));
                 }
                 _ => {}
             },
@@ -462,7 +470,9 @@ mod tests {
             vec![],
         );
         let code = gen_chart(&elem, &ctx(), &[], &[], ChartKind::Bar).unwrap();
-        assert!(code.contains(".fill(|d| d.color)"), "{}", code);
+        assert!(code.contains(".band(|d| d.category.clone())"), "{}", code);
+        assert!(code.contains(".value(|d| d.value)"), "{}", code);
+        assert!(code.contains(".fill(|d, _, _, _| d.color)"), "{}", code);
         assert!(code.contains(".label(|d| d.value.to_string())"), "{}", code);
     }
 

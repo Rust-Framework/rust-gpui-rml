@@ -36,9 +36,9 @@ impl ILifecycle for MenuEditorCase {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         let (cols, rows) = build_api_table(&[
             ("check-side", "枚举", "勾选标记位置（Right/Left）"),
-            ("menu-item checked", "布尔", "勾选状态绑定"),
-            ("menu-item label", "字符串", "菜单项文案"),
-            ("menu-item on-click", "事件", "点击回调"),
+            ("menu-item checked", "bool", "勾选状态绑定"),
+            ("menu-item label", "string", "菜单项文案"),
+            ("menu-item on-click", "event", "点击回调"),
             ("menu-separator", "标签", "分组分隔线"),
         ]);
         self.api_columns = cols;

@@ -39,13 +39,13 @@ impl ILifecycle for ButtonCase {
         let (cols, rows) = build_api_table(&[
             ("label", "string", "按钮文字"),
             ("on-click", "event", "点击回调（参数：&ClickEvent）"),
-            ("primary / secondary / danger / success / warning / info / ghost / link / text", "布尔标志", "9 种 variant，默认 secondary"),
+            ("primary / secondary / danger / success / warning / info / ghost / link / text", "bool", "9 种 variant，默认 secondary"),
             ("size", "xsmall / small / medium / large", "尺寸，默认 medium"),
             ("icon", "string", "图标名称（PascalCase），如 icon=\"Play\"、icon=\"Delete\""),
             ("disabled", "bool / binding", "禁用，默认 false"),
             ("loading", "bool / binding", "加载中，默认 false"),
             ("selected", "bool / binding", "选中态，默认 false"),
-            ("compact", "布尔标志", "紧凑内边距"),
+            ("compact", "bool", "紧凑内边距"),
             ("tooltip", "string", "悬浮提示文本"),
         ]);
         self.api_columns = cols;

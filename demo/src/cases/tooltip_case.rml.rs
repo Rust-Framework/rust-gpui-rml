@@ -35,7 +35,7 @@ impl ILifecycle for TooltipCase {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         self.tooltip_index = 0;
         let (cols, rows) = build_api_table(&[
-            ("tooltip", "字符串 / 绑定", "悬浮提示文本，映射到 .tooltip(text)"),
+            ("tooltip", "string / binding", "悬浮提示文本"),
             ("支持组件", "白名单", "Button / IconButton / DropdownButton / Toggle / Checkbox / Clipboard / Radio / Switch"),
         ]);
         self.api_columns = cols;

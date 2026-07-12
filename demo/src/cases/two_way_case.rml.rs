@@ -26,17 +26,16 @@ pub struct TwoWayCase {
     pub input_event_count: u32,
     /// B-3 demo：onchange 触发次数（值提交时 +1）。
     pub change_event_count: u32,
-    /// C5 demo：PascalCase Checkbox 自动双向绑定（Stateless EventClick）。
+    /// C5 demo：PascalCase Checkbox 自动双向绑定。
     /// `checked={agree}` 自动双向，无需 on-click 手动回写。
     pub agree: bool,
-    /// C5 demo：PascalCase Switch 自动双向绑定（Stateless EventClick）。
+    /// C5 demo：PascalCase Switch 自动双向绑定。
     pub notifications: bool,
-    /// C5 demo：PascalCase Rating 自动双向绑定（Stateless EventClick，&usize 载荷）。
+    /// C5 demo：PascalCase Rating 自动双向绑定（&usize 载荷）。
     pub score: usize,
-    /// C5 demo：PascalCase Slider 自动双向绑定（Stateful StateBridge）。
-    /// 正向 VM→SliderState，反向 SliderEvent::Change→VM。
+    /// C5 demo：PascalCase Slider 自动双向绑定。
     pub volume: f32,
-    /// C5 demo：PascalCase Input 自动双向绑定（Stateful InputStateBridge）。
+    /// C5 demo：PascalCase Input 自动双向绑定。
     pub username: String,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,

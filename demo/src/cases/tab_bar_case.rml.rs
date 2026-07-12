@@ -39,43 +39,43 @@ impl ILifecycle for TabBarCase {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
 
         let (cols, rows) = build_api_table(&[
-            ("selected-index", "绑定", "当前选中索引"),
-            ("on-click", "事件", "点击回调，签名 fn(index: usize)"),
-            ("on-close", "事件", "关闭按钮回调，签名 fn(index: usize)"),
-            ("on-close-all", "事件", "关闭全部回调，签名 fn()"),
-            ("on-close-others", "事件", "关闭其他回调，签名 fn(index: usize)"),
-            ("on-promote", "事件", "双击 promote 回调，签名 fn(index: usize)"),
-            ("bordered", "布尔标志", "1px 边框包裹 header + body 整体（Tabs 专属）"),
-            ("underline/pill/flat/outline/segmented", "布尔标志", "5 种 variant"),
-            ("menu", "布尔", "启用下拉菜单 + 溢出压缩（标签过多时）"),
-            ("prefix/suffix", "绑定", "首尾注入元素"),
-            ("last-empty-space", "绑定", "尾部占位元素"),
-            ("track-scroll", "绑定", "滚动控制（ScrollHandle 引用）"),
+            ("selected-index", "binding", "当前选中索引"),
+            ("on-click", "event", "点击回调，签名 fn(index: usize)"),
+            ("on-close", "event", "关闭按钮回调，签名 fn(index: usize)"),
+            ("on-close-all", "event", "关闭全部回调，签名 fn()"),
+            ("on-close-others", "event", "关闭其他回调，签名 fn(index: usize)"),
+            ("on-promote", "event", "双击 promote 回调，签名 fn(index: usize)"),
+            ("bordered", "bool", "1px 边框包裹 header + body 整体（Tabs 专属）"),
+            ("underline/pill/flat/outline/segmented", "bool", "5 种 variant"),
+            ("menu", "bool", "启用下拉菜单 + 溢出压缩（标签过多时）"),
+            ("prefix/suffix", "binding", "首尾注入元素"),
+            ("last-empty-space", "binding", "尾部占位元素"),
+            ("track-scroll", "binding", "滚动控制"),
         ]);
         self.tabs_api_columns = cols;
         self.tabs_api_rows = rows;
 
         let (cols, rows) = build_api_table(&[
-            ("selected-index", "绑定", "当前选中索引"),
-            ("on-click", "事件", "点击回调，签名 fn(index: usize)"),
-            ("underline/pill/flat/outline/segmented", "布尔标志", "5 种 variant"),
-            ("menu", "布尔", "启用下拉菜单（标签过多时）"),
-            ("prefix/suffix", "绑定", "首尾注入元素"),
-            ("last-empty-space", "绑定", "尾部占位元素"),
-            ("track-scroll", "绑定", "滚动控制（ScrollHandle 引用）"),
+            ("selected-index", "binding", "当前选中索引"),
+            ("on-click", "event", "点击回调，签名 fn(index: usize)"),
+            ("underline/pill/flat/outline/segmented", "bool", "5 种 variant"),
+            ("menu", "bool", "启用下拉菜单（标签过多时）"),
+            ("prefix/suffix", "binding", "首尾注入元素"),
+            ("last-empty-space", "binding", "尾部占位元素"),
+            ("track-scroll", "binding", "滚动控制"),
         ]);
         self.tab_bar_api_columns = cols;
         self.tab_bar_api_rows = rows;
 
         let (cols, rows) = build_api_table(&[
-            ("label", "字符串/绑定", "标签标题（底层映射 TabItem::title）"),
-            ("icon", "图标名", "标签图标（底层映射 TabItem::title_icon）"),
-            ("disabled", "布尔/绑定", "禁用标签"),
-            ("closable", "布尔/绑定", "显示关闭按钮"),
-            ("preview", "布尔/绑定", "预览模式（italic 标题）"),
-            ("on-click", "事件", "点击回调（ClickEvent）"),
-            ("子节点", "内容", "element 子节点作为 body（选中时渲染，WPF TabItem 模式）"),
-            ("template slot=\"header\"", "插槽", "header 自定义插槽（覆盖 label/icon）"),
+            ("label", "string / binding", "标签标题"),
+            ("icon", "string", "标签图标"),
+            ("disabled", "bool / binding", "禁用标签"),
+            ("closable", "bool / binding", "显示关闭按钮"),
+            ("preview", "bool / binding", "预览模式（italic 标题）"),
+            ("on-click", "event", "点击回调（ClickEvent）"),
+            ("子节点", "slot", "element 子节点作为 body（选中时渲染）"),
+            ("template slot=\"header\"", "slot", "header 自定义插槽（覆盖 label/icon）"),
         ]);
         self.tab_api_columns = cols;
         self.tab_api_rows = rows;

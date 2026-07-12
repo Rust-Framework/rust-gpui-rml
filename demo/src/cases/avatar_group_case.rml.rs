@@ -37,16 +37,16 @@ impl ILifecycle for AvatarGroupCase {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         self.avatar_count = 3;
         let (cols, rows) = build_api_table(&[
-            ("limit", "数字", "最大显示数量"),
-            ("ellipsis", "布尔标志", "溢出显示 +N"),
+            ("limit", "number", "最大显示数量"),
+            ("ellipsis", "bool", "溢出显示 +N"),
         ]);
         self.group_api_columns = cols;
         self.group_api_rows = rows;
 
         let (cols, rows) = build_api_table(&[
-            ("src", "字符串", "图片源 URL"),
-            ("name", "字符串", "首字母 fallback"),
-            ("placeholder", "图标名", "占位图标"),
+            ("src", "string", "图片源 URL"),
+            ("name", "string", "首字母 fallback"),
+            ("placeholder", "string", "占位图标"),
         ]);
         self.avatar_api_columns = cols;
         self.avatar_api_rows = rows;

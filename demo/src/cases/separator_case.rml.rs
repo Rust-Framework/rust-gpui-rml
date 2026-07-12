@@ -35,8 +35,8 @@ impl ILifecycle for SeparatorCase {
     fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         let (cols, rows) = build_api_table(&[
-            ("vertical", "布尔标志", "垂直方向"),
-            ("dashed", "布尔标志", "虚线样式"),
+            ("vertical", "bool", "垂直方向"),
+            ("dashed", "bool", "虚线样式"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

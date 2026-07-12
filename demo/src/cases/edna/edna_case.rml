@@ -61,6 +61,9 @@
                 <!-- ④ 实时数据 -->
                 <Card title="实时数据监测" extra={refresh_label}>
                     <component content={self.render_metrics_panel(_window, cx)} />
+                    <div style="height: 80px; margin-top: 8px;">
+                        <LineChart data={chart_history} x-field="label" y-field="value" stroke="chart_1" tick-margin="2" dot="" />
+                    </div>
                 </Card>
 
                 <!-- ⑤ 运行状态 -->

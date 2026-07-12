@@ -55,10 +55,10 @@ impl ILifecycle for SettingsCase {
         self.username = "anonymous".into();
 
         let (cols, rows) = build_api_table(&[
-            ("sidebar-width", "px", "侧边栏宽度（默认 250px）"),
+            ("sidebar-width", "number", "侧边栏宽度（默认 250px）"),
             ("group-variant", "normal/fill/outline", "分组框样式变体"),
-            ("default-selected-page", "usize", "默认选中页面索引"),
-            ("setting-page", "子节点", "设置页面，title/icon/description/default-open/resettable"),
+            ("default-selected-page", "number", "默认选中页面索引"),
+            ("setting-page", "slot", "设置页面，title/icon/description/default-open/resettable"),
             ("setting-group", "slot", "设置分组，支持 title、description"),
             ("setting-item", "slot", "设置项，支持 title、field-type、value、on-change"),
             ("field-type", "string", "字段类型：switch | checkbox | input | dropdown | number-input"),

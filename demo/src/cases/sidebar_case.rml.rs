@@ -60,15 +60,15 @@ impl ILifecycle for SidebarCase {
         self.menu_api_rows = rows;
 
         let (cols, rows) = build_api_table(&[
-            ("label", "字符串/绑定", "菜单项标签（构造器参数，非 setter）"),
+            ("label", "string / binding", "菜单项标签"),
             ("icon", "string", "菜单项图标，如 icon=\"Home\""),
-            ("active", "布尔", "高亮选中状态（active=\"\" 为 true）"),
-            ("default-open", "布尔", "子菜单默认展开（default-open=\"\" 为 true）"),
-            ("click-to-open", "布尔", "点击打开子菜单（click-to-open=\"\" 为 true）"),
-            ("click-to-toggle", "布尔", "点击切换子菜单展开/折叠"),
-            ("disabled", "布尔", "禁用菜单项（映射到 .disable() 方法）"),
-            ("on-click", "事件", "点击事件回调（参数：&ClickEvent）"),
-            ("SidebarMenuItem", "子节点", "子菜单项（通过 .children(vec![...]) 注入）"),
+            ("active", "bool", "高亮选中状态（active=\"\" 为 true）"),
+            ("default-open", "bool", "子菜单默认展开（default-open=\"\" 为 true）"),
+            ("click-to-open", "bool", "点击打开子菜单（click-to-open=\"\" 为 true）"),
+            ("click-to-toggle", "bool", "点击切换子菜单展开/折叠"),
+            ("disabled", "bool", "禁用菜单项"),
+            ("on-click", "event", "点击事件回调（参数：&ClickEvent）"),
+            ("SidebarMenuItem", "slot", "子菜单项"),
         ]);
         self.item_api_columns = cols;
         self.item_api_rows = rows;

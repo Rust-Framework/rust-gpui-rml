@@ -42,8 +42,8 @@ impl ILifecycle for TableCase {
         let (cols, rows) = build_api_table(&[
             ("columns", "binding", "数据绑定式列定义（与 Column 子标签二选一）"),
             ("rows", "binding", "行数据绑定"),
-            ("bordered", "布尔标志", "显示边框"),
-            ("stripe", "布尔标志", "斑马纹样式"),
+            ("bordered", "bool", "显示边框"),
+            ("stripe", "bool", "斑马纹样式"),
             ("delegate", "binding", "自定义渲染委托（Rust 侧 TableDelegate 对象，高级用法）"),
         ]);
         self.api_columns = cols;

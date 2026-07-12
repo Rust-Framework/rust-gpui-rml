@@ -316,11 +316,12 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
     // ── Chart 组件（gpui_component::chart）──
     // 构造器统一为 Type::new(data: Vec<T>)，data 为绑定属性
     // 字段路径（x_field/y_field 等）为静态字符串，codegen 生成闭包 .x(|d| d.field.clone())
-    // 颜色 stroke/fill 支持主题名（chart_1 → cx.theme().chart_1）与绑定（{color}）
+    // 颜色：LineChart stroke + AreaChart <Area> stroke/fill 支持主题名（chart_1 → cx.theme().chart_1）与绑定（{color}）
+    // BarChart 无 stroke/fill 颜色属性（fill_field 为 4 参数闭包）
     // LineChart：单系列折线图
     ("LineChart", &["data", "x_field", "y_field", "stroke", "tick_margin", "dot", "linear", "step_after"]),
-    // BarChart：柱状图
-    ("BarChart", &["data", "x_field", "y_field", "fill_field", "label_field", "stroke", "fill", "tick_margin"]),
+    // BarChart：柱状图（.band()/.value()，fill_field 为 4 参数闭包，无 stroke）
+    ("BarChart", &["data", "x_field", "y_field", "fill_field", "label_field", "tick_margin"]),
     // AreaChart：多系列面积图，y 系列由 <Area> 子标签提供
     ("AreaChart", &["data", "x_field"]),
     // Area：AreaChart 子标签（item builder），定义单个 y 系列

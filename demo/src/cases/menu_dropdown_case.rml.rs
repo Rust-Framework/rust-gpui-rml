@@ -36,9 +36,9 @@ impl ILifecycle for MenuDropdownCase {
         let (cols, rows) = build_api_table(&[
             ("anchor", "枚举", "弹出锚点位置"),
             ("第一个子节点", "组件", "触发器（通常 Button）"),
-            ("menu-item label", "字符串", "菜单项文案"),
-            ("menu-item icon", "图标名", "菜单项图标"),
-            ("menu-item on-click", "事件", "点击回调"),
+            ("menu-item label", "string", "菜单项文案"),
+            ("menu-item icon", "string", "菜单项图标"),
+            ("menu-item on-click", "event", "点击回调"),
             ("menu-separator", "标签", "分组分隔线"),
         ]);
         self.api_columns = cols;

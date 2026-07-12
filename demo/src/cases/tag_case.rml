@@ -34,14 +34,14 @@
 
             <div class="demo-section">
                 <h3>尺寸 size</h3>
-                <p>size 属性控制标签大小：xsmall / small / medium / large。来自 Sizable trait。</p>
+                <p>size 属性控制标签大小：xsmall / small / medium / large，默认 medium。</p>
                 <div class="button-row">
                     <Tag primary size="xsmall">XSmall</Tag>
                     <Tag primary size="small">Small</Tag>
                     <Tag primary size="medium">Medium</Tag>
                     <Tag primary size="large">Large</Tag>
                 </div>
-                <p>注：在 gpui-component 底层实现中，Tag 仅支持 Small 与 Medium 两档视觉区分。XSmall 与 Small 共用同一尺寸分支，Medium 与 Large 共用另一分支。建议优先使用 Small/Medium 两档。</p>
+
             </div>
 
             <div class="demo-section">
@@ -85,7 +85,6 @@
         <template slot="api">
             <h3>Tag</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-            <p>另：size 属性来自 Sizable trait，font-bold / font-semibold 等字体权重属性来自 StyledExt trait，rounded 等 CSS 属性来自通用样式通道。</p>
         </template>
     </CaseDocPage>
 </component>

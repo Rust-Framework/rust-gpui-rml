@@ -74,19 +74,19 @@ impl ILifecycle for DescriptionListCase {
         self.width = gpui::px(120.0);
         self.is_vertical = true;
         let (cols, rows) = build_api_table(&[
-            ("vertical", "布尔/绑定", "纵向布局（默认横向）"),
-            ("bordered", "布尔标志", "显示边框"),
-            ("columns", "数字", "列数"),
-            ("label-width", "像素值", "标签列宽"),
-            ("items", "绑定", "批量数据绑定（Vec<Arc<dyn IValue>>）"),
+            ("vertical", "bool / binding", "纵向布局（默认横向）"),
+            ("bordered", "bool", "显示边框"),
+            ("columns", "number", "列数"),
+            ("label-width", "number", "标签列宽"),
+            ("items", "binding", "批量数据绑定"),
         ]);
         self.list_api_columns = cols;
         self.list_api_rows = rows;
 
         let (cols, rows) = build_api_table(&[
-            ("label", "字符串", "子项标签（必填）"),
-            ("value", "字符串/绑定/元素", "子项值"),
-            ("span", "数字", "跨列数"),
+            ("label", "string", "子项标签（必填）"),
+            ("value", "string / binding / slot", "子项值"),
+            ("span", "number", "跨列数"),
         ]);
         self.item_api_columns = cols;
         self.item_api_rows = rows;

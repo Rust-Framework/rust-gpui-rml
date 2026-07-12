@@ -43,7 +43,7 @@ impl ILifecycle for SpinnerCase {
         self.api_rows = rows;
 
         let (_, skel_rows) = build_api_table(&[
-            ("secondary", "布尔标志", "切换为次级颜色（次要占位）"),
+            ("secondary", "bool", "切换为次级颜色（次要占位）"),
         ]);
         self.skeleton_rows = skel_rows;
     }

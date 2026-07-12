@@ -35,7 +35,7 @@ impl ILifecycle for NativeStatusBarCase {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         self.status_text = "就绪".into();
         let (cols, rows) = build_api_table(&[
-            ("子节点", "元素[]", "中央区域内容"),
+            ("子节点", "slot", "中央区域内容"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

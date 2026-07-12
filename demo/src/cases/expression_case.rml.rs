@@ -39,7 +39,7 @@ impl ILifecycle for ExpressionCase {
         let (cols, rows) = build_api_table(&[
             ("{expr}", "表达式", "文本插值中支持任意 Rust 表达式"),
             ("#[computed]", "方法", "依赖字段自动重算的派生值"),
-            ("属性={expr}", "绑定", "组件属性绑定表达式"),
+            ("属性={expr}", "binding", "组件属性绑定表达式"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

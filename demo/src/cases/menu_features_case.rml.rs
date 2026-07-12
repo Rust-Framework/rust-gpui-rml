@@ -49,13 +49,13 @@ impl ILifecycle for MenuFeaturesCase {
             cx.notify();
         }));
         let (cols, rows) = build_api_table(&[
-            ("scrollable", "布尔标志", "启用滚动"),
-            ("max-h", "数字", "最大高度（像素）"),
-            ("menu-item disabled", "布尔标志", "禁用项"),
-            ("menu-item checked", "布尔", "勾选状态"),
+            ("scrollable", "bool", "启用滚动"),
+            ("max-h", "number", "最大高度（像素）"),
+            ("menu-item disabled", "bool", "禁用项"),
+            ("menu-item checked", "bool", "勾选状态"),
             ("menu-item href", "URL", "外链跳转"),
-            ("menu-item icon", "图标名", "菜单项图标"),
-            ("menu-item header", "布尔标志", "分组标题"),
+            ("menu-item icon", "string", "菜单项图标"),
+            ("menu-item header", "bool", "分组标题"),
             ("menu-item 子节点", "menu-item", "子菜单"),
             ("menu-item command", "Arc<RelayCommand>", "声明式命令绑定"),
         ]);

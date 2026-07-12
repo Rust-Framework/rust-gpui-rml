@@ -22,7 +22,7 @@ pub struct NumberInputCase {
     pub change_input: ElementRef<InputState>,
     pub current_value: String,
 
-    /// Section 3：value 双向绑定（InputStateBridge）
+    /// Section 3：value 双向绑定
     pub bound_input: ElementRef<InputState>,
     pub bound_value: String,
 

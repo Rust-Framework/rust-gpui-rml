@@ -34,9 +34,9 @@ impl ILifecycle for MenuContextCase {
     fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         let (cols, rows) = build_api_table(&[
-            ("menu-item label", "字符串", "菜单项文案"),
-            ("menu-item icon", "图标名", "菜单项图标"),
-            ("menu-item on-click", "事件", "点击回调"),
+            ("menu-item label", "string", "菜单项文案"),
+            ("menu-item icon", "string", "菜单项图标"),
+            ("menu-item on-click", "event", "点击回调"),
             ("menu-separator", "标签", "分组分隔线"),
             ("menu-item 子节点", "menu-item", "子菜单"),
         ]);

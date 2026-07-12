@@ -40,8 +40,8 @@ impl ILifecycle for OverflowTestCase {
         let (cols, rows) = build_api_table(&[
             ("overflow-x", "auto / hidden / scroll", "水平滚动映射"),
             ("overflow-y", "auto / hidden / scroll", "垂直滚动映射"),
-            ("overflow-x-auto", "布尔标志", "等同 overflow-x: auto"),
-            ("overflow-y-auto", "布尔标志", "等同 overflow-y: auto"),
+            ("overflow-x-auto", "bool", "等同 overflow-x: auto"),
+            ("overflow-y-auto", "bool", "等同 overflow-y: auto"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

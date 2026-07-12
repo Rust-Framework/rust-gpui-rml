@@ -151,9 +151,8 @@ const unsubscribe = emitter.on('data', (payload) => {
 emitter.emit('data', { id: 1, name: 'RML' });
 "#;
 
-        // 预创建 InputState 实体并注册到 __rml_state
-        // 这样 RML 层的 <CodeEditor ref="rust_editor" /> 直接复用预创建的实体
-        // 避免在 slot 模板内使用 value 绑定导致的 __code 作用域问题
+        // 预创建 InputState 实体，供 RML 层 <CodeEditor ref="rust_editor" /> 复用
+        // 避免在 slot 模板内使用 value 绑定导致的作用域问题
         let rust_code_owned = rust_code.to_string();
         self.__rml_state.get_or_init_ref("rust_editor", _window, &mut *cx, move |w, c| {
             InputState::new(w, c)

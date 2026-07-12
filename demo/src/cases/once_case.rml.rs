@@ -58,8 +58,7 @@ impl OnceCase {
 
     /// 模拟 once 指令的快照行为：首次渲染后冻结 counter 值。
     /// 之所以用字段而非 once 指令，是因为 once 指令在 `<template slot>` 闭包内
-    /// codegen 会生成 `self.__rml_state.once_get_or_init(...)`（需 &mut self），
-    /// 而 slot 闭包只能拿到 `&self`，无法编译。
+    /// 需要 &mut self，而 slot 闭包只能拿到 `&self`，无法编译。
     #[computed]
     pub fn once_counter(&self) -> u32 {
         self.frozen_counter.unwrap_or(self.counter)

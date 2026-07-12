@@ -147,6 +147,7 @@ pub struct EdnaCase {
 
     // 实时指标与刷新
     pub metric_series: Vec<MetricSeries>,
+    pub chart_history: Vec<ChartPoint>,
     pub sampling_active: bool,
     pub channel_running_progress: u32,
     pub running_seconds: u32,
@@ -195,6 +196,7 @@ impl Default for EdnaCase {
             refresh_interval: String::new(),
             process_step_index: 0,
             metric_series: Vec::new(),
+            chart_history: Vec::new(),
             sampling_active: true,
             channel_running_progress: 35,
             running_seconds: 516,
@@ -392,6 +394,11 @@ impl EdnaCase {
             let value = bases[i] + phase.sin() * (0.05 + i as f64 * 0.01);
             series.push_sample(value);
         }
+        self.chart_history = self
+            .metric_series
+            .first()
+            .map(|s| s.history.clone())
+            .unwrap_or_default();
         self.metric_rows = model::build_metric_rows(&self.metric_series);
         self.channel_rows = model::build_channel_rows(self.current_channel, self.channel_running_progress);
         cx.notify();

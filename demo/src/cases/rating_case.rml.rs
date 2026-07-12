@@ -39,9 +39,9 @@ impl ILifecycle for RatingCase {
         self.max_stars = 5;
         self.is_readonly = false;
         let (cols, rows) = build_api_table(&[
-            ("value", "usize / 绑定", "当前评分值（0..=max）"),
-            ("max", "usize", "最大星数（默认 5）"),
-            ("color", "主题色名", "星标激活色（如 red/yellow/green）"),
+            ("value", "number / binding", "当前评分值（0..=max）"),
+            ("max", "number", "最大星数（默认 5）"),
+            ("color", "string", "星标激活色（如 red/yellow/green）"),
             ("size", "string", "尺寸：xsmall | small | medium | large"),
             ("disabled", "bool / binding", "禁用交互"),
             ("on-click", "event", "点击星标时回调，参数为评分值"),

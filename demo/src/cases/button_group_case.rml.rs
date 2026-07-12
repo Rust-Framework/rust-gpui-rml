@@ -38,19 +38,19 @@ impl ILifecycle for ButtonGroupCase {
         self.button_count = 3;
         let (cols, rows) = build_api_table(&[
             ("size", "small/medium/large", "统一子按钮尺寸"),
-            ("子节点", "Button", "包裹的 Button 组件"),
+            ("子节点", "slot", "包裹的 Button 组件"),
         ]);
         self.group_api_columns = cols;
         self.group_api_rows = rows;
 
         let (cols, rows) = build_api_table(&[
-            ("label", "字符串", "按钮文本"),
-            ("primary/ghost/danger", "布尔标志", "三种 variant"),
-            ("disabled", "布尔/绑定", "禁用按钮"),
-            ("selected", "布尔/绑定", "选中状态"),
+            ("label", "string", "按钮文本"),
+            ("primary/ghost/danger", "bool", "三种 variant"),
+            ("disabled", "bool / binding", "禁用按钮"),
+            ("selected", "bool / binding", "选中状态"),
             ("size", "small/medium/large", "尺寸"),
-            ("compact", "布尔标志", "紧凑模式"),
-            ("on-click", "事件", "点击回调（ClickEvent）"),
+            ("compact", "bool", "紧凑模式"),
+            ("on-click", "event", "点击回调（ClickEvent）"),
         ]);
         self.button_api_columns = cols;
         self.button_api_rows = rows;

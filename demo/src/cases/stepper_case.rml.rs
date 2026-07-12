@@ -35,9 +35,9 @@ impl ILifecycle for StepperCase {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         self.current_step = 0;
         let (cols, rows) = build_api_table(&[
-            ("selected-index", "usize / 绑定", "当前选中步骤索引"),
+            ("selected-index", "number / binding", "当前选中步骤索引"),
             ("direction", "vertical / horizontal", "布局方向（默认水平）"),
-            ("text-center", "布尔标志", "文本居中对齐"),
+            ("text-center", "bool", "文本居中对齐"),
             ("on-click", "event", "步骤点击时回调，参数为步骤索引"),
             ("size", "string", "尺寸：xsmall | small | medium | large"),
             ("disabled", "bool / 绑定", "禁用"),

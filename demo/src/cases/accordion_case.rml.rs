@@ -62,8 +62,8 @@ impl ILifecycle for AccordionCase {
         self.multiple_open = vec![0, 1];
 
         let (cols, rows) = build_api_table(&[
-            ("bordered", "布尔标志", "显示边框（bordered=\"\" 为 true）"),
-            ("multiple", "布尔标志", "允许多项同时展开（multiple=\"\" 为 true）"),
+            ("bordered", "bool", "显示边框（bordered=\"\" 为 true）"),
+            ("multiple", "bool", "允许多项同时展开（multiple=\"\" 为 true）"),
             ("size", "string", "尺寸：small | medium | large"),
             ("open-indices", "binding", "展开项索引列表，如 open-indices={open_list}"),
             ("on-toggle-click", "event", "展开状态变化时回调，参数为当前展开项索引列表"),
@@ -72,9 +72,9 @@ impl ILifecycle for AccordionCase {
         self.accordion_api_rows = rows;
 
         let (cols, rows) = build_api_table(&[
-            ("title", "字符串/绑定", "面板标题"),
+            ("title", "string / binding", "面板标题"),
             ("icon", "string", "标题图标，如 icon=\"Settings\""),
-            ("disabled", "布尔", "禁用面板（disabled=\"true\" 禁用）"),
+            ("disabled", "bool", "禁用面板（disabled=\"true\" 禁用）"),
         ]);
         self.item_api_columns = cols;
         self.item_api_rows = rows;

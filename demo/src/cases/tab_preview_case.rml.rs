@@ -45,20 +45,20 @@ impl ILifecycle for TabPreviewCase {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         self.reset_tabs();
         let (cols, rows) = build_api_table(&[
-            ("selected-index", "绑定", "当前选中索引"),
-            ("on-click", "事件", "切换选中，签名 fn(index: usize)"),
-            ("on-close", "事件", "关闭按钮回调，签名 fn(index: usize)"),
-            ("on-close-all", "事件", "关闭全部回调，签名 fn()"),
-            ("on-close-others", "事件", "关闭其他回调，签名 fn(index: usize)"),
-            ("on-promote", "事件", "双击 promote 回调，签名 fn(index: usize)"),
+            ("selected-index", "binding", "当前选中索引"),
+            ("on-click", "event", "切换选中，签名 fn(index: usize)"),
+            ("on-close", "event", "关闭按钮回调，签名 fn(index: usize)"),
+            ("on-close-all", "event", "关闭全部回调，签名 fn()"),
+            ("on-close-others", "event", "关闭其他回调，签名 fn(index: usize)"),
+            ("on-promote", "event", "双击 promote 回调，签名 fn(index: usize)"),
         ]);
         self.tabs_api_columns = cols;
         self.tabs_api_rows = rows;
 
         let (cols, rows) = build_api_table(&[
-            ("label", "字符串/绑定", "标签标题"),
-            ("closable", "布尔/绑定", "显示关闭按钮"),
-            ("preview", "布尔/绑定", "预览模式（italic 标题）"),
+            ("label", "string / binding", "标签标题"),
+            ("closable", "bool / binding", "显示关闭按钮"),
+            ("preview", "bool / binding", "预览模式（italic 标题）"),
         ]);
         self.tab_api_columns = cols;
         self.tab_api_rows = rows;
