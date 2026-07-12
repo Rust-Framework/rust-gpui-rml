@@ -1,0 +1,19 @@
+/* Ocean theme pack — custom dark palette example.
+   Load with: cx.use_theme_with_dir("ocean", "assets/themes");
+   Only override base vars; derived button/description-list tokens are auto-computed.
+   Explicitly override any derived var to customize further, e.g.:
+     --button-secondary: #023e8a;
+*/
+:root {
+    --primary: #0077b6;
+    --primary-foreground: #ffffff;
+    --background: #03045e;
+    --foreground: #caf0f8;
+    --secondary: #023e8a;
+    --secondary-foreground: #caf0f8;
+    --border: #0077b6;
+    --muted: #023e8a;
+    --muted-foreground: #90e0ef;
+    --accent: #0096c7;
+    --accent-foreground: #ffffff;
+}

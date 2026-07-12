@@ -23,7 +23,6 @@ use gpui::{
 use gpui_component::{
     ActiveTheme, Icon, IconName, Size, Sizable as _,
     animation::cubic_bezier,
-    button::{Button, ButtonRounded, ButtonVariants as _},
     h_flex,
     resizable::{h_resizable, resizable_panel, v_resizable, ResizableState},
     scroll::ScrollableElement as _,
@@ -147,14 +146,8 @@ impl ISlotScope for TabWindowSlotScope {
     }
 }
 
-/// 渲染单个窗口控件按钮（最小化/最大化/关闭）。
-fn control_button(
-    id: &'static str,
-    icon: IconName,
-    area: WindowControlArea,
-    cx: &App,
-) -> AnyElement {
-    let is_close = matches!(area, WindowControlArea::Close);
+/// Title-bar action button hover/active colors (window controls + chrome toggle).
+fn title_bar_action_colors(cx: &App, is_close: bool) -> (gpui::Hsla, gpui::Hsla, gpui::Hsla) {
     let hover_fg = if is_close {
         cx.theme().danger_foreground
     } else {
@@ -170,11 +163,23 @@ fn control_button(
     } else {
         cx.theme().secondary_active
     };
+    (hover_fg, hover_bg, active_bg)
+}
+
+/// 渲染单个窗口控件按钮（最小化/最大化/关闭）。
+fn control_button(
+    id: &'static str,
+    icon: IconName,
+    area: WindowControlArea,
+    cx: &App,
+) -> AnyElement {
+    let is_close = matches!(area, WindowControlArea::Close);
+    let (hover_fg, hover_bg, active_bg) = title_bar_action_colors(cx, is_close);
 
     div()
         .id(id)
         .flex()
-        .w(px(45.))
+        .w(TITLE_BAR_HEIGHT)
         .h_full()
         .flex_shrink_0()
         .justify_center()
@@ -610,13 +615,19 @@ impl RenderOnce for TabWindowShell {
         };
 
         let chrome_toggle = self.icon.map(|app_icon| {
-            Button::new("tab-window-chrome-toggle")
-                .text()
-                .cursor_pointer()
+            let (hover_fg, hover_bg, active_bg) = title_bar_action_colors(cx, false);
+            div()
+                .id("tab-window-chrome-toggle")
+                .flex()
                 .h(TITLE_BAR_HEIGHT)
                 .flex_shrink_0()
                 .px(px(6.))
-                .rounded(ButtonRounded::None)
+                .justify_center()
+                .items_center()
+                .cursor_pointer()
+                .text_color(cx.theme().foreground)
+                .hover(|style| style.bg(hover_bg).text_color(hover_fg))
+                .active(|style| style.bg(active_bg).text_color(hover_fg))
                 .on_click(move |_, window, cx| {
                     if let Some(f) = &on_chrome_toggle {
                         f(window, cx);
@@ -801,7 +812,7 @@ impl RenderOnce for TabWindowShell {
         }
 
         // chrome_toggle 必须放在 title_row（Drag 区域）之外，否则在 Windows 上
-        // Drag 区域会吞掉鼠标点击启动窗口拖拽，导致 Button 收不到 on_click。
+        // Drag 区域会吞掉鼠标点击启动窗口拖拽，导致按钮收不到 on_click。
         let title_row = h_flex()
             .id("tab-window-title-drag")
             .h_full()

@@ -12,7 +12,7 @@ use gpui::{
     AnyElement, App, IntoElement, ParentElement, RenderOnce, Styled, Window, div,
     prelude::FluentBuilder as _,
 };
-use gpui_component::{Icon, Sizable as _, TitleBar, h_flex};
+use gpui_component::{ActiveTheme, Icon, Sizable as _, TitleBar, h_flex};
 use smallvec::SmallVec;
 
 /// ModernWindowShell —— 内置封装 TitleBar + 插槽 + StatusBar 的 RenderOnce 组件
@@ -93,11 +93,12 @@ impl ParentElement for ModernWindowShell {
 }
 
 impl RenderOnce for ModernWindowShell {
-    fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
+    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         div()
             .flex()
             .flex_col()
             .size_full()
+            .bg(cx.theme().background)
             .child(
                 TitleBar::new()
                     .child(
@@ -126,7 +127,7 @@ impl RenderOnce for ModernWindowShell {
                             .when_some(self.title_ext_slot, |this, ext| this.child(ext)),
                     ),
             )
-            .child(div().flex_1().min_h_0().children(self.children))
+            .child(div().flex_1().min_h_0().bg(cx.theme().background).children(self.children))
             .when_some(self.status_slot, |this, slot| this.child(slot))
     }
 }

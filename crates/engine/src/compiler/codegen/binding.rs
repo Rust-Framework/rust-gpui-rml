@@ -90,6 +90,42 @@ pub(crate) fn gen_model_input(
 }
 
 /// 生成带 value 双向绑定的 StateBridge 组件代码（C4：通用 StateBridge 机制）
+pub(crate) fn gen_model_delegate_state_bridge(
+    spec: &StateBridgeSpec,
+    elem: &Element,
+    ctx: &CodegenCtx,
+    field: String,
+    delegate_field: String,
+    parents: &[css::ParentInfo],
+) -> Result<String, CodegenError> {
+    let method_name = format!("__rml_get_or_init_{}_state", spec.state_method_suffix);
+    let mut code = format!(
+        "{}::new(&self.{}({:?}, {:?}, _window, cx))",
+        spec.ctor_path, method_name, field, delegate_field,
+    );
+
+    for attr in &elem.attributes {
+        if let Attribute::Static { name, value, .. } = attr {
+            if name == "disabled" {
+                let disabled_val = if value.eq_ignore_ascii_case("true") || value == "1" || value.is_empty() {
+                    "true"
+                } else {
+                    "false"
+                };
+                code.push_str(&format!(".disabled({})", disabled_val));
+            }
+        }
+    }
+
+    if let Some(sheet) = &ctx.stylesheet {
+        let style_code = apply_css_styles(elem, &elem.tag, sheet, parents);
+        code.push_str(&style_code);
+    }
+
+    Ok(code)
+}
+
+/// 生成带 value 双向绑定的 StateBridge 组件代码（C4：通用 StateBridge 机制）
 ///
 /// `<Slider value={field} />` 生成：
 /// ```text

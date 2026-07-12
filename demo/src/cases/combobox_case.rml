@@ -37,6 +37,13 @@
             </div>
 
             <div class="demo-section">
+                <h3>5. value 双向绑定</h3>
+                <p>value 与 items 配合，自动 StateBridge 双向同步（无需 ref / on_change）。Combobox 绑定 Vec&lt;String&gt; 字段，选择变化自动写回。</p>
+                <p>绑定值：{bound_tags_label}</p>
+                <Combobox items={tag_items} value={bound_tags} placeholder="选择标签" cleanable />
+            </div>
+
+            <div class="demo-section">
                 <h3>API</h3>
                 <Table columns={api_columns} rows={api_rows} bordered />
             </div>

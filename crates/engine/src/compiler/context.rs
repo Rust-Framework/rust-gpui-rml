@@ -150,9 +150,9 @@ pub struct CodegenCtx {
 
     /// StateBridge 双向绑定字段，按 bridge_key 分组（C4：通用 StateBridge 机制）
     ///
-    /// key 为 bridge_key（如 "slider"），value 为字段名列表。
+    /// key 为 bridge_key（如 "slider"），value 为绑定列表（含可选 delegate 字段）。
     /// 由 `collect_state_bridge_fields()` 填充，供 `gen_state_bridge_impl()` 使用。
-    pub state_bridge_fields: HashMap<&'static str, Vec<String>>,
+    pub state_bridge_fields: HashMap<&'static str, Vec<super::state_bridge::StateBridgeBinding>>,
     /// `value={field | Converter}` 的 converter 映射（Phase B-2：双向绑定 convert_back）
     ///
     /// key 为字段名，value 为 converter 类型名（如 "Currency"）。

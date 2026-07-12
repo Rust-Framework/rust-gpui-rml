@@ -19,7 +19,7 @@ use crate::compiler::codegen::attribute::apply_css_styles;
 use crate::compiler::codegen::gen_node;
 use crate::compiler::setters::{component_bind_rust_expr, parse_bool};
 use crate::compiler::expr;
-use crate::compiler::components::tabs::tab::extract_state_refs;
+use crate::compiler::components::tabs::tab::{extract_state_event_subscribes, extract_state_refs};
 use crate::compiler::{CodegenCtx, CodegenError, UserComponentInfo};
 use crate::css::ParentInfo;
 use crate::parser::ast::{Attribute, Element, Node};
@@ -184,10 +184,15 @@ fn gen_user_component_body(
         // 变量名带 slot_name 前缀避免多 slot 场景冲突。
         let var_prefix = format!("__rml_slot_{}_entity_", slot_name);
         let (prelude, slot_code_replaced) = extract_state_refs(&slot_code, &var_prefix);
+        let (subscribe_prelude, slot_code_replaced) =
+            extract_state_event_subscribes(&slot_code_replaced);
         let binding = format!("__rml_slot_{}_value", slot_name);
         // 先发射 prelude（render 作用域，self 是 &mut Self）
         if !prelude.is_empty() {
             code.push_str(&format!("    {}\n", prelude));
+        }
+        if !subscribe_prelude.is_empty() {
+            code.push_str(&format!("    {}\n", subscribe_prelude));
         }
         // 每个 slot 闭包前 clone __rml_self_entity，避免被 move 后无法用于其他 slot 闭包。
         // 闭包内通过 `__rml_self_entity.update(_app, |this, cx| { ... })` 进入 &mut Context<Self>，
@@ -209,8 +214,13 @@ fn gen_user_component_body(
         })?;
         let (prelude, default_code_replaced) =
             extract_state_refs(&default_code, "__rml_slot_default_entity_");
+        let (subscribe_prelude, default_code_replaced) =
+            extract_state_event_subscribes(&default_code_replaced);
         if !prelude.is_empty() {
             code.push_str(&format!("    {}\n", prelude));
+        }
+        if !subscribe_prelude.is_empty() {
+            code.push_str(&format!("    {}\n", subscribe_prelude));
         }
         code.push_str("    let __rml_slot_default_value: rml_core::slot::SlotRenderer = Box::new({ let __rml_self_entity = __rml_self_entity.clone(); move |_scope: &dyn rml_core::slot::ISlotScope, _window: &mut gpui::Window, _app: &mut gpui::App| -> gpui::AnyElement { __rml_self_entity.update(_app, |this, cx| { let __rml_self_ref: &Self = this; (");
         code.push_str(&default_code_replaced);

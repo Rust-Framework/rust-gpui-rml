@@ -33,6 +33,9 @@ pub struct ComboboxCase {
     pub sized_combobox: ElementRef<ComboboxState<SearchableVec<SharedString>>>,
     pub current_size: u8,
 
+    /// Section 5：value 双向绑定
+    pub bound_tags: Vec<String>,
+
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
     pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
@@ -52,6 +55,7 @@ impl Default for ComboboxCase {
             selected_langs: Default::default(),
             sized_combobox: Default::default(),
             current_size: Default::default(),
+            bound_tags: vec!["Rust".to_string(), "RML".to_string()],
             api_columns: Default::default(),
             api_rows: Default::default(),
             case_doc_page: Default::default(),
@@ -98,7 +102,8 @@ impl ILifecycle for ComboboxCase {
 
         let (cols, rows) = build_api_table(&[
             ("ref", "字符串（指令）", "元素引用名，绑定到 ElementRef<ComboboxState<SearchableVec<SharedString>>> 字段（必填）"),
-            ("items", "绑定表达式", "SearchableVec<SharedString> 委托数据源，通过 items={field} 绑定（必填）"),
+            ("items", "绑定表达式", "SearchableVec<SharedString> 委托数据源，通过 items={field} 绑定（value 双向绑定时必填）"),
+            ("value", "绑定属性", "双向绑定到 pub Vec<String> 字段（StateBridge → set_selected_indices / ComboboxEvent::Change）"),
             ("placeholder", "字符串", "占位文本（走通用 static setter）"),
             ("cleanable", "布尔属性", "启用清除按钮（默认 false）"),
             ("appearance", "true/false", "是否显示边框背景（默认 true，设 false 移除）"),
@@ -142,6 +147,17 @@ impl ComboboxCase {
             2 => Size::Medium,
             _ => Size::Large,
         }
+    }
+
+    #[computed]
+    pub fn bound_tags_label(&self) -> String {
+        Self::format_values(
+            &self
+                .bound_tags
+                .iter()
+                .map(|s| SharedString::from(s.as_str()))
+                .collect::<Vec<_>>(),
+        )
     }
 
     fn format_values(values: &[SharedString]) -> String {

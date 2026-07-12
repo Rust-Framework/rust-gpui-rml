@@ -50,6 +50,7 @@ impl MenuViewModel {
         self.contribution.name()
     }
 
+    #[allow(dead_code)]
     pub fn has_children(&self) -> bool {
         !self.children.is_empty()
     }
@@ -131,6 +132,7 @@ impl MenuViewModel {
     /// 叶子节点经 `contribution.as_command()` 提取命令；
     /// `contribution` Arc 在闭包外 clone 以满足 `'static` bound，
     /// 闭包内重新调用 `as_command()` 获取 `&dyn ICommand` 借用。
+    #[allow(dead_code)]
     pub fn build_popup_menu(
         mut menu: PopupMenu,
         items: &[MenuViewModel],

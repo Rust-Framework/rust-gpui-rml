@@ -7,21 +7,38 @@
 //! - `theme_color_static("--primary")` 供 `#[computed]` 等无 `App` 上下文场景使用
 //! - `rml::theme::length("--spacing")` / `rml::theme::number("--opacity")` 取非颜色变量
 //!
-//! 框架内置 light/dark 两套默认主题色,即使 `assets/themes/light.css` 和 `dark.css` 为空
-//! 也能获得现代化的亮暗配色。主题 CSS 文件可选择性覆盖内置颜色实现定制。
+//! ## CSS 变量分层
 //!
-//! 变量优先级（高 → 低）: 主题 CSS 文件 > 框架内置默认 > `set_style` 基础变量。
+//! **基础变量**（用户 / 主题 CSS 可直接覆盖）:
+//! `--primary`, `--background`, `--foreground`, `--secondary`, `--border`, `--muted`, …
+//!
+//! **派生变量**（[`derive_theme_colors`] 按 gpui-component 语义自动补全,主题 CSS 仍可覆盖）:
+//! `--primary-hover`, `--button-secondary`, `--group-box`, `--list-hover`, `--card-bg`, …
+//!
+//! ## 表面层级（VS Code / Ant Design 语义, dark 示例）
+//!
+//! - **L0 chrome**: `--secondary` / `--title-bar` (#1a1b1d) — 标题栏、活动栏
+//! - **L1 background**: `--background` (#222427) — 主内容区、卡片默认同级
+//! - **L2 surface**: `--surface` / `--group-box` / `--list-hover` (#2a2b30) — 分组框、嵌套面板、列表悬停
+//! - **L3 elevated**: `--list-active` / `--accordion-hover` (#33353a) — L2 上的 hover/选中
+//! - **Border**: `--border` (#374151) —  subtle 分隔,非强对比
+//! - **Primary**: `--primary` (#007acc) — 仅用于 focus/selection 点缀,不作容器大面积背景
+//!
+//! 合并顺序: 内置 light/dark 默认 → 主题 CSS 覆盖 → 派生补全(仅填充缺失键)。
+//! 自定义主题包(如 `ocean.css`)只需覆盖基础变量,派生色自动计算;也可显式覆盖任意派生变量。
+//!
+//! 变量优先级（高 → 低）: 主题 CSS 文件 > 派生默认 > 框架内置默认 > `set_style` 基础变量。
 //!
 //! 启用 `gpui-component` feature 后,`set_theme` 还会同步 gpui-component 原生主题
-//! （Button/Input 等组件的配色），无需开发者手动调用。
+//! （Button/Input/DescriptionList 等组件的配色），无需开发者手动调用。
 //!
 //! 主题文件格式(`assets/themes/dark.css`):
 //! ```css
 //! :root {
 //!     --primary: #007bff;
-//!     --text: #333333;
+//!     --background: #222427;
+//!     --button-secondary: #2a2b30;  /* 可选:显式覆盖派生变量 */
 //!     --spacing: 8px;
-//!     --opacity: 0.5;
 //! }
 //! ```
 //! 解析 `:root` 块中的所有变量: `#hex` 识别为颜色, `Npx`/`Npt` 识别为长度, 纯数字识别为数字。
@@ -169,6 +186,11 @@ impl ThemeState {
         self.colors.get(name).copied()
     }
 
+    /// 当前生效的合并颜色表（base + 主题覆盖）
+    pub fn colors(&self) -> &HashMap<String, Rgba> {
+        &self.colors
+    }
+
     /// 查询非颜色变量(合并 base + theme,theme 优先)
     pub fn var(&self, name: &str) -> Option<ThemeVar> {
         self.vars.get(name).copied()
@@ -275,6 +297,468 @@ fn insert_builtin(m: &mut HashMap<String, Rgba>, vars: &[(&str, u32)]) {
     }
 }
 
+const RGBA_WHITE: Rgba = Rgba {
+    r: 1.0,
+    g: 1.0,
+    b: 1.0,
+    a: 1.0,
+};
+const RGBA_BLACK: Rgba = Rgba {
+    r: 0.0,
+    g: 0.0,
+    b: 0.0,
+    a: 1.0,
+};
+
+/// 线性混合两色
+fn mix_rgba(a: Rgba, b: Rgba, t: f32) -> Rgba {
+    let t = t.clamp(0.0, 1.0);
+    Rgba {
+        r: a.r + (b.r - a.r) * t,
+        g: a.g + (b.g - a.g) * t,
+        b: a.b + (b.b - a.b) * t,
+        a: a.a + (b.a - a.a) * t,
+    }
+}
+
+fn darken_rgba(c: Rgba, amount: f32) -> Rgba {
+    mix_rgba(c, RGBA_BLACK, amount)
+}
+
+fn lighten_rgba(c: Rgba, amount: f32) -> Rgba {
+    mix_rgba(c, RGBA_WHITE, amount)
+}
+
+/// 在背景上叠加半透明前景
+fn tint_rgba(bg: Rgba, fg: Rgba, fg_opacity: f32) -> Rgba {
+    mix_rgba(bg, fg, fg_opacity.clamp(0.0, 1.0))
+}
+
+/// sRGB 相对亮度 (0.0–1.0)
+fn relative_luminance(c: Rgba) -> f32 {
+    fn channel(v: f32) -> f32 {
+        if v <= 0.03928 {
+            v / 12.92
+        } else {
+            ((v + 0.055) / 1.055).powf(2.4)
+        }
+    }
+    0.2126 * channel(c.r) + 0.7152 * channel(c.g) + 0.0722 * channel(c.b)
+}
+
+fn color_from_map<'a>(colors: &'a HashMap<String, Rgba>, key: &str, fallback: Rgba) -> Rgba {
+    colors.get(key).copied().unwrap_or(fallback)
+}
+
+fn insert_derived(colors: &mut HashMap<String, Rgba>, key: &str, value: Rgba) {
+    colors.entry(key.to_string()).or_insert(value);
+}
+
+/// 判断当前主题是否为暗色: 优先主题名,其次 `--background` 亮度
+pub fn theme_is_dark(theme: &str, colors: &HashMap<String, Rgba>) -> bool {
+    match theme {
+        "dark" => true,
+        "light" => false,
+        _ => colors
+            .get("--background")
+            .map(|c| relative_luminance(*c) < 0.45)
+            .unwrap_or(false),
+    }
+}
+
+/// 从基础 CSS 变量派生 gpui-component 常用 token,仅填充缺失键
+pub fn derive_theme_colors(base: &HashMap<String, Rgba>, is_dark: bool) -> HashMap<String, Rgba> {
+    let mut colors = base.clone();
+
+    let background = color_from_map(&colors, "--background", if is_dark {
+        rgba_from_hex(0x222427)
+    } else {
+        rgba_from_hex(0xffffff)
+    });
+    let foreground = color_from_map(&colors, "--foreground", if is_dark {
+        rgba_from_hex(0xd4d4d8)
+    } else {
+        rgba_from_hex(0x111827)
+    });
+    let primary = color_from_map(&colors, "--primary", rgba_from_hex(0x007acc));
+    let primary_fg = color_from_map(&colors, "--primary-foreground", RGBA_WHITE);
+    let secondary = color_from_map(
+        &colors,
+        "--secondary",
+        if is_dark {
+            rgba_from_hex(0x1a1b1d)
+        } else {
+            rgba_from_hex(0xf3f4f6)
+        },
+    );
+    let secondary_fg = color_from_map(&colors, "--secondary-foreground", foreground);
+    let muted_fg = color_from_map(
+        &colors,
+        "--muted-foreground",
+        if is_dark {
+            rgba_from_hex(0x8e8e93)
+        } else {
+            rgba_from_hex(0x6b7280)
+        },
+    );
+    let border = color_from_map(
+        &colors,
+        "--border",
+        if is_dark {
+            rgba_from_hex(0x374151)
+        } else {
+            rgba_from_hex(0xe5e7eb)
+        },
+    );
+    let input = color_from_map(
+        &colors,
+        "--input",
+        if is_dark {
+            rgba_from_hex(0x2e3035)
+        } else {
+            rgba_from_hex(0xffffff)
+        },
+    );
+    let danger = color_from_map(
+        &colors,
+        "--danger",
+        if is_dark {
+            rgba_from_hex(0xf44747)
+        } else {
+            rgba_from_hex(0xdc2626)
+        },
+    );
+    let success = color_from_map(
+        &colors,
+        "--success",
+        if is_dark {
+            rgba_from_hex(0x4ec9b0)
+        } else {
+            rgba_from_hex(0x059669)
+        },
+    );
+    let warning = color_from_map(
+        &colors,
+        "--warning",
+        if is_dark {
+            rgba_from_hex(0xcca700)
+        } else {
+            rgba_from_hex(0xd97706)
+        },
+    );
+    let info = color_from_map(
+        &colors,
+        "--info",
+        if is_dark {
+            rgba_from_hex(0x3794ff)
+        } else {
+            rgba_from_hex(0x2563eb)
+        },
+    );
+    let link = color_from_map(
+        &colors,
+        "--link",
+        if is_dark {
+            rgba_from_hex(0x3794ff)
+        } else {
+            rgba_from_hex(0x2563eb)
+        },
+    );
+
+    let active_darken = if is_dark { 0.2 } else { 0.1 };
+    let primary_hover = tint_rgba(background, primary, 0.9);
+    let primary_active = darken_rgba(primary, active_darken);
+    // Lift secondary_hover above title_bar/secondary surfaces so title-bar controls
+    // and Secondary buttons show a visible hover (gpui default ≈ #292929 dark / #d1d5db light).
+    let secondary_hover = if is_dark {
+        lighten_rgba(secondary, 0.3)
+    } else {
+        darken_rgba(secondary, 0.1)
+    };
+    let secondary_active = darken_rgba(secondary, active_darken);
+
+    insert_derived(&mut colors, "--primary-hover", primary_hover);
+    insert_derived(&mut colors, "--primary-active", primary_active);
+    insert_derived(&mut colors, "--secondary-hover", secondary_hover);
+    insert_derived(&mut colors, "--secondary-active", secondary_active);
+
+    insert_derived(
+        &mut colors,
+        "--danger-hover",
+        tint_rgba(background, danger, 0.9),
+    );
+    insert_derived(&mut colors, "--danger-active", darken_rgba(danger, active_darken));
+    insert_derived(
+        &mut colors,
+        "--success-hover",
+        tint_rgba(background, success, 0.9),
+    );
+    insert_derived(
+        &mut colors,
+        "--success-active",
+        darken_rgba(success, active_darken),
+    );
+    insert_derived(
+        &mut colors,
+        "--warning-hover",
+        tint_rgba(background, warning, 0.9),
+    );
+    insert_derived(
+        &mut colors,
+        "--warning-active",
+        darken_rgba(warning, active_darken),
+    );
+    insert_derived(&mut colors, "--info-hover", tint_rgba(background, info, 0.9));
+    insert_derived(&mut colors, "--info-active", darken_rgba(info, active_darken));
+
+    insert_derived(
+        &mut colors,
+        "--link-hover",
+        if is_dark {
+            lighten_rgba(link, 0.15)
+        } else {
+            darken_rgba(link, 0.15)
+        },
+    );
+    insert_derived(
+        &mut colors,
+        "--link-active",
+        if is_dark {
+            darken_rgba(link, 0.1)
+        } else {
+            darken_rgba(link, 0.25)
+        },
+    );
+
+    // Default / Secondary button surfaces
+    let button = if is_dark {
+        tint_rgba(background, input, 0.3)
+    } else {
+        background
+    };
+    let button_hover = if is_dark {
+        tint_rgba(background, input, 0.5)
+    } else {
+        tint_rgba(background, input, 0.5)
+    };
+    let button_active = if is_dark {
+        tint_rgba(background, input, 0.7)
+    } else {
+        tint_rgba(background, input, 0.7)
+    };
+
+    insert_derived(&mut colors, "--button", button);
+    insert_derived(&mut colors, "--button-foreground", foreground);
+    insert_derived(&mut colors, "--button-hover", button_hover);
+    insert_derived(&mut colors, "--button-active", button_active);
+
+    insert_derived(&mut colors, "--button-primary", primary);
+    insert_derived(&mut colors, "--button-primary-foreground", primary_fg);
+    insert_derived(&mut colors, "--button-primary-hover", primary_hover);
+    insert_derived(&mut colors, "--button-primary-active", primary_active);
+
+    insert_derived(&mut colors, "--button-secondary", secondary);
+    insert_derived(&mut colors, "--button-secondary-foreground", secondary_fg);
+    insert_derived(&mut colors, "--button-secondary-hover", secondary_hover);
+    insert_derived(&mut colors, "--button-secondary-active", secondary_active);
+
+    insert_derived(&mut colors, "--button-danger", tint_rgba(background, danger, 0.2));
+    insert_derived(&mut colors, "--button-danger-foreground", danger);
+    insert_derived(
+        &mut colors,
+        "--button-danger-hover",
+        tint_rgba(background, danger, 0.3),
+    );
+    insert_derived(
+        &mut colors,
+        "--button-danger-active",
+        tint_rgba(background, danger, 0.4),
+    );
+
+    insert_derived(&mut colors, "--button-success", tint_rgba(background, success, 0.2));
+    insert_derived(&mut colors, "--button-success-foreground", success);
+    insert_derived(
+        &mut colors,
+        "--button-success-hover",
+        tint_rgba(background, success, 0.3),
+    );
+    insert_derived(
+        &mut colors,
+        "--button-success-active",
+        tint_rgba(background, success, 0.4),
+    );
+
+    insert_derived(&mut colors, "--button-warning", tint_rgba(background, warning, 0.2));
+    insert_derived(&mut colors, "--button-warning-foreground", warning);
+    insert_derived(
+        &mut colors,
+        "--button-warning-hover",
+        tint_rgba(background, warning, 0.3),
+    );
+    insert_derived(
+        &mut colors,
+        "--button-warning-active",
+        tint_rgba(background, warning, 0.4),
+    );
+
+    insert_derived(&mut colors, "--button-info", tint_rgba(background, info, 0.2));
+    insert_derived(&mut colors, "--button-info-foreground", info);
+    insert_derived(
+        &mut colors,
+        "--button-info-hover",
+        tint_rgba(background, info, 0.3),
+    );
+    insert_derived(
+        &mut colors,
+        "--button-info-active",
+        tint_rgba(background, info, 0.4),
+    );
+
+    insert_derived(
+        &mut colors,
+        "--description-list-label",
+        tint_rgba(background, border, 0.2),
+    );
+    insert_derived(
+        &mut colors,
+        "--description-list-label-foreground",
+        muted_fg,
+    );
+
+    // Surface hierarchy (L2 / L3) — group box, list, card, accordion
+    let surface = color_from_map(
+        &colors,
+        "--surface",
+        if is_dark {
+            rgba_from_hex(0x2a2b30)
+        } else {
+            rgba_from_hex(0xf3f4f6)
+        },
+    );
+    let surface_elevated = color_from_map(
+        &colors,
+        "--surface-elevated",
+        if is_dark {
+            rgba_from_hex(0x33353a)
+        } else {
+            rgba_from_hex(0xe5e7eb)
+        },
+    );
+    let list_hover = color_from_map(
+        &colors,
+        "--list-hover",
+        if is_dark {
+            rgba_from_hex(0x2a2b30)
+        } else {
+            rgba_from_hex(0xf3f4f6)
+        },
+    );
+    let list_active = color_from_map(
+        &colors,
+        "--list-active",
+        if is_dark {
+            rgba_from_hex(0x33353a)
+        } else {
+            rgba_from_hex(0xe5e7eb)
+        },
+    );
+    let list_active_border = color_from_map(
+        &colors,
+        "--list-active-border",
+        if is_dark {
+            tint_rgba(border, primary, 0.35)
+        } else {
+            tint_rgba(border, primary, 0.25)
+        },
+    );
+
+    insert_derived(&mut colors, "--list-hover", list_hover);
+    insert_derived(&mut colors, "--list-active", list_active);
+    insert_derived(&mut colors, "--list-active-border", list_active_border);
+    // Tree / Select dropdown list reuse list surface tokens (L2 hover / L3 active)
+    insert_derived(&mut colors, "--tree-hover", list_hover);
+    insert_derived(&mut colors, "--tree-active", list_active);
+
+    // GroupBox (gpui: group_box.background, group_box.foreground)
+    insert_derived(&mut colors, "--group-box", surface);
+    insert_derived(&mut colors, "--group-box-foreground", foreground);
+    insert_derived(&mut colors, "--group-box-border", border);
+
+    // Card — L2 elevation on dark, L1 + border on light
+    insert_derived(
+        &mut colors,
+        "--card-bg",
+        if is_dark { surface } else { background },
+    );
+    insert_derived(&mut colors, "--card-border", border);
+
+    // Accordion / Collapse — L2 base, L3 hover (~5–10% luminance shift, never primary fill)
+    insert_derived(
+        &mut colors,
+        "--accordion",
+        if is_dark { surface } else { background },
+    );
+    insert_derived(&mut colors, "--accordion-hover", surface_elevated);
+
+    // Slider — neutral track (never primary fill), thumb contrasts track
+    let slider_bar = color_from_map(
+        &colors,
+        "--slider-bar",
+        if is_dark {
+            tint_rgba(border, foreground, 0.45)
+        } else {
+            tint_rgba(border, foreground, 0.25)
+        },
+    );
+    let slider_thumb = color_from_map(
+        &colors,
+        "--slider-thumb",
+        if is_dark {
+            foreground
+        } else {
+            background
+        },
+    );
+    insert_derived(&mut colors, "--slider-bar", slider_bar);
+    insert_derived(&mut colors, "--slider-thumb", slider_thumb);
+
+    // Switch — L2 track off-state, L1 thumb (checked fill uses primary in component)
+    let switch_track = color_from_map(
+        &colors,
+        "--switch",
+        if is_dark { surface } else { surface_elevated },
+    );
+    let switch_thumb = color_from_map(
+        &colors,
+        "--switch-thumb",
+        if is_dark { background } else { background },
+    );
+    insert_derived(&mut colors, "--switch", switch_track);
+    insert_derived(&mut colors, "--switch-thumb", switch_thumb);
+
+    // Progress bar / circular progress (gpui: progress.bar.background → primary)
+    insert_derived(&mut colors, "--progress-bar", primary);
+
+    // Title-bar icon buttons (min/max/close, chrome toggle) — hover lift on title_bar bg
+    insert_derived(
+        &mut colors,
+        "--title-bar-button-hover",
+        secondary_hover,
+    );
+    insert_derived(
+        &mut colors,
+        "--title-bar-button-active",
+        secondary_active,
+    );
+    insert_derived(
+        &mut colors,
+        "--title-bar-button-foreground",
+        secondary_fg,
+    );
+
+    colors
+}
+
 /// 内置 light 主题默认 CSS 变量颜色（与 `apply_light_theme_config` 语义 token 对齐）
 fn builtin_light_colors() -> HashMap<String, Rgba> {
     let mut m = HashMap::new();
@@ -314,10 +798,23 @@ fn builtin_light_colors() -> HashMap<String, Rgba> {
             ("--tab-foreground", 0x374151),
             ("--tab-active", 0xffffff),
             ("--tab-active-foreground", 0x111827),
-            // 列表 / 表格
-            ("--list", 0xf9fafb),
-            ("--list-hover", 0xe5e7eb),
-            ("--list-active", 0xd1d5db),
+            // 列表 / 表格 (L1 base → L2 hover → L3 active)
+            ("--list", 0xffffff),
+            ("--list-hover", 0xf3f4f6),
+            ("--list-active", 0xe5e7eb),
+            ("--list-active-border", 0x007acc),
+            // 容器表面
+            ("--group-box", 0xf9fafb),
+            ("--group-box-foreground", 0x111827),
+            ("--card-bg", 0xffffff),
+            ("--card-border", 0xe5e7eb),
+            ("--accordion", 0xffffff),
+            ("--accordion-hover", 0xf3f4f6),
+            ("--slider-bar", 0xd1d5db),
+            ("--slider-thumb", 0xffffff),
+            ("--switch", 0xe5e7eb),
+            ("--switch-thumb", 0xffffff),
+            ("--surface-elevated", 0xe5e7eb),
             ("--table-head", 0xf9fafb),
             ("--table-head-foreground", 0x6b7280),
             ("--table-even", 0xf9fafb),
@@ -384,10 +881,23 @@ fn builtin_dark_colors() -> HashMap<String, Rgba> {
             ("--tab-foreground", 0xd4d4d8),
             ("--tab-active", 0x222427),
             ("--tab-active-foreground", 0xffffff),
-            // 列表 / 表格
-            ("--list", 0x25262a),
-            ("--list-hover", 0x33353a),
-            ("--list-active", 0x2a2b30),
+            // 列表 / 表格 (L1 base → L2 hover → L3 active)
+            ("--list", 0x222427),
+            ("--list-hover", 0x2a2b30),
+            ("--list-active", 0x33353a),
+            ("--list-active-border", 0x264f78),
+            // 容器表面
+            ("--group-box", 0x2a2b30),
+            ("--group-box-foreground", 0xd4d4d8),
+            ("--card-bg", 0x2a2b30),
+            ("--card-border", 0x374151),
+            ("--accordion", 0x2a2b30),
+            ("--accordion-hover", 0x33353a),
+            ("--slider-bar", 0x4b5563),
+            ("--slider-thumb", 0xd4d4d8),
+            ("--switch", 0x2a2b30),
+            ("--switch-thumb", 0x222427),
+            ("--surface-elevated", 0x33353a),
             ("--table-head", 0x25262a),
             ("--table-head-foreground", 0x8e8e93),
             ("--table-even", 0x25262a),
@@ -424,7 +934,7 @@ fn builtin_theme_colors(theme: &str) -> HashMap<String, Rgba> {
     }
 }
 
-/// 以内置默认为底,叠加 CSS 文件提供的颜色与变量,返回合并结果
+/// 以内置默认为底,叠加 CSS 文件提供的颜色与变量,派生缺失 token,返回合并结果
 fn merge_theme_with_builtin(
     theme: &str,
     dir: &str,
@@ -435,208 +945,372 @@ fn merge_theme_with_builtin(
         for (k, v) in css_colors {
             colors.insert(k, v);
         }
-        for (k, v) in css_vars {
-            vars.insert(k, v);
+        vars = css_vars;
+    }
+
+    // 自定义主题包: 用 CSS 覆盖 + 按亮度选 light/dark 内置补全缺失基础变量
+    if theme != "light" && theme != "dark" {
+        let is_dark = theme_is_dark(theme, &colors);
+        let fallback = if is_dark {
+            builtin_dark_colors()
+        } else {
+            builtin_light_colors()
+        };
+        for (k, v) in fallback {
+            colors.entry(k).or_insert(v);
         }
     }
+
+    let is_dark = theme_is_dark(theme, &colors);
+    colors = derive_theme_colors(&colors, is_dark);
     (colors, vars)
 }
 
 // ─── gpui-component 原生主题同步（feature-gated） ───
 
 #[cfg(feature = "gpui-component")]
-fn apply_builtin_gpui_theme(theme: &str, cx: &mut App) {
-    match theme {
-        "dark" => apply_dark_theme_config(cx),
-        "light" => apply_light_theme_config(cx),
-        _ => {}
+fn css_color(colors: &HashMap<String, Rgba>, key: &str, fallback: u32) -> gpui::Hsla {
+    colors
+        .get(key)
+        .copied()
+        .unwrap_or_else(|| rgba_from_hex(fallback))
+        .into()
+}
+
+/// 将合并后的 CSS 颜色变量同步到 gpui-component `Theme` 字段
+#[cfg(feature = "gpui-component")]
+fn apply_gpui_theme_from_colors(theme: &str, colors: &HashMap<String, Rgba>, cx: &mut App) {
+    use gpui::px;
+    use gpui_component::theme::ThemeMode;
+
+    let is_dark = theme_is_dark(theme, colors);
+
+    gpui_component::theme::Theme::sync_scrollbar_appearance(cx);
+    let t = gpui_component::theme::Theme::global_mut(cx);
+
+    t.mode = if is_dark {
+        ThemeMode::Dark
+    } else {
+        ThemeMode::Light
+    };
+
+    t.highlight_theme = if is_dark {
+        gpui_component::highlighter::HighlightTheme::default_dark()
+    } else {
+        gpui_component::highlighter::HighlightTheme::default_light()
+    };
+
+    let c = |key: &str, fallback: u32| css_color(colors, key, fallback);
+
+    t.background = c("--background", if is_dark { 0x222427 } else { 0xffffff });
+    t.foreground = c("--foreground", if is_dark { 0xd4d4d8 } else { 0x111827 });
+    t.secondary = c("--secondary", if is_dark { 0x1a1b1d } else { 0xf3f4f6 });
+    t.secondary_hover = c("--secondary-hover", if is_dark { 0x292929 } else { 0xd1d5db });
+    t.secondary_active = c(
+        "--secondary-active",
+        if is_dark { 0x212121 } else { 0x9ca3af },
+    );
+    t.secondary_foreground = c(
+        "--secondary-foreground",
+        if is_dark { 0xd4d4d8 } else { 0x374151 },
+    );
+    t.muted = c("--muted", if is_dark { 0x2a2b30 } else { 0xf9fafb });
+    t.muted_foreground = c(
+        "--muted-foreground",
+        if is_dark { 0x8e8e93 } else { 0x6b7280 },
+    );
+
+    t.title_bar = c("--title-bar", if is_dark { 0x1a1b1d } else { 0xf3f4f6 });
+    t.title_bar_border = c(
+        "--title-bar-border",
+        if is_dark { 0x0f1012 } else { 0xe5e7eb },
+    );
+    t.status_bar = c("--status-bar", if is_dark { 0x1a1b1d } else { 0xf3f4f6 });
+    t.status_bar_border = c(
+        "--status-bar-border",
+        if is_dark { 0x0f1012 } else { 0xe5e7eb },
+    );
+
+    t.sidebar = c("--sidebar", if is_dark { 0x1a1b1d } else { 0xf3f4f6 });
+    t.sidebar_accent = c(
+        "--list-hover",
+        if is_dark { 0x2a2b30 } else { 0xf3f4f6 },
+    );
+    t.sidebar_foreground = c(
+        "--sidebar-foreground",
+        if is_dark { 0xd4d4d8 } else { 0x374151 },
+    );
+    t.sidebar_border = c("--border", if is_dark { 0x374151 } else { 0xe5e7eb });
+
+    let tab_bar = c("--tab-bar", if is_dark { 0x1a1b1d } else { 0xf3f4f6 });
+    t.tab_bar = if is_dark {
+        gpui::transparent_black()
+    } else {
+        tab_bar
+    };
+    t.tab_bar_segmented = tab_bar;
+    t.tab_foreground = c(
+        "--tab-foreground",
+        if is_dark { 0xd4d4d8 } else { 0x374151 },
+    );
+    t.tab_active = c("--tab-active", if is_dark { 0x222427 } else { 0xffffff });
+    t.tab_active_foreground = c(
+        "--tab-active-foreground",
+        if is_dark { 0xffffff } else { 0x111827 },
+    );
+
+    let list = c("--list", if is_dark { 0x222427 } else { 0xffffff });
+    t.colors.list = list;
+    t.list_hover = c("--list-hover", if is_dark { 0x2a2b30 } else { 0xf3f4f6 });
+    t.list_active = c("--list-active", if is_dark { 0x33353a } else { 0xe5e7eb });
+    t.list_active_border = c(
+        "--list-active-border",
+        if is_dark { 0x264f78 } else { 0x007acc },
+    );
+    t.list.active_highlight = true;
+    t.list_even = c("--table-even", if is_dark { 0x222427 } else { 0xffffff });
+    t.list_head = c("--table-head", if is_dark { 0x222427 } else { 0xffffff });
+
+    t.table = c(
+        "--editor-surface",
+        if is_dark { 0x222427 } else { 0xffffff },
+    );
+    t.table_head = c("--table-head", if is_dark { 0x25262a } else { 0xf9fafb });
+    t.table_head_foreground = c(
+        "--table-head-foreground",
+        if is_dark { 0x8e8e93 } else { 0x6b7280 },
+    );
+    t.table_even = c("--table-even", if is_dark { 0x25262a } else { 0xf9fafb });
+    t.table_hover = c("--list-hover", if is_dark { 0x2a2b30 } else { 0xf3f4f6 });
+    t.table_row_border = c("--border", if is_dark { 0x374151 } else { 0xe5e7eb });
+
+    t.input = c("--input", if is_dark { 0x2e3035 } else { 0xffffff });
+    t.selection = c("--selection", if is_dark { 0x264f78 } else { 0xadd6ff });
+    t.caret = if is_dark {
+        gpui::rgb(0xffffff).into()
+    } else {
+        gpui::rgb(0x000000).into()
+    };
+
+    t.primary = c("--primary", 0x007acc);
+    t.primary_hover = c("--primary-hover", 0x1a8ad4);
+    t.primary_active = c("--primary-active", 0x006bb3);
+    t.primary_foreground = c("--primary-foreground", 0xffffff);
+
+    t.success = c("--success", if is_dark { 0x4ec9b0 } else { 0x059669 });
+    t.success_foreground = c("--success-foreground", 0xffffff);
+    t.success_hover = c("--success-hover", if is_dark { 0x5ed4bc } else { 0x047857 });
+    t.success_active = c("--success-active", if is_dark { 0x3eb8a0 } else { 0x065f46 });
+
+    t.warning = c("--warning", if is_dark { 0xcca700 } else { 0xd97706 });
+    t.warning_foreground = c("--warning-foreground", 0xffffff);
+    t.warning_hover = c("--warning-hover", if is_dark { 0xd4b000 } else { 0xb45309 });
+    t.warning_active = c("--warning-active", if is_dark { 0xb38f00 } else { 0x92400e });
+
+    t.danger = c("--danger", if is_dark { 0xf44747 } else { 0xdc2626 });
+    t.danger_hover = c("--danger-hover", if is_dark { 0xff5555 } else { 0xef4444 });
+    t.danger_active = c("--danger-active", if is_dark { 0xcc3333 } else { 0xb91c1c });
+    t.danger_foreground = c("--danger-foreground", 0xffffff);
+
+    t.info = c("--info", if is_dark { 0x3794ff } else { 0x2563eb });
+    t.info_foreground = c("--info-foreground", 0xffffff);
+    t.info_hover = c("--info-hover", if is_dark { 0x5aa8ff } else { 0x1d4ed8 });
+    t.info_active = c("--info-active", if is_dark { 0x0066cc } else { 0x1e40af });
+
+    t.link = c("--link", if is_dark { 0x3794ff } else { 0x2563eb });
+    t.link_hover = c("--link-hover", if is_dark { 0x5aa8ff } else { 0x1d4ed8 });
+    t.link_active = c("--link-active", if is_dark { 0x0066cc } else { 0x1e40af });
+
+    t.accent = c("--accent", if is_dark { 0x094771 } else { 0xdbeafe });
+    t.accent_foreground = c(
+        "--accent-foreground",
+        if is_dark { 0xd4d4d8 } else { 0x374151 },
+    );
+
+    t.popover = c("--popover", if is_dark { 0x2a2b32 } else { 0xffffff });
+    t.popover_foreground = c(
+        "--popover-foreground",
+        if is_dark { 0xd4d4d8 } else { 0x111827 },
+    );
+
+    // Button tokens (Default / Secondary / semantic variants)
+    t.button = c("--button", if is_dark { 0x2e3035 } else { 0xffffff });
+    t.button_foreground = c(
+        "--button-foreground",
+        if is_dark { 0xd4d4d8 } else { 0x111827 },
+    );
+    t.button_hover = c("--button-hover", if is_dark { 0x33353a } else { 0xf3f4f6 });
+    t.button_active = c("--button-active", if is_dark { 0x3a3b40 } else { 0xe5e7eb });
+
+    t.button_primary = c("--button-primary", 0x007acc);
+    t.button_primary_foreground = c("--button-primary-foreground", 0xffffff);
+    t.button_primary_hover = c("--button-primary-hover", 0x1a8ad4);
+    t.button_primary_active = c("--button-primary-active", 0x006bb3);
+
+    t.button_secondary = c("--button-secondary", if is_dark { 0x1a1b1d } else { 0xf3f4f6 });
+    t.button_secondary_foreground = c(
+        "--button-secondary-foreground",
+        if is_dark { 0xd4d4d8 } else { 0x374151 },
+    );
+    t.button_secondary_hover = c(
+        "--button-secondary-hover",
+        if is_dark { 0x292929 } else { 0xd1d5db },
+    );
+    t.button_secondary_active = c(
+        "--button-secondary-active",
+        if is_dark { 0x212121 } else { 0x9ca3af },
+    );
+
+    t.button_danger = c(
+        "--button-danger",
+        if is_dark { 0x3a2020 } else { 0xfee2e2 },
+    );
+    t.button_danger_foreground = c(
+        "--button-danger-foreground",
+        if is_dark { 0xf44747 } else { 0xdc2626 },
+    );
+    t.button_danger_hover = c(
+        "--button-danger-hover",
+        if is_dark { 0x4a2828 } else { 0xfecaca },
+    );
+    t.button_danger_active = c(
+        "--button-danger-active",
+        if is_dark { 0x5a3030 } else { 0xfca5a5 },
+    );
+
+    t.button_success = c(
+        "--button-success",
+        if is_dark { 0x1a3330 } else { 0xd1fae5 },
+    );
+    t.button_success_foreground = c(
+        "--button-success-foreground",
+        if is_dark { 0x4ec9b0 } else { 0x059669 },
+    );
+    t.button_success_hover = c(
+        "--button-success-hover",
+        if is_dark { 0x224440 } else { 0xa7f3d0 },
+    );
+    t.button_success_active = c(
+        "--button-success-active",
+        if is_dark { 0x2a5550 } else { 0x6ee7b7 },
+    );
+
+    t.button_warning = c(
+        "--button-warning",
+        if is_dark { 0x33301a } else { 0xfef3c7 },
+    );
+    t.button_warning_foreground = c(
+        "--button-warning-foreground",
+        if is_dark { 0xcca700 } else { 0xd97706 },
+    );
+    t.button_warning_hover = c(
+        "--button-warning-hover",
+        if is_dark { 0x444028 } else { 0xfde68a },
+    );
+    t.button_warning_active = c(
+        "--button-warning-active",
+        if is_dark { 0x555030 } else { 0xfcd34d },
+    );
+
+    t.button_info = c(
+        "--button-info",
+        if is_dark { 0x1a2833 } else { 0xdbeafe },
+    );
+    t.button_info_foreground = c(
+        "--button-info-foreground",
+        if is_dark { 0x3794ff } else { 0x2563eb },
+    );
+    t.button_info_hover = c(
+        "--button-info-hover",
+        if is_dark { 0x223444 } else { 0xbfdbfe },
+    );
+    t.button_info_active = c(
+        "--button-info-active",
+        if is_dark { 0x2a4055 } else { 0x93c5fd },
+    );
+
+    t.description_list_label = c(
+        "--description-list-label",
+        if is_dark { 0x25262a } else { 0xf9fafb },
+    );
+    t.description_list_label_foreground = c(
+        "--description-list-label-foreground",
+        if is_dark { 0x8e8e93 } else { 0x6b7280 },
+    );
+
+    t.group_box = c("--group-box", if is_dark { 0x2a2b30 } else { 0xf9fafb });
+    t.group_box_foreground = c(
+        "--group-box-foreground",
+        if is_dark { 0xd4d4d8 } else { 0x111827 },
+    );
+
+    t.accordion = c("--accordion", if is_dark { 0x2a2b30 } else { 0xffffff });
+    t.accordion_hover = c(
+        "--accordion-hover",
+        if is_dark { 0x33353a } else { 0xf3f4f6 },
+    );
+    t.progress_bar = c("--progress-bar", 0x007acc);
+
+    t.slider_bar = c(
+        "--slider-bar",
+        if is_dark { 0x4b5563 } else { 0xd1d5db },
+    );
+    t.slider_thumb = c(
+        "--slider-thumb",
+        if is_dark { 0xd4d4d8 } else { 0xffffff },
+    );
+    t.switch = c("--switch", if is_dark { 0x2a2b30 } else { 0xe5e7eb });
+    t.switch_thumb = c(
+        "--switch-thumb",
+        if is_dark { 0x222427 } else { 0xffffff },
+    );
+
+    let scrollbar = c("--scrollbar", if is_dark { 0x1a1b1d } else { 0xf3f4f6 });
+    t.scrollbar = if is_dark {
+        gpui::transparent_black()
+    } else {
+        scrollbar
+    };
+    t.scrollbar_thumb = c(
+        "--scrollbar-thumb",
+        if is_dark { 0x555555 } else { 0x9ca3af },
+    );
+    t.scrollbar_thumb_hover = if is_dark {
+        gpui::rgb(0x666666).into()
+    } else {
+        gpui::rgb(0x6b7280).into()
+    };
+
+    let border = c("--border", if is_dark { 0x374151 } else { 0xe5e7eb });
+    t.border = border;
+    t.drag_border = c("--ring", 0x007acc);
+    t.ring = c("--ring", 0x007acc);
+
+    t.transparent = gpui::transparent_black();
+    t.window_border = if is_dark {
+        gpui::transparent_black()
+    } else {
+        border
+    };
+    t.font_size = px(14.);
+    t.scrollbar_show = gpui_component::scroll::ScrollbarShow::Scrolling;
+
+    t.tokens = gpui_component::theme::ThemeTokens::from(&t.colors);
+}
+
+/// 从 `ThemeState` 读取当前合并颜色并同步 gpui-component 原生主题
+#[cfg(feature = "gpui-component")]
+fn sync_gpui_theme(cx: &mut App) {
+    if !cx.has_global::<ThemeState>() {
+        return;
     }
-}
-
-#[cfg(feature = "gpui-component")]
-fn apply_dark_theme_config(cx: &mut App) {
-    use gpui::px;
-
-    gpui_component::theme::Theme::sync_scrollbar_appearance(cx);
-    let t = gpui_component::theme::Theme::global_mut(cx);
-
-    t.highlight_theme = gpui_component::highlighter::HighlightTheme::default_dark();
-
-    t.background = gpui::rgb(0x222427).into();
-    t.foreground = gpui::rgb(0xd4d4d8).into();
-    t.secondary = gpui::rgb(0x1a1b1d).into();
-    t.secondary_hover = gpui::rgb(0x3a3b40).into();
-    t.secondary_active = gpui::rgb(0x4a4b50).into();
-    t.secondary_foreground = gpui::rgb(0xd4d4d8).into();
-    t.muted = gpui::rgb(0x2a2b30).into();
-    t.muted_foreground = gpui::rgb(0x8e8e93).into();
-
-    t.title_bar = gpui::rgb(0x1a1b1d).into();
-    t.title_bar_border = gpui::rgb(0x0f1012).into();
-    t.status_bar = gpui::rgb(0x1a1b1d).into();
-    t.status_bar_border = gpui::rgb(0x0f1012).into();
-
-    t.sidebar = gpui::rgb(0x1a1b1d).into();
-    t.sidebar_accent = gpui::rgb(0x2a2b30).into();
-    t.sidebar_foreground = gpui::rgb(0xd4d4d8).into();
-    t.sidebar_border = gpui::rgb(0x374151).into();
-
-    t.tab_bar = gpui::transparent_black();
-    t.tab_bar_segmented = gpui::rgb(0x1a1b1d).into();
-    t.tab_foreground = gpui::rgb(0xd4d4d8).into();
-    t.tab_active = gpui::rgb(0x222427).into();
-    t.tab_active_foreground = gpui::rgb(0xffffff).into();
-
-    t.colors.list = gpui::rgb(0x25262a).into();
-    t.list_hover = gpui::rgb(0x33353a).into();
-    t.list_active = gpui::rgb(0x2a2b30).into();
-    t.list_active_border = gpui::transparent_black();
-    t.list_even = gpui::rgb(0x25262a).into();
-    t.list_head = gpui::rgb(0x25262a).into();
-
-    t.table = gpui::rgb(0x222427).into();
-    t.table_head = gpui::rgb(0x25262a).into();
-    t.table_head_foreground = gpui::rgb(0x8e8e93).into();
-    t.table_even = gpui::rgb(0x25262a).into();
-    t.table_hover = gpui::rgb(0x33353a).into();
-    t.table_row_border = gpui::rgb(0x374151).into();
-
-    t.input = gpui::rgb(0x2e3035).into();
-    t.selection = gpui::rgb(0x264f78).into();
-    t.caret = gpui::rgb(0xffffff).into();
-
-    t.primary = gpui::rgb(0x007acc).into();
-    t.primary_hover = gpui::rgb(0x1a8ad4).into();
-    t.primary_active = gpui::rgb(0x006bb3).into();
-    t.primary_foreground = gpui::rgb(0xffffff).into();
-
-    t.success = gpui::rgb(0x4ec9b0).into();
-    t.success_foreground = gpui::rgb(0xffffff).into();
-    t.warning = gpui::rgb(0xcca700).into();
-    t.warning_foreground = gpui::rgb(0xffffff).into();
-    t.danger = gpui::rgb(0xf44747).into();
-    t.danger_hover = gpui::rgb(0xff5555).into();
-    t.danger_active = gpui::rgb(0xcc3333).into();
-    t.danger_foreground = gpui::rgb(0xffffff).into();
-    t.info = gpui::rgb(0x3794ff).into();
-    t.info_foreground = gpui::rgb(0xffffff).into();
-
-    t.link = gpui::rgb(0x3794ff).into();
-    t.link_hover = gpui::rgb(0x5aa8ff).into();
-    t.link_active = gpui::rgb(0x0066cc).into();
-    t.accent = gpui::rgb(0x094771).into();
-    t.accent_foreground = gpui::rgb(0xd4d4d8).into();
-
-    t.popover = gpui::rgb(0x2a2b32).into();
-    t.popover_foreground = gpui::rgb(0xd4d4d8).into();
-
-    t.scrollbar = gpui::transparent_black();
-    t.scrollbar_thumb = gpui::rgb(0x555555).into();
-    t.scrollbar_thumb_hover = gpui::rgb(0x666666).into();
-
-    t.border = gpui::rgb(0x374151).into();
-    t.drag_border = gpui::rgb(0x007acc).into();
-    t.ring = gpui::rgb(0x007acc).into();
-
-    t.transparent = gpui::transparent_black();
-    t.window_border = gpui::transparent_black();
-    t.font_size = px(14.);
-    t.scrollbar_show = gpui_component::scroll::ScrollbarShow::Scrolling;
-
-    t.tokens = gpui_component::theme::ThemeTokens::from(&t.colors);
-}
-
-#[cfg(feature = "gpui-component")]
-fn apply_light_theme_config(cx: &mut App) {
-    use gpui::px;
-
-    gpui_component::theme::Theme::sync_scrollbar_appearance(cx);
-    let t = gpui_component::theme::Theme::global_mut(cx);
-
-    t.highlight_theme = gpui_component::highlighter::HighlightTheme::default_light();
-
-    t.background = gpui::rgb(0xffffff).into();
-    t.foreground = gpui::rgb(0x111827).into();
-    t.secondary = gpui::rgb(0xf3f4f6).into();
-    t.secondary_hover = gpui::rgb(0xd1d5db).into();
-    t.secondary_active = gpui::rgb(0x9ca3af).into();
-    t.secondary_foreground = gpui::rgb(0x374151).into();
-    t.muted = gpui::rgb(0xf9fafb).into();
-    t.muted_foreground = gpui::rgb(0x6b7280).into();
-
-    t.title_bar = gpui::rgb(0xf3f4f6).into();
-    t.title_bar_border = gpui::rgb(0xe5e7eb).into();
-    t.status_bar = gpui::rgb(0xf3f4f6).into();
-    t.status_bar_border = gpui::rgb(0xe5e7eb).into();
-
-    t.sidebar = gpui::rgb(0xf3f4f6).into();
-    t.sidebar_accent = gpui::rgb(0xe5e7eb).into();
-    t.sidebar_foreground = gpui::rgb(0x374151).into();
-    t.sidebar_border = gpui::rgb(0xe5e7eb).into();
-
-    t.tab_bar = gpui::rgb(0xf3f4f6).into();
-    t.tab_bar_segmented = gpui::rgb(0xf3f4f6).into();
-    t.tab_foreground = gpui::rgb(0x374151).into();
-    t.tab_active = gpui::rgb(0xffffff).into();
-    t.tab_active_foreground = gpui::rgb(0x111827).into();
-
-    t.colors.list = gpui::rgb(0xf9fafb).into();
-    t.list_hover = gpui::rgb(0xe5e7eb).into();
-    t.list_active = gpui::rgb(0xd1d5db).into();
-    t.list_active_border = gpui::transparent_black();
-    t.list_even = gpui::rgb(0xf9fafb).into();
-    t.list_head = gpui::rgb(0xf9fafb).into();
-
-    t.table = gpui::rgb(0xffffff).into();
-    t.table_head = gpui::rgb(0xf9fafb).into();
-    t.table_head_foreground = gpui::rgb(0x6b7280).into();
-    t.table_even = gpui::rgb(0xf9fafb).into();
-    t.table_hover = gpui::rgb(0xe5e7eb).into();
-    t.table_row_border = gpui::rgb(0xe5e7eb).into();
-
-    t.input = gpui::rgb(0xffffff).into();
-    t.selection = gpui::rgb(0xadd6ff).into();
-    t.caret = gpui::rgb(0x000000).into();
-
-    t.primary = gpui::rgb(0x007acc).into();
-    t.primary_hover = gpui::rgb(0x1a8ad4).into();
-    t.primary_active = gpui::rgb(0x006bb3).into();
-    t.primary_foreground = gpui::rgb(0xffffff).into();
-
-    t.success = gpui::rgb(0x059669).into();
-    t.success_foreground = gpui::rgb(0xffffff).into();
-    t.warning = gpui::rgb(0xd97706).into();
-    t.warning_foreground = gpui::rgb(0xffffff).into();
-    t.danger = gpui::rgb(0xdc2626).into();
-    t.danger_hover = gpui::rgb(0xef4444).into();
-    t.danger_active = gpui::rgb(0xb91c1c).into();
-    t.danger_foreground = gpui::rgb(0xffffff).into();
-    t.info = gpui::rgb(0x2563eb).into();
-    t.info_foreground = gpui::rgb(0xffffff).into();
-
-    t.link = gpui::rgb(0x2563eb).into();
-    t.link_hover = gpui::rgb(0x1d4ed8).into();
-    t.link_active = gpui::rgb(0x1e40af).into();
-    t.accent = gpui::rgb(0xdbeafe).into();
-    t.accent_foreground = gpui::rgb(0x374151).into();
-
-    t.popover = gpui::rgb(0xffffff).into();
-    t.popover_foreground = gpui::rgb(0x111827).into();
-
-    t.scrollbar = gpui::rgb(0xf3f4f6).into();
-    t.scrollbar_thumb = gpui::rgb(0x9ca3af).into();
-    t.scrollbar_thumb_hover = gpui::rgb(0x6b7280).into();
-
-    t.border = gpui::rgb(0xe5e7eb).into();
-    t.drag_border = gpui::rgb(0x007acc).into();
-    t.ring = gpui::rgb(0x007acc).into();
-
-    t.transparent = gpui::transparent_black();
-    t.window_border = gpui::rgb(0xe5e7eb).into();
-    t.font_size = px(14.);
-    t.scrollbar_show = gpui_component::scroll::ScrollbarShow::Scrolling;
-
-    t.tokens = gpui_component::theme::ThemeTokens::from(&t.colors);
+    let (theme, colors) = cx.read_global(|state: &ThemeState, _| {
+        (state.theme().to_string(), state.colors().clone())
+    });
+    if theme.is_empty() {
+        return;
+    }
+    apply_gpui_theme_from_colors(&theme, &colors, cx);
 }
 
 /// `Context` / `App` 主题扩展
@@ -669,7 +1343,7 @@ impl ThemeExt for App {
             state.load_theme_vars(&theme, vars);
         });
         #[cfg(feature = "gpui-component")]
-        apply_builtin_gpui_theme(&theme, self);
+        sync_gpui_theme(self);
     }
 
     fn set_theme(&mut self, theme: impl AsRef<str>) {
@@ -691,7 +1365,7 @@ impl ThemeExt for App {
         });
         if switched {
             #[cfg(feature = "gpui-component")]
-            apply_builtin_gpui_theme(&theme, self);
+            sync_gpui_theme(self);
             self.refresh_windows();
         }
     }
@@ -713,6 +1387,8 @@ impl ThemeExt for App {
             state.set_base_colors(base_colors);
             state.set_base_vars(base_vars);
         });
+        #[cfg(feature = "gpui-component")]
+        sync_gpui_theme(self);
         self.refresh_windows();
     }
 
@@ -1526,6 +2202,133 @@ mod tests {
         let (colors, vars) = merge_theme_with_builtin("light", DEFAULT_THEMES_DIR);
         assert!(colors.contains_key("--primary"));
         assert!(colors.contains_key("--editor-surface"));
+        assert!(colors.contains_key("--button-secondary"));
+        assert!(colors.contains_key("--accordion"));
+        assert!(colors.contains_key("--group-box"));
+        assert!(colors.contains_key("--card-bg"));
+        assert!(colors.contains_key("--list-active-border"));
+        assert!(colors.contains_key("--progress-bar"));
+        assert!(colors.contains_key("--slider-bar"));
+        assert!(colors.contains_key("--switch"));
+        assert!(colors.contains_key("--description-list-label"));
         assert!(vars.is_empty());
+    }
+
+    #[test]
+    fn theme_is_dark_by_name_and_luminance() {
+        let dark = builtin_dark_colors();
+        assert!(theme_is_dark("dark", &dark));
+        assert!(!theme_is_dark("light", &dark));
+
+        let mut ocean = HashMap::new();
+        ocean.insert("--background".to_string(), rgba_from_hex(0x03045e));
+        assert!(theme_is_dark("ocean", &ocean));
+
+        let mut lightish = HashMap::new();
+        lightish.insert("--background".to_string(), rgba_from_hex(0xf0f0f0));
+        assert!(!theme_is_dark("ocean", &lightish));
+    }
+
+    #[test]
+    fn derive_theme_colors_fills_accordion_and_progress_bar() {
+        let base = builtin_dark_colors();
+        let derived = derive_theme_colors(&base, true);
+
+        assert!(derived.contains_key("--accordion"));
+        assert!(derived.contains_key("--accordion-hover"));
+        assert!(derived.contains_key("--progress-bar"));
+        assert!(derived.contains_key("--title-bar-button-hover"));
+
+        let accordion = derived.get("--accordion").unwrap();
+        let bg = derived.get("--background").unwrap();
+        assert!(
+            relative_luminance(*accordion) >= relative_luminance(*bg) - 0.01,
+            "accordion should sit at or above background luminance (L2 surface)"
+        );
+
+        let accordion_hover = derived.get("--accordion-hover").unwrap();
+        let accent = derived.get("--accent").unwrap();
+        assert!(
+            (accordion_hover.r - accent.r).abs() > 0.05
+                || (accordion_hover.g - accent.g).abs() > 0.05,
+            "accordion-hover must not reuse accent (primary-tinted) fill"
+        );
+        assert!(
+            relative_luminance(*accordion_hover) > relative_luminance(*accordion),
+            "accordion-hover should lift above accordion base"
+        );
+
+        let list_hover = derived.get("--list-hover").unwrap();
+        let list_active = derived.get("--list-active").unwrap();
+        assert!(
+            relative_luminance(*list_active) > relative_luminance(*list_hover),
+            "list-active (L3) should be brighter than list-hover (L2) in dark theme"
+        );
+
+        let group_box = derived.get("--group-box").unwrap();
+        assert!(
+            relative_luminance(*group_box) > relative_luminance(*bg),
+            "group-box should be elevated above page background"
+        );
+
+        let progress = derived.get("--progress-bar").unwrap();
+        let primary = derived.get("--primary").unwrap();
+        assert!((progress.r - primary.r).abs() < 1e-6);
+
+        let hover = derived.get("--secondary-hover").unwrap();
+        let secondary = derived.get("--secondary").unwrap();
+        assert!(
+            relative_luminance(*hover) > relative_luminance(*secondary),
+            "secondary-hover should lift above secondary in dark theme"
+        );
+
+        let slider_bar = derived.get("--slider-bar").unwrap();
+        assert!(
+            (slider_bar.r - primary.r).abs() > 0.05
+                || (slider_bar.g - primary.g).abs() > 0.05,
+            "slider-bar must not reuse primary fill"
+        );
+
+        let switch_track = derived.get("--switch").unwrap();
+        assert!(
+            relative_luminance(*switch_track) >= relative_luminance(*bg) - 0.01,
+            "switch track should sit at L2 surface, not below background"
+        );
+    }
+
+    #[test]
+    fn derive_theme_colors_fills_button_and_description_list() {
+        let base = builtin_dark_colors();
+        let derived = derive_theme_colors(&base, true);
+
+        assert!(derived.contains_key("--button"));
+        assert!(derived.contains_key("--button-secondary"));
+        assert!(derived.contains_key("--button-secondary-foreground"));
+        assert!(derived.contains_key("--description-list-label"));
+        assert!(derived.contains_key("--description-list-label-foreground"));
+
+        let btn_sec = derived.get("--button-secondary").unwrap();
+        let bg = derived.get("--background").unwrap();
+        assert!(
+            relative_luminance(*btn_sec) < relative_luminance(*bg) + 0.3,
+            "button-secondary should be dark-ish in dark theme"
+        );
+    }
+
+    #[test]
+    fn derive_respects_explicit_css_override() {
+        let mut base = builtin_dark_colors();
+        base.insert(
+            "--button-secondary".to_string(),
+            rgba_from_hex(0xff0000),
+        );
+        let derived = derive_theme_colors(&base, true);
+        let btn = derived.get("--button-secondary").unwrap();
+        assert!((btn.r - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn relative_luminance_black_vs_white() {
+        assert!(relative_luminance(RGBA_BLACK) < relative_luminance(RGBA_WHITE));
     }
 }

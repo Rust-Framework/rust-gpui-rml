@@ -33,6 +33,9 @@ pub struct SelectCase {
     pub sized_select: ElementRef<SelectState<SearchableVec<SharedString>>>,
     pub current_size: u8,
 
+    /// Section 5：value 双向绑定
+    pub bound_fruit: String,
+
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
     pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
@@ -52,6 +55,7 @@ impl Default for SelectCase {
             selected_lang: Default::default(),
             sized_select: Default::default(),
             current_size: Default::default(),
+            bound_fruit: "苹果".to_string(),
             api_columns: Default::default(),
             api_rows: Default::default(),
             case_doc_page: Default::default(),
@@ -97,7 +101,8 @@ impl ILifecycle for SelectCase {
 
         let (cols, rows) = build_api_table(&[
             ("ref", "字符串（指令）", "元素引用名，绑定到 ElementRef<SelectState<SearchableVec<SharedString>>> 字段（必填）"),
-            ("items", "绑定表达式", "SearchableVec<SharedString> 委托数据源，通过 items={field} 绑定（必填）"),
+            ("items", "绑定表达式", "SearchableVec<SharedString> 委托数据源，通过 items={field} 绑定（value 双向绑定时必填）"),
+            ("value", "绑定属性", "双向绑定到 pub String 字段（StateBridge → set_selected_value / SelectEvent::Confirm）"),
             ("placeholder", "字符串", "占位文本（走通用 static setter）"),
             ("cleanable", "布尔属性", "启用清除按钮（默认 false）"),
             ("appearance", "true/false", "是否显示边框背景（默认 true，设 false 移除）"),

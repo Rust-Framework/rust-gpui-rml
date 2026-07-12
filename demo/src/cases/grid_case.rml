@@ -35,7 +35,7 @@
                 <p>模拟 IDE 布局：3 列网格 + col-span 实现编辑器区域占 2 列</p>
                 <Grid columns="3" rows="3" gap="4px" style="margin-top: 12px; height: 300px;">
                     <GridItem col-span="3">
-                        <div style="background: var(--color-bg-3); padding: 8px 12px; border-radius: 4px; font-size: 13px;">菜单栏 Menu Bar</div>
+                        <div style="background: var(--title-bar); padding: 8px 12px; border-radius: 4px; font-size: 13px;">菜单栏 Menu Bar</div>
                     </GridItem>
                     <div style="background: var(--surface-variant); padding: 12px; border-radius: 4px; font-size: 13px; overflow: hidden;">
                         侧边栏 / 文件树
@@ -49,7 +49,7 @@
                         大纲 / Outline
                     </div>
                     <GridItem col-span="3">
-                        <div style="background: var(--color-bg-3); padding: 8px 12px; border-radius: 4px; font-size: 13px;">状态栏 Status Bar</div>
+                        <div style="background: var(--status-bar); padding: 8px 12px; border-radius: 4px; font-size: 13px;">状态栏 Status Bar</div>
                     </GridItem>
                 </Grid>
             </Card>

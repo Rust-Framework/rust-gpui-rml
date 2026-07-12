@@ -13,23 +13,23 @@
 
                 <div display="flex" flex-direction="column" gap="12px">
                     <div if={visible} animate="fade"
-                        style="padding: 16px; background: #1a1a2e; border-radius: 8px; color: #e0e0e0;">
+                        style="padding: 16px; background: var(--surface-variant); border-radius: 8px; color: var(--foreground);">
                         fade — 淡入（opacity 0→1，300ms）
                     </div>
                     <div if={visible} animate="slide-up"
-                        style="padding: 16px; background: #16213e; border-radius: 8px; color: #e0e0e0;">
+                        style="padding: 16px; background: var(--surface); border-radius: 8px; color: var(--foreground);">
                         slide-up — 从下滑入（top + opacity，300ms）
                     </div>
                     <div if={visible} animate="slide-down"
-                        style="padding: 16px; background: #0f3460; border-radius: 8px; color: #e0e0e0;">
+                        style="padding: 16px; background: var(--accent); border-radius: 8px; color: var(--accent-foreground);">
                         slide-down — 从上滑入（top + opacity，300ms）
                     </div>
                     <div if={visible} animate="slide-left"
-                        style="padding: 16px; background: #533483; border-radius: 8px; color: #e0e0e0;">
+                        style="padding: 16px; background: var(--secondary); border-radius: 8px; color: var(--secondary-foreground);">
                         slide-left — 从右滑入（left + opacity，300ms）
                     </div>
                     <div if={visible} animate="fade:600"
-                        style="padding: 16px; background: #e94560; border-radius: 8px; color: #ffffff;">
+                        style="padding: 16px; background: var(--primary); border-radius: 8px; color: var(--primary-foreground);">
                         fade:600 — 自定义时长 600ms
                     </div>
                 </div>
@@ -42,7 +42,7 @@
                 </div>
                 <div display="flex" flex-direction="column" gap="12px">
                     <div show={show_card} animate="slide-up"
-                        style="padding: 16px; background: #2d3436; border-radius: 8px; color: #e0e0e0;">
+                        style="padding: 16px; background: var(--surface-variant); border-radius: 8px; color: var(--foreground);">
                         show + slide-up — show 降级为条件渲染（不占布局空间）
                     </div>
                 </div>

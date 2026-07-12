@@ -49,7 +49,7 @@ impl IRmlTranslator for ResizableTranslator {
         ctx: &CodegenCtx,
         id_counter: &mut usize,
         loop_vars: &[String],
-        parents: &[ParentInfo],
+        _parents: &[ParentInfo],
     ) -> Result<(String, bool), CodegenError> {
         let id_val = *id_counter;
         *id_counter += 1;

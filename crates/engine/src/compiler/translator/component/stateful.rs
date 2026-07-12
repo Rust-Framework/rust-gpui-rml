@@ -11,7 +11,7 @@
 
 use super::super::{ComponentCategory, IRmlTranslator, PrintError, PrinterCtx, TranslatorMetadata};
 use crate::compiler::codegen::attribute::append_css_class_styles;
-use crate::compiler::codegen::binding::{gen_model_input, gen_model_state_bridge};
+use crate::compiler::codegen::binding::{gen_model_delegate_state_bridge, gen_model_input, gen_model_state_bridge};
 use crate::compiler::codegen::extract_field_converter;
 use crate::compiler::setters::{
     component_bind_setter, component_event_setter, component_static_setter,
@@ -56,6 +56,11 @@ impl IRmlTranslator for StatefulComponentTranslator {
         let resolved = tags::normalize_component_tag(tag);
         let canonical = tags::canonical_tag(tag);
 
+        let ref_name: Option<&str> = elem.directives.iter().find_map(|d| match d {
+            Directive::Ref { name, .. } => Some(name.as_str()),
+            _ => None,
+        });
+
         // C2: InputStateBridge — Input/TextInput/NumberInput + value={field} → gen_model_input
         // 复用小写 <input> 的 InputState 双向同步机制（正向版本追踪 + 反向事件订阅）
         if matches!(canonical.as_str(), "Input" | "TextInput" | "NumberInput") {
@@ -75,17 +80,78 @@ impl IRmlTranslator for StatefulComponentTranslator {
         // C4: 通用 StateBridge — 任意 StateBridge 组件 + bind_property={field} → gen_model_state_bridge
         // 正向同步（VM 字段 → State.set_value）+ 反向同步（StateEvent → VM 字段）
         // 由 STATE_BRIDGE_REGISTRY 驱动，新增组件只需在 state_bridge.rs 注册
-        if let Some(spec) = lookup_state_bridge_for_tag(canonical.as_str()) {
-            if let Some(expr) = elem.attributes.iter().find_map(|attr| {
-                if let Attribute::Bind { name, expr, .. } = attr {
-                    (name == spec.bind_property).then(|| expr.clone())
-                } else {
-                    None
+        // ref 模式不走 StateBridge（与 Slider 一致）
+        if ref_name.is_none() {
+            if let Some(spec) = lookup_state_bridge_for_tag(canonical.as_str()) {
+                if let Some(expr) = elem.attributes.iter().find_map(|attr| {
+                    if let Attribute::Bind { name, expr, .. } = attr {
+                        (name == spec.bind_property).then(|| expr.clone())
+                    } else {
+                        None
+                    }
+                }) {
+                    let (field, _) = extract_field_converter(&expr);
+
+                    // StatefulWithDelegate + value 双向绑定（Select/Combobox）
+                    if let Some(delegate_attr) = spec.delegate_attr {
+                        let delegate_expr = elem.attributes.iter().find_map(|attr| {
+                            if let Attribute::Bind { name, expr, .. } = attr {
+                                (name == delegate_attr).then(|| expr.clone())
+                            } else {
+                                None
+                            }
+                        });
+                        let delegate_expr = delegate_expr.ok_or_else(|| CodegenError {
+                            message: format!(
+                                "<{}> requires `{}={{field}}` when using `{}` binding",
+                                tag, delegate_attr, spec.bind_property
+                            ),
+                            span: Some(elem.span),
+                        })?;
+                        let (delegate_field, _) = extract_field_converter(&delegate_expr);
+
+                        let mut code = gen_model_delegate_state_bridge(
+                            spec, elem, ctx, field, delegate_field, parents,
+                        )?;
+
+                        let lv: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
+                        let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
+                        for attr in &elem.attributes {
+                            match attr {
+                                Attribute::Static { name, value, .. } => {
+                                    if is_state_bridge_skip_attr(&canonical, name, spec.bind_property, delegate_attr) {
+                                        continue;
+                                    }
+                                    if let Some(setter) = component_static_setter(name, value, &resolved) {
+                                        code.push_str(&setter);
+                                    } else {
+                                        crate::compiler::setters::check_missing_mapping(ctx, &resolved, name, "static")?;
+                                    }
+                                }
+                                Attribute::Bind { name, expr, .. } => {
+                                    if is_state_bridge_skip_attr(&canonical, name, spec.bind_property, delegate_attr) {
+                                        continue;
+                                    }
+                                    if let Some(setter) = component_bind_setter(name, expr, &lv, &computed, &resolved) {
+                                        code.push_str(&setter);
+                                    } else {
+                                        crate::compiler::setters::check_missing_mapping(ctx, &resolved, name, "bind")?;
+                                    }
+                                }
+                                Attribute::Event { name, handler, .. } => {
+                                    if let Some(setter) = component_event_setter(name, handler, &resolved) {
+                                        code.push_str(&setter);
+                                    }
+                                }
+                            }
+                        }
+
+                        return Ok((code, false));
+                    }
+
+                    let code = gen_model_state_bridge(spec, elem, ctx, _id_counter, field, parents)?;
+                    return Ok((code, false));
                 }
-            }) {
-                let (field, _) = extract_field_converter(&expr);
-                let code = gen_model_state_bridge(spec, elem, ctx, _id_counter, field, parents)?;
-                return Ok((code, false));
             }
         }
 
@@ -94,11 +160,6 @@ impl IRmlTranslator for StatefulComponentTranslator {
                 message: format!("unknown component: <{}>", tag),
                 span: Some(elem.span),
             })?;
-
-        let ref_name: Option<&str> = elem.directives.iter().find_map(|d| match d {
-            Directive::Ref { name, .. } => Some(name.as_str()),
-            _ => None,
-        });
 
         let state_field = match component.kind {
             tags::ComponentKind::Stateful { state_field, .. } => state_field,
@@ -110,6 +171,7 @@ impl IRmlTranslator for StatefulComponentTranslator {
             tags::ComponentKind::StatefulWithDelegate { state_ctor, .. } => state_ctor,
             _ => unreachable!(),
         };
+        let state_ctor = augment_state_ctor(elem, &canonical, state_ctor);
 
         let delegate_attr: Option<&str> = match component.kind {
             tags::ComponentKind::StatefulWithDelegate { delegate_attr, .. } => Some(delegate_attr),
@@ -118,11 +180,11 @@ impl IRmlTranslator for StatefulComponentTranslator {
 
         let mut code = match component.kind {
             tags::ComponentKind::Stateful { .. } => {
-                gen_stateful_body(elem, &component, ref_name, state_field, state_ctor, loop_vars)?
+                gen_stateful_body(elem, &component, ref_name, state_field, &state_ctor, loop_vars)?
             }
             tags::ComponentKind::StatefulWithDelegate { delegate_attr, .. } => {
                 gen_stateful_with_delegate_body(
-                    elem, &component, ref_name, state_field, state_ctor, delegate_attr, loop_vars,
+                    elem, &component, ref_name, state_field, &state_ctor, delegate_attr, loop_vars,
                 )?
             }
             _ => unreachable!(),
@@ -138,6 +200,9 @@ impl IRmlTranslator for StatefulComponentTranslator {
         for attr in &elem.attributes {
             match attr {
                 Attribute::Static { name, value, .. } => {
+                    if is_state_ctor_attr(&canonical, name) {
+                        continue;
+                    }
                     if let Some(setter) = component_static_setter(name, value, &resolved) {
                         code.push_str(&setter);
                     } else {
@@ -146,6 +211,9 @@ impl IRmlTranslator for StatefulComponentTranslator {
                 }
                 Attribute::Bind { name, expr, .. } => {
                     if Some(name.as_str()) == delegate_attr {
+                        continue;
+                    }
+                    if is_state_ctor_attr(&canonical, name) {
                         continue;
                     }
                     if let Some(setter) = component_bind_setter(name, expr, &lv, &computed, &resolved) {
@@ -377,6 +445,47 @@ pub(crate) fn gen_stateful_with_delegate_body(
             component.ctor_path,
             entity_expr = entity_expr,
         ))
+    }
+}
+
+/// Select/Combobox 的 searchable 注入 state_ctor，不参与 setter 分发
+fn is_state_ctor_attr(canonical: &str, name: &str) -> bool {
+    matches!(canonical, "Select" | "Combobox") && name == "searchable"
+}
+
+/// StateBridge 路径已消费的 bind/static 属性，跳过后续 setter 分发
+fn is_state_bridge_skip_attr(
+    canonical: &str,
+    name: &str,
+    bind_property: &str,
+    delegate_attr: &str,
+) -> bool {
+    if name == bind_property || name == delegate_attr {
+        return true;
+    }
+    is_state_ctor_attr(canonical, name)
+}
+
+fn parse_static_bool(value: &str) -> bool {
+    value.is_empty() || value.eq_ignore_ascii_case("true") || value == "1"
+}
+
+/// 为 Select/Combobox 的 state_ctor 追加 `.searchable(bool)`（SelectState/ComboboxState builder）
+fn augment_state_ctor(elem: &Element, canonical: &str, state_ctor: &str) -> String {
+    if !matches!(canonical, "Select" | "Combobox") {
+        return state_ctor.to_string();
+    }
+    let searchable = elem.attributes.iter().find_map(|attr| {
+        if let Attribute::Static { name, value, .. } = attr {
+            (name == "searchable").then(|| parse_static_bool(value))
+        } else {
+            None
+        }
+    });
+    match searchable {
+        Some(true) => format!("{state_ctor}.searchable(true)"),
+        Some(false) => format!("{state_ctor}.searchable(false)"),
+        None => state_ctor.to_string(),
     }
 }
 

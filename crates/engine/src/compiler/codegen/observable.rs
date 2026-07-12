@@ -282,31 +282,26 @@ pub(super) fn gen_state_bridge_impl(ctx: &CodegenCtx) -> String {
     let mut out = String::new();
 
     for spec in crate::compiler::state_bridge::all_specs() {
-        let fields = ctx.state_bridge_fields.get(spec.bridge_key);
-        let fields = match fields {
+        let bindings = ctx.state_bridge_fields.get(spec.bridge_key);
+        let bindings = match bindings {
             Some(f) if !f.is_empty() => f,
             _ => continue,
         };
 
         let method_name = format!("__rml_get_or_init_{}_state", spec.state_method_suffix);
+        let has_delegate = spec.delegate_attr.is_some();
 
-        // 正向同步臂：field → f32 值（Numeric kind）
-        let mut forward_arms = String::new();
-        for field in fields {
-            let ty = ctx.field_types.get(field).map(|s| s.as_str()).unwrap_or("f32");
-            let expr = numeric_forward_expr(field, ty);
-            forward_arms.push_str(&format!("            \"{}\" => {},\n", field, expr));
-        }
-
-        // 反向同步臂：事件载荷 → field 赋值
-        let mut reverse_arms = String::new();
-        for field in fields {
-            let ty = ctx.field_types.get(field).map(|s| s.as_str()).unwrap_or("f32");
-            let cast = numeric_cast_expr(ty);
-            reverse_arms.push_str(&format!(
-                "                \"{}\" => {{ this.{} = v{}; this.__rml_bump_version({:?}); }}\n",
-                field, field, cast, field,
-            ));
+        let mut delegate_arms = String::new();
+        if has_delegate {
+            for binding in bindings {
+                if let Some(ref df) = binding.delegate_field {
+                    delegate_arms.push_str(&format!(
+                        "                {:?} => (self.{}).clone(),\n",
+                        df, df
+                    ));
+                }
+            }
+            delegate_arms.push_str("                _ => rml_ui::SearchableVec::new(vec![]),\n");
         }
 
         let state_type = spec.state_type;
@@ -316,21 +311,34 @@ pub(super) fn gen_state_bridge_impl(ctx: &CodegenCtx) -> String {
         let event_extract = spec.event_payload_extract;
         let value_set = spec.value_set_call;
 
+        let (forward_init, forward_sync, reverse_arms) =
+            gen_state_bridge_value_arms(spec.value_kind, bindings, ctx, value_set);
+
         out.push_str("#[allow(dead_code, non_snake_case, unused_variables)]\n");
         out.push_str(&format!("impl {} {{\n", view_name));
         out.push_str(&format!("    fn {}(\n", method_name));
         out.push_str("        &mut self,\n");
         out.push_str("        field: &'static str,\n");
+        if has_delegate {
+            out.push_str("        delegate_field: &'static str,\n");
+        }
         out.push_str("        window: &mut gpui::Window,\n");
         out.push_str("        cx: &mut gpui::Context<Self>,\n");
         out.push_str(&format!("    ) -> gpui::Entity<{}> {{\n", state_type));
         out.push_str(&format!("        if !self.__rml_state.has_state_bridge({:?}, field) {{\n", bridge_key));
-        out.push_str(&format!("            let entity = cx.new(|_cx| {});\n", state_ctor));
-        out.push_str("            let value: f32 = match field {\n");
-        out.push_str(&forward_arms);
-        out.push_str("                _ => 0.0,\n");
-        out.push_str("            };\n");
-        out.push_str(&format!("            entity.update(cx, |state, cx| {});\n", value_set));
+        if has_delegate {
+            out.push_str("            let __rml_delegate = match delegate_field {\n");
+            out.push_str(&delegate_arms);
+            out.push_str("            };\n");
+            out.push_str(&format!(
+                "            let entity = cx.new(|cx| {});\n",
+                state_ctor
+            ));
+        } else {
+            out.push_str(&format!("            let entity = cx.new(|_cx| {});\n", state_ctor));
+        }
+        out.push_str(&forward_init);
+        out.push_str(&forward_sync);
         out.push_str("            cx.subscribe(&entity, move |this, _state_entity, event, cx| {\n");
         out.push_str("                match event {\n");
         out.push_str(&format!("                    {} => {{\n", event_match));
@@ -354,11 +362,8 @@ pub(super) fn gen_state_bridge_impl(ctx: &CodegenCtx) -> String {
         out.push_str("        let current_version = self.__rml_get_version(field);\n");
         out.push_str(&format!("        let last_synced = self.__rml_state.get_state_bridge_version({:?}, field);\n", bridge_key));
         out.push_str("        if current_version != last_synced {\n");
-        out.push_str("            let value: f32 = match field {\n");
-        out.push_str(&forward_arms);
-        out.push_str("                _ => 0.0,\n");
-        out.push_str("            };\n");
-        out.push_str(&format!("            entity.update(cx, |state, cx| {});\n", value_set));
+        out.push_str(&forward_init);
+        out.push_str(&forward_sync);
         out.push_str(&format!("            self.__rml_state.set_state_bridge_version({:?}, field, current_version);\n", bridge_key));
         out.push_str("        }\n");
         out.push_str("        entity\n");
@@ -367,6 +372,108 @@ pub(super) fn gen_state_bridge_impl(ctx: &CodegenCtx) -> String {
     }
 
     out
+}
+
+/// 生成 StateBridge 正向/反向同步代码块（按 ValueKind 分支）
+fn gen_state_bridge_value_arms(
+    kind: crate::compiler::state_bridge::ValueKind,
+    bindings: &[crate::compiler::state_bridge::StateBridgeBinding],
+    ctx: &CodegenCtx,
+    value_set_call: &str,
+) -> (String, String, String) {
+    use crate::compiler::state_bridge::ValueKind;
+
+    match kind {
+        ValueKind::Numeric => {
+            let mut forward_arms = String::new();
+            let mut reverse_arms = String::new();
+            for binding in bindings {
+                let field = &binding.value_field;
+                let ty = ctx.field_types.get(field).map(|s| s.as_str()).unwrap_or("f32");
+                let expr = numeric_forward_expr(field, ty);
+                forward_arms.push_str(&format!("            \"{}\" => {},\n", field, expr));
+                let cast = numeric_cast_expr(ty);
+                reverse_arms.push_str(&format!(
+                    "                \"{}\" => {{ this.{} = v{}; this.__rml_bump_version({:?}); }}\n",
+                    field, field, cast, field,
+                ));
+            }
+            let forward_init = format!(
+                "            let value: f32 = match field {{\n{forward_arms}                _ => 0.0,\n            }};\n"
+            );
+            let forward_sync = format!(
+                "            entity.update(cx, |state, cx| {});\n",
+                value_set_call
+            );
+            (forward_init, forward_sync, reverse_arms)
+        }
+        ValueKind::String => {
+            let mut forward_arms = String::new();
+            let mut reverse_arms = String::new();
+            for binding in bindings {
+                let field = &binding.value_field;
+                forward_arms.push_str(&format!(
+                    "            \"{}\" => self.{}.clone(),\n",
+                    field, field
+                ));
+                reverse_arms.push_str(&format!(
+                    "                \"{}\" => {{ this.{} = v; this.__rml_bump_version({:?}); }}\n",
+                    field, field, field,
+                ));
+            }
+            let forward_init = format!(
+                "            let value: String = match field {{\n{forward_arms}                _ => String::new(),\n            }};\n"
+            );
+            let forward_sync = "            entity.update(cx, |state, cx| {
+                if value.is_empty() {
+                    state.set_selected_index(None, window, cx);
+                } else {
+                    let s: gpui::SharedString = value.clone().into();
+                    state.set_selected_value(&s, window, cx);
+                }
+            });\n"
+                .to_string();
+            (forward_init, forward_sync, reverse_arms)
+        }
+        ValueKind::VecString => {
+            let mut forward_value_arms = String::new();
+            let mut reverse_arms = String::new();
+            for binding in bindings {
+                let field = &binding.value_field;
+                forward_value_arms.push_str(&format!(
+                    "            \"{}\" => self.{}.clone(),\n",
+                    field, field
+                ));
+                reverse_arms.push_str(&format!(
+                    "                \"{}\" => {{ this.{} = v; this.__rml_bump_version({:?}); }}\n",
+                    field, field, field,
+                ));
+            }
+            let delegate_match_arms = bindings
+                .iter()
+                .filter_map(|b| b.delegate_field.as_ref().map(|df| {
+                    format!("                {:?} => (self.{}).clone(),\n", df, df)
+                }))
+                .collect::<String>()
+                + "                _ => rml_ui::SearchableVec::new(vec![]),\n";
+            let forward_init = format!(
+                "            let values: Vec<String> = match field {{\n{forward_value_arms}                _ => vec![],\n            }};\n            let __rml_delegate = match delegate_field {{\n{delegate_match_arms}            }};\n",
+                delegate_match_arms = delegate_match_arms
+            );
+            let forward_sync = "            entity.update(cx, |state, cx| {
+                use rml_ui::SearchableListDelegate;
+                state.clear_selection(cx);
+                for v in &values {
+                    let s: gpui::SharedString = v.clone().into();
+                    if let Some(ix) = __rml_delegate.position(&s) {
+                        state.add_selected_index(ix, cx);
+                    }
+                }
+            });\n"
+                .to_string();
+            (forward_init, forward_sync, reverse_arms)
+        }
+    }
 }
 
 /// 生成数值字段的正向同步表达式：`self.field as f32`

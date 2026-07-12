@@ -71,7 +71,7 @@ impl RenderOnce for NativeStatusBar {
             .gap_2()
             .py_1()
             .px_2()
-            .bg(cx.theme().tokens.status_bar)
+            .bg(cx.theme().status_bar)
             .text_xs()
             .text_color(cx.theme().muted_foreground)
             .refine_style(&self.style)

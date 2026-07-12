@@ -116,7 +116,7 @@ pub fn gen_tab_bar(
 mod tests {
     use super::*;
     use crate::compiler::CodegenCtx;
-    use crate::parser::ast::{Attribute, Directive, EachClause, Element, EventHandler, Node};
+    use crate::parser::ast::{Attribute, Directive, Element, EventHandler, Node};
     use crate::parser::Span;
 
     fn ctx() -> CodegenCtx {

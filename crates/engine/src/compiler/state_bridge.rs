@@ -20,7 +20,7 @@
 //! 2. 从 `rml_ui` crate re-export 对应的 State/Event 类型
 //! 3. 在 `tags.rs` 中注册组件（`ComponentKind::Stateful`）
 
-use crate::parser::ast::{Attribute, Element, Node};
+use crate::parser::ast::{Attribute, Directive, Element, Node};
 use crate::tags;
 use std::collections::HashMap;
 
@@ -29,6 +29,17 @@ use std::collections::HashMap;
 pub enum ValueKind {
     /// 数值类型（f32 为中间表示）：forward `self.field as f32`，reverse `v as <type>`
     Numeric,
+    /// 字符串类型：forward `set_selected_value`，reverse `SelectEvent::Confirm(Option)`
+    String,
+    /// 字符串向量：forward `set_selected_indices`，reverse `ComboboxEvent::Change(Vec)`
+    VecString,
+}
+
+/// StateBridge 字段绑定 —— value 字段及可选的 delegate 字段（Select/Combobox items）
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct StateBridgeBinding {
+    pub value_field: String,
+    pub delegate_field: Option<String>,
 }
 
 /// StateBridge 规格 —— 描述一个 Stateful 组件的双向绑定方式
@@ -54,10 +65,12 @@ pub struct StateBridgeSpec {
     pub event_match: &'static str,
     /// 事件载荷提取代码（从事件中提取 f32/String 值，赋给变量 `v`）
     pub event_payload_extract: &'static str,
-    /// 正向 set_value 调用（`state.set_value(rml_ui::SliderValue::Single(value), window, cx)`）
+    /// 正向 set_value 调用（Numeric 专用；String/VecString 由 ValueKind 分支生成）
     pub value_set_call: &'static str,
     /// 值类型（决定 forward/reverse 代码生成）
     pub value_kind: ValueKind,
+    /// StatefulWithDelegate 的委托 bind 属性名（如 "items"）；None 表示无委托
+    pub delegate_attr: Option<&'static str>,
 }
 
 /// StateBridge 注册表 —— 单一信源
@@ -71,9 +84,38 @@ static STATE_BRIDGE_REGISTRY: &[StateBridgeSpec] = &[
         state_ctor: "rml_ui::SliderState::new()",
         ctor_path: "rml_ui::Slider",
         event_match: "rml_ui::SliderEvent::Change(value)",
-        event_payload_extract: "let v = match value { rml_ui::SliderValue::Single(v) => *v, _ => return };",
+        event_payload_extract: "let v = match value { rml_ui::SliderValue::Single(v) => *v, _ => return }",
         value_set_call: "state.set_value(rml_ui::SliderValue::Single(value), window, cx)",
         value_kind: ValueKind::Numeric,
+        delegate_attr: None,
+    },
+    StateBridgeSpec {
+        component_tag: "Select",
+        bind_property: "value",
+        state_type: "rml_ui::StringSelectState",
+        state_method_suffix: "select",
+        bridge_key: "select",
+        state_ctor: "rml_ui::SelectState::new(__rml_delegate, None, window, cx)",
+        ctor_path: "rml_ui::Select",
+        event_match: "rml_ui::SelectEvent::Confirm(value)",
+        event_payload_extract: "let v = match value { Some(s) => s.to_string(), None => String::new() }",
+        value_set_call: "",
+        value_kind: ValueKind::String,
+        delegate_attr: Some("items"),
+    },
+    StateBridgeSpec {
+        component_tag: "Combobox",
+        bind_property: "value",
+        state_type: "rml_ui::StringComboboxState",
+        state_method_suffix: "combobox",
+        bridge_key: "combobox",
+        state_ctor: "rml_ui::ComboboxState::new(__rml_delegate, vec![], window, cx)",
+        ctor_path: "rml_ui::Combobox",
+        event_match: "rml_ui::ComboboxEvent::Change(values)",
+        event_payload_extract: "let v: Vec<String> = values.iter().map(|s| s.to_string()).collect()",
+        value_set_call: "",
+        value_kind: ValueKind::VecString,
+        delegate_attr: Some("items"),
     },
 ];
 
@@ -100,35 +142,58 @@ pub fn lookup_state_bridge_for_tag(tag: &str) -> Option<&'static StateBridgeSpec
 
 /// 收集 RML 中所有 StateBridge 双向绑定字段
 ///
-/// 返回 `HashMap<bridge_key, Vec<field_name>>`，按 bridge_key 分组。
-/// 每个 bridge_key 对应一种 State 类型（如 "slider" → SliderState 字段列表）。
-pub fn collect_state_bridge_fields(root: &Node) -> HashMap<&'static str, Vec<String>> {
-    let mut fields: HashMap<&'static str, Vec<String>> = HashMap::new();
+/// 返回 `HashMap<bridge_key, Vec<StateBridgeBinding>>`，按 bridge_key 分组。
+pub fn collect_state_bridge_fields(root: &Node) -> HashMap<&'static str, Vec<StateBridgeBinding>> {
+    let mut fields: HashMap<&'static str, Vec<StateBridgeBinding>> = HashMap::new();
     if let Node::Element(elem) = root {
         collect_state_bridge_fields_recursive(elem, &mut fields);
     }
-    // 排序去重
-    for field_list in fields.values_mut() {
-        field_list.sort();
-        field_list.dedup();
+    for bindings in fields.values_mut() {
+        bindings.sort_by(|a, b| a.value_field.cmp(&b.value_field));
+        bindings.dedup();
     }
     fields
 }
 
+fn has_ref(elem: &Element) -> bool {
+    elem.directives.iter().any(|d| matches!(d, Directive::Ref { .. }))
+}
+
 fn collect_state_bridge_fields_recursive(
     elem: &Element,
-    fields: &mut HashMap<&'static str, Vec<String>>,
+    fields: &mut HashMap<&'static str, Vec<StateBridgeBinding>>,
 ) {
     let canonical = tags::canonical_tag(&elem.tag);
     if let Some(spec) = STATE_BRIDGE_REGISTRY
         .iter()
         .find(|s| s.component_tag == canonical.as_str())
     {
-        for attr in &elem.attributes {
-            if let Attribute::Bind { name, expr, .. } = attr {
-                if name == spec.bind_property {
-                    let (field, _) = crate::compiler::codegen::extract_field_converter(expr);
-                    fields.entry(spec.bridge_key).or_default().push(field);
+        // ref 模式不走 StateBridge（与 Slider 一致）
+        if !has_ref(elem) {
+            for attr in &elem.attributes {
+                if let Attribute::Bind { name, expr, .. } = attr {
+                    if name == spec.bind_property {
+                        let (value_field, _) = crate::compiler::codegen::extract_field_converter(expr);
+                        let delegate_field = spec.delegate_attr.and_then(|delegate_attr| {
+                            elem.attributes.iter().find_map(|a| {
+                                if let Attribute::Bind { name, expr, .. } = a {
+                                    if name == delegate_attr {
+                                        let (field, _) =
+                                            crate::compiler::codegen::extract_field_converter(expr);
+                                        Some(field)
+                                    } else {
+                                        None
+                                    }
+                                } else {
+                                    None
+                                }
+                            })
+                        });
+                        fields.entry(spec.bridge_key).or_default().push(StateBridgeBinding {
+                            value_field,
+                            delegate_field,
+                        });
+                    }
                 }
             }
         }

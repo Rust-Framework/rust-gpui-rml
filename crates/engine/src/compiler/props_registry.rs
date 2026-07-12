@@ -98,9 +98,10 @@ pub const STYLE_ATTR_PROPS: &[&str] = &[
 /// 或保留的小写无连字符别名（如 "menu"）。
 /// value = 专用属性列表
 pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
-    // Input / TextInput 专用（声明式 on-change，内部 on_change）
-    ("Input", &["on_change"]),
-    ("TextInput", &["on_change"]),
+    // Input / TextInput 专用
+    // default_value/masked 由 InputTranslator 注入 state_ctor；on_* 走 InputEvent 订阅（input/event.rs）
+    ("Input", &["default_value", "masked", "on_change", "on_enter", "on_focus", "on_blur"]),
+    ("TextInput", &["default_value", "masked", "on_change", "on_enter", "on_focus", "on_blur"]),
     // Tree 专用（StatefulWithDelegate 组件，items 为委托数据绑定属性）
     ("Tree", &["items", "on_activate", "on_select"]),
     // Slider 专用（min/max/step/default_value 由 SliderTranslator 注入 state_ctor，on_change 通过 state_event 订阅 SliderEvent::Change）
@@ -263,10 +264,11 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
     // placeholder/cleanable/appearance/number_of_months 为组件属性，size 走通用 Sizable
     ("DatePicker", &["placeholder", "cleanable", "appearance", "number_of_months", "on_change"]),
     // Select：StatefulWithDelegate 下拉选择器，items bind 提供委托数据
+    // value bind 走 StateBridge 双向绑定（state_bridge.rs → set_selected_value）
     // placeholder/cleanable/appearance/menu_width/menu_max_h 为组件属性，size 走通用 Sizable
     // on_change 走 SelectEvent<SearchableVec<SharedString>> 订阅（state_event.rs）
-    ("Select", &["placeholder", "cleanable", "appearance", "menu_width", "menu_max_h", "items", "on_change"]),
-    ("Combobox", &["placeholder", "cleanable", "appearance", "menu_width", "menu_max_h", "search_placeholder", "items", "on_change"]),
+    ("Select", &["placeholder", "cleanable", "appearance", "menu_width", "menu_max_h", "searchable", "items", "value", "on_change"]),
+    ("Combobox", &["placeholder", "cleanable", "appearance", "menu_width", "menu_max_h", "search_placeholder", "searchable", "items", "value", "on_change"]),
     // VirtualList：direction 选择 v/h 构造器，item-sizes 作为函数参数，slot="render" 注入闭包
     ("VirtualList", &["direction", "item_sizes", "on_scroll"]),
     // Resizable：direction 选择 h/v 构造器，size 为组高度/宽度，on_resize 为调整回调

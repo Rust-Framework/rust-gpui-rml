@@ -79,6 +79,114 @@ pub fn extract_state_refs(body_code: &str, var_prefix: &str) -> (String, String)
     (prelude, working)
 }
 
+/// 从 `{` 位置开始找到匹配的 `}`（处理嵌套花括号与字符串字面量）。
+fn find_matching_brace(working: &str, open: usize) -> Option<usize> {
+    let bytes = working.as_bytes();
+    if bytes.get(open) != Some(&b'{') {
+        return None;
+    }
+    let mut depth: i32 = 0;
+    let mut in_string = false;
+    let mut string_char = b'\0';
+    let mut i = open;
+    while i < bytes.len() {
+        let c = bytes[i];
+        if in_string {
+            if c == string_char && bytes.get(i.wrapping_sub(1)) != Some(&b'\\') {
+                in_string = false;
+            }
+        } else {
+            match c {
+                b'{' => depth += 1,
+                b'}' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        return Some(i);
+                    }
+                }
+                b'"' | b'\'' => {
+                    in_string = true;
+                    string_char = c;
+                }
+                _ => {}
+            }
+        }
+        i += 1;
+    }
+    None
+}
+
+/// 将 Stateful 事件订阅块从 slot/body 代码提取到 prelude（render 作用域），
+/// 并简化 `({ let __rml_entity = (VAR).clone(); ... Component::new(&__rml_entity) })` 包装。
+///
+/// 根因修复：在 slot 闭包内每次渲染都执行 `cx.subscribe` 会重复注册监听器，
+/// 导致 ColorPicker/Select/Combobox 等弹出层出现双面板。订阅应在 render prelude
+/// 中一次性完成（与 `extract_state_refs` 同级）。
+pub fn extract_state_event_subscribes(body_code: &str) -> (String, String) {
+    let mut prelude = String::new();
+    let mut working = body_code.to_string();
+    const NEEDLE: &str = "if !";
+    let mut search_from = 0usize;
+
+    loop {
+        let start = match working[search_from..].find(NEEDLE) {
+            Some(rel) => search_from + rel,
+            None => break,
+        };
+        if !working[start..].contains("is_event_subscribed") {
+            search_from = start + 1;
+            continue;
+        }
+        let brace_open = match working[start..].find('{') {
+            Some(rel) => start + rel,
+            None => break,
+        };
+        let brace_close = match find_matching_brace(&working, brace_open) {
+            Some(i) => i,
+            None => break,
+        };
+        let block = &working[start..=brace_close];
+        if !block.contains("cx.subscribe") {
+            search_from = brace_close + 1;
+            continue;
+        }
+        let entity_var = entity_var_before_subscribe(&working[..start]);
+        let mut prelude_block = block
+            .replace("__rml_self_ref.__rml_state", "self.__rml_state")
+            .replace("__rml_self_ref", "self");
+        if let Some(var) = entity_var {
+            prelude_block = prelude_block.replace("&__rml_entity", &format!("&{var}"));
+        }
+        prelude.push_str(&prelude_block);
+        prelude.push('\n');
+        prelude.push_str("            ");
+        working.replace_range(start..=brace_close, "");
+        search_from = 0;
+    }
+
+    working = simplify_stateful_wrappers(&working);
+    (prelude, working)
+}
+
+/// 去掉 Stateful 组件构造的冗余 block 包装（订阅已外提后仅剩 clone + new）。
+fn simplify_stateful_wrappers(code: &str) -> String {
+    let re = regex::Regex::new(
+        r"\(\{\s*let __rml_entity = \((?P<var>[^)]+)\)\.clone\(\);\s*(?P<ctor>rml_ui::\w+::new\(&__rml_entity\))\s*\}\)",
+    )
+    .expect("valid simplify_stateful_wrappers regex");
+    re.replace_all(code, |caps: &regex::Captures| {
+        let var = caps.name("var").map(|m| m.as_str()).unwrap_or("__rml_entity");
+        let ctor = caps["ctor"].replace("&__rml_entity", &format!("&{var}"));
+        ctor
+    })
+    .into_owned()
+}
+
+fn entity_var_before_subscribe(prefix: &str) -> Option<String> {
+    let re = regex::Regex::new(r"let __rml_entity = \(([^)]+)\)\.clone\(\)").ok()?;
+    re.captures_iter(prefix).last().map(|cap| cap[1].to_string())
+}
+
 /// 扫描 body 代码中的 self/cx 引用，在闭包外预提取为 owned 变量，
 /// 闭包内替换为该变量，使 body 闭包满足 `Send + Sync + 'static` 约束
 /// （`TabItem::body` 闭包签名不接收 `Context`，无法访问 self/cx）。
@@ -137,6 +245,11 @@ fn extract_body_deps(
     let (state_prelude, state_working) = extract_state_refs(&working, "__rml_entity_");
     prelude.push_str(&state_prelude);
     working = state_working;
+
+    // ── 步骤 1b：提取 Stateful 事件订阅到 prelude（防止 tab body 内重复 subscribe 导致双弹出层）
+    let (subscribe_prelude, subscribe_working) = extract_state_event_subscribes(&working);
+    prelude.push_str(&subscribe_prelude);
+    working = subscribe_working;
 
     // ── 步骤 2 & 3：提取 self.xxx / self.xxx() 到 prelude ──
     // 匹配 self.xxx 或 self.xxx() 的简单字段访问（不匹配链式调用如 self.tabs.iter()）
@@ -574,6 +687,44 @@ mod tests {
 
         // replaced body 应保留 Input::new 构造
         assert!(replaced.contains("rml_ui::Input::new"), "body should contain Input::new: {}", replaced);
+    }
+
+    /// Stateful 事件订阅应从 tab body 提取到 prelude，避免闭包内重复 subscribe（双弹出层）
+    #[test]
+    fn extract_body_deps_hoists_state_event_subscribe() {
+        let body_code = r#"({
+            let __rml_entity = (self.__rml_state.get_or_init_ref("picker", _window, &mut *cx, move |w, c| rml_ui::ColorPickerState::new(w, c))).clone();
+            if !self.__rml_state.is_event_subscribed("picker:on_change") {
+                cx.subscribe(&__rml_entity, |this, entity, event, cx| {
+                    if let rml_ui::ColorPickerEvent::Change(color) = event {
+                        this.on_change((*color).clone(), cx);
+                    }
+                }).detach();
+                self.__rml_state.mark_event_subscribed("picker:on_change".to_string());
+            }
+            rml_ui::ColorPicker::new(&__rml_entity)
+        })"#;
+        let (prelude, replaced) = extract_body_deps(body_code, &[], &[]);
+        assert!(
+            prelude.contains("is_event_subscribed"),
+            "subscribe block should move to prelude: {}",
+            prelude
+        );
+        assert!(
+            prelude.contains("cx.subscribe"),
+            "prelude should contain subscribe: {}",
+            prelude
+        );
+        assert!(
+            !replaced.contains("cx.subscribe"),
+            "body should not retain subscribe: {}",
+            replaced
+        );
+        assert!(
+            replaced.contains("rml_ui::ColorPicker::new"),
+            "body should simplify to ctor: {}",
+            replaced
+        );
     }
 
     #[test]

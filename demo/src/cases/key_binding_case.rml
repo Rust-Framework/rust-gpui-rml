@@ -10,7 +10,7 @@
                 <KeyBinding key="Ctrl+S" on-press={on_save}>
                     <KeyBinding key="Ctrl+O" on-press={on_open}>
                         <KeyBinding key="Escape" on-press={on_clear}>
-                            <Input placeholder="点击此处获取焦点，然后按 Ctrl+S / Ctrl+O / Escape" style="margin-bottom: 12px;" />
+                            <Input ref="demo_input" placeholder="点击此处获取焦点，然后按 Ctrl+S / Ctrl+O / Escape" style="margin-bottom: 12px;" />
                         </KeyBinding>
                     </KeyBinding>
                 </KeyBinding>
@@ -34,7 +34,7 @@
                     <span>快捷键 {shortcut_status}</span>
                 </div>
                 <KeyBinding key="Ctrl+D" when={shortcut_enabled} on-press={on_debug}>
-                    <Input placeholder="Ctrl+D（条件启用/禁用）" />
+                    <Input ref="cond_input" placeholder="Ctrl+D（条件启用/禁用）" />
                 </KeyBinding>
                 <p style="margin-top: 8px;">调试触发次数：{debug_count}</p>
             </Card>

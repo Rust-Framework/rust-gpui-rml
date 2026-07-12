@@ -233,6 +233,17 @@ pub fn to_rust_code_with_ctx(expr: &Expr, loop_vars: &[&str]) -> String {
             op.as_str(),
             to_rust_code_with_ctx(rhs, loop_vars)
         ),
+        Expr::Unary(UnaryOp::Not, expr) => {
+            let inner = to_rust_code_with_ctx(expr, loop_vars);
+            if matches!(
+                expr.as_ref(),
+                Expr::Field(_) | Expr::Member(_, _) | Expr::MethodCall(_, _, _)
+            ) {
+                format!("!{inner}")
+            } else {
+                format!("!({inner})")
+            }
+        }
         Expr::Unary(op, expr) => format!("({}{})", op.as_str(), to_rust_code_with_ctx(expr, loop_vars)),
         Expr::Lit(s) => s.clone(),
         Expr::Convert(target, converter) => format!(
@@ -804,6 +815,7 @@ mod tests {
             parse_ok("!flag"),
             Expr::Unary(UnaryOp::Not, Box::new(Expr::Field("flag".into())))
         );
+        assert_eq!(to_rust_code(&parse_ok("!flag")), "!self.flag");
     }
 
     #[test]

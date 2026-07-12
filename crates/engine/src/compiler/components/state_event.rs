@@ -33,6 +33,8 @@ pub struct StateEventSpec {
     pub payload_binding: &'static str,
     /// 用户方法调用模板（如 "this.{method}(color, cx)"），{method} 替换为方法名
     pub call_template: &'static str,
+    /// 事件枚举是否仅有一个变体（可用 `let` 解构，避免 irrefutable_if_let 警告）
+    pub irrefutable: bool,
 }
 
 /// State 事件注册表
@@ -44,6 +46,7 @@ pub static STATE_EVENT_REGISTRY: &[StateEventSpec] = &[
         event_variant: "Change",
         payload_binding: "color",
         call_template: "this.{method}((*color).clone(), cx)",
+        irrefutable: true,
     },
     StateEventSpec {
         tag: "Calendar",
@@ -52,6 +55,7 @@ pub static STATE_EVENT_REGISTRY: &[StateEventSpec] = &[
         event_variant: "Selected",
         payload_binding: "date",
         call_template: "this.{method}((*date).clone(), cx)",
+        irrefutable: true,
     },
     StateEventSpec {
         tag: "DatePicker",
@@ -60,6 +64,7 @@ pub static STATE_EVENT_REGISTRY: &[StateEventSpec] = &[
         event_variant: "Change",
         payload_binding: "date",
         call_template: "this.{method}((*date).clone(), cx)",
+        irrefutable: true,
     },
     StateEventSpec {
         tag: "Select",
@@ -68,6 +73,7 @@ pub static STATE_EVENT_REGISTRY: &[StateEventSpec] = &[
         event_variant: "Confirm",
         payload_binding: "value",
         call_template: "this.{method}((*value).clone(), cx)",
+        irrefutable: true,
     },
     StateEventSpec {
         tag: "Combobox",
@@ -76,6 +82,7 @@ pub static STATE_EVENT_REGISTRY: &[StateEventSpec] = &[
         event_variant: "Change",
         payload_binding: "values",
         call_template: "this.{method}((*values).clone(), cx)",
+        irrefutable: false,
     },
     StateEventSpec {
         tag: "Slider",
@@ -84,6 +91,7 @@ pub static STATE_EVENT_REGISTRY: &[StateEventSpec] = &[
         event_variant: "Change",
         payload_binding: "value",
         call_template: "this.{method}((*value).clone(), cx)",
+        irrefutable: false,
     },
 ];
 
@@ -123,11 +131,23 @@ pub fn gen_state_event_subscribe(
         EventHandler::ClosureField(_) => "",
     };
 
-    let event_pattern = format!(
-        "if let {}::{}({}) = event",
-        spec.event_type, spec.event_variant, spec.payload_binding
-    );
     let call_expr = spec.call_template.replace("{method}", method);
+    let event_pattern = if spec.irrefutable {
+        format!(
+            "let {}::{}({}) = event",
+            spec.event_type, spec.event_variant, spec.payload_binding
+        )
+    } else {
+        format!(
+            "if let {}::{}({}) = event",
+            spec.event_type, spec.event_variant, spec.payload_binding
+        )
+    };
+    let event_body = if spec.irrefutable {
+        format!("{event_pattern};\n                {call_expr};")
+    } else {
+        format!("{event_pattern} {{\n                    {call_expr};\n                }}")
+    };
     let subscribe_key = format!("{}:{}", ref_key, event_name);
 
     let self_prefix = crate::compiler::expr::current_self_alias().unwrap_or("self");
@@ -135,15 +155,12 @@ pub fn gen_state_event_subscribe(
     format!(
         "if !{self_prefix}.__rml_state.is_event_subscribed({subscribe_key:?}) {{\n            \
          cx.subscribe(&__rml_entity, |this, entity, event, cx| {{\n                \
-         {event_pattern} {{\n                    \
-         {call_expr};\n                \
-         }}\n            }}).detach();\n            \
+         {event_body}\n            }}).detach();\n            \
          {self_prefix}.__rml_state.mark_event_subscribed({subscribe_key:?}.to_string());\n        \
          }}",
         self_prefix = self_prefix,
         subscribe_key = subscribe_key,
-        event_pattern = event_pattern,
-        call_expr = call_expr,
+        event_body = event_body,
     )
 }
 

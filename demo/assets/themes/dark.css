@@ -3,5 +3,7 @@
    如需定制或新增主题套餐，在 :root 中覆盖对应变量，例如:
    :root {
        --primary: #ff6600;
+       --button-secondary: #2a2b30;  /* 覆盖派生变量 */
    }
+   自定义主题包示例见 ocean.css 与 README.md。
  */

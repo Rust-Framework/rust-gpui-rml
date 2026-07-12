@@ -73,7 +73,7 @@ pub use gpui_component::{
     tag::{Tag, TagVariant},
     tooltip::Tooltip,
     tree::{TreeEntry, TreeEvent, TreeItem, TreeState},
-    searchable_list::SearchableVec,
+    searchable_list::{SearchableListDelegate, SearchableVec},
     IndexPath,
     Side, h_flex, v_flex,
 };

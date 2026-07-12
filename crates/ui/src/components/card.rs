@@ -19,10 +19,20 @@
 
 use gpui::prelude::FluentBuilder as _;
 use gpui::{
-    AnyElement, App, BoxShadow, Div, ElementId, InteractiveElement, IntoElement, ParentElement,
-    RenderOnce, StatefulInteractiveElement, Styled, Window, div, point, px,
+    AnyElement, App, BoxShadow, Div, ElementId, Hsla, InteractiveElement, IntoElement,
+    ParentElement, RenderOnce, StatefulInteractiveElement, Styled, Window, div, point, px,
 };
 use gpui_component::{ActiveTheme, Sizable, Size, StyledExt, h_flex};
+use rust_rml_core::theme::color as theme_color;
+
+fn themed_hsla(name: &str, fallback: Hsla) -> Hsla {
+    let c = theme_color(name);
+    if c.a > 0.0 {
+        c.into()
+    } else {
+        fallback
+    }
+}
 
 /// 卡片变体
 #[derive(Debug, Clone, Default, Copy, PartialEq, Eq)]
@@ -152,9 +162,9 @@ impl Sizable for Card {
 impl RenderOnce for Card {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = cx.theme();
-        let bg = theme.background;
+        let bg = themed_hsla("--card-bg", theme.background);
         let fg = theme.foreground;
-        let border_color = theme.border;
+        let border_color = themed_hsla("--card-border", theme.border);
 
         let size = self.size;
         let radius = match size {

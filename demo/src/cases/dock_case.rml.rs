@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use gpui::{
-    AnyElement, Context, FocusHandle, Focusable, InteractiveElement, IntoElement, ParentElement,
-    Render, SharedString, Styled, Window, div, px,
+    Context, FocusHandle, Focusable, InteractiveElement, IntoElement, ParentElement, Render,
+    SharedString, Styled, Window, div, px,
 };
 use rml::prelude::*;
 use rml::theme::color as theme_color;
@@ -66,7 +66,7 @@ impl Render for FileTreeView {
 /// 编辑器面板内容
 struct EditorView {
     focus_handle: FocusHandle,
-    filename: SharedString,
+    _filename: SharedString,
     code: SharedString,
 }
 
@@ -74,7 +74,7 @@ impl EditorView {
     fn new(filename: &str, code: &str, cx: &mut Context<Self>) -> Self {
         Self {
             focus_handle: cx.focus_handle(),
-            filename: filename.into(),
+            _filename: filename.into(),
             code: code.into(),
         }
     }
