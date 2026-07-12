@@ -23,6 +23,8 @@ pub struct ActivityBar {
     actions: Vec<Arc<dyn IActivityAct>>,
     active_id: Option<SharedString>,
     bar_width: gpui::Pixels,
+    /// VS Code 式 2px primary 左边框指示条；默认 false（仅 sidebar_accent 背景）。
+    active_indicator: bool,
 }
 
 impl ActivityBar {
@@ -32,7 +34,14 @@ impl ActivityBar {
             actions: Vec::new(),
             active_id: None,
             bar_width: px(48.),
+            active_indicator: false,
         }
+    }
+
+    /// 启用 VS Code 式 2px primary 左边框指示条。默认关闭，仅 sidebar_accent 背景区分激活项。
+    pub fn active_indicator(mut self, enabled: bool) -> Self {
+        self.active_indicator = enabled;
+        self
     }
 
     /// 激活首个面板。Host 在 `on_loaded` 中创建 Entity 后调用。
@@ -68,6 +77,7 @@ impl ActivityBar {
 impl Render for ActivityBar {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let active_id = self.active_id.clone();
+        let active_indicator = self.active_indicator;
 
         // ── 图标栏 ──
         let mut panel_buttons: SmallVec<[AnyElement; 4]> = SmallVec::new();
@@ -86,6 +96,9 @@ impl Render for ActivityBar {
                     .w(px(36.))
                     .my(px(2.))
                     .when(active, |btn| btn.bg(cx.theme().sidebar_accent))
+                    .when(active && active_indicator, |btn| {
+                        btn.border_l(px(2.)).border_color(cx.theme().primary)
+                    })
                     .on_click(cx.listener(move |this, _ev: &gpui::ClickEvent, _window, cx| {
                         let new_id = if this.active_id.as_ref() == Some(&id) {
                             None

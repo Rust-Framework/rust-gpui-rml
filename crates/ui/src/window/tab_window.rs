@@ -956,10 +956,15 @@ impl RenderOnce for TabWindowShell {
                             .size_full()
                             .overflow_y_scroll()
                             .track_scroll(&body_scroll_handle)
-                            .when_some(selected_body, |this, body_fn| {
-                                this.child(body_fn(window, cx))
-                            })
-                            .children(self.children),
+                            .child(
+                                div()
+                                    .id("tab-window-scroll-content")
+                                    .w_full()
+                                    .when_some(selected_body, |this, body_fn| {
+                                        this.child(body_fn(window, cx))
+                                    })
+                                    .children(self.children),
+                            ),
                     )
                     .vertical_scrollbar(&body_scroll_handle),
             );

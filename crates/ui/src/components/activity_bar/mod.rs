@@ -7,6 +7,7 @@
 //!
 //! RML 用法：`<ActivityBar ref="activity_bar" />`
 //! Host 在 `on_loaded` 中 `cx.new(|_| ActivityBar::new(panels))` 创建并激活首项。
+//! 可选 `.active_indicator(true)` 启用 VS Code 式左边框指示条（默认仅背景色差）。
 
 mod act;
 mod bar;

@@ -916,7 +916,7 @@ impl RenderOnce for Tab {
         let group_name = format!("tab-{}", self.ix);
 
         let merge_with_body = self.selected && self.connect_body && !m;
-        let body_merge_color = cx.theme().background;
+        let body_merge_color = cx.theme().tab_active;
 
         let base = self
             .base
@@ -934,7 +934,13 @@ impl RenderOnce for Tab {
             .h(height)
             .when_else(
                 merge_with_body,
-                |this| this.overflow(Overflow::Visible),
+                |this| {
+                    // Extend the active tab 1px over the strip separator and pull the
+                    // body up so layout height stays unchanged.
+                    this.overflow(Overflow::Visible)
+                        .pb(px(1.))
+                        .mb(-px(1.))
+                },
                 |this| this.overflow_hidden(),
             )
             .text_color(tab_style.fg)
@@ -947,7 +953,11 @@ impl RenderOnce for Tab {
             .border_l(tab_style.borders.left)
             .border_r(tab_style.borders.right)
             .border_t(tab_style.borders.top)
-            .border_b(tab_style.borders.bottom)
+            .border_b(if merge_with_body {
+                px(0.)
+            } else {
+                tab_style.borders.bottom
+            })
             .border_color(outer_border_color)
             .corner_radii(corner_radii)
             .when(!self.selected && !self.disabled && !m, |this| {
@@ -986,13 +996,14 @@ impl RenderOnce for Tab {
             .child(inner_element)
             .when_some(self.suffix, |this, suffix| this.child(suffix))
             .when(merge_with_body, |this| {
+                // 2px cover: 1px over the strip separator + 1px into the body panel.
                 this.child(
                     div()
                         .absolute()
                         .left_0()
                         .right_0()
                         .bottom(-px(1.))
-                        .h(px(1.))
+                        .h(px(2.))
                         .bg(body_merge_color),
                 )
             })

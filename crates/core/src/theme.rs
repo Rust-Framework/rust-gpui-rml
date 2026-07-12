@@ -13,7 +13,7 @@
 //! `--primary`, `--background`, `--foreground`, `--secondary`, `--border`, `--muted`, …
 //!
 //! **派生变量**（[`derive_theme_colors`] 按 gpui-component 语义自动补全,主题 CSS 仍可覆盖）:
-//! `--primary-hover`, `--button-secondary`, `--group-box`, `--list-hover`, `--card-bg`, …
+//! `--primary-hover`, `--button-secondary`, `--group-box`, `--list-hover`, `--sidebar-accent`, `--card-bg`, …
 //!
 //! ## 表面层级（VS Code / Ant Design 语义, dark 示例）
 //!
@@ -756,6 +756,26 @@ pub fn derive_theme_colors(base: &HashMap<String, Rgba>, is_dark: bool) -> HashM
         secondary_fg,
     );
 
+    // Activity bar / sidebar active icon — L2 lift on sidebar chrome (visible vs L0 sidebar)
+    let sidebar = color_from_map(
+        &colors,
+        "--sidebar",
+        if is_dark {
+            rgba_from_hex(0x1a1b1d)
+        } else {
+            rgba_from_hex(0xf3f4f6)
+        },
+    );
+    insert_derived(
+        &mut colors,
+        "--sidebar-accent",
+        if is_dark {
+            lighten_rgba(sidebar, 0.2)
+        } else {
+            darken_rgba(sidebar, 0.06)
+        },
+    );
+
     colors
 }
 
@@ -792,6 +812,7 @@ fn builtin_light_colors() -> HashMap<String, Rgba> {
             ("--status-bar", 0xf3f4f6),
             ("--status-bar-border", 0xe5e7eb),
             ("--sidebar", 0xf3f4f6),
+            ("--sidebar-accent", 0xe5e7eb),
             ("--sidebar-foreground", 0x374151),
             // 标签页
             ("--tab-bar", 0xf3f4f6),
@@ -875,6 +896,7 @@ fn builtin_dark_colors() -> HashMap<String, Rgba> {
             ("--status-bar", 0x1a1b1d),
             ("--status-bar-border", 0x0f1012),
             ("--sidebar", 0x1a1b1d),
+            ("--sidebar-accent", 0x2a2b30),
             ("--sidebar-foreground", 0xd4d4d8),
             // 标签页
             ("--tab-bar", 0x1a1b1d),
@@ -1033,8 +1055,8 @@ fn apply_gpui_theme_from_colors(theme: &str, colors: &HashMap<String, Rgba>, cx:
 
     t.sidebar = c("--sidebar", if is_dark { 0x1a1b1d } else { 0xf3f4f6 });
     t.sidebar_accent = c(
-        "--list-hover",
-        if is_dark { 0x2a2b30 } else { 0xf3f4f6 },
+        "--sidebar-accent",
+        if is_dark { 0x2a2b30 } else { 0xe5e7eb },
     );
     t.sidebar_foreground = c(
         "--sidebar-foreground",
@@ -2207,6 +2229,7 @@ mod tests {
         assert!(colors.contains_key("--group-box"));
         assert!(colors.contains_key("--card-bg"));
         assert!(colors.contains_key("--list-active-border"));
+        assert!(colors.contains_key("--sidebar-accent"));
         assert!(colors.contains_key("--progress-bar"));
         assert!(colors.contains_key("--slider-bar"));
         assert!(colors.contains_key("--switch"));
@@ -2330,5 +2353,29 @@ mod tests {
     #[test]
     fn relative_luminance_black_vs_white() {
         assert!(relative_luminance(RGBA_BLACK) < relative_luminance(RGBA_WHITE));
+    }
+
+    #[test]
+    fn sidebar_accent_contrasts_with_sidebar() {
+        for (is_dark, theme) in [(false, "light"), (true, "dark")] {
+            let base = if is_dark {
+                builtin_dark_colors()
+            } else {
+                builtin_light_colors()
+            };
+            let derived = derive_theme_colors(&base, is_dark);
+            let sidebar = derived.get("--sidebar").unwrap();
+            let accent = derived.get("--sidebar-accent").unwrap();
+            assert!(
+                (sidebar.r - accent.r).abs() > 0.01
+                    || (sidebar.g - accent.g).abs() > 0.01
+                    || (sidebar.b - accent.b).abs() > 0.01,
+                "{theme}: sidebar-accent must differ from sidebar"
+            );
+            assert!(
+                relative_luminance(*accent) != relative_luminance(*sidebar),
+                "{theme}: sidebar-accent luminance must differ from sidebar"
+            );
+        }
     }
 }

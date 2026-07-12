@@ -34,7 +34,9 @@
 
                     bordered
 
-                    style="width:100%; flex:1; min-height:0"
+                    fit-content=""
+
+                    style="width:100%"
 
                     selected-index={code_tab}
 
@@ -52,7 +54,7 @@
 
                             language="rml"
 
-                            height="full" />
+                            height={code_editor_height} />
 
                     </tab>
 
@@ -68,7 +70,7 @@
 
                             language="rust"
 
-                            height="full" />
+                            height={code_editor_height} />
 
                     </tab>
 

@@ -630,10 +630,23 @@ impl RenderOnce for Tabs {
             .when(connect_body, |this| this.overflow(Overflow::Visible))
             .bg(bg)
             .text_color(cx.theme().tab_foreground)
+            // connect_body: paint the strip separator as an absolute layer behind tabs
+            // so the selected tab can cover it. A header border-b paints above children
+            // and cannot be masked by the tab merge overlay.
+            .when(connect_body, |this| {
+                this.child(
+                    div()
+                        .absolute()
+                        .left_0()
+                        .right_0()
+                        .bottom_0()
+                        .h(px(1.))
+                        .bg(cx.theme().border),
+                )
+            })
             .when(
                 self.variant == TabVariant::Underline
-                    || connect_body
-                    || (has_body && self.variant == TabVariant::Pill),
+                    || (!connect_body && has_body && self.variant == TabVariant::Pill),
                 |this| this.border_b_1().border_color(cx.theme().border),
             )
             .when_else(
@@ -878,7 +891,12 @@ impl RenderOnce for Tabs {
                 .child(
                     div()
                         .when(!self.fit_content, |this| this.flex_1().min_h_0())
-                        .bg(cx.theme().background)
+                        .when(self.fit_content, |this| this.w_full().overflow_hidden())
+                        .bg(if connect_body {
+                            cx.theme().tab_active
+                        } else {
+                            cx.theme().background
+                        })
                         .child(body),
                 )
                 .into_any_element(),

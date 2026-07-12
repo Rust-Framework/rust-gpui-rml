@@ -17,8 +17,6 @@
     flex-direction: column;
     justify-content: flex-start;
     padding: 16px 24px;
-    min-height: 100%;
-    flex-shrink: 0;
     width: 100%;
     box-sizing: border-box;
 }
@@ -328,18 +326,20 @@
     display: flex;
     flex-wrap: wrap;
     gap: 24px;
-    align-items: stretch;
+    align-items: flex-start;
 }
 
 .case-demo-panel {
     flex: 1 1 420px;
     min-width: 320px;
+    min-height: 0;
 }
 
 .case-code-panel {
     flex: 1 1 420px;
     min-width: 320px;
     min-height: 0;
+    overflow: hidden;
 }
 
 .case-api-panel {
@@ -532,10 +532,10 @@
     overflow: hidden;
 }
 
-/* CodeEditor 推荐样式：视觉默认走 CSS + 主题变量，可在 themes/*.css 覆盖 */
+/* CodeEditor 推荐样式：视觉默认走 CSS + 主题变量，可在 themes/*.css 覆盖。
+ * CaseDocPage 用 RML height 绑定行数自适应高度；勿用 height:100%（TabWindow 滚动区内会视口撑满导致重叠）。 */
 .rml-code-editor {
     width: 100%;
-    height: 100%;
     min-height: 12rem;
     padding: 0;
     font-family: Consolas;
