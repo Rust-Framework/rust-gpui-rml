@@ -23,7 +23,12 @@
                         <Tab each={tab in tabs}
                             label={tab.title}
                             closable={tab.closable}
-                            preview={tab.preview} />
+                            preview={tab.preview}>
+                            <div class="tab-body">
+                                <p>文件：{tab.title}</p>
+                                <p>双击 preview 标签（斜体）可 promote 为正式标签。</p>
+                            </div>
+                        </Tab>
                     </Tabs>
                 </div>
             </Card>

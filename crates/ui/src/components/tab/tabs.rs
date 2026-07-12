@@ -2,13 +2,14 @@ use std::{cell::RefCell, rc::Rc, time::Duration};
 
 use gpui::{
     Anchor, Animation, AnimationExt as _, AnyElement, App, Background, Bounds, Context, Corners,
-    Div, Edges, ElementId, Entity, InteractiveElement, IntoElement, ParentElement, Pixels,
-    RenderOnce, ScrollHandle, SharedString, Stateful, StatefulInteractiveElement as _,
+    Div, Edges, ElementId, Entity, InteractiveElement, IntoElement, Overflow, ParentElement,
+    Pixels, RenderOnce, ScrollHandle, SharedString, Stateful, StatefulInteractiveElement as _,
     StyleRefinement, Styled, Window, div, prelude::FluentBuilder as _, px,
 };
 use smallvec::SmallVec;
 
 use super::{Tab, TabItem, TabVariant};
+use crate::OverflowStyle;
 use gpui_component::animation::{Lerp, ease_in_out_cubic};
 use gpui_component::button::{Button, ButtonVariants as _};
 use gpui_component::menu::{DropdownMenu as _, PopupMenu, PopupMenuItem};
@@ -54,6 +55,11 @@ pub struct Tabs {
     size: Size,
     menu: bool,
     bordered: bool,
+    /// When true, the tab strip draws a bottom border and the selected tab merges
+    /// flush with a body panel below (Ant Design / VS Code style).
+    connect_body: bool,
+    /// When true, outer/body use content height instead of filling the parent (`size_full` + `flex_1`).
+    fit_content: bool,
     on_click: Option<TabsClickHandler>,
     /// 选项卡关闭按钮触发时调用，参数为被关闭选项卡的索引。
     on_close: Option<TabsClickHandler>,
@@ -88,6 +94,8 @@ impl Tabs {
             on_promote: None,
             menu: false,
             bordered: false,
+            connect_body: false,
+            fit_content: false,
         }
     }
 
@@ -136,6 +144,20 @@ impl Tabs {
     /// Set whether to draw a 1px border around the Tabs, default is false.
     pub fn bordered(mut self, bordered: bool) -> Self {
         self.bordered = bordered;
+        self
+    }
+
+    /// When true, draw a separator under the tab strip and merge the selected tab
+    /// with a body panel below. Automatically enabled when this [`Tabs`] renders
+    /// a body for card-style variants (`Tab`, `Flat`, `Outline`).
+    pub fn connect_body(mut self, connect_body: bool) -> Self {
+        self.connect_body = connect_body;
+        self
+    }
+
+    /// Size the tab body to its content instead of filling the parent.
+    pub fn fit_content(mut self, fit_content: bool) -> Self {
+        self.fit_content = fit_content;
         self
     }
 
@@ -417,6 +439,12 @@ impl RenderOnce for Tabs {
             .and_then(|item| item.body.clone())
             .map(|f| f(window, cx));
         let has_body = body_element.is_some();
+        let connect_body = self.connect_body
+            || (has_body
+                && matches!(
+                    self.variant,
+                    TabVariant::Tab | TabVariant::Flat | TabVariant::Outline
+                ));
 
         let default_gap = match self.size {
             Size::Small | Size::XSmall => px(8.),
@@ -599,12 +627,13 @@ impl RenderOnce for Tabs {
             .relative()
             .flex()
             .items_center()
+            .when(connect_body, |this| this.overflow(Overflow::Visible))
             .bg(bg)
             .text_color(cx.theme().tab_foreground)
             .when(
                 self.variant == TabVariant::Underline
-                    || (has_body
-                        && matches!(self.variant, TabVariant::Outline | TabVariant::Pill)),
+                    || connect_body
+                    || (has_body && self.variant == TabVariant::Pill),
                 |this| this.border_b_1().border_color(cx.theme().border),
             )
             .when_else(
@@ -693,6 +722,7 @@ impl RenderOnce for Tabs {
                                         tab.indicator_ready = indicator_ready;
                                         tab.indicator_epoch = indicator_epoch;
                                         let tab = tab
+                                            .connect_body(connect_body)
                                             .when_some(self.selected_index, |this, selected_ix| {
                                                 this.selected(selected_ix == ix)
                                             })
@@ -837,7 +867,8 @@ impl RenderOnce for Tabs {
         // 确保用户 style 作用于整个组件而非仅 tab strip。
         match body_element {
             Some(body) => v_flex()
-                .size_full()
+                .when(self.fit_content, |this| this.w_full())
+                .when(!self.fit_content, |this| this.size_full())
                 .items_stretch()
                 .refine_style(&self.style)
                 .when(self.bordered, |this| {
@@ -846,8 +877,7 @@ impl RenderOnce for Tabs {
                 .child(header)
                 .child(
                     div()
-                        .flex_1()
-                        .min_h_0()
+                        .when(!self.fit_content, |this| this.flex_1().min_h_0())
                         .bg(cx.theme().background)
                         .child(body),
                 )

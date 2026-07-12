@@ -418,6 +418,15 @@ pub fn component_bind_setter(
             let rust_expr = component_bind_rust_expr(expr_str, loop_vars, computed);
             Some(format!(".selected_index(Some({}))", rust_expr))
         }
+        // 动态高度/宽度：height={px} → .h(gpui::px(<expr>))（Styled 组件通用）
+        "height" => {
+            let rust_expr = component_bind_rust_expr(expr_str, loop_vars, computed);
+            Some(format!(".h(gpui::px({}))", rust_expr))
+        }
+        "width" => {
+            let rust_expr = component_bind_rust_expr(expr_str, loop_vars, computed);
+            Some(format!(".w(gpui::px({}))", rust_expr))
+        }
         _ => None,
     }
 }

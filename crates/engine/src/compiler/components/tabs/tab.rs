@@ -662,7 +662,7 @@ mod tests {
     fn gen_tab_with_code_editor_body_simulated() {
         // 模拟 CodeEditor 生成的 block 表达式作为 body
         // 结构: { let __code = self.rml_sample(); Input::new(&self.__rml_state.get_or_init_ref(...)).font_family(cx.theme()...) }
-        let body_code = r#"{ let __code = self.rml_sample(); rml_ui::Input::new(&self.__rml_state.get_or_init_ref("rml_editor", _window, &mut *cx, move |w, c| rml_ui::InputState::new(w, c).code_editor("rust").multi_line(true).default_value(&__code))).font_family(cx.theme().mono_font_family.clone()).text_size(cx.theme().mono_font_size).w_full().h(gpui::px(360.)).focus_bordered(false) }"#;
+        let body_code = r#"{ let __code = self.rml_sample(); rml_ui::Input::new(&self.__rml_state.get_or_init_ref("rml_editor", _window, &mut *cx, move |w, c| rml_ui::InputState::new(w, c).code_editor("rust").multi_line(true).default_value(&__code))).focus_bordered(false).bordered(false) }"#;
         let (prelude, replaced) = extract_body_deps(body_code, &["rml_sample".to_string()], &[]);
 
         // prelude 应包含 let __code = self.rml_sample();
@@ -681,12 +681,9 @@ mod tests {
         assert!(replaced.contains("&__rml_entity_0"), "body should reference __rml_entity_0: {}", replaced);
         assert!(!replaced.contains("self.__rml_state.get_or_init_ref"), "body should not contain get_or_init_ref call: {}", replaced);
 
-        // replaced body 应把 cx.theme() 替换为 app.theme()
-        assert!(replaced.contains("app.theme().mono_font_family"), "body should use app.theme(): {}", replaced);
-        assert!(!replaced.contains("cx.theme()"), "body should not reference cx.theme(): {}", replaced);
-
         // replaced body 应保留 Input::new 构造
         assert!(replaced.contains("rml_ui::Input::new"), "body should contain Input::new: {}", replaced);
+        assert!(replaced.contains(".focus_bordered(false)"), "body should contain focus_bordered: {}", replaced);
     }
 
     /// Stateful 事件订阅应从 tab body 提取到 prelude，避免闭包内重复 subscribe（双弹出层）

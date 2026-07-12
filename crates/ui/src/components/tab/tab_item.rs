@@ -126,6 +126,23 @@ impl TabItem {
         self
     }
 
+    /// 浅克隆供 TabWindow 跨帧缓存复用（body/title 为 Arc/SharedString，可共享）。
+    /// `title_children` 无法克隆 `AnyElement`，TabWindow 简单绑定模式不使用该字段。
+    pub(crate) fn clone_for_cache(&self) -> Self {
+        Self {
+            ix: self.ix,
+            title_label: self.title_label.clone(),
+            title_icon: self.title_icon.clone(),
+            title_children: Vec::new(),
+            body: self.body.clone(),
+            disabled: self.disabled,
+            tab_bar_prefix: self.tab_bar_prefix,
+            on_click: self.on_click.clone(),
+            closable: self.closable,
+            preview: self.preview,
+        }
+    }
+
     /// 把 TabItem 的 title 部分转换为 [`super::Tab`] 进行 header 渲染。
     ///
     /// variant/size/selected/indicator_* 由 Tabs 在调用方设置。

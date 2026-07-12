@@ -73,6 +73,13 @@ impl TabBar {
         self
     }
 
+    /// When true, draw a separator under the tab strip and merge the selected tab
+    /// with a body panel placed below this header-only TabBar.
+    pub fn connect_body(mut self, connect_body: bool) -> Self {
+        self.inner = self.inner.connect_body(connect_body);
+        self
+    }
+
     /// Track the scroll of the TabBar.
     pub fn track_scroll(mut self, scroll_handle: &ScrollHandle) -> Self {
         self.inner = self.inner.track_scroll(scroll_handle);

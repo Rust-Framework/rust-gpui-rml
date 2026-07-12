@@ -42,6 +42,60 @@ type ChromeToggleHandler = Rc<dyn Fn(&mut Window, &mut App) + 'static>;
 /// 从而隐藏 resize handle 且不污染 ResizableState 的 panel_ix 映射。
 const SLOT_COLLAPSED_THRESHOLD: gpui::Pixels = px(60.);
 
+/// Tab 数量超过此阈值时启用溢出检测 + 下拉菜单（避免少量 tab 时每帧双倍测量 header）。
+const TAB_OVERFLOW_MENU_THRESHOLD: usize = 10;
+
+/// 跨帧缓存 TabItem 列表：tab 集合/标题未变时复用 body 闭包，避免每帧重建。
+#[derive(Default)]
+struct TabItemCache {
+    fingerprint: String,
+    items: Vec<TabItem>,
+}
+
+fn tab_list_fingerprint(tabs: &[Arc<dyn IValue>]) -> String {
+    tabs.iter()
+        .map(|v| {
+            let uri = v.as_workbench().map(|w| w.uri()).unwrap_or("");
+            let title = v
+                .as_contribution()
+                .map(|c| c.name().to_string())
+                .unwrap_or_default();
+            format!("{uri}\x01{title}")
+        })
+        .collect::<Vec<_>>()
+        .join("\x00")
+}
+
+fn build_tab_items_from_values(
+    tabs: &[Arc<dyn IValue>],
+    selected_index: usize,
+) -> (Vec<TabItem>, Option<crate::components::tab::TabBodyRenderer>) {
+    let mut selected_body = None;
+    let items = tabs
+        .iter()
+        .enumerate()
+        .map(|(ix, value)| {
+            let c = Arc::clone(value);
+            let title = c.as_contribution().map(|c| c.name()).unwrap_or_default();
+            let closable = c.as_workbench().map(|w| w.closable()).unwrap_or(true);
+            let item = TabItem::new().title(title).closable(closable).body(
+                move |window, cx| {
+                    if let Some(visual) = c.as_visual() {
+                        visual.render(window, cx)
+                    } else {
+                        gpui::div().into_any_element()
+                    }
+                },
+            );
+            if ix == selected_index {
+                selected_body = item.body_renderer();
+            }
+            item
+        })
+        .collect();
+    (items, selected_body)
+}
+
 /// TabWindow 插槽作用域：暴露 left/right/bottom 插槽的 resizable 操控权。
 ///
 /// 由 `TabWindowShell::render` 在调用 slot 闭包前构造，捕获：
@@ -645,8 +699,10 @@ impl RenderOnce for TabWindowShell {
                 .into_any_element()
         });
 
+        let enable_tab_menu = self.tabs.len() > TAB_OVERFLOW_MENU_THRESHOLD;
+
         let mut tab_bar = Tabs::new("tab-window-tabs")
-            .menu(true)
+            .menu(enable_tab_menu)
             .flat()
             .with_size(Size::default())
             .selected_index(self.selected_index)
@@ -773,20 +829,40 @@ impl RenderOnce for TabWindowShell {
                 tab_bar = tab_bar.child(item);
             }
         } else {
-            for (ix, value) in self.tabs.iter().enumerate() {
-                let c = Arc::clone(value);
-                let title = c.as_contribution().map(|c| c.name()).unwrap_or_default();
-                let closable = c.as_workbench().map(|w| w.closable()).unwrap_or(true);
-                let item = TabItem::new().title(title).closable(closable).body(move |window, cx| {
-                    if let Some(visual) = c.as_visual() {
-                        visual.render(window, cx)
+            let fingerprint = tab_list_fingerprint(&self.tabs);
+            let cache = window.use_keyed_state("tab-window-tab-cache", cx, |_, _| {
+                TabItemCache::default()
+            });
+            let (tab_items, body) = {
+                let cache_hit = {
+                    let cached = cache.read(cx);
+                    if cached.fingerprint == fingerprint && !cached.items.is_empty() {
+                        let body = cached
+                            .items
+                            .get(selected_index)
+                            .and_then(|item| item.body_renderer());
+                        Some((
+                            cached.items.iter().map(TabItem::clone_for_cache).collect(),
+                            body,
+                        ))
                     } else {
-                        gpui::div().into_any_element()
+                        None
                     }
-                });
-                if ix == selected_index {
-                    selected_body = item.body_renderer();
+                };
+                if let Some(hit) = cache_hit {
+                    hit
+                } else {
+                    let (items, body) =
+                        build_tab_items_from_values(&self.tabs, selected_index);
+                    cache.update(cx, |c, _| {
+                        c.fingerprint = fingerprint;
+                        c.items = items.iter().map(TabItem::clone_for_cache).collect();
+                    });
+                    (items, body)
                 }
+            };
+            selected_body = body;
+            for item in tab_items {
                 tab_bar = tab_bar.child(item);
             }
         }

@@ -63,6 +63,8 @@ pub struct StateBridgeSpec {
     pub ctor_path: &'static str,
     /// 事件匹配臂（"rml_ui::SliderEvent::Change(value)"）
     pub event_match: &'static str,
+    /// 事件枚举是否仅有一个变体（省略 `_ => {}` 兜底，避免 unreachable_pattern 警告）
+    pub event_exhaustive: bool,
     /// 事件载荷提取代码（从事件中提取 f32/String 值，赋给变量 `v`）
     pub event_payload_extract: &'static str,
     /// 正向 set_value 调用（Numeric 专用；String/VecString 由 ValueKind 分支生成）
@@ -88,6 +90,7 @@ static STATE_BRIDGE_REGISTRY: &[StateBridgeSpec] = &[
         value_set_call: "state.set_value(rml_ui::SliderValue::Single(value), window, cx)",
         value_kind: ValueKind::Numeric,
         delegate_attr: None,
+        event_exhaustive: false,
     },
     StateBridgeSpec {
         component_tag: "Select",
@@ -102,6 +105,7 @@ static STATE_BRIDGE_REGISTRY: &[StateBridgeSpec] = &[
         value_set_call: "",
         value_kind: ValueKind::String,
         delegate_attr: Some("items"),
+        event_exhaustive: true,
     },
     StateBridgeSpec {
         component_tag: "Combobox",
@@ -116,6 +120,7 @@ static STATE_BRIDGE_REGISTRY: &[StateBridgeSpec] = &[
         value_set_call: "",
         value_kind: ValueKind::VecString,
         delegate_attr: Some("items"),
+        event_exhaustive: false,
     },
 ];
 

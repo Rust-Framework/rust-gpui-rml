@@ -364,9 +364,7 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             },
             container: false,
         }),
-        // CodeEditor：基于 Input 的代码编辑器，自动应用 mono 字体 + 默认高度 360px
-        // 声明 h-full 可让编辑器填满父容器（如 LSP 编辑器工作区）
-        // 字段必须为 Option<Entity<InputState>>，在 on_loaded 中延迟初始化
+        // CodeEditor：基于 Input 的代码编辑器；布局/视觉由 RML 样式属性 + CSS class 定制
         "CodeEditor" => Some(ComponentTag {
             ctor_path: "rml_ui::Input",
             kind: ComponentKind::Stateful {

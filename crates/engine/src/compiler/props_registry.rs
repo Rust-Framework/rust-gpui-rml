@@ -102,6 +102,11 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
     // default_value/masked 由 InputTranslator 注入 state_ctor；on_* 走 InputEvent 订阅（input/event.rs）
     ("Input", &["default_value", "masked", "on_change", "on_enter", "on_focus", "on_blur"]),
     ("TextInput", &["default_value", "masked", "on_change", "on_enter", "on_focus", "on_blur"]),
+    // CodeEditor 专用（language/bordered/focus_bordered/context_menu/value 由 code_editor/gen.rs 内联处理）
+    ("CodeEditor", &[
+        "language", "bordered", "focus_bordered", "context_menu", "value",
+        "on_change", "on_enter", "on_focus", "on_blur",
+    ]),
     // Tree 专用（StatefulWithDelegate 组件，items 为委托数据绑定属性）
     ("Tree", &["items", "on_activate", "on_select"]),
     // Slider 专用（min/max/step/default_value 由 SliderTranslator 注入 state_ctor，on_change 通过 state_event 订阅 SliderEvent::Change）
@@ -134,7 +139,7 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
         "selected_index", "on_click", "on_close", "on_close_all", "on_close_others", "on_promote",
         "prefix", "suffix", "last_empty_space",
         "menu", "track_scroll",
-        "bordered",
+        "bordered", "fit_content",
         "underline", "pill", "flat", "outline", "segmented",
     ]),
     // TabBar 专用（原生形态：纯 header，不含 on_close*/bordered）
@@ -520,6 +525,28 @@ mod tests {
         // Column 支持 editable 标记
         assert!(is_prop_registered("Column", "editable"));
         assert!(is_prop_registered("column", "editable"));
+    }
+
+    #[test]
+    fn code_editor_props_registered() {
+        assert!(is_prop_registered("CodeEditor", "language"));
+        assert!(is_prop_registered("CodeEditor", "bordered"));
+        assert!(is_prop_registered("CodeEditor", "focus_bordered"));
+        assert!(is_prop_registered("CodeEditor", "context_menu"));
+        assert!(is_prop_registered("CodeEditor", "value"));
+        assert!(is_prop_registered("CodeEditor", "on_change"));
+    }
+
+    #[test]
+    fn code_editor_inline_props_are_registered() {
+        use crate::compiler::components::code_editor::HANDLED_PROPS;
+        for prop in HANDLED_PROPS {
+            assert!(
+                is_prop_registered("CodeEditor", prop),
+                "CodeEditor gen.rs handles prop '{}' but it's not in COMPONENT_PROPS",
+                prop
+            );
+        }
     }
 
     #[test]

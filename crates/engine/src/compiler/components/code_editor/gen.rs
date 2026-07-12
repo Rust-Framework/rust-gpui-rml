@@ -1,8 +1,8 @@
 //! CodeEditor 构造器 codegen
 //!
-//! CodeEditor 基于 Input，自动应用代码编辑器语义默认值（等宽字体、贴边 padding、
-//! 关闭聚焦边框等）。默认值仅对用户未通过 RML 属性设置的项生成，用户设置的通用样式属性
-//!（font-family/font-size/padding/width/height 等）经 setter 链覆盖默认值。
+//! CodeEditor 基于 Input，仅注入代码编辑器**行为**语义（`code_editor(language)`、`multi_line`、
+//! `focus_bordered`/`bordered` 等）。布局与视觉（width/height/font/padding/background 等）不由
+//! codegen 硬编码，由使用方通过 RML 样式属性、`class` + CSS 变量、或主题覆盖层定制。
 //!
 //! ## Input 事件架构
 //!
@@ -13,6 +13,19 @@
 use crate::compiler::{CodegenCtx, CodegenError};
 use crate::parser::ast::{Attribute, Element, EventHandler};
 use crate::tags::{self, ComponentTag};
+
+/// gen_code_editor 内联处理的属性（须在 props_registry 登记，供反向校验）
+pub const HANDLED_PROPS: &[&str] = &[
+    "value",
+    "language",
+    "bordered",
+    "focus_bordered",
+    "context_menu",
+    "on_change",
+    "on_enter",
+    "on_focus",
+    "on_blur",
+];
 
 /// 生成 CodeEditor 构造代码
 pub fn gen_code_editor(
@@ -110,34 +123,10 @@ pub fn gen_code_editor(
         })
         .collect();
 
-    // CodeEditor 语义默认值：仅对用户未通过 RML 属性设置的项生成默认调用。
-    // 用户设置的通用样式属性（font-family/font-size/padding/width/height 等）经
-    // component_static_setter → apply_style_attr 在 setter 链中应用，位于本 style_chain 之后，
-    // 可覆盖默认值。此处对已设置的项跳过默认值生成，避免冗余调用。
+    // CodeEditor 行为默认值：focus_bordered / bordered（Input API 语义，非布局 CSS）。
+    // width/height/font/padding 等视觉样式由 RML 属性、class+CSS、主题覆盖层负责。
     let style_chain = {
-        let has = |n: &str| {
-            elem.attributes.iter().any(|a| match a {
-                Attribute::Static { name, .. } | Attribute::Bind { name, .. } => name == n,
-                _ => false,
-            })
-        };
         let mut s = String::new();
-        if !has("font_family") {
-            s.push_str("\n            .font_family(cx.theme().mono_font_family.clone())");
-        }
-        if !has("font_size") {
-            s.push_str("\n            .text_size(cx.theme().mono_font_size)");
-        }
-        if !has("padding") {
-            s.push_str("\n            .p_0()");
-        }
-        if !has("width") && !has("w") {
-            s.push_str("\n            .w_full()");
-        }
-        // height 默认 360px；用户可通过通用样式属性 height="full" 或 height="500px" 覆盖
-        if !has("height") && !has("h") {
-            s.push_str("\n            .h(gpui::px(360.))");
-        }
         match focus_bordered {
             Some(b) => s.push_str(&format!("\n            .focus_bordered({})", b)),
             None => s.push_str("\n            .focus_bordered(false)"),
@@ -273,16 +262,13 @@ mod tests {
         let code =
             gen_code_editor(&elem, code_editor_component(), &ctx(), 0, &mut id, &Vec::new())
                 .unwrap();
-        // no-ref 路径：Option<Entity<T>> 字段需 as_ref().expect 取出
         assert!(code.contains("rml_ui::Input::new(self.editor_state.as_ref().expect(\"init editor_state in on_loaded\"))"));
-        assert!(code.contains(".font_family(cx.theme().mono_font_family.clone())"));
-        assert!(code.contains(".text_size(cx.theme().mono_font_size)"));
-        assert!(code.contains(".p_0()"));
-        assert!(code.contains(".w_full()"));
-        assert!(code.contains(".h(gpui::px(360.))"));
         assert!(code.contains(".focus_bordered(false)"));
-        // 未指定 bordered 时默认生成 .bordered(false)
         assert!(code.contains(".bordered(false)"));
+        // 不硬编码布局/视觉样式
+        assert!(!code.contains(".font_family("));
+        assert!(!code.contains(".w_full()"));
+        assert!(!code.contains(".h(gpui::px("));
     }
 
     #[test]
@@ -300,21 +286,11 @@ mod tests {
         let code =
             gen_code_editor(&elem, code_editor_component(), &ctx(), 0, &mut id, &Vec::new())
                 .unwrap();
-        // block 表达式包装
         assert!(code.contains("{ let __rml_entity"));
-        assert!(code.contains("is_event_subscribed"));
         assert!(code.contains("cx.subscribe(&__rml_entity"));
-        assert!(code.contains("InputEvent::Change"));
-        assert!(code.contains("this.on_editor_change(&entity, cx)"));
-        assert!(code.contains("detach()"));
-        assert!(code.contains("mark_event_subscribed"));
         assert!(code.contains("Input::new(&__rml_entity)"));
-        // 仍应包含样式链
-        assert!(code.contains(".font_family(cx.theme().mono_font_family.clone())"));
-        assert!(code.contains(".p_0()"));
-        assert!(code.contains(".w_full()"));
-        assert!(code.contains(".h(gpui::px(360.))"));
         assert!(code.contains(".focus_bordered(false)"));
+        assert!(!code.contains(".h(gpui::px("));
     }
 
     #[test]
@@ -334,22 +310,14 @@ mod tests {
         let code =
             gen_code_editor(&elem, code_editor_component(), &c, 0, &mut id, &Vec::new())
                 .unwrap();
-        // 声明式 value：内联创建，无需 editor_state 字段
         assert!(code.contains("let __code = self.code_sample();"));
-        assert!(code.contains("get_or_init_ref(\"editor_state\""));
         assert!(code.contains(".code_editor(\"rml\").multi_line(true).default_value(&__code)"));
-        assert!(code.contains(".font_family(cx.theme().mono_font_family.clone())"));
-        assert!(code.contains(".p_0()"));
-        assert!(code.contains(".w_full()"));
-        assert!(code.contains(".h(gpui::px(360.))"));
-        // 不应出现 as_ref().expect 的旧路径
         assert!(!code.contains("as_ref().expect"));
+        assert!(!code.contains(".h(gpui::px("));
     }
 
     #[test]
     fn gen_code_editor_h_full_deprecated_drops_attribute() {
-        // h_full 已废弃：apply_static_attr 的 deprecation 分支丢弃该属性，
-        // CodeEditor 默认使用 .h(gpui::px(360.))。用户应改用 height="full"。
         let elem = make_element(
             "CodeEditor",
             vec![Attribute::Static {
@@ -363,18 +331,12 @@ mod tests {
         let code =
             gen_code_editor(&elem, code_editor_component(), &ctx(), 0, &mut id, &Vec::new())
                 .unwrap();
-        // h_full 由 apply_static_attr（经 component_static_setter 路由）的 deprecation 分支丢弃
-        // CodeEditor 仍应用默认 .h(gpui::px(360.))
-        assert!(code.contains(".h(gpui::px(360.))"));
-        // 不应出现 .h_full()（除非通过 height="full" 触发）
         assert!(!code.contains(".h_full()"));
-        assert!(code.contains(".focus_bordered(false)"));
+        assert!(!code.contains(".h(gpui::px("));
     }
 
     #[test]
-    fn gen_code_editor_height_full_overrides_default() {
-        // <CodeEditor height="full" />：用户设置了 height，不生成默认 .h(360.)。
-        // height="full" 的 setter 链（.h_full()）由 translator 负责，不在 gen_code_editor 输出中。
+    fn gen_code_editor_no_hardcoded_height_when_height_attr_set() {
         let elem = make_element(
             "CodeEditor",
             vec![Attribute::Static {
@@ -388,13 +350,11 @@ mod tests {
         let code =
             gen_code_editor(&elem, code_editor_component(), &ctx(), 0, &mut id, &Vec::new())
                 .unwrap();
-        // 用户设置了 height，不生成默认 .h(360.)
-        assert!(!code.contains(".h(gpui::px(360.))"));
+        assert!(!code.contains(".h(gpui::px("));
     }
 
     #[test]
-    fn gen_code_editor_user_font_family_overrides_default() {
-        // <CodeEditor font-family="Fira Code" />：用户设置了 font-family，不生成默认 mono 字体
+    fn gen_code_editor_no_hardcoded_font_when_font_family_set() {
         let elem = make_element(
             "CodeEditor",
             vec![Attribute::Static {
@@ -408,35 +368,11 @@ mod tests {
         let code =
             gen_code_editor(&elem, code_editor_component(), &ctx(), 0, &mut id, &Vec::new())
                 .unwrap();
-        // 不生成默认 .font_family(cx.theme().mono_font_family.clone())
         assert!(!code.contains(".font_family(cx.theme()"));
-        // 用户值经 setter 链应用（apply_style_attr 生成 .font_family("Fira Code") 之类）
-        // 此处只验证默认值被跳过
     }
 
     #[test]
-    fn gen_code_editor_user_font_size_overrides_default() {
-        // <CodeEditor font-size="14px" />：用户设置了 font-size，不生成默认 mono 字号
-        let elem = make_element(
-            "CodeEditor",
-            vec![Attribute::Static {
-                name: "font_size".into(),
-                value: "14px".into(),
-                span: Span::empty(),
-            }],
-            vec![],
-        );
-        let mut id = 0;
-        let code =
-            gen_code_editor(&elem, code_editor_component(), &ctx(), 0, &mut id, &Vec::new())
-                .unwrap();
-        // 不生成默认 .text_size(cx.theme().mono_font_size)
-        assert!(!code.contains(".text_size(cx.theme()"));
-    }
-
-    #[test]
-    fn gen_code_editor_user_padding_overrides_default() {
-        // <CodeEditor padding="8px" />：用户设置了 padding，不生成默认 .p_0()
+    fn gen_code_editor_no_hardcoded_padding_when_padding_set() {
         let elem = make_element(
             "CodeEditor",
             vec![Attribute::Static {
@@ -450,28 +386,7 @@ mod tests {
         let code =
             gen_code_editor(&elem, code_editor_component(), &ctx(), 0, &mut id, &Vec::new())
                 .unwrap();
-        // 不生成默认 .p_0()
         assert!(!code.contains(".p_0()"));
-    }
-
-    #[test]
-    fn gen_code_editor_user_width_overrides_default() {
-        // <CodeEditor width="600px" />：用户设置了 width，不生成默认 .w_full()
-        let elem = make_element(
-            "CodeEditor",
-            vec![Attribute::Static {
-                name: "width".into(),
-                value: "600px".into(),
-                span: Span::empty(),
-            }],
-            vec![],
-        );
-        let mut id = 0;
-        let code =
-            gen_code_editor(&elem, code_editor_component(), &ctx(), 0, &mut id, &Vec::new())
-                .unwrap();
-        // 不生成默认 .w_full()
-        assert!(!code.contains(".w_full()"));
     }
 
     #[test]

@@ -31,6 +31,14 @@ pub fn static_setter(name: &str, value: &str, tag: &str) -> Option<String> {
             };
             Some(format!(".menu({})", bool_val))
         }
+        "connect_body" if tag == "TabBar" => {
+            let bool_val = if value.is_empty() || value.eq_ignore_ascii_case("true") {
+                "true"
+            } else {
+                "false"
+            };
+            Some(format!(".connect_body({})", bool_val))
+        }
         _ => None,
     }
 }
@@ -50,7 +58,7 @@ pub fn bind_setter(
     tag: &str,
 ) -> Option<String> {
     match name {
-        "selected_index" | "menu" | "last_empty_space" if tag == "TabBar" => {
+        "selected_index" | "menu" | "last_empty_space" | "connect_body" if tag == "TabBar" => {
             let rust_expr = crate::compiler::setters::component_bind_rust_expr(
                 expr_str, loop_vars, computed,
             );

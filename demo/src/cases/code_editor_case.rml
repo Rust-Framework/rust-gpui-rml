@@ -1,28 +1,28 @@
 <component>
     <CaseDocPage
         title={t("case.code_editor.title")}
-        description="CodeEditor 基于 InputState.code_editor(language) 构造，内置 tree-sitter 语法高亮（支持 30+ 语言）、代码折叠、行号、缩进辅助、自动缩进、搜索。通过 ref 引用预创建的 InputState（在 on_loaded 中通过 __rml_state.get_or_init_ref 构造，含 language + default_value）。默认应用 mono 字体 + 贴边 padding + 关闭边框。"
+        description="CodeEditor 基于 InputState.code_editor(language) 构造，内置 tree-sitter 语法高亮（支持 30+ 语言）、代码折叠、行号、缩进辅助、自动缩进、搜索。通过 ref 引用预创建的 InputState（在 on_loaded 中通过 __rml_state.get_or_init_ref 构造，含 language + default_value）。推荐配合 rml-code-editor 样式类与 height 属性定制外观。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
             <Card title="Rust 语法高亮">
                 <p>code_editor("rust") + default_value。tree-sitter 解析关键字/字符串/注释/类型/函数等 token 并着色。</p>
-                <CodeEditor ref="rust_editor" height="320px" />
+                <CodeEditor class="rml-code-editor" ref="rust_editor" height="320px" />
             </Card>
 
             <Card title="JSON 语法高亮">
                 <p>code_editor("json")，支持键名/字符串/数字/布尔值/null 着色。</p>
-                <CodeEditor ref="json_editor" height="280px" />
+                <CodeEditor class="rml-code-editor" ref="json_editor" height="280px" />
             </Card>
 
             <Card title="Python 语法高亮">
                 <p>code_editor("python")，支持关键字/装饰器/字符串/类型注解/文档字符串着色。</p>
-                <CodeEditor ref="python_editor" height="340px" />
+                <CodeEditor class="rml-code-editor" ref="python_editor" height="340px" />
             </Card>
 
             <Card title="JavaScript 语法高亮">
                 <p>code_editor("javascript")，支持 class/箭头函数/模板字符串/解构等着色。</p>
-                <CodeEditor ref="js_editor" height="340px" />
+                <CodeEditor class="rml-code-editor" ref="js_editor" height="340px" />
             </Card>
         </template>
 

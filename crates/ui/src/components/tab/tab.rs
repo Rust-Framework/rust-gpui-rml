@@ -5,12 +5,13 @@ use gpui_component::{
     ActiveTheme, Icon, IconName, Selectable, Sizable, Size, StyledExt, h_flex,
 };
 use rust_rml_core::i18n::t_or_default;
-use crate::{ContextMenuExt, PopupMenu, Tooltip};
+use crate::{ContextMenuExt, OverflowStyle, PopupMenu, Tooltip};
 use gpui::prelude::FluentBuilder as _;
 use gpui::{
     Animation, AnimationExt as _, AnyElement, App, Background, ClickEvent, Context, Corners, Div,
-    Edges, ElementId, Global, Hsla, InteractiveElement, IntoElement, MouseButton, ParentElement,
-    Pixels, RenderOnce, SharedString, StatefulInteractiveElement, Styled, Window, div, px, relative,
+    Edges, ElementId, Global, Hsla, InteractiveElement, IntoElement, MouseButton, Overflow,
+    ParentElement, Pixels, RenderOnce, SharedString, StatefulInteractiveElement, Styled, Window, div,
+    px, relative,
 };
 
 type TabClickHandler = Rc<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>;
@@ -497,6 +498,8 @@ pub struct Tab {
     /// compression). Switches from `flex_shrink_0` to `flex_1 + min_w_0` and
     /// enables label ellipsis truncation. Set by Tabs when overflow detected.
     pub(super) compress: bool,
+    /// Set by Tabs when the selected tab should merge with a body panel below.
+    pub(super) connect_body: bool,
     /// When true, render as a measurement-only element: skip all interactions
     /// (hover, group, on_click, on_mouse_down) but keep visual layout — including
     /// the close button's width — for accurate width measurement. Used by
@@ -559,6 +562,7 @@ impl Default for Tab {
             preview: false,
             on_promote: None,
             compress: false,
+            connect_body: false,
             measurement: false,
         }
     }
@@ -699,6 +703,13 @@ impl Tab {
     /// ellipsis truncation. Set by TabBar when overflow is detected.
     pub(crate) fn compress(mut self, compress: bool) -> Self {
         self.compress = compress;
+        self
+    }
+
+    /// When true, extend the selected tab to cover the tab-strip bottom border
+    /// so it merges flush with a body panel below.
+    pub(crate) fn connect_body(mut self, connect_body: bool) -> Self {
+        self.connect_body = connect_body;
         self
     }
 
@@ -904,6 +915,9 @@ impl RenderOnce for Tab {
         // `group_hover` (parent hover → child opacity 1).
         let group_name = format!("tab-{}", self.ix);
 
+        let merge_with_body = self.selected && self.connect_body && !m;
+        let body_merge_color = cx.theme().background;
+
         let base = self
             .base
             .id(self.ix)
@@ -918,7 +932,11 @@ impl RenderOnce for Tab {
                     .when(!self.selected, |this| this.min_w_0())
             }, |this| this.flex_shrink_0())
             .h(height)
-            .overflow_hidden()
+            .when_else(
+                merge_with_body,
+                |this| this.overflow(Overflow::Visible),
+                |this| this.overflow_hidden(),
+            )
             .text_color(tab_style.fg)
             .map(|this| match self.size {
                 Size::XSmall => this.text_xs(),
@@ -967,6 +985,17 @@ impl RenderOnce for Tab {
             .when_some(self.prefix, |this, prefix| this.child(prefix))
             .child(inner_element)
             .when_some(self.suffix, |this, suffix| this.child(suffix))
+            .when(merge_with_body, |this| {
+                this.child(
+                    div()
+                        .absolute()
+                        .left_0()
+                        .right_0()
+                        .bottom(-px(1.))
+                        .h(px(1.))
+                        .bg(body_merge_color),
+                )
+            })
             .when(self.closable && !self.disabled, |this| {
                 // 激活 tab 常显；非激活 tab 仅在父 tab hover 时显示
                 let btn_size = match self.size {

@@ -10,11 +10,17 @@
 
                 <div class="demo-section">
                     <h3>{t("case.tab_bar.basic")}</h3>
-                    <TabBar selected-index={active_tab} on-click={on_tab_select}>
-                        <Tab label="Account" />
-                        <Tab label="Profile" />
-                        <Tab label="Settings" />
-                    </TabBar>
+                    <p>TabBar 仅渲染 header；下方内容面板需自行绑定 selected-index（VS Code 风格：选中 tab 与 body 同色衔接）：</p>
+                    <div class="tab-strip-with-body">
+                        <TabBar connect-body="" selected-index={active_tab} on-click={on_tab_select}>
+                            <Tab label="Account" />
+                            <Tab label="Profile" />
+                            <Tab label="Settings" />
+                        </TabBar>
+                        <div class="tab-body-panel">
+                            <p>{basic_body_text}</p>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="demo-section">
@@ -106,7 +112,7 @@
 
                 <div class="demo-section">
                     <h3>Tabs bordered（边框包裹 header + body）</h3>
-                    <p>WPF TabControl 风格，bordered 属性启用 1px 边框包裹 header + body 整体（Tabs 专属）：</p>
+                    <p>WPF TabControl 风格，bordered 属性启用 1px 边框包裹 header + body 整体；选中 tab 背景与 body 同为 surface（Tabs 专属）：</p>
                     <Tabs bordered="" selected-index={active_tab} on-click={on_tab_select}>
                         <Tab label="Account">
                             <div class="tab-body">

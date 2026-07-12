@@ -351,7 +351,9 @@ pub(super) fn gen_state_bridge_impl(ctx: &CodegenCtx) -> String {
         out.push_str(&format!("                        this.__rml_state.set_state_bridge_version({:?}, field, __rml_ver);\n", bridge_key));
         out.push_str("                        cx.notify();\n");
         out.push_str("                    }\n");
-        out.push_str("                    _ => {}\n");
+        if !spec.event_exhaustive {
+            out.push_str("                    _ => {}\n");
+        }
         out.push_str("                }\n");
         out.push_str("            }).detach();\n");
         out.push_str("            let __rml_ver = self.__rml_get_version(field);\n");

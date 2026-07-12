@@ -46,6 +46,22 @@ pub fn static_setter(name: &str, value: &str, tag: &str) -> Option<String> {
             };
             Some(format!(".bordered({})", bool_val))
         }
+        "fit_content" if tag == "Tabs" => {
+            let bool_val = if value.is_empty() || value.eq_ignore_ascii_case("true") {
+                "true"
+            } else {
+                "false"
+            };
+            Some(format!(".fit_content({})", bool_val))
+        }
+        "connect_body" if tag == "Tabs" || tag == "TabBar" => {
+            let bool_val = if value.is_empty() || value.eq_ignore_ascii_case("true") {
+                "true"
+            } else {
+                "false"
+            };
+            Some(format!(".connect_body({})", bool_val))
+        }
         "closable" => {
             let bool_val = if value.is_empty() || value.eq_ignore_ascii_case("true") {
                 "true"
@@ -91,7 +107,9 @@ pub fn bind_setter(
     tag: &str,
 ) -> Option<String> {
     match name {
-        "selected_index" | "menu" | "last_empty_space" | "bordered" if tag == "Tabs" => {
+        "selected_index" | "menu" | "last_empty_space" | "bordered" | "fit_content" | "connect_body"
+            if tag == "Tabs" =>
+        {
             let rust_expr = crate::compiler::setters::component_bind_rust_expr(
                 expr_str, loop_vars, computed,
             );
@@ -234,6 +252,12 @@ mod tests {
         assert_eq!(static_setter("bordered", "", "Tabs").unwrap(), ".bordered(true)");
         assert_eq!(static_setter("bordered", "true", "Tabs").unwrap(), ".bordered(true)");
         assert_eq!(static_setter("bordered", "false", "Tabs").unwrap(), ".bordered(false)");
+    }
+
+    #[test]
+    fn static_setter_tabs_fit_content() {
+        assert_eq!(static_setter("fit_content", "", "Tabs").unwrap(), ".fit_content(true)");
+        assert_eq!(static_setter("fit_content", "false", "Tabs").unwrap(), ".fit_content(false)");
     }
 
     #[test]

@@ -88,6 +88,16 @@ impl TabBarCase {
         format!("当前选中索引：{}", self.active_tab)
     }
 
+    /// TabBar + 手动 body 面板：按 active_tab 显示对应内容
+    #[computed]
+    pub fn basic_body_text(&self) -> &'static str {
+        match self.active_tab {
+            0 => "Account settings — 管理账号、密码与安全选项。",
+            1 => "User profile — 头像、简介与公开资料。",
+            _ => "System settings — 通知、语言与默认偏好。",
+        }
+    }
+
     #[computed]
     pub fn rml_sample(&self) -> String {
         include_str!("tab_bar_case.rml").to_string()

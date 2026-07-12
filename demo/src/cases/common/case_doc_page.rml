@@ -1,44 +1,96 @@
 <component>
+
     <div class="case-pane doc-pane" display="flex" flex-direction="column">
+
         <!-- 标题区 -->
+
         <div display="flex" flex-direction="column" gap="8px">
+
             <h2 style="font-size: 22px; font-weight: 600;">{title}</h2>
+
             <div class="case-desc">{description}</div>
+
         </div>
+
+
 
         <!-- 演示区 + 代码区 -->
+
         <div class="case-layout">
+
             <div class="case-demo-panel" display="flex" flex-direction="column" gap="8px">
+
                 <div style="font-size: 14px; font-weight: 600;">{t("case.common.demo")}</div>
+
                 <slot name="demo" />
+
             </div>
+
             <div class="case-code-panel" display="flex" flex-direction="column" gap="8px">
+
                 <div style="font-size: 14px; font-weight: 600;">{t("case.common.code")}</div>
+
                 <tabs
+
                     bordered
-                    style="width:100%"
+
+                    style="width:100%; flex:1; min-height:0"
+
                     selected-index={code_tab}
+
                     on-click={on_code_tab_change}>
+
                     <tab label=".rml">
+
                         <CodeEditor
+
+                            class="rml-code-editor"
+
                             ref="rml_editor"
+
                             value={rml_code}
-                            language="rml" />
+
+                            language="rml"
+
+                            height="full" />
+
                     </tab>
+
                     <tab label=".rml.rs">
+
                         <CodeEditor
+
+                            class="rml-code-editor"
+
                             ref="rust_editor"
+
                             value={rust_code}
-                            language="rust" />
+
+                            language="rust"
+
+                            height="full" />
+
                     </tab>
+
                 </tabs>
+
             </div>
+
         </div>
 
+
+
         <!-- API 区 -->
+
         <div class="case-api-panel" display="flex" flex-direction="column" gap="8px">
+
             <div style="font-size: 14px; font-weight: 600;">{t("case.common.api")}</div>
+
             <slot name="api" />
+
         </div>
+
     </div>
+
 </component>
+

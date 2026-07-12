@@ -5,7 +5,7 @@
             <Breadcrumb items={breadcrumb_items} on-select={on_breadcrumb_select} />
         </div>
         <div class="lsp-editor-area">
-            <CodeEditor height="full" context-menu="build_editor_menu" />
+            <CodeEditor class="rml-code-editor" height="full" context-menu="build_editor_menu" />
         </div>
     </div>
 </component>
