@@ -40,20 +40,20 @@ impl ILifecycle for TableCase {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
 
         let (cols, rows) = build_api_table(&[
-            ("columns", "Vec<TableColumn> 绑定", "数据绑定式列定义（与 Column 子标签二选一）"),
-            ("rows", "Vec<TableRow> 绑定", "行数据绑定"),
+            ("columns", "binding", "数据绑定式列定义（与 Column 子标签二选一）"),
+            ("rows", "binding", "行数据绑定"),
             ("bordered", "布尔标志", "显示边框"),
             ("stripe", "布尔标志", "斑马纹样式"),
-            ("delegate", "Rc<dyn TableDelegate>", "模板委托（自定义渲染，高级用法）"),
+            ("delegate", "binding", "自定义渲染委托（Rust 侧 TableDelegate 对象，高级用法）"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;
 
         let (cols, rows) = build_api_table(&[
-            ("key", "字符串", "列字段标识（对应 TableRow::cell(key, value) 的 key）"),
-            ("title", "字符串", "列标题（显示在列头）"),
-            ("width", "数字字符串", "列宽（像素，如 width=\"120\"）"),
-            ("align", "left/center/right", "列对齐方式（默认 left）"),
+            ("key", "string", "列字段标识（对应 TableRow::cell(key, value) 的 key）"),
+            ("title", "string", "列标题（显示在列头）"),
+            ("width", "number", "列宽（像素），如 width=\"120\""),
+            ("align", "left / center / right", "列对齐方式，默认 left"),
         ]);
         self.column_api_columns = cols;
         self.column_api_rows = rows;

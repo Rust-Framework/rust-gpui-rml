@@ -127,7 +127,8 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
     ("Card", &["title", "extra", "cover", "footer", "bordered", "borderless", "hoverable"]),
     // Button variant 布尔属性：primary/secondary/danger/success/warning/info/ghost/link/text
     // <Button primary /> → .primary()，各 variant 为独立布尔属性，可自由组合
-    ("Button", &["primary", "secondary", "danger", "success", "warning", "info", "ghost", "link", "text"]),
+    // icon="Play" → .icon(rml_ui::Icon::new(rml_ui::IconName::Play))
+    ("Button", &["primary", "secondary", "danger", "success", "warning", "info", "ghost", "link", "text", "icon"]),
     // Tag variant 布尔属性：primary/secondary/danger/success/warning/info → .with_variant(TagVariant::*)
     // outline 为 Tag 专属描边样式
     ("Tag", &["primary", "secondary", "danger", "success", "warning", "info", "outline"]),
@@ -312,6 +313,22 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
     // icon → .icon(IconName::X)，active/default_open/click_to_open/click_to_toggle → bool
     // disabled → .disable(bool)（注意方法名），on_click 走通用事件
     ("SidebarMenuItem", &["label", "icon", "active", "default_open", "click_to_open", "click_to_toggle", "disabled", "on_click"]),
+    // ── Chart 组件（gpui_component::chart）──
+    // 构造器统一为 Type::new(data: Vec<T>)，data 为绑定属性
+    // 字段路径（x_field/y_field 等）为静态字符串，codegen 生成闭包 .x(|d| d.field.clone())
+    // 颜色 stroke/fill 支持主题名（chart_1 → cx.theme().chart_1）与绑定（{color}）
+    // LineChart：单系列折线图
+    ("LineChart", &["data", "x_field", "y_field", "stroke", "tick_margin", "dot", "linear", "step_after"]),
+    // BarChart：柱状图
+    ("BarChart", &["data", "x_field", "y_field", "fill_field", "label_field", "stroke", "fill", "tick_margin"]),
+    // AreaChart：多系列面积图，y 系列由 <Area> 子标签提供
+    ("AreaChart", &["data", "x_field"]),
+    // Area：AreaChart 子标签（item builder），定义单个 y 系列
+    ("Area", &["y_field", "stroke", "fill"]),
+    // PieChart：饼图
+    ("PieChart", &["data", "value_field", "color_field", "outer_radius", "inner_radius", "pad_angle"]),
+    // CandlestickChart：K 线图
+    ("CandlestickChart", &["data", "x_field", "open_field", "high_field", "low_field", "close_field", "body_width_ratio", "tick_margin"]),
 ];
 
 /// 查询组件的所有已注册属性（通用 + 专用）

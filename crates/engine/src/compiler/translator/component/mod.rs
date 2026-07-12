@@ -13,6 +13,7 @@ pub mod accordion;
 pub mod activity_bar;
 pub mod alert;
 pub mod alert_dialog;
+pub mod chart;
 pub mod code_editor;
 pub mod description_list;
 pub mod dialog;
@@ -122,6 +123,7 @@ pub fn register_all(registry: &mut crate::compiler::translator::TranslatorRegist
     stateful::register(registry);
     tree::register(registry);
     code_editor::register(registry);
+    chart::register(registry);
     tabs::register(registry);
     tab_bar::register(registry);
     table::register(registry);

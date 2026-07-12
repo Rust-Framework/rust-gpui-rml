@@ -15,17 +15,8 @@ use crate::cases::common::{build_api_table, CaseDocPage};
 #[component]
 #[derive(Default)]
 pub struct RefCase {
-    /// 通过 `ref="input_state"` 指令关联，
-    /// 首次渲染后由 `__rml_populate_refs` 注入 `Entity<InputState>` 句柄。
-    ///
-    /// 命令式访问（focus / set_value 等）需在 command 中通过 `with_mut` 调用：
-    /// ```ignore
-    /// self.input_state.with_mut(cx, |state| {
-    ///     // state.focus(window, cx); // 需要 window 参数
-    /// });
-    /// ```
-    /// 注：command 签名为 `(&mut self, &ClickEvent, &mut Context<Self>)`，
-    /// 不直接接收 Window；需要 Window 的操作可通过 `cx.window()` 获取。
+    /// 通过 `ref="input_state"` 指令关联到 ViewModel 同名字段。
+    /// 首次渲染后即可在 command 回调中命令式访问（focus、set_value 等）。
     pub input_state: ElementRef<InputState>,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,

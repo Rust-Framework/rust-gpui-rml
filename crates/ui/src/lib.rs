@@ -52,6 +52,7 @@ pub use gpui_component::{
     combobox::Combobox,
     description_list::{DescriptionItem, DescriptionList, DescriptionText},
     calendar::{Calendar, CalendarEvent, CalendarState, Date},
+    chart::{AreaChart, BarChart, CandlestickChart, LineChart, PieChart},
     date_picker::{DatePicker, DatePickerEvent, DatePickerState},
     dialog::Dialog,
     form::{Field, Form},

@@ -12,7 +12,8 @@
                     <div display="flex" flex-direction="row" align-items="center" gap="6px">
                         <Icon name="ChartPie" size="small" />
                         <span>设备状态</span>
-                        <Tag success="" size="small">{device_status}</Tag>
+                        <Tag success="" size="small" if={sampling_active}>{device_status}</Tag>
+                        <Tag secondary="" size="small" else>{device_status}</Tag>
                     </div>
                     <div display="flex" flex-direction="row" align-items="center" gap="6px">
                         <Icon name="Calendar" size="small" />

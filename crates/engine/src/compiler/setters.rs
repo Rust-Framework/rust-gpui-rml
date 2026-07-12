@@ -75,8 +75,8 @@ pub fn component_static_setter(name: &str, value: &str, tag: &str) -> Option<Str
         }
         // Link: href="url" → .href("url")
         "href" if tag == "Link" => Some(format!(".href({:?})", value)),
-        // Spinner / ColorPicker: icon="Loader" → .icon(rml_ui::Icon::new(rml_ui::IconName::Loader))
-        "icon" if tag == "Spinner" || tag == "ColorPicker" => {
+        // Spinner / ColorPicker / Button: icon="Loader" → .icon(rml_ui::Icon::new(rml_ui::IconName::Loader))
+        "icon" if tag == "Spinner" || tag == "ColorPicker" || tag == "Button" => {
             Some(format!(".icon(rml_ui::Icon::new(rml_ui::IconName::{}))", value))
         }
         // Collapsible: open="true" → .open(true)

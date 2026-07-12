@@ -795,6 +795,40 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             kind: ComponentKind::StatelessNoId,
             container: true,
         }),
+        // ── Chart 组件（gpui_component::chart）──
+        // 构造器 Type::new(data: Vec<T>)，无 ElementId、无 cx
+        // 由专属 chart translator 处理 data 构造器参数 + x-field/y-field 闭包映射
+        // LineChart：单系列折线图，.x(|d|...).y(|d|...).stroke(color).tick_margin(n)
+        "LineChart" => Some(ComponentTag {
+            ctor_path: "rml_ui::LineChart",
+            kind: ComponentKind::StatelessNoId,
+            container: false,
+        }),
+        // BarChart：柱状图，.x(|d|...).y(|d|...).fill(|d|...).label(|d|...).tick_margin(n)
+        "BarChart" => Some(ComponentTag {
+            ctor_path: "rml_ui::BarChart",
+            kind: ComponentKind::StatelessNoId,
+            container: false,
+        }),
+        // AreaChart：多系列面积图，container=true 接收 <Area> 子标签
+        // .x(|d|...).y(|d|...).stroke(color).fill(color) 链式多系列
+        "AreaChart" => Some(ComponentTag {
+            ctor_path: "rml_ui::AreaChart",
+            kind: ComponentKind::StatelessNoId,
+            container: true,
+        }),
+        // PieChart：饼图，.value(|d|...).color(|d|...).outer_radius(f32).inner_radius(f32).pad_angle(f32)
+        "PieChart" => Some(ComponentTag {
+            ctor_path: "rml_ui::PieChart",
+            kind: ComponentKind::StatelessNoId,
+            container: false,
+        }),
+        // CandlestickChart：K 线图，.x/.open/.high/.low/.close 闭包 + body_width_ratio/tick_margin
+        "CandlestickChart" => Some(ComponentTag {
+            ctor_path: "rml_ui::CandlestickChart",
+            kind: ComponentKind::StatelessNoId,
+            container: false,
+        }),
         _ => None,
     }
 }
@@ -817,6 +851,7 @@ pub fn is_item_builder_tag(tag: &str) -> bool {
             | "SettingPage" | "setting-page"
             | "SettingGroup" | "setting-group"
             | "SettingItem" | "setting-item"
+            | "Area"
     ) || normalize_component_tag(tag) == "AccordionItem"
         || normalize_component_tag(tag) == "Tab"
         || normalize_component_tag(tag) == "Column"
@@ -827,6 +862,7 @@ pub fn is_item_builder_tag(tag: &str) -> bool {
         || normalize_component_tag(tag) == "SettingPage"
         || normalize_component_tag(tag) == "SettingGroup"
         || normalize_component_tag(tag) == "SettingItem"
+        || normalize_component_tag(tag) == "Area"
 }
 
 /// 判断标签是否为菜单容器（ContextMenu / DropdownMenu / MenuBar / AppMenuBar / menu）

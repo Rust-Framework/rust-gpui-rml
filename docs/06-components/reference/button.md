@@ -18,6 +18,7 @@
 | 属性 | 类型 | 绑定 | 说明 |
 |------|------|------|------|
 | `label` | 字符串 | `{expr}` | 按钮文字，`.label(...)` |
+| `icon` | 字符串 | — | 图标名称（PascalCase），如 `icon="Play"`，映射到 `IconName::Play` |
 | `tooltip` | 字符串 | — | 悬停提示 |
 | `primary` / `secondary` / `danger` / `success` / `warning` / `info` / `ghost` / `link` / `text` | 布尔标志 | — | 空值或 `true` 时启用对应变体，如 `primary=""` |
 | `small` / `xsmall` / `large` | 布尔标志 | — | 尺寸 |
@@ -80,4 +81,4 @@
 
 ## RML 未覆盖的 gpui-component API
 
-`.icon()`、`.dropdown_menu()`、`.keyboard_shortcut()` 等 builder 方法需在 Rust 中手写 `Button::new(...)` 构造。
+`.dropdown_menu()`、`.keyboard_shortcut()` 等 builder 方法需在 Rust 中手写 `Button::new(...)` 构造。

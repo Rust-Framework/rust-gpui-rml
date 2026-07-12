@@ -37,9 +37,9 @@ impl ILifecycle for ConditionalCase {
         self.tab_index = 0;
         self.show_detail = true;
         let (cols, rows) = build_api_table(&[
-            ("if={expr}", "指令", "条件为真时渲染元素"),
-            ("if={!expr}", "指令", "条件为假时渲染（取反）"),
-            ("each={x in items}", "指令", "遍历可迭代对象"),
+            ("if={expr}", "指令", "条件为真时渲染元素；支持取反如 if={!flag}"),
+            ("else-if={expr}", "指令", "多分支链，跟在 if / else-if 后"),
+            ("else", "指令", "默认分支，跟在 if / else-if 后"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

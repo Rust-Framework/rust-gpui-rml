@@ -84,11 +84,11 @@
 
 - 属性名用 **kebab-case**：`on-change`、`font-bold`，不用 `on_change` / `font_bold`
 - 指令用 **`if` / `each` / `value={}`**，不用 `r:if` / `r:model`
-- description 不写 codegen 内部符号（如 `__rml_state`、`ElementRef<T>`、`InputStateBridge`）
+- 所有用户可见面（description / API 表 / 演示区 `<p>` / `.rml.rs` 注释——`include_str!` 会把注释一起展示）一律不写 codegen 内部符号：`__rml_populate_refs`、codegen 生成串（`rml_key`、`rml_core::element_id::from_key`）、gpui-component 底层分支实现（`h_8 + px_4 + text_base`）、`ElementRef<T>`、`InputStateBridge`、`StateBridge`。注：`__rml_bump_version` 是公开 API（见 [双向绑定](../03-binding/two-way-binding.md)），可在 command 代码与注释中出现
 
 ## API 表格编写规范
 
-`slot="api"` 中的表格通过 `build_api_table` 构建，**面向 RML 开发者**：回答「在 `.rml` 里能写哪些 props/events/slots？」
+`slot="api"` 中的表格通过 `build_api_table` 构建，**面向 RML 开发者实际使用**：回答「我用这个组件最常写哪些 props/events/slots？默认值是什么？」不做齐全性枚举——完整的 props 列表归 [组件参考文档](../06-components/reference/)，案例 API 表只列开发者为使用该组件必须知道的条目。
 
 ### 列结构（固定三列）
 
@@ -112,13 +112,23 @@
 
 ### 说明写法
 
-- ✅ 写什么 + 示例：`占位文本，如 placeholder="用户名"`
+- ✅ 写什么 + 示例 + 默认值：`占位文本，如 placeholder="用户名"`
+- ✅ 布尔/枚举属性必须标注默认值：`禁用，默认 false`、`尺寸：xsmall | small | medium | large，默认 medium`
 - ❌ 编译器映射：`通过 cx.subscribe 订阅 InputEvent::Change`
 - ❌ VM 内部类型：`绑定到 ElementRef<SliderState> 字段`
 
-### 齐全性
+### 行排序
 
-对照 `docs/06-components/reference/` 与 `props_registry.rs`，列出该组件**所有** RML 面向开发者的 props/events/slots。通用属性（`disabled`、`size`、`label`）按组件实际支持情况列入。
+按使用频率从高到低排列，最常用的 3-5 个 props 排在最前（通常是 `label` / `value` / `on-click` 这类）。开发者扫一眼表格顶部就能覆盖 80% 场景。
+
+### 选择性（反补全）
+
+案例 API 表**不追求齐全**，只列开发者为使用该组件必须知道的条目。原则：
+
+- **只列该组件专属 API**。通用样式 trait 方法（`font-bold` / `font-semibold` / `h-flex` / `v-flex` 等 `StyledExt`、`Sizable` 提供的无组件特定语义的成员）**不列入**——它们对所有组件都适用，归 [样式文档](../07-styling/)，在每个组件表里重复等于噪声。
+- **保留有组件特定语义的 trait 方法**。`size`（影响 Button 高度）、`disabled`（影响 Button 交互）虽源自 trait，但对该组件有具体行为，应列出并说明默认值。
+- **不枚举相关但本案例未演示的指令**。例如 `conditional_case` 讲 `if`，不要把 `each` 一并塞进表里凑数；`each` 归 `list_case` / `key_case`。
+- 对照 [组件参考文档](../06-components/reference/) 做减法：参考文档是权威全集，案例表是精选子集。
 
 ### 正反例
 
@@ -135,7 +145,7 @@ let (cols, rows) = build_api_table(&[
 ]);
 ```
 
-**❌ 避免**
+**❌ 避免（类型词汇表违规）**
 
 ```rust
 let (cols, rows) = build_api_table(&[
@@ -146,11 +156,20 @@ let (cols, rows) = build_api_table(&[
 ]);
 ```
 
+**❌ 避免（补全式填充——把通用 trait 与未演示指令塞进表里凑数）**
+
+```rust
+// Button 案例里塞入 StyledExt 通用字体权重（每个组件都有，不是 Button 专属）
+("font-bold / font-semibold / font-medium ...", "布尔标志", "字体权重"),
+// conditional_case 讲 if，却把 each 一起塞进来
+("each={x in items}", "指令", "遍历可迭代对象"),
+```
+
 ### description 同步
 
 `CaseDocPage` 的 `description` 与 API 表同一标准：用户可见的中文说明，不含 `on_loaded`、`PascalCase` 编译提示、`Selectable trait` 等内部术语。演示区 `<p>` 说明同理。
 
-参考范例：`key_binding_case`、`input_case`（修订后）、`counter_case`（MVVM 绑定专题，可保留 `#[command]` 等框架概念）。
+参考范例：`button_case`（API 区修订后，开发者视角样板）、`key_binding_case`、`input_case`（修订后）、`counter_case`（MVVM 绑定专题，可保留 `#[command]` 等框架概念）。
 
 ---
 

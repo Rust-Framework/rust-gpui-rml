@@ -419,7 +419,7 @@ impl EdnaCase {
             .into_any_element()
     }
 
-    /// 参数区控制按钮（带 Icon，RML Button 暂不支持 icon 属性）
+    /// 参数区控制按钮（带 Icon；动态样式/禁用状态仍走命令式，静态 icon 可用 RML icon 属性）
     pub fn render_control_buttons(
         &self,
         _window: &mut Window,

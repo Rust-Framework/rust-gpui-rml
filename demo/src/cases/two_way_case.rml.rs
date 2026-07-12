@@ -56,13 +56,10 @@ impl ILifecycle for TwoWayCase {
     fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         let (cols, rows) = build_api_table(&[
-            ("value", "绑定属性", "双向绑定到 pub 字段"),
-            ("#[validate]", "属性", "数值范围验证（如 range）"),
-            ("placeholder", "字符串", "占位提示"),
-            ("#[computed]", "方法", "依赖字段自动重算"),
-            ("converter (|)", "IConverter", "value={price | Currency} 双向转换"),
-            ("checked={field}", "Checkbox/Switch", "Stateless EventClick 自动双向"),
-            ("value={field}", "Rating/Slider/Input", "PascalCase 自动双向绑定"),
+            ("value={field}", "binding", "双向绑定到 pub 字段（input / Input / Rating / Slider）"),
+            ("checked={field}", "binding", "Checkbox / Switch 自动双向，点击即回写 bool 字段"),
+            ("value={field | Converter}", "binding", "双向绑定 + 转换器，如 value={price | Currency}"),
+            ("#[validate(range(min, max))]", "Rust 属性", "标注数值验证规则，失败时框架自动显示红框 + tooltip"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

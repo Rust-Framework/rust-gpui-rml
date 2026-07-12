@@ -37,16 +37,16 @@ impl ILifecycle for ButtonCase {
     fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         let (cols, rows) = build_api_table(&[
-            ("label", "字符串", "按钮文字"),
-            ("primary / secondary / danger / success / warning / info / ghost / link / text", "布尔标志", "9 种 variant"),
-            ("size", "xsmall/small/medium/large", "尺寸"),
-            ("disabled", "布尔/绑定", "禁用"),
-            ("selected", "布尔/绑定", "选中态"),
-            ("loading", "布尔/绑定", "加载中"),
-            ("compact", "布尔标志", "紧凑模式"),
-            ("tooltip", "字符串", "悬浮提示"),
-            ("font-bold / font-semibold / font-medium ...", "布尔标志", "字体权重"),
-            ("on-click", "事件", "点击回调（参数：&ClickEvent）"),
+            ("label", "string", "按钮文字"),
+            ("on-click", "event", "点击回调（参数：&ClickEvent）"),
+            ("primary / secondary / danger / success / warning / info / ghost / link / text", "布尔标志", "9 种 variant，默认 secondary"),
+            ("size", "xsmall / small / medium / large", "尺寸，默认 medium"),
+            ("icon", "string", "图标名称（PascalCase），如 icon=\"Play\"、icon=\"Delete\""),
+            ("disabled", "bool / binding", "禁用，默认 false"),
+            ("loading", "bool / binding", "加载中，默认 false"),
+            ("selected", "bool / binding", "选中态，默认 false"),
+            ("compact", "布尔标志", "紧凑内边距"),
+            ("tooltip", "string", "悬浮提示文本"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

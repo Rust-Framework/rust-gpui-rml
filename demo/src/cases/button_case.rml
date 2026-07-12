@@ -32,7 +32,7 @@
                     <Button label="Medium" size="medium" primary />
                     <Button label="Large" size="large" primary />
                 </div>
-                <p class="hint">注：在 gpui-component 底层实现中，Size::Large 与 Size::Medium 走同一高度分支（h_8 + px_4 + text_base），视觉等价。建议优先使用 XSmall/Small/Medium 三档以体现尺寸差异。</p>
+                <p class="hint">注：Size::Large 与 Size::Medium 在当前实现下视觉等价，建议优先使用 XSmall/Small/Medium 三档以体现尺寸差异。</p>
             </div>
 
             <div class="demo-section">
@@ -81,8 +81,18 @@
             </div>
 
             <div class="demo-section">
+                <h3>图标 icon</h3>
+                <p>icon 属性为按钮添加图标，值为 PascalCase 图标名，如 icon="Play"。</p>
+                <div class="button-row">
+                    <Button label="播放" icon="Play" primary on-click={on_basic_click} />
+                    <Button label="删除" icon="Delete" danger on-click={on_basic_click} />
+                    <Button label="保存" icon="Check" success on-click={on_basic_click} />
+                </div>
+            </div>
+
+            <div class="demo-section">
                 <h3>字体权重 font weight</h3>
-                <p>font_bold / font_semibold / font_medium 等属性切换字体权重（StyledExt trait）。</p>
+                <p>font-bold / font-semibold / font-medium 等属性切换字体权重。</p>
                 <div class="button-row">
                     <Button label="Normal" primary />
                     <Button label="Bold" primary font-bold="" />
@@ -112,8 +122,6 @@
         <template slot="api">
             <h3>Button</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-            <p>另：tooltip 属性为字符串，映射到 .tooltip(text)。</p>
-            <p>另：font_bold / font_semibold / font_medium / font_light 等字体权重属性来自 StyledExt trait。</p>
         </template>
     </CaseDocPage>
 </component>
