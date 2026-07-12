@@ -79,11 +79,10 @@ impl ILifecycle for VirtualTreeCase {
         self.total_nodes = total;
 
         let (cols, rows) = build_api_table(&[
-            ("ref", "字符串", "TreeState Entity 引用名（配合 items 声明式绑定）"),
-            ("items", "Vec<TreeData> 绑定", "大型树节点数据（委托注入 TreeState，内部 uniform_list 自动虚拟化）"),
-            ("on-activate", "事件", "叶子节点激活回调（参数：&SharedString item_id）"),
-            ("on-select", "事件", "节点选中回调（参数：&SharedString item_id；含文件夹）"),
-            ("虚拟化", "内置", "gpui-component Tree 通过 uniform_list 仅渲染可见范围，无需额外开关"),
+            ("ref", "string", "元素引用名，绑定到 ViewModel 同名字段，如 ref=\"big_tree\""),
+            ("items", "binding", "树节点数据，如 items={tree_items}；大型树自动虚拟化渲染"),
+            ("on-activate", "event", "叶子节点激活时回调，参数为节点 id"),
+            ("on-select", "event", "节点选中时回调，参数为节点 id；含文件夹节点"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

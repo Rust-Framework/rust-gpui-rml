@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.tag.title")}
-        description="Tag 是 RML 的标签组件，标签为 PascalCase Tag。无 ElementId 构造（StatelessNoId），容器模式，文本通过子节点设置。支持 6 种语义 variant + outline 描边样式 + 尺寸控制。适合分类、状态、优先级等元数据展示。"
+        description="Tag 是 RML 的标签组件，通过子节点设置文本。支持 primary/secondary/danger/success/warning/info 语义色、outline 描边样式与尺寸控制。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">

@@ -5,7 +5,8 @@
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
-            <Card title="RadioGroup 基础（垂直）">
+            <div class="demo-section">
+                <h3>RadioGroup 基础（垂直）</h3>
                 <p>默认垂直布局，<code>selected-index</code> 设置选中索引，<code>on-click</code> 处理选中切换：</p>
                 <RadioGroup selected-index={selected_index} on-click={on_select}>
                     <Radio label="选项 1" />
@@ -13,9 +14,10 @@
                     <Radio label="选项 3" />
                 </RadioGroup>
                 <p>当前选中索引：{selected_index}</p>
-            </Card>
+            </div>
 
-            <Card title="RadioGroup 水平布局">
+            <div class="demo-section">
+                <h3>RadioGroup 水平布局</h3>
                 <p><code>layout="horizontal"</code> 切换为水平布局：</p>
                 <RadioGroup layout="horizontal" selected-index={selected_index} on-click={on_select}>
                     <Radio label="A" />
@@ -23,43 +25,47 @@
                     <Radio label="C" />
                     <Radio label="D" />
                 </RadioGroup>
-            </Card>
+            </div>
 
-            <Card title="layout 属性">
+            <div class="demo-section">
+                <h3>layout 属性</h3>
                 <p><code>layout="horizontal"</code> 与默认 <code>layout="vertical"</code> 的对比：</p>
                 <RadioGroup layout="horizontal" selected-index={selected_index} on-click={on_select}>
                     <Radio label="X" />
                     <Radio label="Y" />
                     <Radio label="Z" />
                 </RadioGroup>
-            </Card>
+            </div>
 
-            <Card title="静态 selected-index">
+            <div class="demo-section">
+                <h3>静态 selected-index</h3>
                 <p>使用静态数值属性（无绑定，不会自动更新）：</p>
                 <RadioGroup selected-index="1">
                     <Radio label="选项 A" />
                     <Radio label="选项 B" />
                     <Radio label="选项 C" />
                 </RadioGroup>
-            </Card>
+            </div>
 
-            <Card title="Radio tab-index / tab-stop">
+            <div class="demo-section">
+                <h3>Radio tab-index / tab-stop</h3>
                 <p><code>tab-index</code> 设置 Tab 顺序，<code>tab-stop</code> 控制是否参与 Tab 导航：</p>
                 <RadioGroup selected-index={selected_index} on-click={on_select}>
                     <Radio label="tab-index=0" tab-index="0" />
                     <Radio label="tab-index=1" tab-index="1" />
                     <Radio label="tab-stop=false" tab-stop="false" tab-index="2" />
                 </RadioGroup>
-            </Card>
+            </div>
 
-            <Card title="文本子节点作为 Radio">
+            <div class="demo-section">
+                <h3>文本子节点作为 Radio</h3>
                 <p>RadioGroup 的子节点支持纯文本（自动转换为 Radio，<code>From&lt;&amp;str&gt; for Radio</code>）：</p>
                 <RadioGroup selected-index={selected_index} on-click={on_select}>
                     文本选项 1
                     文本选项 2
                     文本选项 3
                 </RadioGroup>
-            </Card>
+            </div>
         </template>
 
         <template slot="api">

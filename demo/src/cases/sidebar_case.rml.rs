@@ -45,23 +45,23 @@ impl ILifecycle for SidebarCase {
             ("collapsed", "bool 绑定", "折叠状态（受控模式，配合 collapsible 使用）"),
             ("header", "slot 插槽", "顶部内容插槽（slot=\"header\"）"),
             ("footer", "slot 插槽", "底部内容插槽（slot=\"footer\"）"),
-            ("ref", "指令", "稳定 ElementId（ref=\"name\" → \"rml_ref:name\"）"),
-            ("SidebarMenu", "子节点", "菜单分组容器，通过 SidebarEntry::Menu 包装"),
-            ("SidebarMenuItem", "子节点", "菜单项，通过 SidebarEntry::Item 包装"),
+            ("ref", "string", "元素引用名，如 ref=\"sidebar\""),
+            ("SidebarMenu", "slot", "菜单分组容器"),
+            ("SidebarMenuItem", "slot", "菜单项"),
         ]);
         self.sidebar_api_columns = cols;
         self.sidebar_api_rows = rows;
 
         let (cols, rows) = build_api_table(&[
-            ("（无专用属性）", "—", "SidebarMenu 仅实现 Styled，支持通用 CSS 样式属性"),
-            ("SidebarMenuItem", "子节点", "菜单项子节点，通过 .child() 注入"),
+            ("（无专用属性）", "—", "菜单分组容器，支持通用 CSS 样式"),
+            ("SidebarMenuItem", "slot", "菜单项子节点"),
         ]);
         self.menu_api_columns = cols;
         self.menu_api_rows = rows;
 
         let (cols, rows) = build_api_table(&[
             ("label", "字符串/绑定", "菜单项标签（构造器参数，非 setter）"),
-            ("icon", "IconName 枚举值", "菜单项图标（如 Home/Settings）"),
+            ("icon", "string", "菜单项图标，如 icon=\"Home\""),
             ("active", "布尔", "高亮选中状态（active=\"\" 为 true）"),
             ("default-open", "布尔", "子菜单默认展开（default-open=\"\" 为 true）"),
             ("click-to-open", "布尔", "点击打开子菜单（click-to-open=\"\" 为 true）"),

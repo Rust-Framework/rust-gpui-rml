@@ -216,14 +216,10 @@ impl ILifecycle for DockCase {
 
         // API 表格
         let (cols, rows) = build_api_table(&[
-            ("content={dock_area}", "Entity<DockArea>", "通过透明容器渲染 DockArea 实体"),
-            ("SimplePanel::new", "Rust API", "创建面板适配器，包装 AnyView 为 Panel"),
-            ("DockItem::tab", "Rust API", "创建单面板 DockItem"),
-            ("DockItem::tabs", "Rust API", "创建多标签页 DockItem"),
-            ("set_left_dock", "Rust API", "设置左侧 dock 面板"),
-            ("set_center", "Rust API", "设置中心 dock 面板"),
-            ("set_bottom_dock", "Rust API", "设置底部 dock 面板"),
-            ("set_right_dock", "Rust API", "设置右侧 dock 面板"),
+            ("content={dock_area}", "binding", "绑定 Dock 布局实体到内容区"),
+            ("SimplePanel", "Rust API", "创建面板适配器（code-behind）"),
+            ("DockItem::tab / tabs", "Rust API", "创建单面板或多标签页面板（code-behind）"),
+            ("set_left_dock / set_center / set_bottom_dock / set_right_dock", "Rust API", "设置各区域面板（code-behind）"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

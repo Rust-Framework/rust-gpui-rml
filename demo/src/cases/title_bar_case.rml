@@ -5,16 +5,18 @@
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
-            <Card title="基础用法">
+            <div class="demo-section">
+                <h3>基础用法</h3>
                 <p>包裹子元素作为标题栏中央内容。窗口控制按钮自动渲染。</p>
                 <div style="border: 1px solid var(--border); overflow: hidden; border-radius: 4px;">
                     <TitleBar>
                         <span>RML Showcase</span>
                     </TitleBar>
                 </div>
-            </Card>
+            </div>
 
-            <Card title="动态绑定(value 双向绑定)">
+            <div class="demo-section">
+                <h3>动态绑定(value 双向绑定)</h3>
                 <p>输入标题文本,观察 TitleBar 中央内容实时更新(演示 value 双向绑定):</p>
                 <input value={title} placeholder="输入标题文本" />
                 <p>当前标题: {title}</p>
@@ -26,7 +28,7 @@
                         <span>{title}</span>
                     </TitleBar>
                 </div>
-            </Card>
+            </div>
         </template>
         <template slot="api">
             <h3>TitleBar</h3>

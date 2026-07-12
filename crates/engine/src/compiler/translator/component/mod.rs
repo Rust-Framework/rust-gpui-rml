@@ -23,6 +23,7 @@ pub mod hover_card;
 pub mod icon;
 pub mod input;
 pub mod key_binding;
+pub mod shortcut_scope;
 pub mod kbd;
 pub mod label;
 pub mod markdown;
@@ -141,6 +142,7 @@ pub fn register_all(registry: &mut crate::compiler::translator::TranslatorRegist
     separator::register(registry);
     icon::register(registry);
     key_binding::register(registry);
+    shortcut_scope::register(registry);
     kbd::register(registry);
     tag::register(registry);
     alert::register(registry);

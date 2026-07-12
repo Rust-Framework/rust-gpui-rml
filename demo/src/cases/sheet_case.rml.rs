@@ -40,7 +40,7 @@ impl ILifecycle for SheetCase {
             ("resizable", "bool", "是否可拖拽调整大小，默认 true；resizable=false 禁用"),
             ("overlay", "bool", "是否显示背景遮罩，默认 true；overlay=false 关闭"),
             ("overlay-closable", "bool", "点击遮罩是否关闭抽屉，默认 true；overlay-closable=false 禁用"),
-            ("on-close", "event", "关闭事件回调，签名为 Fn(&ClickEvent, &mut Window, &mut App)"),
+            ("on-close", "event", "抽屉关闭时回调"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

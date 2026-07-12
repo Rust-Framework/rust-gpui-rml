@@ -100,16 +100,16 @@ impl ILifecycle for SelectCase {
         ]);
 
         let (cols, rows) = build_api_table(&[
-            ("ref", "字符串（指令）", "元素引用名，绑定到 ElementRef<SelectState<SearchableVec<SharedString>>> 字段（必填）"),
-            ("items", "绑定表达式", "SearchableVec<SharedString> 委托数据源，通过 items={field} 绑定（value 双向绑定时必填）"),
-            ("value", "绑定属性", "双向绑定到 pub String 字段（StateBridge → set_selected_value / SelectEvent::Confirm）"),
-            ("placeholder", "字符串", "占位文本（走通用 static setter）"),
-            ("cleanable", "布尔属性", "启用清除按钮（默认 false）"),
-            ("appearance", "true/false", "是否显示边框背景（默认 true，设 false 移除）"),
-            ("menu_width", "像素值（如 240px）", "下拉菜单宽度"),
-            ("menu_max_h", "像素值（如 200px）", "下拉菜单最大高度"),
-            ("size", "xsmall/small/medium/large", "尺寸（Sizable trait 通用属性）"),
-            ("on_change", "事件", "选择确认回调（参数：Option<SharedString>；通过 cx.subscribe 订阅 SelectEvent::Confirm）"),
+            ("ref", "string", "元素引用名，绑定到 ViewModel 同名字段（与 items 配合使用）"),
+            ("items", "binding", "选项数据源，如 items={fruit_list}"),
+            ("value", "binding", "双向绑定到 ViewModel 字符串字段，如 value={selected}"),
+            ("placeholder", "string", "占位文本"),
+            ("cleanable", "bool", "启用清除按钮（默认 false）"),
+            ("appearance", "bool", "是否显示边框背景（默认 true，设 false 移除）"),
+            ("menu-width", "string", "下拉菜单宽度，如 menu-width=\"240px\""),
+            ("menu-max-h", "string", "下拉菜单最大高度，如 menu-max-h=\"200px\""),
+            ("size", "string", "尺寸：xsmall | small | medium | large"),
+            ("on-change", "event", "选择确认时回调，参数为选中值或空（清除后）"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

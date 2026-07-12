@@ -37,13 +37,13 @@ impl ILifecycle for PaginationCase {
         self.current_page = 1;
         self.total_pages = 10;
         let (cols, rows) = build_api_table(&[
-            ("current_page", "usize / 绑定", "当前页码（1-based）"),
-            ("total_pages", "usize / 绑定", "总页数"),
-            ("visible_pages", "usize", "最大可见页码数（默认 5）"),
-            ("compact", "布尔标志", "紧凑模式（仅前后箭头）"),
-            ("on-click", "事件", "页码切换回调（Fn(&usize, ...)）"),
-            ("size", "xsmall/small/medium/large", "尺寸（Sizable trait）"),
-            ("disabled", "bool / 绑定", "禁用（Disableable trait）"),
+            ("current-page", "number / binding", "当前页码（从 1 开始），如 current-page={page}"),
+            ("total-pages", "number / binding", "总页数，如 total-pages={10}"),
+            ("visible-pages", "number", "最大可见页码数（默认 5）"),
+            ("compact", "bool", "紧凑模式（仅前后箭头）"),
+            ("on-click", "event", "页码切换时回调，参数为页码"),
+            ("size", "string", "尺寸：xsmall | small | medium | large"),
+            ("disabled", "bool / binding", "禁用交互"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

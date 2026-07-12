@@ -37,15 +37,15 @@ impl ILifecycle for GridCase {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
 
         let (cols, rows) = build_api_table(&[
-            ("columns", "static: u16", "等宽列数，如 columns=\"3\" 创建 3 列等宽网格"),
-            ("rows", "static: u16", "等高行数，如 rows=\"2\" 创建 2 行等高网格"),
-            ("col-span", "static: u16", "GridItem 跨列数，如 col-span=\"2\" 跨 2 列"),
-            ("row-span", "static: u16", "GridItem 跨行数，如 row-span=\"2\" 跨 2 行"),
-            ("col-start", "static: i16", "GridItem 起始列位置（支持负数，从末尾计数）"),
-            ("col-end", "static: i16", "GridItem 结束列位置"),
-            ("row-start", "static: i16", "GridItem 起始行位置"),
-            ("row-end", "static: i16", "GridItem 结束行位置"),
-            ("gap", "style", "CSS gap 属性，控制网格间距，如 gap=\"12px\""),
+            ("columns", "number", "等宽列数，如 columns=\"3\""),
+            ("rows", "number", "等高行数，如 rows=\"2\""),
+            ("col-span", "number", "GridItem 跨列数，如 col-span=\"2\""),
+            ("row-span", "number", "GridItem 跨行数，如 row-span=\"2\""),
+            ("col-start", "number", "GridItem 起始列（支持负数，从末尾计数）"),
+            ("col-end", "number", "GridItem 结束列"),
+            ("row-start", "number", "GridItem 起始行"),
+            ("row-end", "number", "GridItem 结束行"),
+            ("gap", "string", "网格间距，如 gap=\"12px\""),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

@@ -38,12 +38,12 @@ impl ILifecycle for BadgeCase {
         self.count = 5;
         self.max_val = 9;
         let (cols, rows) = build_api_table(&[
-            ("count", "usize / 绑定", "Number variant 计数（0 时隐藏）"),
-            ("max", "usize / 绑定", "Number variant 最大显示（超出显示 N+，默认 99）"),
-            ("dot", "布尔标志", "切换为 Dot variant（小红点）"),
-            ("icon", "图标名", "切换为 Icon variant（如 icon=\"Bell\"）"),
-            ("size", "xsmall/small/medium/large", "尺寸（Sizable trait）"),
-            ("子节点", "元素", "包裹的内容（被徽标标记的元素）"),
+            ("count", "number / binding", "数字徽标计数（0 时隐藏）"),
+            ("max", "number / binding", "最大显示数，超出显示 N+（默认 99）"),
+            ("dot", "bool", "小红点模式"),
+            ("icon", "string", "图标徽标，如 icon=\"Bell\""),
+            ("size", "string", "尺寸：xsmall | small | medium | large"),
+            ("（子节点）", "slot", "被徽标标记的内容"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

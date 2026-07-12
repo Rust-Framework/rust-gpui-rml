@@ -34,9 +34,9 @@ impl ILifecycle for SkeletonCase {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
 
         let (cols, rows) = build_api_table(&[
-            ("secondary", "布尔标志", "切换为次级颜色（更浅的灰色），适用于多层骨架屏视觉层次区分"),
-            ("style", "CSS 字符串", "内联样式，控制宽高/圆角等（如 style=\"width: 200px; height: 20px;\"）"),
-            ("class", "字符串", "CSS class 名称，用于样式定制"),
+            ("secondary", "bool", "次级颜色（更浅的灰色），用于多层骨架屏层次区分"),
+            ("style", "string", "内联样式，控制宽高/圆角等，如 style=\"width: 200px; height: 20px;\""),
+            ("class", "string", "CSS class 名称"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

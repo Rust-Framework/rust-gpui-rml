@@ -69,17 +69,10 @@ impl ILifecycle for TreeCase {
         ];
 
         let (cols, rows) = build_api_table(&[
-            ("ref", "字符串", "TreeState Entity 引用名（配合 items 声明式绑定）"),
-            ("items", "Vec<TreeData> 绑定", "树节点数据（委托注入 TreeState 构造器，自动转换为 TreeItem）"),
-            ("on-activate", "事件", "叶子节点激活回调（参数：&SharedString item_id；文件夹节点不触发）"),
-            ("on-select", "事件", "节点选中回调（参数：&SharedString item_id；含文件夹节点）"),
-            ("TreeData::new", "构造器", "TreeData::new(id: impl Into<SharedString>, label: impl Into<SharedString>)"),
-            ("TreeData::child", "builder", ".child(TreeData) 添加单个子节点（可链式）"),
-            ("TreeData::children", "builder", ".children(impl IntoIterator<Item = TreeData>) 添加多个子节点"),
-            ("TreeData::expanded", "builder", ".expanded(bool) 设置初始展开状态"),
-            ("TreeData::disabled", "builder", ".disabled(bool) 禁用节点（不触发事件）"),
-            ("TreeData::is_folder", "查询", ".is_folder() -> bool（根据 children 自动判断）"),
-            ("TreeData::to_tree_items", "转换", "TreeData::to_tree_items(Vec<TreeData>) -> Vec<TreeItem>（框架内部调用）"),
+            ("ref", "string", "元素引用名，绑定到 ViewModel 同名字段，如 ref=\"basic_tree\""),
+            ("items", "binding", "树节点数据，如 items={tree_items}"),
+            ("on-activate", "event", "叶子节点激活时回调，参数为节点 id；文件夹节点不触发"),
+            ("on-select", "event", "节点选中时回调，参数为节点 id；含文件夹节点"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

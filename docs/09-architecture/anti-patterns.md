@@ -43,7 +43,7 @@ pub struct AppViewModel {
 ### 症状
 
 - 一个组件接受 30+ props
-- 组件内含大量 `r:if` 分支决定渲染哪种形态
+- 组件内含大量 `if={...}` 分支决定渲染哪种形态
 - 组件被用于完全不相关的场景
 
 ### 危害
@@ -219,7 +219,7 @@ pub fn show_detail(&mut self, cx: &mut ViewContext<Self>) {
 
 ```html
 <!-- 模板根据状态渲染 -->
-<Detail r:if="is_detail_visible" data="{selected}" />
+<Detail if={is_detail_visible} data={selected} />
 ```
 
 ## 9.6.7 反模式 7：跨视图直接修改
@@ -266,7 +266,7 @@ pub fn on_loaded(&mut self, cx: &mut ViewContext<Self>) {
 
 ```html
 <!-- ❌ 模板里塞业务判断 -->
-<p r:if="items.len() > 0 && user.role == 'admin' && !settings.readonly">
+<p if={items.len() > 0 && user.role == 'admin' && !settings.readonly}>
   {items.iter().filter(|i| i.active).count()} 个活跃项
 </p>
 ```
@@ -294,7 +294,7 @@ pub fn active_count(&self) -> usize {
 ```
 
 ```html
-<p r:if="should_show_active_count">{active_count} 个活跃项</p>
+<p if={should_show_active_count}>{active_count} 个活跃项</p>
 ```
 
 ## 9.6.9 反模式速查表

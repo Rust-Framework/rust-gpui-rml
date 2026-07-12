@@ -37,6 +37,7 @@ when_to_apply: 在 RML 框架内新增组件、修改组件属性、调整数据
 | 属性 | static/bind/event 三类，组件专用→通用→警告丢弃 | [03-property-classification.md](03-property-classification.md) |
 | 绑定 | children / items={expr} / {each} / model={field} | [04-data-binding.md](04-data-binding.md) |
 | 插槽 | `<template slot="name">`，Table 专用模板，scoped slot | [05-slot-template.md](05-slot-template.md) |
+| **组合** | KeyBinding 子节点 / slot 触发器 / 菜单首子触发器 | [11-composition-patterns.md](11-composition-patterns.md) |
 | CSS | Class/Id/Tag/Universal/Compound/Descendant/Child 选择器 | [06-css-customization.md](06-css-customization.md) |
 | 尺寸 | size=xsmall\|small\|medium\|large，vertical=true | [07-size-layout-conventions.md](07-size-layout-conventions.md) |
 | 图标 | `IContribution::icon() -> Option<IconSpec>`；Named/Path/Url；Path 经 CompositeAssets 透明支持嵌入资源 | [09-icon-handling.md](09-icon-handling.md) |
@@ -72,3 +73,5 @@ when_to_apply: 在 RML 框架内新增组件、修改组件属性、调整数据
 - `horizontal={true}`（不提供 horizontal，默认横向）
 - `<TabBar on_click={...}>`（应为 `on-click`）
 - `onclick={...}`（应为 `on-click`）
+- `<KeyBinding><KeyBinding><Input/></KeyBinding>` 多层包裹（应为 `<Input><KeyBinding/></Input>`）
+- `r:if` / `r:model` / `r:each`（RML 无 `r:` 前缀，用 `if` / `value={}` / `each`）

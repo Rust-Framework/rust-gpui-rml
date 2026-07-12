@@ -36,8 +36,8 @@ impl Render for LoginView {
 | ----------------- | --------------------- |
 | 生成的代码缺少某元素        | 模板语法错误，元素被静默忽略        |
 | 绑定路径不对            | ViewModel 字段名拼写错误     |
-| 事件未绑定             | `on:click` 写成 `on-click` |
-| `r:if` 不生效        | 条件表达式返回非 bool         |
+| 事件未绑定             | 事件名须为 kebab-case：`on-click={fn}`，勿写 `onclick` |
+| `if` 不生效        | 条件表达式返回非 bool         |
 
 ## 10.2.2 日志：追踪绑定与命令
 
@@ -165,10 +165,10 @@ pub fn debug_snapshot(&self, cx: &mut ViewContext<Self>) {
 
 ### 事件不触发
 
-1. 检查事件名拼写：`on:click` 而非 `on-click`（两者都支持，但混用易错）
+1. 检查事件名拼写：统一使用 `on-click={fn}`（kebab-case + 花括号绑定）
 2. 检查命令方法是否有 `#[command]` 宏
 3. 检查命令签名是否匹配事件载荷
-4. 检查元素是否被 `r:if="false"` 隐藏
+4. 检查元素是否被 `if={false}` 隐藏
 
 ### 绑定值不对
 
@@ -180,7 +180,7 @@ pub fn debug_snapshot(&self, cx: &mut ViewContext<Self>) {
 ### 性能卡顿
 
 1. `RML_TRACE_BINDING=1` 看绑定重算频率
-2. 检查 `r:each` 是否有 `r:key`
+2. 检查 `each` 是否设置了 `key={item.id}`
 3. 检查循环中是否 notify
 4. 检查大列表是否用了虚拟化
 

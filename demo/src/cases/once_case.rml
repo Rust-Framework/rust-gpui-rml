@@ -5,20 +5,23 @@
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
-            <Card title="实时 vs 一次性">
+            <div class="demo-section">
+                <h3>实时 vs 一次性</h3>
                 <p>counter（实时）：{counter}</p>
                 <div display="flex" flex-direction="row" gap="16px">
                     <Button label="counter + 1" on-click={on_increment} />
                 </div>
                 <div display="flex" flex-direction="column" gap="8px">
-                    <Card title="实时区域（无 once）">
+                    <div class="demo-section">
+                <h3>实时区域（无 once）</h3>
                         <p>每次 render 重新求值：counter = {counter}</p>
-                    </Card>
-                    <Card title="快照区域（once）">
+                    </div>
+                    <div class="demo-section">
+                <h3>快照区域（once）</h3>
                         <p>首次渲染后冻结：counter = {once_counter}</p>
-                    </Card>
+                    </div>
                 </div>
-            </Card>
+            </div>
         </template>
 
         <template slot="api">

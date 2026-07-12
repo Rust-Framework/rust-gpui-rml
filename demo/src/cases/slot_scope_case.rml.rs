@@ -33,14 +33,14 @@ impl ILifecycle for SlotScopeCase {
     fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         let (cols, rows) = build_api_table(&[
-            ("scope={name}", "声明", "<template slot=\"x\" scope={name}> 接收 &dyn ISlotScope"),
-            ("panel.slot_name()", "查询", "返回当前插槽名（\"left\"/\"right\"/\"bottom\"）"),
-            ("panel.current_size()", "查询", "返回当前尺寸（left/right 为宽，bottom 为高）"),
-            ("panel.container_size()", "查询", "返回容器总尺寸（用于 maximize 计算）"),
-            ("panel.has_resizable()", "查询", "是否支持 resizable 操控"),
-            ("panel.maximize(window, cx)", "操作", "最大化此面板（记录原尺寸供 restore 还原）"),
-            ("panel.restore(window, cx)", "操作", "还原到 maximize 之前的尺寸"),
-            ("panel.close(window, cx)", "操作", "关闭/折叠此面板（尺寸调为 0 或最小阈值）"),
+            ("scope={name}", "指令", "插槽作用域变量，如 <template slot=\"x\" scope={panel}>"),
+            ("panel.slot_name()", "查询", "返回当前插槽名（如 left / right / bottom）"),
+            ("panel.current_size()", "查询", "返回当前尺寸"),
+            ("panel.container_size()", "查询", "返回容器总尺寸"),
+            ("panel.has_resizable()", "查询", "是否支持拖拽调整大小"),
+            ("panel.maximize()", "操作", "最大化此面板"),
+            ("panel.restore()", "操作", "还原面板尺寸"),
+            ("panel.close()", "操作", "关闭/折叠此面板"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

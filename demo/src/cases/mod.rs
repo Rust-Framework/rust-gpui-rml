@@ -226,3 +226,5 @@ pub mod sidebar_case;
 pub mod skeleton_case;
 #[path = "breadcrumb_case.rml.rs"]
 pub mod breadcrumb_case;
+
+pub mod edna;

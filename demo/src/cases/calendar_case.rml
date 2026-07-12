@@ -1,13 +1,13 @@
 <component>
     <CaseDocPage
         title={t("case.calendar.title")}
-        description="Calendar 是 RML 的日历选择器组件，标签为 PascalCase Calendar 或小写 calendar。通过 ref 指令引用 CalendarState，Calendar::new(&state) 创建视图。支持 size 尺寸属性。on-select 事件接收 Date 载荷。"
+        description="Calendar 日历选择器，支持 size 尺寸属性。通过 ref 绑定到 ViewModel 同名字段，on-select 事件在选择日期时触发。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
             <div class="demo-section">
-                <h3>1. 基础用法 + on_select 事件</h3>
-                <p>Calendar 通过 ref 指令绑定到 ElementRef CalendarState 字段。选择日期后触发 CalendarEvent::Selected，参数为 Date。</p>
+                <h3>1. 基础用法 + on-select 事件</h3>
+                <p>Calendar 通过 ref 绑定到 ViewModel 同名字段。选择日期后触发 on-select 事件。</p>
                 <p>选中日期：{selected_date}</p>
                 <Calendar ref="basic_calendar" on-select={on_date_select} />
             </div>

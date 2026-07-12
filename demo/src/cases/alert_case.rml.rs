@@ -37,16 +37,16 @@ impl ILifecycle for AlertCase {
         self.is_visible = true;
 
         let (cols, rows) = build_api_table(&[
-            ("info / success / warning / error", "布尔标志", "4 种 variant 关联函数（构造器选择 Alert::info(id, msg) 等）"),
-            ("variant", "default/info/success/warning/error", "variant 属性（builder 方法 .with_variant(AlertVariant::Info)）"),
-            ("message", "String / 绑定", "提示内容（构造器参数，优先级：静态属性 > 绑定 > 文本子节点）"),
-            ("title", "String", "提示标题"),
-            ("banner", "布尔标志", "切换为顶部横幅模式（无边框，撑满宽度）"),
-            ("visible", "bool / 绑定", "是否可见"),
-            ("icon", "IconName 枚举变体名", "自定义图标（如 icon=\"Bell\"）"),
-            ("on-close", "事件", "关闭按钮点击回调（ClickEvent）"),
-            ("size", "xsmall/small/medium/large", "尺寸（Sizable trait）"),
-            ("if", "指令", "条件渲染指令（if={expr}，false 时元素不渲染）"),
+            ("info / success / warning / error", "bool", "4 种样式变体，如 info=\"\" 或 success=\"\""),
+            ("variant", "string", "样式变体：default | info | success | warning | error"),
+            ("message", "string / binding", "提示内容，如 message=\"操作成功\" 或 message={msg}"),
+            ("title", "string / binding", "提示标题"),
+            ("banner", "bool", "顶部横幅模式（无边框，撑满宽度）"),
+            ("visible", "bool / binding", "是否可见"),
+            ("icon", "string", "自定义图标，如 icon=\"Bell\""),
+            ("on-close", "event", "点击关闭按钮时回调"),
+            ("size", "string", "尺寸：xsmall | small | medium | large"),
+            ("if", "指令", "条件渲染，如 if={is_visible}"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

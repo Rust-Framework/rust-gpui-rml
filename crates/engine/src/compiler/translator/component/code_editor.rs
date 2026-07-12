@@ -102,7 +102,12 @@ impl IRmlTranslator for CodeEditorTranslator {
             }
         }
 
-        Ok((code, false))
+        Ok((
+            crate::compiler::components::key_binding::apply_key_bindings_to_host(
+                elem, code, ctx, id_counter, loop_vars, parents,
+            )?,
+            false,
+        ))
     }
 
     fn to_rml(&self, elem: &Element, ctx: &PrinterCtx) -> Result<String, PrintError> {

@@ -49,11 +49,11 @@ impl ILifecycle for ColorPickerCase {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
 
         let (cols, rows) = build_api_table(&[
-            ("ref", "字符串（指令）", "元素引用名，绑定到 ElementRef<ColorPickerState> 字段"),
-            ("label", "字符串", "标签文本（走通用 static setter）"),
-            ("icon", "IconName", "图标名称（如 icon=\"Palette\"）"),
-            ("size", "xsmall/small/medium/large", "尺寸（Sizable trait 通用属性）"),
-            ("on_change", "事件", "颜色变化回调（参数：Option<Hsla>；通过 cx.subscribe 订阅 ColorPickerEvent::Change）"),
+            ("ref", "string", "元素引用名，绑定到 ViewModel 同名字段，如 ref=\"basic_picker\""),
+            ("label", "string / binding", "标签文本，如 label=\"主题色\""),
+            ("icon", "string", "图标名称，如 icon=\"Palette\""),
+            ("size", "string", "尺寸：xsmall | small | medium | large"),
+            ("on-change", "event", "颜色变化时回调，参数为所选颜色（未选时为 null）"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

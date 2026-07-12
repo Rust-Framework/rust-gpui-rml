@@ -1,42 +1,48 @@
 <component>
     <CaseDocPage
         title={t("case.otp_input.title")}
-        description="OtpInput 是 RML 的 OTP 验证码输入组件，标签为 PascalCase OtpInput 或 kebab-case otp-input。通过 ref 指令引用 OtpState，OtpInput::new(&state) 创建视图。length/masked/default-value 为构造参数，直接声明式设置。on-change/on-focus/on-blur 事件通过 InputEvent 触发。"
+        description="OtpInput 验证码输入组件，支持 length、groups、masked、default-value、size、disabled 等属性。通过 ref 绑定到 ViewModel 同名字段，on-change/on-focus/on-blur 事件在输入变化或焦点切换时触发。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
-            <Card title="基础用法">
+            <div class="demo-section">
+                <h3>基础用法</h3>
                 <p>6 位 OTP 输入，on-change 绑定 on_otp_change：</p>
                 <OtpInput ref="otp_input" length="6" on-change={on_otp_change} />
                 <p>当前值：{otp_value}</p>
-            </Card>
+            </div>
 
-            <Card title="分组输入">
+            <div class="demo-section">
+                <h3>分组输入</h3>
                 <p>groups="2" 将 6 位分为 2 组（组间间隔更大）：</p>
                 <OtpInput length="6" groups="2" />
-            </Card>
+            </div>
 
-            <Card title="掩码显示">
+            <div class="demo-section">
+                <h3>掩码显示</h3>
                 <p>masked 属性启用掩码（密码样式）：</p>
                 <OtpInput length="6" masked="" />
-            </Card>
+            </div>
 
-            <Card title="默认值">
+            <div class="demo-section">
+                <h3>默认值</h3>
                 <p>default-value 设置初始值：</p>
                 <OtpInput length="6" default-value="123456" />
-            </Card>
+            </div>
 
-            <Card title="4 位 OTP">
+            <div class="demo-section">
+                <h3>4 位 OTP</h3>
                 <p>length="4" 设置 4 位验证码：</p>
                 <OtpInput length="4" groups="2" />
-            </Card>
+            </div>
 
-            <Card title="尺寸变体">
+            <div class="demo-section">
+                <h3>尺寸变体</h3>
                 <p>size="small"：</p>
                 <OtpInput length="6" size="small" />
                 <p>size="large"：</p>
                 <OtpInput length="6" size="large" />
-            </Card>
+            </div>
         </template>
 
         <template slot="api">

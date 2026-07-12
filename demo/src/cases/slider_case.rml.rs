@@ -46,13 +46,13 @@ impl ILifecycle for SliderCase {
         self.range_default = (20.0, 80.0);
 
         let (cols, rows) = build_api_table(&[
-            ("ref", "字符串", "SliderState 元素引用名（配合 ElementRef<SliderState> 字段）"),
-            ("min", "f32（Static）", "最小值（如 min=\"0\"）"),
-            ("max", "f32（Static）", "最大值（如 max=\"100\"）"),
-            ("step", "f32（Static）", "步长（如 step=\"1\"）"),
-            ("default-value", "f32 或 (f32, f32) 绑定", "初始值：Static 单值（default-value=\"50\"）或 Bind 元组（default-value={range_default}）"),
-            ("disabled", "布尔/绑定", "禁用滑块交互"),
-            ("on-change", "事件", "值变化回调（参数：SliderValue；通过 cx.subscribe 订阅 SliderEvent::Change）"),
+            ("ref", "string", "元素引用名，绑定到 ViewModel 同名字段，如 ref=\"slider_state\""),
+            ("min", "number", "最小值，如 min=\"0\""),
+            ("max", "number", "最大值，如 max=\"100\""),
+            ("step", "number", "步长，如 step=\"1\""),
+            ("default-value", "number / binding", "初始值；单值如 default-value=\"50\"，范围模式绑定元组如 default-value={range_default}"),
+            ("disabled", "bool / binding", "禁用滑块交互"),
+            ("on-change", "event", "值变化时回调"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

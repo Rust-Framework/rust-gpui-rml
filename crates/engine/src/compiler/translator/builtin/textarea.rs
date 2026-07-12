@@ -45,9 +45,21 @@ impl IRmlTranslator for TextAreaTranslator {
         }) {
             let (field, _) = extract_field_converter(&expr);
             let code = gen_model_input(elem, ctx, id_counter, field, true, parents)?;
-            return Ok((code, false));
+            return Ok((
+                crate::compiler::components::key_binding::apply_key_bindings_to_host(
+                    elem, code, ctx, id_counter, loop_vars, parents,
+                )?,
+                false,
+            ));
         }
-        BuiltinTranslator { meta: META }.to_rust(elem, ctx, id_counter, loop_vars, parents)
+        let (code, is_iter) =
+            BuiltinTranslator { meta: META }.to_rust(elem, ctx, id_counter, loop_vars, parents)?;
+        Ok((
+            crate::compiler::components::key_binding::apply_key_bindings_to_host(
+                elem, code, ctx, id_counter, loop_vars, parents,
+            )?,
+            is_iter,
+        ))
     }
 
     fn to_rml(

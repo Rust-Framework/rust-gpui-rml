@@ -91,8 +91,8 @@ impl ILifecycle for BreadcrumbCase {
         ];
 
         let (cols, rows) = build_api_table(&[
-            ("items", "绑定 (Vec<BreadcrumbItem>)", "面包屑项列表，每项含 label/icon/siblings/selected-index"),
-            ("on-select", "event (usize, usize)", "同级选择回调，参数为 (level, index)，level 为层级，index 为同级元素索引"),
+            ("items", "binding", "面包屑项列表，如 items={breadcrumb_items}"),
+            ("on-select", "event", "同级选择时回调，参数为 (层级, 索引)"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.badge.title")}
-        description="Badge 是 RML 的徽标组件，标签为 PascalCase Badge。无 ElementId 构造，容器模式，子节点为被徽标标记的元素。支持三种 variant：Number（默认，显示计数）、Dot（小红点）、Icon（图标徽标）。"
+        description="Badge 是 RML 的徽标组件，包裹子节点显示计数、小红点或图标徽标。支持 count/max、dot、icon 三种展示模式。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">

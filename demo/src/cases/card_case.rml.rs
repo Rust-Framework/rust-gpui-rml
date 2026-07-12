@@ -39,13 +39,13 @@ impl ILifecycle for CardCase {
         self.card_body = "这是通过 value 双向绑定控制的卡片内容。".into();
         self.hoverable = true;
         let (cols, rows) = build_api_table(&[
-            ("title", "字符串", "卡片标题"),
-            ("extra", "元素", "标题栏右侧扩展"),
-            ("cover", "元素", "封面图"),
-            ("footer", "元素", "底部区域"),
-            ("bordered", "布尔", "显示边框"),
-            ("borderless", "布尔标志", "无边框"),
-            ("hoverable", "布尔标志", "悬浮效果"),
+            ("title", "string / binding", "卡片标题"),
+            ("extra", "slot", "标题栏右侧扩展内容"),
+            ("cover", "slot", "封面图区域"),
+            ("footer", "slot", "底部区域"),
+            ("bordered", "bool", "显示边框"),
+            ("borderless", "bool", "无边框样式"),
+            ("hoverable", "bool", "悬浮高亮效果"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

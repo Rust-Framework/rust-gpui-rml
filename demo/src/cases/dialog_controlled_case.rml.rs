@@ -44,8 +44,8 @@ impl ILifecycle for DialogControlledCase {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
 
         let (cols, rows) = build_api_table(&[
-            ("open", "bind: bool", "受控开关字段。true 时渲染对话框，false 时渲染空元素。仅支持简单字段引用。"),
-            ("on-close", "event", "关闭回调，与 open 自动回写合并执行：先回写 field=false，再调用用户 handler"),
+            ("open", "bool / binding", "受控开关，如 open={show_dialog}；true 显示对话框，false 隐藏"),
+            ("on-close", "event", "关闭时回调；框架自动将 open 回写为 false，再执行用户回调"),
             ("title", "string", "对话框标题文本"),
             ("width", "长度", "对话框宽度，支持 px/裸数字，如 500px / 600"),
             ("overlay", "bool", "是否显示背景遮罩，默认 true"),

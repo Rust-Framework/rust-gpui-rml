@@ -5,7 +5,8 @@
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
-            <Card title="演示效果">
+            <div class="demo-section">
+                <h3>演示效果</h3>
                 <div class="demo-section">
                     <h3>静态翻译</h3>
                     <p>当前语言文案（切换语言后此处自动更新）：</p>
@@ -27,7 +28,7 @@
                     <p>点击按钮在 dark/light 间切换，观察整体外观变化：</p>
                     <Button label={t("menu.theme_toggle")} on-click={on_toggle_theme} />
                 </div>
-            </Card>
+            </div>
         </template>
 
         <template slot="api">

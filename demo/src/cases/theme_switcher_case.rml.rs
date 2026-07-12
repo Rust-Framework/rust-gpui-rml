@@ -36,10 +36,8 @@ impl ILifecycle for ThemeSwitcherCase {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         self.current_theme = cx.current_theme();
         let (cols, rows) = build_api_table(&[
-            ("value", "bind: SharedString", "绑定当前主题名（如 light / dark）。render 时自动调用 cx.set_theme(value)"),
-            ("ThemeSwitcher", "组件", "声明式主题切换器，RenderOnce 无 ElementId，不渲染可见内容"),
-            ("cx.set_theme", "Rust API", "底层 API，切换全局主题并刷新窗口"),
-            ("cx.current_theme", "Rust API", "获取当前主题名（SharedString）"),
+            ("value", "string / binding", "当前主题名，如 value={theme}；支持 light / dark 等"),
+            ("ThemeSwitcher", "组件", "声明式主题切换器，绑定 value 后自动切换全局主题"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

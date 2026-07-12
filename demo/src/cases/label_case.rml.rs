@@ -35,9 +35,9 @@ impl ILifecycle for LabelCase {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         self.text = "用户名".into();
         let (cols, rows) = build_api_table(&[
-            ("label", "字符串", "标签文本（构造器参数）"),
-            ("文本子节点", "字符串", "通过子节点设置标签内容"),
-            ("text_color / text_size", "样式属性", "来自 Styled trait 的文本样式"),
+            ("label", "string / binding", "标签文本，如 label=\"用户名\""),
+            ("（文本子节点）", "slot", "通过子节点设置标签内容"),
+            ("text-color / text-size", "string", "文本样式，如 text-color=\"var(--muted)\" text-size=\"0.875rem\""),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

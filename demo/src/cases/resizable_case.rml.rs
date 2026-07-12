@@ -36,11 +36,11 @@ impl ILifecycle for ResizableCase {
         let (cols, rows) = build_api_table(&[
             ("direction", "horizontal/vertical", "方向（默认 horizontal，选择 h/v_resizable 构造器）"),
             ("size", "px/绑定", "组的交叉轴尺寸（horizontal 为高度，vertical 为宽度）"),
-            ("on_resize", "事件", "调整大小回调，签名 Fn(&Entity<ResizableState>, &mut Window, &mut App)"),
-            ("resizable-panel", "子节点", "面板子节点，实现 Styled + ParentElement"),
-            ("panel.size", "px/绑定", "面板初始尺寸（沿主轴方向）"),
-            ("panel.size_range", "px..px", "面板尺寸范围限制（min..max）"),
-            ("panel.visible", "bool", "面板可见性（默认 true）"),
+            ("on-resize", "event", "面板尺寸调整时回调"),
+            ("resizable-panel", "slot", "面板子节点"),
+            ("size", "string / binding", "面板初始尺寸，如 size=\"400px\""),
+            ("size-range", "string", "面板尺寸范围，如 size-range=\"200px..800px\""),
+            ("visible", "bool", "面板可见性（默认 true）"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

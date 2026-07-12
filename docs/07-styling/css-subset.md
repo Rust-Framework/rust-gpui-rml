@@ -71,6 +71,9 @@
 | `opacity`         | 透明度          | `opacity: 0.5;`                 |
 | `box-shadow`      | 阴影           | `box-shadow: 0 2px 4px rgba(0,0,0,0.1);` |
 | `overflow`        | 溢出处理         | `overflow: hidden;`             |
+
+RML 元素还可直接写布尔属性 `overflow-y-auto=""`、`overflow-x-auto=""` 等（见 [layout.md](./layout.md#rml-布尔属性推荐)）。
+
 | `cursor`          | 鼠标指针         | `cursor: pointer;`              |
 | `visibility`      | 可见性          | `visibility: hidden;`           |
 

@@ -2,11 +2,17 @@
 //!
 //! RML `<KeyBinding>` 编译为 `KeyBinding`（声明式键盘快捷键容器）。
 //!
-//! ## 设计原因
+//! ## 唯一写法：焦点宿主子节点
 //!
-//! GPUI 的 `on_key_down` 在 `InteractiveElement` trait 上，通过事件冒泡接收子元素的键盘事件。
-//! `KeyBinding` 封装此模式为声明式容器：解析 `key` 属性为 `Keystroke`，在 keydown 时匹配，
-//! 命中后触发 `on_press` 回调。
+//! ```rml
+//! <Input ref="demo_input" placeholder="...">
+//!   <KeyBinding key="Ctrl+S" on-press={on_save} />
+//!   <KeyBinding key="Escape" on-press={on_clear} />
+//! </Input>
+//! ```
+//!
+//! `KeyBinding` 作为 Input 等的声明式子节点，由宿主 translator 统一包裹生成。
+//! 不支持 `<KeyBinding>…子元素…</KeyBinding>` 外层包裹写法。
 //!
 //! ## 属性
 //!
@@ -40,7 +46,14 @@ impl IRmlTranslator for KeyBindingTranslator {
         loop_vars: &[String],
         parents: &[ParentInfo],
     ) -> Result<(String, bool), CodegenError> {
-        let code = crate::compiler::components::key_binding::gen_key_binding(
+        if !elem.children.is_empty() {
+            return Err(CodegenError {
+                message: "<KeyBinding> 不支持包裹子元素；请将快捷键声明为焦点宿主（Input、CodeEditor、NumberInput、textarea 等）的子节点，例如 <Input><KeyBinding key=\"Ctrl+S\" on-press={on_save} /></Input>"
+                    .into(),
+                span: Some(elem.span),
+            });
+        }
+        let code = crate::compiler::components::key_binding::gen_key_binding_shell(
             elem, ctx, id_counter, loop_vars, parents,
         )?;
         Ok((code, false))

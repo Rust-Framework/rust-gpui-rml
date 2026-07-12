@@ -261,35 +261,30 @@ impl TodoListViewModel {
 <div class="todo-app">
   <header>
     <h1>待办</h1>
-    <p r:if="is_loading">加载中…</p>
-    <p r:if="error" class="error">{error}</p>
+    <p if={is_loading}>加载中…</p>
+    <p if={error} class="error">{error}</p>
   </header>
 
-  <form on:submit="add_todo" class="add-form">
-    <input r:model="new_todo_title" placeholder="添加待办…" />
-    <button type="submit" r:attr:disabled="!can_add">添加</button>
-  </form>
+  <div class="add-form">
+    <input value={new_todo_title} placeholder="添加待办…" />
+    <Button label="添加" on-click={add_todo} disabled={!can_add} />
+  </div>
 
-  <div class="filters">
-    <button r:each="filters" r:key="{$index}"
-            r:class:active="filter == $item"
-            on:click="set_filter"
-            data-value="{$item}">
-      {label}
-    </button>
+  <div class="filters button-row">
+    <Button each={filter in filters} key={filter.id}
+            on-click={set_filter}
+            label={filter.label} />
   </div>
 
   <ul class="todo-list">
-    <li r:each="visible_todos" r:key="id">
-      <TodoItem todo="{$item}" on:toggle="toggle" on:remove="remove" />
+    <li each={todo in visible_todos} key={todo.id}>
+      <TodoItem todo={todo} on-toggle={toggle} on-remove={remove} />
     </li>
   </ul>
 
-  <footer r:if="!todos.is_empty()">
+  <footer if={!todos.is_empty()}>
     <span>{remaining_count} 项剩余</span>
-    <button r:if="remaining_count < todos.len()" on:click="clear_completed">
-      清除已完成
-    </button>
+    <Button if={remaining_count < todos.len()} label="清除已完成" on-click={clear_completed} />
   </footer>
 </div>
 ```
@@ -311,7 +306,7 @@ pub struct TodoItem {
 <div class="todo-item" r:class:completed="todo.completed">
   <input type="checkbox" r:checked="todo.completed" on:change="on_toggle" />
   <span class="title">{todo.title}</span>
-  <button class="remove" on:click="on_remove">✕</button>
+  <Button class="remove" label="✕" on-click={on_remove} />
 </div>
 ```
 

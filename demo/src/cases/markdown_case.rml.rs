@@ -34,7 +34,7 @@ impl ILifecycle for MarkdownCase {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
 
         let (cols, rows) = build_api_table(&[
-            ("content", "static / bind", "Markdown 源文本，如 content=\"# Hello\" 或 content={field}"),
+            ("content", "string / binding", "Markdown 源文本，如 content=\"# Hello\" 或 content={field}"),
             ("padding", "style", "内边距，如 padding=\"16px\""),
             ("background", "style", "背景色，如 background=\"var(--surface-variant)\""),
             ("border-radius", "style", "圆角，如 border-radius=\"6px\""),

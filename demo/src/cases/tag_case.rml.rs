@@ -37,11 +37,16 @@ impl ILifecycle for TagCase {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         self.tag_text = "RML".into();
         let (cols, rows) = build_api_table(&[
-            ("primary / secondary / danger / success / warning / info", "布尔标志", "6 种 variant（构造器选择）"),
-            ("outline", "布尔标志", "描边样式（透明背景 + 彩色边框/文字）"),
-            ("size", "xsmall/small/medium/large", "尺寸（仅 Small/Medium 视觉区分）"),
-            ("子节点", "文本/元素", "标签内容"),
-            ("on-click", "事件", "点击回调（参数：&ClickEvent）"),
+            ("primary", "bool", "主色标签"),
+            ("secondary", "bool", "次要色标签"),
+            ("danger", "bool", "危险/错误色标签"),
+            ("success", "bool", "成功色标签"),
+            ("warning", "bool", "警告色标签"),
+            ("info", "bool", "信息色标签"),
+            ("outline", "bool", "描边样式（透明背景 + 彩色边框/文字）"),
+            ("size", "string", "尺寸：xsmall | small | medium | large"),
+            ("（子节点）", "slot", "标签文本或内容"),
+            ("on-click", "event", "点击时回调"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

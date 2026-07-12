@@ -10,10 +10,18 @@ use gpui::{App, AppContext, BorrowAppContext, Context, Global, SharedString};
 
 /// 线程内同步翻译表快照，供 `#[computed]` 等无 `App` 上下文场景使用
 static ACTIVE_CATALOG: RwLock<Option<HashMap<String, String>>> = RwLock::new(None);
+/// 线程内同步 locale 快照，供 `#[computed]` / `t_static` 同类场景读取当前语言
+static ACTIVE_LOCALE: RwLock<String> = RwLock::new(String::new());
 
 fn sync_active_catalog(catalog: &HashMap<String, String>) {
     if let Ok(mut guard) = ACTIVE_CATALOG.write() {
         *guard = Some(catalog.clone());
+    }
+}
+
+fn sync_active_locale(locale: &str) {
+    if let Ok(mut guard) = ACTIVE_LOCALE.write() {
+        *guard = locale.to_string();
     }
 }
 
@@ -25,6 +33,15 @@ pub fn t_static(key: &str) -> SharedString {
         .and_then(|guard| guard.as_ref()?.get(key).cloned())
         .map(|s| SharedString::from(s.as_str()))
         .unwrap_or_else(|| key.into())
+}
+
+/// 无 `App` 上下文时取当前 locale（依赖 `sync_active_locale` 维护的快照）
+pub fn current_locale_static() -> SharedString {
+    ACTIVE_LOCALE
+        .read()
+        .ok()
+        .map(|guard| SharedString::from(guard.as_str()))
+        .unwrap_or_default()
 }
 
 /// 默认 i18n 资源目录（相对工作目录）
@@ -79,6 +96,7 @@ impl I18nState {
             self.locale = locale;
             self.catalog = catalog.clone();
             sync_active_catalog(&self.catalog);
+            sync_active_locale(&self.locale);
         }
     }
 
@@ -88,6 +106,7 @@ impl I18nState {
             self.locale = locale;
             self.catalog = catalog.clone();
             sync_active_catalog(&self.catalog);
+            sync_active_locale(&self.locale);
             true
         } else {
             false

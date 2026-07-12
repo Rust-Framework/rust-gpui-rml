@@ -43,8 +43,8 @@ impl ILifecycle for AvatarCase {
         let (cols, rows) = build_api_table(&[
             ("src", "URL 字符串/绑定", "图片地址（最高优先级，加载失败回退到 name/placeholder）"),
             ("name", "字符串/绑定", "取首字母显示（如 Jason Lee → JL）"),
-            ("placeholder", "IconName 枚举名", "占位图标（无 src/name 时使用）"),
-            ("size", "xsmall/small/medium/large", "尺寸（Sizable trait）"),
+            ("placeholder", "string", "占位图标名称，如 placeholder=\"User\""),
+            ("size", "string", "尺寸：xsmall | small | medium | large"),
             ("on-click", "事件", "点击回调"),
         ]);
         self.avatar_api_columns = cols;

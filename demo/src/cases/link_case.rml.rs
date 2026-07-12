@@ -37,10 +37,10 @@ impl ILifecycle for LinkCase {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         self.dynamic_url = "https://github.com".into();
         let (cols, rows) = build_api_table(&[
-            ("href", "String / 绑定", "目标 URL（点击调用系统打开）"),
-            ("on-click", "事件", "点击回调（ClickEvent）"),
-            ("disabled", "bool / 绑定", "禁用链接交互"),
-            ("子节点", "文本/元素", "链接内容（ParentElement）"),
+            ("href", "string / binding", "目标 URL，如 href=\"https://example.com\""),
+            ("on-click", "event", "点击时回调"),
+            ("disabled", "bool / binding", "禁用链接交互"),
+            ("（子节点）", "slot", "链接文本或内容"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

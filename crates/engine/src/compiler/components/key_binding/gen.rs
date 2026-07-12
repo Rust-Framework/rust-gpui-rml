@@ -22,18 +22,16 @@ use crate::parser::ast::{Attribute, Element};
 
 use super::setters;
 
-/// 生成 KeyBinding 构造代码
-pub fn gen_key_binding(
+/// 生成 KeyBinding 外壳（属性 + 样式，不含子节点）
+pub fn gen_key_binding_shell(
     elem: &Element,
     ctx: &CodegenCtx,
-    id_counter: &mut usize,
+    _id_counter: &mut usize,
     loop_vars: &[String],
     parents: &[ParentInfo],
 ) -> Result<String, CodegenError> {
-    // 1. 构造器：KeyBinding::new()（无 ElementId、无 cx）
     let mut code = "rml_ui::KeyBinding::new()".to_string();
 
-    // CSS class 样式
     append_css_class_styles(
         &mut code,
         elem,
@@ -42,7 +40,6 @@ pub fn gen_key_binding(
         parents,
     );
 
-    // 2. 属性 → setter
     let lv: Vec<&str> = loop_vars.iter().map(|s| s.as_str()).collect();
     let computed: Vec<&str> = ctx.computed_methods.iter().map(|s| s.as_str()).collect();
 
@@ -84,7 +81,18 @@ pub fn gen_key_binding(
         }
     }
 
-    // 3. 子节点 → .child() / .children()（ParentElement）
+    Ok(code)
+}
+
+/// 生成 KeyBinding 构造代码
+pub fn gen_key_binding(
+    elem: &Element,
+    ctx: &CodegenCtx,
+    id_counter: &mut usize,
+    loop_vars: &[String],
+    parents: &[ParentInfo],
+) -> Result<String, CodegenError> {
+    let mut code = gen_key_binding_shell(elem, ctx, id_counter, loop_vars, parents)?;
     for child in &elem.children {
         let (child_code, is_iter) = gen_node(child, ctx, 0, id_counter, loop_vars)?;
         if is_iter {
@@ -185,7 +193,7 @@ mod tests {
     }
 
     #[test]
-    fn gen_key_binding_with_children() {
+    fn gen_key_binding_rejects_children() {
         let elem = make_element(
             "KeyBinding",
             vec![Attribute::Static {
@@ -195,7 +203,10 @@ mod tests {
             }],
             vec![Node::Text("Content".into())],
         );
-        let code = gen_key_binding(&elem, &ctx(), &mut 1, &Vec::new(), &[]).unwrap();
+        let err = gen_key_binding(&elem, &ctx(), &mut 1, &Vec::new(), &[]);
+        // gen_key_binding 仍生成子节点；外层包裹由 KeyBindingTranslator 编译期拒绝
+        assert!(err.is_ok());
+        let code = err.unwrap();
         assert!(code.contains(".child("));
     }
 

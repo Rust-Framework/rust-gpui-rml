@@ -184,22 +184,16 @@ emitter.emit('data', { id: 1, name: 'RML' });
         });
 
         let (cols, rows) = build_api_table(&[
-            ("language", "静态字符串", "代码语言：rust/json/python/javascript/go/tsx/css/html/sql 等（默认 rml）"),
-            ("value", "绑定/静态", "代码内容（绑定 ViewModel 字段或静态字符串；slot 内不可用，需 ref + on_loaded 预创建）"),
-            ("ref", "字符串", "引用名，配合 on_loaded 中 __rml_state.get_or_init_ref 预创建 InputState"),
-            ("on-change", "事件", "内容变更回调（参数：&Entity<InputState>）"),
-            ("on-focus/on-blur", "事件", "焦点事件回调"),
-            ("bordered", "布尔", "外边框（默认 false）"),
-            ("focus-bordered", "布尔", "聚焦边框（默认 false）"),
-            ("context-menu", "方法名", "右键菜单构建方法"),
-            ("font-family/font-size", "样式", "默认 mono 字体 + 字号（可覆盖）"),
-            ("width/height", "样式", "默认 w_full + h(360px)（可覆盖）"),
-            ("语法高亮", "内置", "基于 tree-sitter，支持 30+ 语言（依赖 tree-sitter-languages feature）"),
-            ("代码折叠", "内置", "folding: true（默认启用）"),
-            ("行号", "内置", "line_number: true（默认启用）"),
-            ("缩进辅助", "内置", "indent_guides: true（默认启用）"),
-            ("自动缩进", "内置", "代码编辑器模式自动启用"),
-            ("搜索", "内置", "searchable: true（代码编辑器默认启用）"),
+            ("ref", "string", "元素引用名，绑定到 ViewModel 同名字段，如 ref=\"rust_editor\""),
+            ("language", "string", "语法高亮语言，如 language=\"rust\"、language=\"json\"（默认 rml）"),
+            ("value", "string / binding", "代码内容，如 value={code} 或静态字符串"),
+            ("bordered", "bool", "外边框（默认 false）"),
+            ("focus-bordered", "bool", "聚焦边框（默认 false）"),
+            ("context-menu", "string", "右键菜单构建方法名"),
+            ("on-change", "event", "内容变化时回调"),
+            ("on-focus", "event", "获得焦点时回调"),
+            ("on-blur", "event", "失去焦点时回调"),
+            ("class / height / width", "string", "样式属性，推荐 class=\"rml-code-editor\" height=\"320px\""),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

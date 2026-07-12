@@ -50,13 +50,13 @@ impl ILifecycle for DatePickerCase {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
 
         let (cols, rows) = build_api_table(&[
-            ("ref", "字符串（指令）", "元素引用名，绑定到 ElementRef<DatePickerState> 字段"),
-            ("placeholder", "字符串", "占位文本（走通用 static setter）"),
-            ("cleanable", "布尔属性", "启用清除按钮（默认 false）"),
-            ("appearance", "true/false", "是否显示边框背景（默认 true，设 false 移除）"),
-            ("number_of_months", "usize", "日历显示月份数（默认 2）"),
-            ("size", "xsmall/small/medium/large", "尺寸（Sizable trait 通用属性）"),
-            ("on_change", "事件", "日期变化回调（参数：Date；通过 cx.subscribe 订阅 DatePickerEvent::Change）"),
+            ("ref", "string", "元素引用名，绑定到 ViewModel 同名字段，如 ref=\"basic_picker\""),
+            ("placeholder", "string / binding", "占位文本，如 placeholder=\"选择日期\""),
+            ("cleanable", "bool", "启用清除按钮（默认 false）"),
+            ("appearance", "bool", "是否显示边框背景（默认 true，appearance=\"false\" 移除）"),
+            ("number-of-months", "number", "日历显示月份数（默认 2），如 number-of-months=\"2\""),
+            ("size", "string", "尺寸：xsmall | small | medium | large"),
+            ("on-change", "event", "日期变化时回调，参数为所选日期"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

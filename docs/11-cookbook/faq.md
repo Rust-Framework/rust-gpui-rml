@@ -41,7 +41,7 @@ RML 的核心价值在于文件级分离。虽然技术上可以用宏在 Rust �
 ### Q7：双向绑定和单向绑定怎么选？
 
 - 单向 `{value}`：ViewModel → View，只显示
-- 双向 `r:model="field"`：View ↔ ViewModel，用户可编辑（input、textarea、select）
+- 双向 `value={field}`：View ↔ ViewModel，用户可编辑（input、textarea、select）
 
 表单输入用双向，纯展示用单向。
 
@@ -154,7 +154,7 @@ pub fn on_unloaded(&mut self, _cx: &mut ViewContext<Self>) {
 
 ### Q20：列表滚动卡顿怎么办？
 
-1. 确认 `r:each` 有稳定的 `r:key`
+1. 确认 `each` 列表元素有稳定的 `key={item.id}`
 2. 列表项超过 1000 时用 `VirtualList`
 3. 检查列表项的 `#[computed]` 依赖是否过宽
 4. 用 `RML_TRACE_BINDING=1` 看绑定重算频率

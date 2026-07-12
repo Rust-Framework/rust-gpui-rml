@@ -55,6 +55,9 @@ pub fn component_static_setter(name: &str, value: &str, tag: &str) -> Option<Str
     }
     // 归一化样式属性：对所有扩展组件生效（gpui-component 实现 Styled trait）
     // 复用 css::mapper 单一映射源，避免双轨制
+    if let Some(s) = crate::compiler::codegen::style_attr::apply_overflow_flag_attr(name, value) {
+        return Some(s);
+    }
     if let Some(s) = crate::compiler::codegen::style_attr::apply_style_attr(name, value) {
         return Some(s);
     }

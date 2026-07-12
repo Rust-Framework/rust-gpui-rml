@@ -5,16 +5,18 @@
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
-            <Card title="基础用法">
+            <div class="demo-section">
+                <h3>基础用法</h3>
                 <p>包裹子元素作为状态栏内容。</p>
                 <div style="border: 1px solid var(--border); overflow: hidden; border-radius: 4px;">
                     <NativeStatusBar>
                         <span>就绪</span>
                     </NativeStatusBar>
                 </div>
-            </Card>
+            </div>
 
-            <Card title="动态状态(#[command] 事件)">
+            <div class="demo-section">
+                <h3>动态状态(#[command] 事件)</h3>
                 <p>点击按钮切换状态栏消息(演示 #[command] 事件处理):</p>
                 <div class="button-row">
                     <Button label="就绪" primary on-click={on_show_ready} />
@@ -27,7 +29,7 @@
                         <span>{status_text}</span>
                     </NativeStatusBar>
                 </div>
-            </Card>
+            </div>
         </template>
         <template slot="api">
             <h3>NativeStatusBar</h3>

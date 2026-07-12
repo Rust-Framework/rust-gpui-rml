@@ -461,6 +461,25 @@ space-evenly:   |  1   2   3  |
 }
 ```
 
+### RML 布尔属性（推荐）
+
+在 `.rml` 元素上可直接写 Tailwind 风格布尔标志（无需 `style`）：
+
+```html
+<div overflow-y-auto="" style="height: 200px;">
+    <p each={item in items}>{item}</p>
+</div>
+```
+
+| 属性 | 效果 |
+|------|------|
+| `overflow-y-auto` / `overflow-y-scroll` | 垂直滚动 |
+| `overflow-x-auto` / `overflow-x-scroll` | 水平滚动 |
+| `overflow-y-hidden` / `overflow-x-hidden` | 单轴隐藏 |
+| `overflow-hidden` | 双轴隐藏 |
+
+等价于 `overflow-y="auto"` 等归一化样式属性。案例见 `overflow_test_case`。
+
 ### 文本溢出
 
 ```css

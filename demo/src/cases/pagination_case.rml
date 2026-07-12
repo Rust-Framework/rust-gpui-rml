@@ -5,36 +5,41 @@
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
-            <Card title="基础用法">
+            <div class="demo-section">
+                <h3>基础用法</h3>
                 <p><code>current-page</code> 设置当前页（1-based），<code>total-pages</code> 设置总页数，<code>on-click</code> 处理页码切换：</p>
                 <Pagination current-page={current_page} total-pages={total_pages} on-click={on_page_change} />
                 <p>当前页：{current_page} / {total_pages}</p>
-            </Card>
+            </div>
 
-            <Card title="visible-pages 控制显示页码数">
+            <div class="demo-section">
+                <h3>visible-pages 控制显示页码数</h3>
                 <p><code>visible-pages</code> 设置最大可见页码数（默认 5）：</p>
                 <Pagination current-page={current_page} total-pages="20" visible-pages="7" on-click={on_page_change} />
                 <Pagination current-page={current_page} total-pages="20" visible-pages="10" on-click={on_page_change} />
-            </Card>
+            </div>
 
-            <Card title="compact 紧凑模式">
+            <div class="demo-section">
+                <h3>compact 紧凑模式</h3>
                 <p><code>compact=""</code> 仅显示前后箭头按钮：</p>
                 <Pagination current-page={current_page} total-pages={total_pages} compact="" on-click={on_page_change} />
-            </Card>
+            </div>
 
-            <Card title="静态属性">
+            <div class="demo-section">
+                <h3>静态属性</h3>
                 <p>使用静态数值属性（无绑定）：</p>
                 <Pagination current-page="3" total-pages="10" on-click={on_page_change} />
                 <p>注：静态属性的 Pagination 不会自动更新页码，需要绑定字段做状态管理。</p>
-            </Card>
+            </div>
 
-            <Card title="完整分页示例">
+            <div class="demo-section">
+                <h3>完整分页示例</h3>
                 <p>模拟分页场景（共 50 条数据，每页 5 条 = 10 页）：</p>
                 <div display="flex" flex-direction="column" gap="8px">
                     <p>第 {current_page} 页 / 共 10 页</p>
                     <Pagination current-page={current_page} total-pages="10" on-click={on_page_change} />
                 </div>
-            </Card>
+            </div>
         </template>
 
         <template slot="api">

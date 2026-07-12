@@ -35,8 +35,8 @@ impl ILifecycle for CollapsibleCase {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         self.is_open = true;
         let (cols, rows) = build_api_table(&[
-            ("open", "bool / 绑定", "展开/折叠状态（默认 false）"),
-            ("子节点", "元素", "容器内容（ParentElement）"),
+            ("open", "bool / binding", "展开/折叠状态（默认 false）"),
+            ("（子节点）", "slot", "折叠面板内容"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

@@ -5,7 +5,8 @@
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
-            <Card title="演示效果">
+            <div class="demo-section">
+                <h3>演示效果</h3>
                 <p>{editor_status}</p>
 
                 <div class="demo-section">
@@ -44,7 +45,7 @@
                         <menu-item label="Word Wrap" checked={word_wrap} on-click={on_toggle_wrap} />
                     </dropdown-menu>
                 </div>
-            </Card>
+            </div>
         </template>
 
         <template slot="api">

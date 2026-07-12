@@ -35,10 +35,10 @@ impl ILifecycle for GroupBoxCase {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         self.dynamic_title = "动态标题 1".into();
         let (cols, rows) = build_api_table(&[
-            ("title", "String / 绑定", "标题（impl IntoElement）"),
-            ("normal / fill / outline", "布尔标志", "3 种 variant（构造器选择）"),
-            ("variant", "normal/fill/outline", "variant 属性（builder 方法 .with_variant(...)）"),
-            ("子节点", "元素", "分组内容（ParentElement）"),
+            ("title", "string / binding", "分组标题"),
+            ("normal / fill / outline", "bool", "3 种样式变体，如 normal=\"\" 或 fill=\"\""),
+            ("variant", "string", "样式变体：normal | fill | outline"),
+            ("（子节点）", "slot", "分组内容"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

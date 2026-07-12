@@ -5,16 +5,18 @@
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
-            <Card title="基础用法">
+            <div class="demo-section">
+                <h3>基础用法</h3>
                 <p>包裹多个 <code>Avatar</code> 子节点，水平排列展示。</p>
                 <AvatarGroup>
                     <Avatar name="Alice" />
                     <Avatar name="Bob" />
                     <Avatar name="Charlie" />
                 </AvatarGroup>
-            </Card>
+            </div>
 
-            <Card title="数量限制 limit">
+            <div class="demo-section">
+                <h3>数量限制 limit</h3>
                 <p><code>limit="3"</code> 限制最大显示数量，超出部分隐藏。</p>
                 <AvatarGroup limit="3">
                     <Avatar name="Alice" />
@@ -23,9 +25,10 @@
                     <Avatar name="Dave" />
                     <Avatar name="Eve" />
                 </AvatarGroup>
-            </Card>
+            </div>
 
-            <Card title="溢出折叠 ellipsis">
+            <div class="demo-section">
+                <h3>溢出折叠 ellipsis</h3>
                 <p><code>ellipsis=""</code> 在超出 limit 时显示 <code>+N</code> 提示。</p>
                 <AvatarGroup limit="2" ellipsis="">
                     <Avatar name="Alice" />
@@ -33,9 +36,10 @@
                     <Avatar name="Charlie" />
                     <Avatar name="Dave" />
                 </AvatarGroup>
-            </Card>
+            </div>
 
-            <Card title="动态头像(if 条件渲染)">
+            <div class="demo-section">
+                <h3>动态头像(if 条件渲染)</h3>
                 <p>点击按钮增减头像数量，观察 AvatarGroup 实时变化（演示 if 条件渲染）：</p>
                 <p>当前头像数: {avatar_count}</p>
                 <div class="button-row">
@@ -49,7 +53,7 @@
                     <Avatar name="Dave" if={avatar_count >= 4} />
                     <Avatar name="Eve" if={avatar_count >= 5} />
                 </AvatarGroup>
-            </Card>
+            </div>
         </template>
 
         <template slot="api">

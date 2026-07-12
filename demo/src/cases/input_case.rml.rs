@@ -59,18 +59,18 @@ impl ILifecycle for InputCase {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
 
         let (cols, rows) = build_api_table(&[
-            ("ref", "字符串（指令）", "元素引用名，绑定到 ElementRef<InputState> 字段"),
-            ("placeholder", "字符串/绑定", "占位文本，直接通过 RML 属性设置（ref 和 value 路径均支持）"),
-            ("default-value", "字符串", "默认值，在 InputState 构造时注入 builder"),
-            ("masked", "布尔", "遮罩输入（密码模式），在 InputState 构造时注入 builder"),
-            ("disabled", "布尔/绑定", "禁用状态（Input 组件属性）"),
-            ("size", "xsmall/small/medium/large", "尺寸（Sizable trait 通用属性，绑定需返回 Size 枚举）"),
-            ("selected", "布尔/绑定", "选中态（Selectable trait）"),
-            ("on-change", "event (&Entity<InputState>)", "内容变化回调（通过 cx.subscribe 订阅 InputEvent::Change）"),
-            ("on-enter", "event", "回车按下回调（InputEvent::PressEnter）"),
-            ("on-focus", "event", "获得焦点回调（InputEvent::Focus）"),
-            ("on-blur", "event", "失去焦点回调（InputEvent::Blur）"),
-            ("value", "绑定属性", "双向绑定到 pub 字段（InputStateBridge，详见 two-way-case 演示）"),
+            ("ref", "string", "元素引用名，绑定到 ViewModel 同名字段，如 ref=\"basic_input\""),
+            ("value", "binding", "双向绑定到 ViewModel 字段，如 value={username}"),
+            ("placeholder", "string / binding", "占位文本，如 placeholder=\"用户名\""),
+            ("default-value", "string", "初始值，如 default-value=\"hello\""),
+            ("masked", "bool", "密码遮罩模式"),
+            ("disabled", "bool / binding", "禁用状态"),
+            ("size", "string", "尺寸：xsmall | small | medium | large"),
+            ("selected", "bool / binding", "选中态"),
+            ("on-change", "event", "内容变化时回调"),
+            ("on-enter", "event", "按回车时回调"),
+            ("on-focus", "event", "获得焦点时回调"),
+            ("on-blur", "event", "失去焦点时回调"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

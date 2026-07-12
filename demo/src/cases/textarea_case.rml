@@ -1,13 +1,13 @@
 <component>
     <CaseDocPage
         title={t("case.textarea.title")}
-        description="textarea 是 RML 的多行文本输入组件。通过 value=bind 自动双向绑定到 ViewModel 字段，框架自动启用 InputState 的 multi_line 模式，支持多行文本编辑、换行、自动高度调整。与 input 共用 InputState 双向同步机制，区别在于 textarea 创建时自动调用 .multi_line(true)。"
+        description="textarea 是 RML 的多行文本输入组件。通过 value 双向绑定到 ViewModel 字段，自动启用多行编辑模式，支持换行与自动高度调整。用法与 input 类似，详见 two-way-case 演示。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
             <div class="demo-section">
                 <h3>1. 基础多行文本</h3>
-                <p>textarea 通过 value=bind 绑定到 String 字段，自动启用多行模式。输入内容实时同步到 ViewModel。</p>
+                <p>通过 value 绑定到 ViewModel 字段，自动启用多行模式。输入内容实时同步。</p>
                 <textarea value={bio} placeholder="请输入个人简介..." />
                 <p>当前内容（{char_count} 字）：{bio}</p>
             </div>
@@ -21,7 +21,7 @@
 
             <div class="demo-section">
                 <h3>3. input 与 textarea 对比</h3>
-                <p>同样的 value=bind 绑定，input 为单行模式，textarea 为多行模式。框架自动区分。</p>
+                <p>同样的 value 绑定，input 为单行模式，textarea 为多行模式。</p>
                 <div display="flex" flex-direction="column" gap="8px">
                     <input value={single_line} placeholder="单行输入 (input)" />
                     <textarea value={multi_line} placeholder="多行输入 (textarea)" />
@@ -38,10 +38,8 @@
             </div>
             <div>
                 <h3>说明</h3>
-                <p>textarea 标签仅支持 value=bind 双向绑定路径，不支持 ref 指令。</p>
-                <p>value 属性仅支持简单字段引用（如 value=bio），不支持复杂表达式。</p>
-                <p>框架在创建 InputState 时自动调用 .multi_line(true)，启用多行编辑模式。</p>
-                <p>placeholder 属性作为静态字符串传入 InputState builder。</p>
+                <p>textarea 通过 value 双向绑定使用，不支持 ref 指令。</p>
+                <p>value 仅支持简单字段引用（如 value={bio}），不支持复杂表达式。</p>
             </div>
         </template>
     </CaseDocPage>

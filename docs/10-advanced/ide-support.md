@@ -37,9 +37,9 @@ code --install-extension rml.rml-vscode
 插件基于 TextMate 语法提供高亮，覆盖：
 
 - HTML 标签与属性
-- RML 指令（`r:if`、`r:each`、`r:model`…）
+- RML 指令（`if`、`each`、`show`、`ref`…）
 - 插值表达式 `{...}`
-- 事件绑定 `on:click`
+- 事件绑定 `on-click`
 - 注释 `<!-- -->`
 
 支持自定义主题适配，遵循 VS Code 主题 token 规范。
@@ -61,7 +61,7 @@ code --install-extension rml.rml-vscode
 在标签内输入属性名时，列出该标签支持的属性：
 
 ```html
-<input type="|" placeholder="|" r:model="|" />
+<input type="|" placeholder="|" value={|} />
 ```
 
 补全来源：
@@ -72,7 +72,7 @@ code --install-extension rml.rml-vscode
 
 ### 绑定路径补全
 
-在 `r:model="|"` 或 `{ | }` 中，补全 ViewModel 的字段与计算属性：
+在 `value={|}` 或 `{ | }` 中，补全 ViewModel 的字段与计算属性：
 
 ```html
 <!-- 输入 user. 后补全 -->
@@ -82,18 +82,18 @@ code --install-extension rml.rml-vscode
 
 ### 命令补全
 
-在 `on:click="|"` 中，补全 ViewModel 的 `#[command]` 方法：
+在 `on-click={|}` 中，补全 ViewModel 的 `#[command]` 方法：
 
 ```html
-<button on:click="|">
+<button on-click={|}>
 <!-- 补全项：login, logout, toggle_remember -->
 ```
 
 ## 10.5.4 跳转定义
 
 - 在 `<Button>` 上 `Ctrl+Click` → 跳到 `Button` 组件定义
-- 在 `r:model="email"` 上 `Ctrl+Click` → 跳到 ViewModel 的 `email` 字段
-- 在 `on:click="login"` 上 `Ctrl+Click` → 跳到 `login` 命令方法
+- 在 `value={email}` 上 `Ctrl+Click` → 跳到 ViewModel 的 `email` 字段
+- 在 `on-click={login}` 上 `Ctrl+Click` → 跳到 `login` 命令方法
 - 在 `{user.name}` 上 `Ctrl+Click` → 跳到 `User::name` 字段
 
 ## 10.5.5 实时诊断
@@ -105,8 +105,8 @@ LSP 在编辑时实时检查：
 | 绑定路径不存在            | 错误   |
 | 命令方法不存在            | 错误   |
 | 命令签名与事件不匹配         | 错误   |
-| `r:each` 缺少 `r:key` | 警告   |
-| 未使用的 `r:if` 条件     | 警告   |
+| `each` 缺少 `key` | 警告   |
+| 未使用的 `if` 条件     | 警告   |
 | 样式类未定义             | 警告   |
 
 诊断基于项目实际类型，不是语法猜测。

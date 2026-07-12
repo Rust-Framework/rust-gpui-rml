@@ -5,7 +5,8 @@
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
-            <Card title="演示效果">
+            <div class="demo-section">
+                <h3>演示效果</h3>
                 <div class="demo-section">
                     <h3>文本双向绑定</h3>
                     <p>输入姓名，下方文案实时更新：</p>
@@ -35,9 +36,10 @@
                     <p><code>oninput</code> 逐键触发，<code>onchange</code> 失焦/回车触发。在姓名框输入观察 oninput 计数，在年龄框失焦观察 onchange 计数：</p>
                     <p>oninput 触发次数：{input_event_count} | onchange 触发次数：{change_event_count}</p>
                 </div>
-            </Card>
+            </div>
 
-            <Card title="PascalCase 组件自动双向绑定">
+            <div class="demo-section">
+                <h3>PascalCase 组件自动双向绑定</h3>
                 <div class="demo-section">
                     <h3>事件绑定（Checkbox / Switch）</h3>
                     <p><code>checked=&#123;field&#125;</code> 自动双向——点击即回写 bool 字段，无需 on-click 手动处理：</p>
@@ -72,7 +74,7 @@
                 <div class="demo-section">
                     <p>{pascal_summary}</p>
                 </div>
-            </Card>
+            </div>
         </template>
 
         <template slot="api">

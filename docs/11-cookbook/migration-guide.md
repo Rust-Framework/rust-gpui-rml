@@ -11,7 +11,7 @@
 | 原生 GPUI                          | RML                          |
 | --------------------------------- | ---------------------------- |
 | `div().flex().child(...)`         | `<div class="flex">...</div>` |
-| `cx.listener(\|this, ev, cx\| ...)` | `on:click="method"`          |
+| `cx.listener(\|this, ev, cx\| ...)` | `on-click={method}`          |
 | `Entity<Self>` 持状态                | ViewModel 持状态，View 自动生成      |
 | `Render::render` 手写               | `.rml` 模板自动生成 Render         |
 
@@ -20,7 +20,7 @@
 1. **识别视图边界**：每个 `impl Render` 对应一个 RML 视图
 2. **提取状态到 ViewModel**：把 `render` 中读写的字段移到 ViewModel
 3. **把链式调用翻译为模板**：`div().class("x")` → `<div class="x">`
-4. **把监听器翻译为命令**：`on_click(cx.listener(...))` → `on:click="cmd"`
+4. **把监听器翻译为命令**：`on_click(cx.listener(...))` → `on-click={cmd}`
 5. **保留复杂逻辑**：实在难翻译的部分可暂时用 `ElementRef` 命令式访问
 
 ### 代码对照
@@ -49,7 +49,7 @@ fn render(&mut self, _window: &mut Window, cx: &mut ViewContext<Self>) -> impl I
 ```html
 <div class="flex flex-col gap-4">
   <p>Count: {count}</p>
-  <button on:click="increment">Click me</button>
+  <button on-click={increment}>Click me</button>
 </div>
 ```
 
@@ -69,7 +69,7 @@ gpui-rsx 是 JSX 风格的宏，与 RML 的差异主要在“文件分离”和�
 | --------------------------------- | -------------------------------- |
 | `rsx! { div { ... } }` 在 Rust 内  | 独立 `.rml` 文件                   |
 | 闭包捕获变量                            | 绑定到 ViewModel 字段                |
-| 无双向绑定                             | `r:model` 双向绑定                   |
+| 无双向绑定                             | `value={field}` 双向绑定           |
 | 无计算属性                             | `#[computed]`                    |
 | 无热重载                              | 支持热重载                            |
 
@@ -87,8 +87,8 @@ WPF 是 RML 的主要灵感来源，迁移最自然。
 | WPF                               | RML                              |
 | --------------------------------- | -------------------------------- |
 | `.xaml` + `.xaml.cs`              | `.rml` + `.rml.rs`               |
-| `{Binding Path=Name}`             | `{name}` 或 `r:bind="name"`       |
-| `Mode=TwoWay`                     | `r:model="name"`                 |
+| `{Binding Path=Name}`             | `{name}` 插值                     |
+| `Mode=TwoWay`                     | `value={name}`                   |
 | `ICommand`                        | `#[command]`                     |
 | `INotifyPropertyChanged`          | `cx.notify()`                    |
 | `StaticResource`                  | 资源字典                            |
@@ -111,9 +111,9 @@ Vue 与 RML 在声明式理念上高度相似。
 | --------------------------------- | -------------------------------- |
 | `<template>` SFC                  | `.rml` 文件                        |
 | `ref()` / `reactive()`            | `#[derive(IModel)]` 字段            |
-| `v-if`                            | `r:if`                           |
-| `v-for`                           | `r:each`                         |
-| `v-model`                         | `r:model`                        |
+| `v-if`                            | `if={cond}`                      |
+| `v-for`                           | `each={item in items}` `key={item.id}` |
+| `v-model`                         | `value={field}`                  |
 | `computed`                        | `#[computed]`                    |
 | `methods`                         | `#[command]`                     |
 | `mounted` / `unmounted`           | `#[on_loaded]` / `#[on_unloaded]` |
@@ -152,7 +152,7 @@ const increment = () => count.value++;
 ```html
 <div>
   <p>{count}</p>
-  <button on:click="increment">+1</button>
+  <Button label="+1" on-click={increment} />
 </div>
 ```
 

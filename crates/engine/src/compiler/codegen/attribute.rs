@@ -82,6 +82,8 @@ pub(crate) fn apply_static_attr(name: &str, value: &str) -> String {
                 String::new()
             }
         }
+        // overflow 布尔标志（Tailwind 风格）
+        _ if let Some(s) = super::style_attr::apply_overflow_flag_attr(name, value) => s,
         // 已废弃的 Tailwind 式散落属性：输出 deprecation warning 并丢弃
         "h_flex" | "v_flex" | "h_full" | "w_full" | "min_w_0" | "min_h_0" => {
             eprintln!(

@@ -39,9 +39,10 @@ impl ILifecycle for TextareaCase {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
 
         let (cols, rows) = build_api_table(&[
-            ("value", "绑定属性", "双向绑定到 pub String 字段，自动启用 multi_line 模式"),
-            ("placeholder", "字符串", "占位文本，传入 InputState builder"),
-            ("disabled", "布尔", "禁用状态（disabled 属性）"),
+            ("value", "binding", "双向绑定到 ViewModel 字符串字段，如 value={bio}"),
+            ("placeholder", "string", "占位文本，如 placeholder=\"请输入...\""),
+            ("disabled", "bool / binding", "禁用状态"),
+            ("on-change", "event", "内容变化时回调"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

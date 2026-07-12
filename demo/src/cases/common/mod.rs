@@ -27,8 +27,9 @@ const COL_TYPE_WIDTH: f32 = 120.0;
 ///
 /// ```ignore
 /// let (cols, rows) = build_api_table(&[
-///     ("value", "f32", "进度值 0-100"),
-///     ("loading", "布尔标志", "加载中状态"),
+///     ("on-change", "event", "内容变化时回调"),
+///     ("value", "binding", "双向绑定，如 value={count}"),
+///     ("loading", "bool", "加载中状态"),
 /// ]);
 /// self.api_columns = cols;
 /// self.api_rows = rows;

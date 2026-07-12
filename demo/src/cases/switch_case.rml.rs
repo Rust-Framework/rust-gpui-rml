@@ -41,11 +41,11 @@ impl ILifecycle for SwitchCase {
         self.wifi_on = true;
         self.dark_mode = true;
         let (cols, rows) = build_api_table(&[
-            ("label", "字符串", "标签文本"),
-            ("checked", "布尔/绑定", "开关状态"),
-            ("disabled", "布尔/绑定", "禁用"),
-            ("tooltip", "字符串", "悬浮提示"),
-            ("on-click", "事件", "点击回调（Fn(&bool, ...)）"),
+            ("label", "string / binding", "标签文本"),
+            ("checked", "bool / binding", "开关状态"),
+            ("disabled", "bool / binding", "禁用"),
+            ("tooltip", "string", "悬浮提示"),
+            ("on-click", "event", "点击时回调，参数为切换后的开关状态"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

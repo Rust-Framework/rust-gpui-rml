@@ -469,7 +469,7 @@ fn partition_user_component_children(
 ///
 /// - 空列表：返回 `gpui::Empty`（不渲染）
 /// - 单节点：直接生成节点代码
-/// - 多节点：包裹 `gpui::div().child(...).child(...)` 容器
+/// - 多节点：包裹 `gpui::div().flex().flex_col().gap(...)` 容器（案例页等多块内容纵向间距）
 fn gen_slot_content(
     nodes: &[Node],
     ctx: &CodegenCtx,
@@ -483,7 +483,7 @@ fn gen_slot_content(
         let (code, _) = gen_node(&nodes[0], ctx, 0, id_counter, loop_vars)?;
         return Ok(code);
     }
-    let mut code = String::from("gpui::div()");
+    let mut code = String::from("gpui::div().flex().flex_col().gap(gpui::px(16.))");
     for node in nodes {
         let (node_code, is_iter) = gen_node(node, ctx, 0, id_counter, loop_vars)?;
         if is_iter {

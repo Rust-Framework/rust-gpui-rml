@@ -59,14 +59,14 @@ impl ILifecycle for SettingsCase {
             ("group-variant", "normal/fill/outline", "分组框样式变体"),
             ("default-selected-page", "usize", "默认选中页面索引"),
             ("setting-page", "子节点", "设置页面，title/icon/description/default-open/resettable"),
-            ("setting-group", "子节点", "设置分组，实现 Styled，title/description"),
-            ("setting-item", "子节点", "设置项，title/field-type/value/on-change"),
-            ("item.field-type", "switch/checkbox/input/dropdown/number-input", "字段类型选择 SettingField 构造器"),
-            ("item.value", "绑定", "getter 闭包，读取 ViewModel 字段"),
-            ("item.on-change", "事件", "setter 闭包，调用 ViewModel 方法"),
-            ("item.options", "绑定", "dropdown 选项 Vec<(SharedString, SharedString)>"),
-            ("item.default-value", "静态", "重置默认值"),
-            ("item.min/max/step", "f64", "number-input 数值范围与步进"),
+            ("setting-group", "slot", "设置分组，支持 title、description"),
+            ("setting-item", "slot", "设置项，支持 title、field-type、value、on-change"),
+            ("field-type", "string", "字段类型：switch | checkbox | input | dropdown | number-input"),
+            ("value", "binding", "读取 ViewModel 字段的 getter 绑定"),
+            ("on-change", "event", "写入 ViewModel 字段的 setter 回调"),
+            ("options", "binding", "dropdown 选项列表"),
+            ("default-value", "string", "重置时的默认值"),
+            ("min / max / step", "number", "number-input 数值范围与步进"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

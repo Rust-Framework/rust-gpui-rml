@@ -38,16 +38,16 @@ impl ILifecycle for OtpInputCase {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         self.otp_state = Some(cx.new(|cx| OtpState::new(6, _window, cx)));
         let (cols, rows) = build_api_table(&[
-            ("length", "usize", "OTP 位数（默认 6，注入 state_ctor）"),
-            ("groups", "usize", "分组数（默认 2，组间间隔更大）"),
-            ("masked", "bool", "掩码显示（注入 state_ctor）"),
-            ("default-value", "字符串", "默认值（注入 state_ctor）"),
-            ("disabled", "bool / 绑定", "禁用（Disableable trait）"),
-            ("size", "xsmall/small/medium/large", "尺寸（Sizable trait）"),
-            ("ref", "字符串（指令）", "元素引用名，绑定到 ElementRef<OtpState>"),
-            ("on-change", "事件", "内容变化回调（参数：&Entity<OtpState>）"),
-            ("on-focus", "事件", "获得焦点回调（InputEvent::Focus）"),
-            ("on-blur", "事件", "失去焦点回调（InputEvent::Blur）"),
+            ("ref", "string", "元素引用名，绑定到 ViewModel 同名字段，如 ref=\"otp_input\""),
+            ("length", "number", "OTP 位数（默认 6），如 length=\"6\""),
+            ("groups", "number", "分组数（默认 2），组间间隔更大"),
+            ("masked", "bool", "掩码显示（默认 false）"),
+            ("default-value", "string", "初始值，如 default-value=\"123456\""),
+            ("disabled", "bool / binding", "禁用状态"),
+            ("size", "string", "尺寸：xsmall | small | medium | large"),
+            ("on-change", "event", "验证码变化时回调"),
+            ("on-focus", "event", "获得焦点时回调"),
+            ("on-blur", "event", "失去焦点时回调"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

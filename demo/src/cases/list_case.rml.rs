@@ -41,9 +41,9 @@ impl ILifecycle for ListCase {
             "Binding".into(),
         ];
         let (cols, rows) = build_api_table(&[
-            ("each={x in items}", "指令", "遍历 Vec<T> 渲染每个元素"),
-            ("Vec<SharedString>", "字段", "可迭代的数据源"),
-            ("__rml_bump_version", "方法", "修改 Vec 字段后通知框架重渲"),
+            ("each={x in items}", "指令", "遍历列表渲染每个元素，如 each={item in items}"),
+            ("items 字段", "binding", "ViewModel 中的列表数据源"),
+            ("修改后重渲", "说明", "修改列表字段后框架自动触发重渲"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

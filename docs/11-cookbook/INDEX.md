@@ -11,6 +11,7 @@
 | [11.3 迁移指南](./migration-guide.md)                           | 从 GPUI / gpui-rsx / WPF / Vue 迁移 | 18 分钟  |
 | [11.4 常见问题 FAQ](./faq.md)                                   | 高频问题的标准答案                   | 12 分钟  |
 | [11.5 避坑清单](./pitfall-checklist.md)                         | 上线前必查的 30 项检查清单             | 10 分钟  |
+| [11.6 Demo 案例页规范](./demo-case-conventions.md)              | CaseDocPage + demo-section 统一结构   | 8 分钟   |
 
 ## 阅读建议
 

@@ -196,6 +196,9 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
     // 构造器 KeyBinding::new()（RenderOnce + ParentElement，无 ElementId、无 cx）
     // .key("Ctrl+S") 设置快捷键，.when(bool) 条件控制，.on_press(Fn(&mut Window, &mut App)) 回调
     ("KeyBinding", &["key", "when", "on_press"]),
+    // ShortcutScope / Shortcut：作用域级快捷键（Shortcut 为 ShortcutScope 内元数据子节点）
+    ("ShortcutScope", &[]),
+    ("Shortcut", &["key", "when", "on_press"]),
     // Grid 专用（声明式等宽网格布局容器：columns/rows 设置列数/行数）
     // 构造器 Grid::new()（RenderOnce + ParentElement，无 ElementId、无 cx）
     // .columns(u16)/.rows(u16) → div().grid().grid_cols(n).grid_rows(n)
@@ -455,6 +458,11 @@ mod tests {
         assert!(is_prop_registered("KeyBinding", "when"));
         assert!(is_prop_registered("KeyBinding", "on_press"));
         assert!(!is_prop_registered("KeyBinding", "title"));
+        // ShortcutScope / Shortcut：作用域级快捷键
+        assert!(is_prop_registered("Shortcut", "key"));
+        assert!(is_prop_registered("Shortcut", "when"));
+        assert!(is_prop_registered("Shortcut", "on_press"));
+        assert!(!is_prop_registered("ShortcutScope", "key"));
         // Grid：声明式网格布局，支持 columns/rows
         assert!(is_prop_registered("Grid", "columns"));
         assert!(is_prop_registered("Grid", "rows"));

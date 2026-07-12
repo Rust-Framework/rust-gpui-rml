@@ -5,7 +5,8 @@
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
-            <Card title="演示效果">
+            <div class="demo-section">
+                <h3>演示效果</h3>
                 <p>{status_text}</p>
 
                 <div class="demo-section">
@@ -31,7 +32,7 @@
                         </Tab>
                     </Tabs>
                 </div>
-            </Card>
+            </div>
         </template>
 
         <template slot="api">

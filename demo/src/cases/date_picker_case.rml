@@ -1,13 +1,13 @@
 <component>
     <CaseDocPage
         title={t("case.date_picker.title")}
-        description="DatePicker 是 RML 的日期选择器组件，标签为 PascalCase DatePicker 或 kebab-case date-picker。通过 ref 指令引用 DatePickerState，DatePicker::new(&state) 创建视图。支持 placeholder、cleanable、appearance、number_of_months、size 等属性。on-change 事件接收 Date 载荷。"
+        description="DatePicker 日期选择器，支持 placeholder、cleanable、appearance、number-of-months、size 等属性。通过 ref 绑定到 ViewModel 同名字段，on-change 事件在日期变化时触发。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
             <div class="demo-section">
-                <h3>1. 基础用法 + on_change 事件</h3>
-                <p>DatePicker 通过 ref 指令绑定到 ElementRef DatePickerState 字段。选择日期后触发 DatePickerEvent::Change，参数为 Date。</p>
+                <h3>1. 基础用法 + on-change 事件</h3>
+                <p>DatePicker 通过 ref 绑定到 ViewModel 同名字段。选择日期后触发 on-change 事件。</p>
                 <p>选中日期：{selected_date}</p>
                 <DatePicker ref="basic_picker" on-change={on_date_change} />
             </div>

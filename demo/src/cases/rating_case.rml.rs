@@ -42,9 +42,9 @@ impl ILifecycle for RatingCase {
             ("value", "usize / 绑定", "当前评分值（0..=max）"),
             ("max", "usize", "最大星数（默认 5）"),
             ("color", "主题色名", "星标激活色（如 red/yellow/green）"),
-            ("size", "xsmall/small/medium/large", "尺寸（Sizable trait）"),
-            ("disabled", "bool / 绑定", "禁用（Disableable trait）"),
-            ("on-click", "事件", "评分点击回调（Fn(&usize, ...)）"),
+            ("size", "string", "尺寸：xsmall | small | medium | large"),
+            ("disabled", "bool / binding", "禁用交互"),
+            ("on-click", "event", "点击星标时回调，参数为评分值"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

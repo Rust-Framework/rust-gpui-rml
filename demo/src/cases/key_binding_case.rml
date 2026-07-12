@@ -1,47 +1,61 @@
 <component>
     <CaseDocPage
         title={t("case.key_binding.title")}
-        description="声明式键盘快捷键：通过 <KeyBinding key='Ctrl+S' on-press={on_save} /> 绑定快捷键组合，在子树获得焦点时监听 keydown 事件，匹配后自动触发回调。支持 when 条件控制是否启用。"
+        description="声明式键盘快捷键：焦点宿主内用 &lt;KeyBinding&gt; 子节点（Input/CodeEditor 等）；作用域级全局快捷键用 &lt;ShortcutScope&gt; + &lt;Shortcut&gt; 子节点。支持 when 条件控制是否启用。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
-            <Card title="键盘快捷键演示">
+            <div class="demo-section">
+                <h3>基础快捷键</h3>
                 <p>点击下方输入框获取焦点，然后按下快捷键：</p>
-                <KeyBinding key="Ctrl+S" on-press={on_save}>
-                    <KeyBinding key="Ctrl+O" on-press={on_open}>
-                        <KeyBinding key="Escape" on-press={on_clear}>
-                            <Input ref="demo_input" placeholder="点击此处获取焦点，然后按 Ctrl+S / Ctrl+O / Escape" style="margin-bottom: 12px;" />
-                        </KeyBinding>
-                    </KeyBinding>
-                </KeyBinding>
-
-                <div display="flex" flex-direction="column" gap="8px" style="margin-top: 12px;">
+                <Input ref="demo_input" placeholder="点击此处获取焦点，然后按 Ctrl+S / Ctrl+O / Escape">
+                    <KeyBinding key="Ctrl+S" on-press={on_save} />
+                    <KeyBinding key="Ctrl+O" on-press={on_open} />
+                    <KeyBinding key="Escape" on-press={on_clear} />
+                </Input>
+                <div display="flex" flex-direction="column" gap="8px">
                     <p>最近触发的快捷键：{last_triggered}</p>
                     <p>触发次数：{trigger_count}</p>
                 </div>
-
-                <div display="flex" flex-direction="row" gap="16px" style="margin-top: 12px;">
+                <div class="button-row">
                     <Button primary label="Save" on-click={on_save_click} />
                     <Button label="Open" on-click={on_open_click} />
                     <Button label="Clear" on-click={on_clear_click} />
                 </div>
-            </Card>
+            </div>
 
-            <Card title="条件快捷键 (when)">
+            <div class="demo-section">
+                <h3>条件快捷键 (when)</h3>
                 <p>切换下方开关启用/禁用 Ctrl+D 快捷键：</p>
-                <div display="flex" flex-direction="row" gap="12px" style="align-items: center; margin-bottom: 12px;">
+                <div display="flex" flex-direction="row" gap="12px" style="align-items: center;">
                     <Switch checked={shortcut_enabled} />
                     <span>快捷键 {shortcut_status}</span>
                 </div>
-                <KeyBinding key="Ctrl+D" when={shortcut_enabled} on-press={on_debug}>
-                    <Input ref="cond_input" placeholder="Ctrl+D（条件启用/禁用）" />
-                </KeyBinding>
-                <p style="margin-top: 8px;">调试触发次数：{debug_count}</p>
-            </Card>
+                <Input ref="cond_input" placeholder="Ctrl+D（条件启用/禁用）">
+                    <KeyBinding key="Ctrl+D" when={shortcut_enabled} on-press={on_debug} />
+                </Input>
+                <p>调试触发次数：{debug_count}</p>
+            </div>
+
+            <div class="demo-section">
+                <h3>作用域快捷键 (ShortcutScope)</h3>
+                <p>无需 Input 焦点：点击下方区域任意处后按 Ctrl+G / Ctrl+H（作用域内 keydown 冒泡）。</p>
+                <ShortcutScope>
+                    <Shortcut key="Ctrl+G" on-press={on_global_save} />
+                    <Shortcut key="Ctrl+H" on-press={on_global_help} />
+                    <div display="flex" flex-direction="column" gap="8px" class="shortcut-scope-panel">
+                        <p>最近触发的全局快捷键：{global_triggered}</p>
+                        <p>全局触发次数：{global_count}</p>
+                        <div class="button-row">
+                            <Button label="点击此区域获取焦点" />
+                        </div>
+                    </div>
+                </ShortcutScope>
+            </div>
         </template>
 
         <template slot="api">
-            <h3>KeyBinding 相关 API</h3>
+            <h3>KeyBinding / ShortcutScope API</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
         </template>
     </CaseDocPage>

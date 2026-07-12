@@ -5,7 +5,8 @@
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
-            <Card title="基础用法">
+            <div class="demo-section">
+                <h3>基础用法</h3>
                 <p>通过 <code>open</code> 属性控制内容显示。点击下方按钮切换展开状态：</p>
                 <p>当前状态：{state_label}</p>
                 <div class="button-row">
@@ -17,9 +18,10 @@
                         <p>可以包含任意子元素。</p>
                     </div>
                 </Collapsible>
-            </Card>
+            </div>
 
-            <Card title="静态 open">
+            <div class="demo-section">
+                <h3>静态 open</h3>
                 <p><code>open="true"</code> 静态属性设置默认展开：</p>
                 <Collapsible open="true">
                     <div display="flex" flex-direction="column" gap="8px">
@@ -32,9 +34,10 @@
                         <p>这个内容默认折叠隐藏。</p>
                     </div>
                 </Collapsible>
-            </Card>
+            </div>
 
-            <Card title="if 条件渲染配合">
+            <div class="demo-section">
+                <h3>if 条件渲染配合</h3>
                 <p>当需要更精细控制时，可使用 <code>if</code> 指令配合 open 状态做条件渲染：</p>
                 <Collapsible open={is_open}>
                     <h3>标题（始终显示）</h3>
@@ -42,9 +45,10 @@
                         <p>这部分内容使用 if 控制显示，与 open 状态联动。</p>
                     </div>
                 </Collapsible>
-            </Card>
+            </div>
 
-            <Card title="嵌套折叠">
+            <div class="demo-section">
+                <h3>嵌套折叠</h3>
                 <p>Collapsible 可嵌套使用：</p>
                 <Collapsible open={is_open}>
                     <div display="flex" flex-direction="column" gap="8px">
@@ -56,7 +60,7 @@
                         </Collapsible>
                     </div>
                 </Collapsible>
-            </Card>
+            </div>
         </template>
 
         <template slot="api">

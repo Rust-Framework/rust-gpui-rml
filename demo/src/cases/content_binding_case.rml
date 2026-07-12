@@ -5,7 +5,8 @@
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
-            <Card title="ToString 绑定（i32 / bool）">
+            <div class="demo-section">
+                <h3>ToString 绑定（i32 / bool）</h3>
                 <p>以下 content 绑定 i32 字段 count（当前值：{count}）：</p>
                 <div class="content-box" content={self.count} />
                 <p>以下 content 绑定 bool 字段 active（当前值：{active}）：</p>
@@ -14,16 +15,18 @@
                     <Button label="count +1" primary on-click={on_inc} />
                     <Button label="toggle active" on-click={on_toggle} />
                 </div>
-            </Card>
+            </div>
 
-            <Card title="IntoElement 绑定（String / SharedString，无需 .clone()）">
+            <div class="demo-section">
+                <h3>IntoElement 绑定（String / SharedString，无需 .clone()）</h3>
                 <p>以下 content 绑定 String 字段 message（自动 &amp; 借用）：</p>
                 <div class="content-box" content={self.message} />
                 <p>以下 content 绑定 SharedString 字段 title（自动 &amp; 借用）：</p>
                 <div class="content-box" content={self.title} />
-            </Card>
+            </div>
 
-            <Card title="列表循环 + content 绑定（each 指令）">
+            <div class="demo-section">
+                <h3>列表循环 + content 绑定（each 指令）</h3>
                 <p>以下通过 each 指令遍历 Vec&lt;String&gt;，循环变量 name 为 &amp;String：</p>
                 <div class="tag-list">
                     <component each={name in self.names} content={name} />
@@ -32,17 +35,19 @@
                 <div class="tag-list">
                     <component each={person in self.people} content={person.name} />
                 </div>
-            </Card>
+            </div>
 
-            <Card title="AnyElement 绑定（方法返回值）">
+            <div class="demo-section">
+                <h3>AnyElement 绑定（方法返回值）</h3>
                 <p>以下 content 绑定方法 render_badge，返回 AnyElement：</p>
                 <div content={self.render_badge(_window, cx)} />
-            </Card>
+            </div>
 
-            <Card title="IVisual 绑定（Box<dyn IVisual>）">
+            <div class="demo-section">
+                <h3>IVisual 绑定（Box&lt;dyn IVisual&gt;）</h3>
                 <p>以下 content 绑定方法 make_visual，返回 Box&lt;dyn IVisual&gt;，调用 IVisual::render：</p>
                 <div content={self.make_visual()} />
-            </Card>
+            </div>
         </template>
 
         <template slot="api">

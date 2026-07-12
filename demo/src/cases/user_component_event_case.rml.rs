@@ -36,8 +36,8 @@ impl ILifecycle for UserComponentEventCase {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         self.event_button = Some(cx.new(|_cx| EventButton::default()));
         let (cols, rows) = build_api_table(&[
-            ("label", "SharedString", "按钮文字"),
-            ("on-click", "ClickHandler", "点击回调（闭包注入）"),
+            ("label", "string / binding", "按钮文字"),
+            ("on-click", "event", "点击时回调"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

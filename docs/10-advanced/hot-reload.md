@@ -76,8 +76,8 @@ cargo run
 
 - 增删改元素
 - 修改属性、class、style
-- 修改 `r:if` / `r:each` 条件
-- 修改 `r:model` / `r:bind` 路径（前提：路径在 ViewModel 中存在）
+- 修改 `if` / `each` 条件
+- 修改 `value={field}` 绑定路径（前提：路径在 ViewModel 中存在）
 - 修改插值表达式
 - 修改样式表内容
 
@@ -86,7 +86,7 @@ cargo run
 - ViewModel 新增 / 删除字段 → 重新编译
 - 修改命令方法签名 → 重新编译
 - 修改 Model 结构 → 重新编译
-- 修改 `r:bind` 指向不存在的字段 → 热重载失败，提示错误
+- 修改 `value={field}` 指向不存在的字段 → 热重载失败，提示错误
 
 ### 部分热重载失败的处理
 

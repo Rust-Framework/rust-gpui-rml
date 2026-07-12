@@ -5,7 +5,8 @@
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
-            <Card title="水平可调整面板（拖拽分隔条调整宽度）">
+            <div class="demo-section">
+                <h3>水平可调整面板（拖拽分隔条调整宽度）</h3>
                 <p>三个面板，前两个设置初始宽度，最后一个自适应：</p>
                 <resizable direction="horizontal" height="200px">
                     <resizable-panel size="200px" style="background: var(--surface); padding: 12px;">
@@ -21,9 +22,10 @@
                         <p>自适应宽度（flex_grow: 1）</p>
                     </resizable-panel>
                 </resizable>
-            </Card>
+            </div>
 
-            <Card title="垂直可调整面板（拖拽分隔条调整高度）">
+            <div class="demo-section">
+                <h3>垂直可调整面板（拖拽分隔条调整高度）</h3>
                 <p>使用 direction="vertical" 切换 v_resizable 构造器：</p>
                 <resizable direction="vertical" height="300px">
                     <resizable-panel size="100px" style="background: var(--surface); padding: 12px;">
@@ -39,9 +41,10 @@
                         <p>初始高度 80px</p>
                     </resizable-panel>
                 </resizable>
-            </Card>
+            </div>
 
-            <Card title="非 Panel 子节点自动包裹">
+            <div class="demo-section">
+                <h3>非 Panel 子节点自动包裹</h3>
                 <p>直接放置 div 等元素，通过 From impl 自动包裹为 ResizablePanel：</p>
                 <resizable direction="horizontal" height="120px">
                     <div style="background: var(--surface); padding: 12px; flex: 1;">
@@ -53,7 +56,7 @@
                         <p>div 直接作为子节点</p>
                     </div>
                 </resizable>
-            </Card>
+            </div>
         </template>
 
         <template slot="api">

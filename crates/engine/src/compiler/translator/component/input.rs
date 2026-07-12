@@ -64,7 +64,12 @@ impl IRmlTranslator for InputTranslator {
         }) {
             let (field, _) = extract_field_converter(&expr);
             let code = gen_model_input(elem, ctx, _id_counter, field, false, parents)?;
-            return Ok((code, false));
+            return Ok((
+                crate::compiler::components::key_binding::apply_key_bindings_to_host(
+                    elem, code, ctx, _id_counter, loop_vars, parents,
+                )?,
+                false,
+            ));
         }
 
         // C4: StateBridge 路径（若组件在 STATE_BRIDGE_REGISTRY 中注册）
@@ -78,7 +83,12 @@ impl IRmlTranslator for InputTranslator {
             }) {
                 let (field, _) = extract_field_converter(&expr);
                 let code = gen_model_state_bridge(spec, elem, ctx, _id_counter, field, parents)?;
-                return Ok((code, false));
+                return Ok((
+                    crate::compiler::components::key_binding::apply_key_bindings_to_host(
+                        elem, code, ctx, _id_counter, loop_vars, parents,
+                    )?,
+                    false,
+                ));
             }
         }
 
@@ -140,7 +150,12 @@ impl IRmlTranslator for InputTranslator {
             }
         }
 
-        Ok((code, false))
+        Ok((
+            crate::compiler::components::key_binding::apply_key_bindings_to_host(
+                elem, code, ctx, _id_counter, loop_vars, parents,
+            )?,
+            false,
+        ))
     }
 
     fn to_rml(&self, elem: &Element, ctx: &PrinterCtx) -> Result<String, PrintError> {

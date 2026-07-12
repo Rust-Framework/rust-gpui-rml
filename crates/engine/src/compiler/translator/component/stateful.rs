@@ -73,7 +73,12 @@ impl IRmlTranslator for StatefulComponentTranslator {
             }) {
                 let (field, _) = extract_field_converter(&expr);
                 let code = gen_model_input(elem, ctx, _id_counter, field, false, parents)?;
-                return Ok((code, false));
+                return Ok((
+                    crate::compiler::components::key_binding::apply_key_bindings_to_host(
+                        elem, code, ctx, _id_counter, loop_vars, parents,
+                    )?,
+                    false,
+                ));
             }
         }
 
@@ -146,11 +151,21 @@ impl IRmlTranslator for StatefulComponentTranslator {
                             }
                         }
 
-                        return Ok((code, false));
+                        return Ok((
+                            crate::compiler::components::key_binding::apply_key_bindings_to_host(
+                                elem, code, ctx, _id_counter, loop_vars, parents,
+                            )?,
+                            false,
+                        ));
                     }
 
                     let code = gen_model_state_bridge(spec, elem, ctx, _id_counter, field, parents)?;
-                    return Ok((code, false));
+                    return Ok((
+                        crate::compiler::components::key_binding::apply_key_bindings_to_host(
+                            elem, code, ctx, _id_counter, loop_vars, parents,
+                        )?,
+                        false,
+                    ));
                 }
             }
         }
@@ -230,7 +245,12 @@ impl IRmlTranslator for StatefulComponentTranslator {
             }
         }
 
-        Ok((code, false))
+        Ok((
+            crate::compiler::components::key_binding::apply_key_bindings_to_host(
+                elem, code, ctx, _id_counter, loop_vars, parents,
+            )?,
+            false,
+        ))
     }
 
     fn to_rml(&self, elem: &Element, ctx: &PrinterCtx) -> Result<String, PrintError> {

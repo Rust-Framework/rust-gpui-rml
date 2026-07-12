@@ -21,7 +21,7 @@ pub use crate::converter::{BoolToYesNo, Currency, IConverter, LowerCase, Percent
 pub use crate::element_ref::ElementRef;
 pub use crate::event::IEvent;
 pub use crate::events::*;
-pub use crate::i18n::{I18nExt, t, t_static};
+pub use crate::i18n::{current_locale_static, I18nExt, t, t_static};
 pub use crate::lifecycle::ILifecycle;
 pub use crate::model::{FieldMeta, IModel};
 pub use crate::observable::ObservableVec;

@@ -7,7 +7,7 @@
 ## 基本用法
 
 ```html
-<TextInput placeholder="备注" onchange={on_remark_change} />
+<TextInput placeholder="备注" on-change={on_remark_change} />
 ```
 
 ## 属性
@@ -18,7 +18,7 @@
 
 | 事件 | 回调签名 |
 |------|----------|
-| `onchange` | `fn(&mut self, state: &InputState, cx: &mut Context<Self>)` |
+| `on-change` | `fn(&mut self, state: &InputState, cx: &mut Context<Self>)` |
 | `on-click` | `fn(&mut self, ev: &ClickEvent, cx: &mut Context<Self>)` |
 
 ## 数据绑定
@@ -28,12 +28,12 @@
 
 ## 子节点 / 插槽
 
-同 Input：仅可选文本子节点作 `label`。
+同 [Input](./input.md#子节点--插槽)：支持 `<KeyBinding>` 声明式子节点；可选文本子节点作 `label`。
 
 ## 完整示例
 
 ```html
-<TextInput placeholder="搜索" onchange={on_search_change} />
+<TextInput placeholder="搜索" on-change={on_search_change} />
 ```
 
 ## 常见错误

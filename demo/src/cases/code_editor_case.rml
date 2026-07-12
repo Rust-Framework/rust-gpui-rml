@@ -1,35 +1,39 @@
 <component>
     <CaseDocPage
         title={t("case.code_editor.title")}
-        description="CodeEditor 基于 InputState.code_editor(language) 构造，内置 tree-sitter 语法高亮（支持 30+ 语言）、代码折叠、行号、缩进辅助、自动缩进、搜索。通过 ref 引用预创建的 InputState（在 on_loaded 中通过 __rml_state.get_or_init_ref 构造，含 language + default_value）。推荐配合 rml-code-editor 样式类与 height 属性定制外观。"
+        description="CodeEditor 多行代码编辑器，内置语法高亮（30+ 语言）、代码折叠、行号、缩进辅助与搜索。支持 language、value、ref 等属性，推荐配合 rml-code-editor 样式类与 height 定制外观。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
-            <Card title="Rust 语法高亮">
-                <p>code_editor("rust") + default_value。tree-sitter 解析关键字/字符串/注释/类型/函数等 token 并着色。</p>
+            <div class="demo-section">
+                <h3>Rust 语法高亮</h3>
+                <p>language="rust" 语法高亮，支持关键字/字符串/注释等着色。</p>
                 <CodeEditor class="rml-code-editor" ref="rust_editor" height="320px" />
-            </Card>
+            </div>
 
-            <Card title="JSON 语法高亮">
-                <p>code_editor("json")，支持键名/字符串/数字/布尔值/null 着色。</p>
+            <div class="demo-section">
+                <h3>JSON 语法高亮</h3>
+                <p>language="json"，支持键名/字符串/数字/布尔值/null 着色。</p>
                 <CodeEditor class="rml-code-editor" ref="json_editor" height="280px" />
-            </Card>
+            </div>
 
-            <Card title="Python 语法高亮">
-                <p>code_editor("python")，支持关键字/装饰器/字符串/类型注解/文档字符串着色。</p>
+            <div class="demo-section">
+                <h3>Python 语法高亮</h3>
+                <p>language="python"，支持关键字/装饰器/字符串/类型注解等着色。</p>
                 <CodeEditor class="rml-code-editor" ref="python_editor" height="340px" />
-            </Card>
+            </div>
 
-            <Card title="JavaScript 语法高亮">
-                <p>code_editor("javascript")，支持 class/箭头函数/模板字符串/解构等着色。</p>
+            <div class="demo-section">
+                <h3>JavaScript 语法高亮</h3>
+                <p>language="javascript"，支持 class/箭头函数/模板字符串等着色。</p>
                 <CodeEditor class="rml-code-editor" ref="js_editor" height="340px" />
-            </Card>
+            </div>
         </template>
 
         <template slot="api">
             <h3>CodeEditor</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-            <p>注：语法高亮基于 gpui-component 内置的 tree-sitter 集成（feature: tree-sitter-languages）。支持语言包括：rust, javascript, typescript, tsx, python, go, java, c, cpp, csharp, css, html, json, sql, ruby, php, bash, yaml, toml, markdown, kotlin, swift, scala, lua, zig, elixir, erb, ejs, astro, svelte, graphql, make, proto, cmake, diff 等。slot 模板内使用 value 绑定需配合 ref + on_loaded 预创建 InputState 实体。</p>
+            <p>注：支持 rust、javascript、typescript、python、go、java、json、css、html、sql 等 30+ 语言。slot 模板内使用 value 绑定需配合 ref 预创建编辑器实例。</p>
         </template>
     </CaseDocPage>
 </component>

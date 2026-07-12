@@ -5,31 +5,35 @@
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
-            <Card title="基础用法 normal">
+            <div class="demo-section">
+                <h3>基础用法 normal</h3>
                 <p>默认 normal variant，无边框无背景，仅分组语义。</p>
                 <GroupBox title="用户信息">
                     <p>用户名：admin</p>
                     <p>邮箱：admin@example.com</p>
                 </GroupBox>
-            </Card>
+            </div>
 
-            <Card title="fill 填充背景">
+            <div class="demo-section">
+                <h3>fill 填充背景</h3>
                 <p><code>fill</code> 切换为填充背景样式。</p>
                 <GroupBox title="设置面板" fill>
                     <p>主题：暗色</p>
                     <p>语言：简体中文</p>
                 </GroupBox>
-            </Card>
+            </div>
 
-            <Card title="outline 描边">
+            <div class="demo-section">
+                <h3>outline 描边</h3>
                 <p><code>outline</code> 切换为描边样式。</p>
                 <GroupBox title="高级选项" outline>
                     <p>启用通知：是</p>
                     <p>自动更新：否</p>
                 </GroupBox>
-            </Card>
+            </div>
 
-            <Card title="variant 布尔属性">
+            <div class="demo-section">
+                <h3>variant 布尔属性</h3>
                 <p>使用 <code>fill</code> / <code>outline</code> / <code>normal</code> 独立布尔属性切换 variant。</p>
                 <GroupBox title="示例" fill>
                     <p>通过 fill 布尔属性设置</p>
@@ -37,9 +41,10 @@
                 <GroupBox title="示例" outline>
                     <p>通过 outline 布尔属性设置</p>
                 </GroupBox>
-            </Card>
+            </div>
 
-            <Card title="title 动态绑定">
+            <div class="demo-section">
+                <h3>title 动态绑定</h3>
                 <p><code>title=&#123;dynamic_title&#125;</code> 绑定动态标题字段：</p>
                 <GroupBox title={dynamic_title} fill>
                     <p>当前标题：{dynamic_title}</p>
@@ -47,14 +52,15 @@
                         <Button label="切换标题" on-click={on_cycle_title} />
                     </div>
                 </GroupBox>
-            </Card>
+            </div>
 
-            <Card title="无标题">
+            <div class="demo-section">
+                <h3>无标题</h3>
                 <p>不写 <code>title</code> 属性则无标题，仅作为分组容器：</p>
                 <GroupBox fill>
                     <p>无标题的分组内容</p>
                 </GroupBox>
-            </Card>
+            </div>
         </template>
 
         <template slot="api">

@@ -5,7 +5,8 @@
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
-            <Card title="Tab 切换（if/else-if 链）">
+            <div class="demo-section">
+                <h3>Tab 切换（if/else-if 链）</h3>
                 <p>当前 Tab：{tab_label}</p>
                 <div display="flex" flex-direction="row" gap="16px">
                     <Button label="概览" on-click={on_tab_overview} />
@@ -23,9 +24,10 @@
                         <p>这是设置页面，配置项目选项。</p>
                     </Card>
                 </div>
-            </Card>
+            </div>
 
-            <Card title="布尔切换（if + if 取反）">
+            <div class="demo-section">
+                <h3>布尔切换（if + if 取反）</h3>
                 <p>show_detail = {show_detail}</p>
                 <div display="flex" flex-direction="row" gap="16px">
                     <Button label="切换显示" on-click={on_toggle_detail} />
@@ -38,7 +40,7 @@
                         <p>show_detail 为 false 时渲染此卡片。</p>
                     </Card>
                 </div>
-            </Card>
+            </div>
         </template>
 
         <template slot="api">

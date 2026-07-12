@@ -38,10 +38,10 @@ impl ILifecycle for StatusBarCase {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         let (cols, rows) = build_api_table(&[
             ("kind = \"status\"", "贡献类型", "注册到状态栏插槽"),
-            ("host_id", "字符串", "宿主标识"),
-            ("order", "数字", "状态栏排序"),
-            ("IContribution::name", "方法", "状态栏显示文案"),
-            ("IVisual::render", "方法", "自定义状态栏渲染（当前需命令式 AnyElement，列入 RML 迭代计划）"),
+            ("host-id", "string", "宿主标识"),
+            ("order", "number", "状态栏排序"),
+            ("name", "string", "状态栏显示文案"),
+            ("render", "方法", "自定义状态栏渲染（code-behind）"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

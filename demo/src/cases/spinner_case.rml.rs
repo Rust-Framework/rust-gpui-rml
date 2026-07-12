@@ -36,8 +36,8 @@ impl ILifecycle for SpinnerCase {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         self.is_loading = true;
         let (cols, rows) = build_api_table(&[
-            ("icon", "IconName 枚举变体名", "自定义图标（如 icon=\"Bell\"），默认 Loader"),
-            ("size", "xsmall/small/medium/large", "尺寸（Sizable trait）"),
+            ("icon", "string", "自定义图标，如 icon=\"Bell\"（默认 Loader）"),
+            ("size", "string", "尺寸：xsmall | small | medium | large"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

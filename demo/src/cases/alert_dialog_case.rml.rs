@@ -42,9 +42,9 @@ impl ILifecycle for AlertDialogCase {
             ("overlay-closable", "bool", "点击遮罩是否关闭，默认 false（AlertDialog 专属默认值）；overlay-closable=true 开启"),
             ("close-button", "bool", "是否显示关闭按钮，默认 false（AlertDialog 专属默认值）；close-button=true 显示"),
             ("keyboard", "bool", "是否支持 ESC 键关闭，默认 true；keyboard=false 禁用"),
-            ("on-close", "event", "关闭事件回调，签名为 Fn(&ClickEvent, &mut Window, &mut App)"),
-            ("on-ok", "event -> bool", "确认回调，返回 false 阻止关闭；签名 Fn(&ClickEvent, &mut Window, &mut App) -> bool"),
-            ("on-cancel", "event -> bool", "取消回调，返回 false 阻止关闭；签名 Fn(&ClickEvent, &mut Window, &mut App) -> bool"),
+            ("on-close", "event", "对话框关闭时回调"),
+            ("on-ok", "event", "确认时回调；返回 false 可阻止关闭"),
+            ("on-cancel", "event", "取消时回调；返回 false 可阻止关闭"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

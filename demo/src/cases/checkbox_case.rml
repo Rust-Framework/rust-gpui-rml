@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.checkbox.title")}
-        description="Checkbox 是 RML 的复选框组件，标签为 PascalCase Checkbox。通过 checked 属性绑定勾选状态（底层通过 Selectable trait 映射到 .checked()）。on-click 回调签名为 Fn(&bool, ...)（切换后的新状态）。支持 label 标签、disabled 禁用、tooltip 提示。适合二元选择场景：协议同意、选项勾选、批量操作。"
+        description="Checkbox 是 RML 的复选框组件。通过 checked 绑定勾选状态，支持 label、disabled、tooltip，on-click 在切换时触发回调。适合协议同意、选项勾选等二元选择场景。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">

@@ -9,19 +9,19 @@
 每个字段双向绑定到 ViewModel，提交时统一校验。
 
 ```html
-<form on:submit="on_submit" class="form">
+<div class="form">
   <label>
     邮箱
-    <input type="email" r:model="email" />
+    <input type="email" value={email} />
   </label>
   <label>
     密码
-    <input type="password" r:model="password" />
+    <input type="password" value={password} />
   </label>
-  <p r:if="errors.email" class="error">{errors.email}</p>
-  <p r:if="errors.password" class="error">{errors.password}</p>
-  <button type="submit" r:attr:disabled="!can_submit">提交</button>
-</form>
+  <p if={errors.email} class="error">{errors.email}</p>
+  <p if={errors.password} class="error">{errors.password}</p>
+  <Button label="提交" on-click={on_submit} disabled={!can_submit} />
+</div>
 ```
 
 ```rust
@@ -82,13 +82,13 @@ impl FormViewModel {
 字段数量动态变化（如“添加更多”按钮）：
 
 ```html
-<form on:submit="on_submit">
-  <div r:each="fields" r:key="id" class="field-row">
-    <input r:model="value" on:input="on_field_change" />
-    <button type="button" on:click="remove_field">删除</button>
+<div class="form">
+  <div each={field in fields} key={field.id} class="field-row">
+    <input value={field.value} on-change={on_field_change} />
+    <Button label="删除" on-click={remove_field} />
   </div>
-  <button type="button" on:click="add_field">添加字段</button>
-</form>
+  <Button label="添加字段" on-click={add_field} />
+</div>
 ```
 
 ```rust
@@ -112,12 +112,12 @@ pub fn remove_field(&mut self, ev: &ClickEvent, cx: &mut ViewContext<Self>) {
 
 ```html
 <div class="list-view">
-  <input r:model="filter" placeholder="筛选…" on:input="on_filter" />
-  <p r:if="filtered_items.is_empty()">无匹配项</p>
+  <input value={filter} placeholder="筛选…" on-change={on_filter} />
+  <p if={filtered_items.is_empty()}>无匹配项</p>
   <ul>
-    <li r:each="filtered_items" r:key="id" on:click="select">
-      <span>{title}</span>
-      <span r:if="is_selected" class="check">✓</span>
+    <li each={item in filtered_items} key={item.id} on-click={select}>
+      <span>{item.title}</span>
+      <span if={item.id == selected_id} class="check">✓</span>
     </li>
   </ul>
 </div>
@@ -185,8 +185,8 @@ impl PagedViewModel {
 ### 虚拟滚动大列表
 
 ```html
-<VirtualList items="{items}" item-height="40" height="600" r:key="id">
-  <template r:slot="item">
+<VirtualList items={items} item-height="40" height="600">
+  <template slot="item">
     <div class="row">{title}</div>
   </template>
 </VirtualList>
@@ -201,13 +201,8 @@ impl PagedViewModel {
 ```html
 <!-- 父视图 -->
 <div>
-  <button on:click="open_dialog">打开</button>
-  <ConfirmDialog
-    r:if="is_dialog_open"
-    title="确认删除？"
-    on:confirm="confirm_delete"
-    on:cancel="close_dialog"
-  />
+  <Button label="打开" on-click={open_dialog} />
+  <Dialog open={is_dialog_open} title="确认删除？" on-confirm={confirm_delete} on-cancel={close_dialog} />
 </div>
 ```
 
@@ -253,13 +248,13 @@ impl DialogService {
 ```html
 <div class="drawer-container">
   <div class="content">{children}</div>
-  <aside class="drawer" r:class:open="is_drawer_open">
+  <aside class="drawer" class:open={is_drawer_open}>
     <header>
       <h2>{drawer_title}</h2>
-      <button on:click="close_drawer">✕</button>
+      <Button label="✕" on-click={close_drawer} />
     </header>
     <div class="drawer-body">
-      <slot name="drawer-content" />
+      <template slot="drawer-content" />
     </div>
   </aside>
 </div>
@@ -272,15 +267,14 @@ impl DialogService {
 ```html
 <div class="tabs">
   <div class="tab-headers">
-    <button r:each="tabs" r:key="id"
-            r:class:active="is_active"
-            on:click="switch_tab">
-      {label}
-    </button>
+    <Button each={tab in tabs} key={tab.id}
+            class:active={tab.id == active_tab}
+            on-click={switch_tab}
+            label={tab.label} />
   </div>
   <div class="tab-content">
-    <div r:if="active_tab == 'profile'"><ProfileTab /></div>
-    <div r:if="active_tab == 'settings'"><SettingsTab /></div>
+    <div if={active_tab == 'profile'}><ProfileTab /></div>
+    <div if={active_tab == 'settings'}><SettingsTab /></div>
   </div>
 </div>
 ```
@@ -345,17 +339,17 @@ impl WizardViewModel {
 ```html
 <div class="wizard">
   <div class="steps">
-    <span r:each="0..total_steps" r:class:active="{$index == step}" />
+    <span each={i in step_indices} key={i} class:active={i == step} />
   </div>
-  <div class="step-content" r:switch="step">
-    <div r:case="0"><input r:model="data.name" placeholder="姓名" /></div>
-    <div r:case="1"><input r:model="data.email" placeholder="邮箱" /></div>
-    <div r:case="2"><input r:model="data.password" type="password" /></div>
+  <div class="step-content">
+    <div if={step == 0}><input value={data.name} placeholder="姓名" /></div>
+    <div if={step == 1}><input value={data.email} placeholder="邮箱" /></div>
+    <div if={step == 2}><input value={data.password} type="password" /></div>
   </div>
   <div class="actions">
-    <button r:if="step > 0" on:click="prev">上一步</button>
-    <button r:if="step < total_steps - 1" r:attr:disabled="!can_next" on:click="next">下一步</button>
-    <button r:if="step == total_steps - 1" on:click="finish">完成</button>
+    <Button if={step > 0} label="上一步" on-click={prev} />
+    <Button if={step < total_steps - 1} label="下一步" on-click={next} disabled={!can_next} />
+    <Button if={step == total_steps - 1} label="完成" on-click={finish} />
   </div>
 </div>
 ```
@@ -371,6 +365,6 @@ impl WizardViewModel {
 | 多视图切换       | Tab + 枚举状态            |
 | 多步流程        | 向导 + 步骤枚举             |
 | 实时搜索        | 防抖 input + 计算属性筛选     |
-| 拖拽排序        | `r:each` + 拖拽事件 + 重排命令 |
+| 拖拽排序        | `each` + 拖拽事件 + 重排命令 |
 
 下一节 → [11.2 案例研究：Todo 应用](./case-study.md)

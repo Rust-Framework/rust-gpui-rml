@@ -5,7 +5,8 @@
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
-            <Card title="animate 指令演示">
+            <div class="demo-section">
+                <h3>animate 指令演示</h3>
                 <p>visible = {visible}（点击切换以重播动画）</p>
                 <div display="flex" flex-direction="row" gap="16px">
                     <Button label="切换可见性" on-click={on_toggle_visible} />
@@ -33,9 +34,10 @@
                         fade:600 — 自定义时长 600ms
                     </div>
                 </div>
-            </Card>
+            </div>
 
-            <Card title="animate + show 组合">
+            <div class="demo-section">
+                <h3>animate + show 组合</h3>
                 <p>show_card = {show_card}（show 降级为 if 语义）</p>
                 <div display="flex" flex-direction="row" gap="16px">
                     <Button label="切换 show" on-click={on_toggle_show} />
@@ -46,7 +48,7 @@
                         show + slide-up — show 降级为条件渲染（不占布局空间）
                     </div>
                 </div>
-            </Card>
+            </div>
         </template>
 
         <template slot="api">

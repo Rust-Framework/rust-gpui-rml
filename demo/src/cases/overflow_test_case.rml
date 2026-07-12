@@ -5,12 +5,13 @@
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
-            <Card title="垂直滚动 overflow-y-auto">
+            <div class="demo-section">
+                <h3>垂直滚动 overflow-y-auto</h3>
                 <p>50 个条目，固定高度 200px，验证 overflow-y 映射：</p>
                 <div class="scroll-vertical" overflow-y-auto="" style="height: 200px; border: 1px solid var(--border); padding: 8px;">
                     <p each={item in items}>{item}</p>
                 </div>
-            </Card>
+            </div>
         </template>
         <template slot="api">
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />

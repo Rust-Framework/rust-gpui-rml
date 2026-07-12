@@ -19,6 +19,7 @@
 | [checkbox.md](./checkbox.md) | `Checkbox` | Stateless |
 | [label.md](./label.md) | `Label` | Stateless |
 | [input.md](./input.md) | `Input` | Stateful（`input_state`） |
+| [key-binding.md](./key-binding.md) | `KeyBinding` / `ShortcutScope` | RenderOnce（焦点宿主与作用域快捷键） |
 | [text-input.md](./text-input.md) | `TextInput` | Stateful（同 `Input`） |
 | [code-editor.md](./code-editor.md) | `CodeEditor` | Stateful（`editor_state`，基于 Input 多行代码编辑器） |
 | [slider.md](./slider.md) | `Slider` | Stateless |
@@ -65,6 +66,7 @@
 1. 先读 [window-roots.md](./window-roots.md) 了解根节点与插槽分区。
 2. 表单类从 [button.md](./button.md) 与 [input.md](./input.md) 入手。
 3. Shell 应用读 [activity-bar.md](./activity-bar.md)、[menu.md](./menu.md)、[status-bar.md](./status-bar.md)、[tree.md](./tree.md)，配合 [贡献点架构](../../09-architecture/contribution-system.md)。
+4. 组合模式（KeyBinding 子节点、Dialog trigger、菜单触发器）读 [composition-patterns.md](../composition-patterns.md)。
 
 ## codegen 与 gpui-component 的差距
 

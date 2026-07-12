@@ -36,10 +36,9 @@ impl ILifecycle for ProgressCase {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         self.current = 60.0;
         let (cols, rows) = build_api_table(&[
-            ("value", "f32 / 绑定", "进度值 0-100（自动 clamp）"),
-            ("loading", "布尔/绑定", "加载中状态（value 被忽略）"),
-            ("size", "xsmall/small/medium/large", "尺寸（4px/6px/8px/10px 高度）"),
-            ("color", "Hsla", "自定义颜色（暂未支持 RML 声明式设置）"),
+            ("value", "number / binding", "进度值 0–100（自动 clamp）"),
+            ("loading", "bool / binding", "加载中状态（显示无限滑动动画，忽略 value）"),
+            ("size", "string", "尺寸：xsmall | small | medium | large"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

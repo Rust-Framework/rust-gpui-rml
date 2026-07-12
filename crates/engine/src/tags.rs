@@ -562,6 +562,14 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             kind: ComponentKind::StatelessNoId,
             container: true,
         }),
+        // ShortcutScope：作用域级键盘快捷键容器（RenderOnce + ParentElement，无 ElementId、无 cx）
+        // ShortcutScope::new() 构造，.shortcut(key, when, on_press) 注册快捷键，子树 keydown 冒泡触发。
+        // <Shortcut> 为声明式元数据子节点，由 attach 转为 .shortcut() 调用。
+        "ShortcutScope" => Some(ComponentTag {
+            ctor_path: "rml_ui::ShortcutScope",
+            kind: ComponentKind::StatelessNoId,
+            container: true,
+        }),
         // Grid：声明式等宽网格布局容器（RenderOnce + ParentElement，无 ElementId、无 cx）
         // Grid::new() 构造，.columns(u16)/.rows(u16) 设置列数/行数，底层 div().grid().grid_cols(n)
         "Grid" => Some(ComponentTag {

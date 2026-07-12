@@ -1,13 +1,13 @@
 <component>
     <CaseDocPage
         title={t("case.number_input.title")}
-        description="NumberInput 是 RML 的数字输入框组件，标签为 PascalCase NumberInput 或 kebab-case number-input。复用 InputState（同 Input/TextInput）。步进按钮（增减）默认由 InputState 内部处理，直接更新值并触发 InputEvent::Change。支持 value 双向绑定、placeholder、appearance、disabled、size 等属性。on-change/on-enter/on-focus/on-blur 事件通过 InputEvent 触发。"
+        description="NumberInput 是 RML 的数字输入框组件。内置步进按钮（+/−），支持 value 双向绑定、placeholder、appearance、disabled、size 等属性，以及 on-change/on-enter/on-focus/on-blur 事件。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
             <div class="demo-section">
                 <h3>1. 基础用法 + ref 指令</h3>
-                <p>NumberInput 通过 ref 指令绑定到 ElementRef InputState 字段。步进按钮默认步长为 1，点击 +/− 按钮或按 Up/Down 键即可增减值。</p>
+                <p>通过 ref 引用数字输入框。步进按钮默认步长为 1，点击 +/− 或按 Up/Down 键即可增减值。</p>
                 <NumberInput ref="basic_input" />
             </div>
 
@@ -20,7 +20,7 @@
 
             <div class="demo-section">
                 <h3>3. value 双向绑定</h3>
-                <p>value={bound_value} 自动启用双向绑定（InputStateBridge）：VM 字段 → InputState 正向同步，InputEvent::Change → VM 字段反向同步。输入框与下方文本同步更新。</p>
+                <p>value={bound_value} 双向绑定：输入框与下方文本同步更新。</p>
                 <p>绑定值：{bound_value}</p>
                 <NumberInput ref="bound_input" value={bound_value} placeholder="双向绑定" />
             </div>
@@ -58,7 +58,7 @@
         <template slot="api">
             <h3>NumberInput</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-            <p>注：NumberInput 复用 InputState，value 绑定走 InputStateBridge（同 Input/TextInput）。步进按钮默认内部处理（步长 1），如需外部接管步进逻辑，在 on_loaded 中调用 state.set_step(None, window, cx)。</p>
+            <p>注：NumberInput 的 value 绑定用法与 Input 相同。步进按钮默认内部处理（步长 1）。</p>
         </template>
     </CaseDocPage>
 </component>

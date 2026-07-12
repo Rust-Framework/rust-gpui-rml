@@ -1,13 +1,13 @@
 <component>
     <CaseDocPage
         title={t("case.select.title")}
-        description="Select 是 RML 的下拉选择器组件，标签为 PascalCase Select 或 kebab-case select。通过 ref 指令引用 SelectState，items={field} 绑定提供 SearchableVec<SharedString> 委托数据，Select::new(&state) 创建视图。支持 placeholder、cleanable、appearance、menu-width、menu-max-h、size 等属性。on-change 事件接收 Option<SharedString> 载荷。"
+        description="Select 是 RML 的下拉选择器组件。通过 ref + items 或 value 双向绑定使用，支持 placeholder、cleanable、appearance、menu-width、menu-max-h、size 等属性。on-change 在选择确认时触发回调。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
             <div class="demo-section">
-                <h3>1. 基础用法 + on_change 事件</h3>
-                <p>Select 通过 ref 指令绑定到 ElementRef SelectState 字段，items 绑定提供 SearchableVec 委托数据。选择后触发 SelectEvent::Confirm，参数为 Option&lt;SharedString&gt;。</p>
+                <h3>1. 基础用法 + on-change 事件</h3>
+                <p>通过 ref 引用选择器，items 绑定提供选项列表。选择后触发 on-change 回调。</p>
                 <p>选中值：{selected_value}</p>
                 <Select ref="basic_select" items={basic_items} on-change={on_basic_change} />
             </div>
@@ -20,8 +20,8 @@
             </div>
 
             <div class="demo-section">
-                <h3>3. appearance=false + menu_width/menu_max_h</h3>
-                <p>appearance 默认 true，设为 false 移除边框与背景。menu_width/menu_max_h 控制下拉菜单宽度与最大高度。</p>
+                <h3>3. appearance=false + menu-width/menu-max-h</h3>
+                <p>appearance 默认 true，设为 false 移除边框与背景。menu-width/menu-max-h 控制下拉菜单宽度与最大高度。</p>
                 <Select ref="minimal_select" items={lang_items} appearance="false" menu-width="240px" menu-max-h="200px" on-change={on_lang_change} />
                 <p>选中语言：{selected_lang}</p>
             </div>
@@ -38,7 +38,7 @@
 
             <div class="demo-section">
                 <h3>5. value 双向绑定</h3>
-                <p>value 与 items 配合，自动 StateBridge 双向同步（无需 ref / on_change）。VM 字段变更会正向更新选中项，用户选择会反向写回字段。</p>
+                <p>value 与 items 配合实现双向绑定（无需 ref / on-change）。ViewModel 字段变更会更新选中项，用户选择会写回字段。</p>
                 <p>绑定值：{bound_fruit}</p>
                 <Select items={basic_items} value={bound_fruit} placeholder="请选择水果" cleanable />
             </div>

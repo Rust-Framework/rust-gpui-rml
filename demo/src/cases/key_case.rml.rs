@@ -54,9 +54,9 @@ impl ILifecycle for KeyCase {
             },
         ];
         let (cols, rows) = build_api_table(&[
-            ("key={expr}", "指令", "为 each 项提供稳定 ElementId（NamedInteger）"),
-            ("key 优先级", "说明", "ref > key > 事件处理器（同时存在时按优先级消费）"),
-            ("key 表达式作用域", "说明", "each 作用域内引用循环变量（如 item.id），非 self.item.id"),
+            ("key={expr}", "指令", "为 each 项提供稳定标识，如 key={item.id}"),
+            ("key 优先级", "说明", "ref > key > 事件处理器"),
+            ("key 表达式作用域", "说明", "each 作用域内引用循环变量，如 key={item.id}"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

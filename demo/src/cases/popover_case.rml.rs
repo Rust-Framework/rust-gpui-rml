@@ -39,7 +39,7 @@ impl ILifecycle for PopoverCase {
             ("appearance", "bool", "是否应用默认样式（bg/border/shadow），默认 true；appearance=false 关闭"),
             ("overlay-closable", "bool", "点击外部是否关闭，默认 true；overlay-closable=false 禁用"),
             ("default-open", "bool", "初始展开状态，默认 false；default-open=true 初始展开"),
-            ("slot=trigger", "slot", "标记 trigger 元素，需实现 Selectable + IntoElement（如 Button）"),
+            ("slot=trigger", "slot", "触发器元素，如 Button slot=\"trigger\""),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

@@ -1,13 +1,13 @@
 <component>
     <CaseDocPage
         title={t("case.input.title")}
-        description="Input 是 RML 的文本输入组件，标签为 PascalCase Input。通过 ref 指令引用 InputState。支持 placeholder、default-value、masked 等 InputState builder 参数的直接声明式设置，以及 disabled、size、selected 等组件属性。on-change/on-enter/on-focus/on-blur 事件通过 InputEvent 触发。小写 input 标签支持 value={field} 自动双向绑定，详见 two-way-case 演示。"
+        description="Input 是 RML 的文本输入组件。支持 ref 引用、value 双向绑定、placeholder、default-value、masked 密码模式，以及 disabled、size、selected 等属性。小写 input 标签用法相同，详见 two-way-case 演示。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
             <div class="demo-section">
                 <h3>1. 基础用法 + ref 指令</h3>
-                <p>PascalCase Input 通过 ref 指令绑定到 ElementRef InputState 字段。首次 render 时惰性创建 Entity，render 结束后注入到字段。</p>
+                <p>通过 ref 指令绑定到 ViewModel 同名字段，便于命令式访问（如聚焦、取值）。</p>
                 <Input ref="basic_input" />
             </div>
 
@@ -55,7 +55,7 @@
 
             <div class="demo-section">
                 <h3>7. 多 Input 组合（表单布局）</h3>
-                <p>多个 ref 字段在 flex 布中并排，演示真实表单场景。每个 PascalCase Input 独立持有 ElementRef InputState，互不干扰。</p>
+                <p>多个 ref 字段在 flex 布局中并排，演示真实表单场景。每个 Input 独立持有引用，互不干扰。</p>
                 <div display="flex" flex-direction="column" gap="8px">
                     <Input ref="form_name_input" placeholder="姓名" />
                     <Input ref="form_email_input" placeholder="邮箱" />

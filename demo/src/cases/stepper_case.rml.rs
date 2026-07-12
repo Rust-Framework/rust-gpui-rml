@@ -38,8 +38,8 @@ impl ILifecycle for StepperCase {
             ("selected-index", "usize / 绑定", "当前选中步骤索引"),
             ("direction", "vertical / horizontal", "布局方向（默认水平）"),
             ("text-center", "布尔标志", "文本居中对齐"),
-            ("on-click", "事件", "步骤点击回调（Fn(&usize, ...)）"),
-            ("size", "xsmall/small/medium/large", "尺寸（Sizable trait）"),
+            ("on-click", "event", "步骤点击时回调，参数为步骤索引"),
+            ("size", "string", "尺寸：xsmall | small | medium | large"),
             ("disabled", "bool / 绑定", "禁用"),
         ]);
         self.api_columns = cols;

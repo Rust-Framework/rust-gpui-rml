@@ -113,9 +113,7 @@ pub struct DangerButton {
 
 ```html
 <!-- danger_button.rml：复用 Button，套一层样式 -->
-<button class="btn btn-danger" on:click="on_click">
-  <slot name="content" />
-</button>
+<Button class="btn btn-danger" on-click={on_click} label="删除" />
 ```
 
 新增按钮类型只需新增组件文件，**不修改** `Button` 本身。

@@ -1,24 +1,25 @@
 <component>
     <CaseDocPage
         title={t("case.virtual_tree.title")}
-        description="虚拟树 demo：gpui-component Tree 内部已使用 uniform_list 实现虚拟化，仅渲染可见范围的节点。本案例生成 10000+ 节点的大型树（200 个根 × 50 个叶子 = 10200 节点），验证滚动流畅性与内存占用。前 3 个根初始展开，展开后可见约 153 节点。无需任何额外开关 —— 虚拟化是 Tree 的内置能力。"
+        description="虚拟树演示：Tree 组件内置虚拟化，仅渲染可见节点。本案例生成 10000+ 节点的大型树，验证滚动流畅性。无需额外开关。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
-            <Card title="10000+ 节点虚拟树">
-                <p>总节点数：{total_nodes}（200 根 × 50 叶子）。Tree 内部使用 uniform_list 虚拟化，仅渲染可见行。展开/折叠/滚动均保持流畅。</p>
+            <div class="demo-section">
+                <h3>10000+ 节点虚拟树</h3>
+                <p>总节点数：{total_nodes}（200 根 × 50 叶子）。Tree 自动虚拟化，仅渲染可见行。展开/折叠/滚动均保持流畅。</p>
                 <p>当前激活（叶子）：{activated_text}</p>
                 <p>当前选中（含文件夹）：{selected_text}</p>
                 <div style="height: 480px; border: 1px solid var(--border); overflow: hidden; border-radius: 4px;">
                     <Tree ref="big_tree" items={tree_items} on-activate={on_activate} on-select={on_select} />
                 </div>
-            </Card>
+            </div>
         </template>
 
         <template slot="api">
             <h3>VirtualTree（内置虚拟化）</h3>
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
-            <p>注：Tree 标签与虚拟树使用相同组件 —— 虚拟化是 gpui-component Tree 的内置能力（基于 uniform_list）。无论节点数量多少，仅渲染可见范围。TreeData 作为 ViewModel 侧数据载体（Send + Sync），框架在构造时自动转换为内部 TreeItem 并由 TreeState 扁平化为 entries 列表。</p>
+            <p>注：Tree 与虚拟树使用相同组件，大型树自动虚拟化，仅渲染可见范围。items 绑定 ViewModel 中的树节点数据。</p>
         </template>
     </CaseDocPage>
 </component>

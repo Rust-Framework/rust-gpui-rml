@@ -101,17 +101,17 @@ impl ILifecycle for ComboboxCase {
         ]);
 
         let (cols, rows) = build_api_table(&[
-            ("ref", "字符串（指令）", "元素引用名，绑定到 ElementRef<ComboboxState<SearchableVec<SharedString>>> 字段（必填）"),
-            ("items", "绑定表达式", "SearchableVec<SharedString> 委托数据源，通过 items={field} 绑定（value 双向绑定时必填）"),
-            ("value", "绑定属性", "双向绑定到 pub Vec<String> 字段（StateBridge → set_selected_indices / ComboboxEvent::Change）"),
-            ("placeholder", "字符串", "占位文本（走通用 static setter）"),
-            ("cleanable", "布尔属性", "启用清除按钮（默认 false）"),
-            ("appearance", "true/false", "是否显示边框背景（默认 true，设 false 移除）"),
-            ("menu-width", "像素值（如 280px）", "下拉菜单宽度"),
-            ("menu-max-h", "像素值（如 180px）", "下拉菜单最大高度"),
-            ("search-placeholder", "字符串", "搜索框占位文本"),
-            ("size", "xsmall/small/medium/large", "尺寸（Sizable trait 通用属性）"),
-            ("on_change", "事件", "选择变化回调（参数：Vec<SharedString>；通过 cx.subscribe 订阅 ComboboxEvent::Change）"),
+            ("ref", "string", "元素引用名，绑定到 ViewModel 同名字段（与 items 配合使用）"),
+            ("items", "binding", "选项数据源，如 items={tag_list}"),
+            ("value", "binding", "双向绑定到 ViewModel 字符串数组字段，如 value={selected_tags}"),
+            ("placeholder", "string", "占位文本"),
+            ("cleanable", "bool", "启用清除按钮（默认 false）"),
+            ("appearance", "bool", "是否显示边框背景（默认 true，设 false 移除）"),
+            ("menu-width", "string", "下拉菜单宽度，如 menu-width=\"280px\""),
+            ("menu-max-h", "string", "下拉菜单最大高度，如 menu-max-h=\"180px\""),
+            ("search-placeholder", "string", "搜索框占位文本"),
+            ("size", "string", "尺寸：xsmall | small | medium | large"),
+            ("on-change", "event", "选择变化时回调，参数为当前选中值列表"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

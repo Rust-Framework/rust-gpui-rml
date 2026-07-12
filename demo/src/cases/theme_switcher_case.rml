@@ -6,21 +6,23 @@
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
-            <Card title="主题切换">
+            <div class="demo-section">
+                <h3>主题切换</h3>
                 <p>当前主题：{current_theme}</p>
                 <div display="flex" flex-direction="row" gap="16px">
                     <Button label="浅色 Light" on-click={on_light} />
                     <Button label="深色 Dark" on-click={on_dark} />
                 </div>
-            </Card>
+            </div>
 
-            <Card title="主题效果预览">
+            <div class="demo-section">
+                <h3>主题效果预览</h3>
                 <p>以下元素会根据主题自动切换配色：</p>
                 <div display="flex" flex-direction="row" gap="16px">
                     <Button primary label="主要按钮" />
                     <Button label="默认按钮" />
                 </div>
-            </Card>
+            </div>
         </template>
 
         <template slot="api">

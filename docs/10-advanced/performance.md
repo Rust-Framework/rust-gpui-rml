@@ -212,7 +212,7 @@ gpui::div().id("rml_ref:title").child(format!("{}", self.title))
 **优化要点**：
 - 为有状态的元素（事件监听器、动画）添加 `ref`
 - 列表渲染时用 `each` 指令的 item 变量生成唯一 ID
-- 避免 `r:if` 频繁切换元素类型（破坏 ID 复用）
+- 避免 `if` 频繁切换元素类型（破坏 ID 复用）
 
 ## 10.1.5 避免过度 notify
 

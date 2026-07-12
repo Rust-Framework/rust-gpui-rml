@@ -184,6 +184,8 @@
 
   "tree.group.framework": "Framework",
 
+  "tree.group.business": "Business Cases",
+
   "tree.case.menu.context": "Context menu",
 
   "tree.case.menu.dropdown": "Dropdown menu",
@@ -304,6 +306,8 @@
 
   "case.card.title": "Card",
 
+  "case.edna.title": "eDNA Continuous Sampling Control System",
+
   "case.title_bar.title": "TitleBar",
 
   "case.native_status_bar.title": "NativeStatusBar",
@@ -409,6 +413,8 @@
   "case.alert_dialog.title": "AlertDialog",
 
   "case.notification.title": "Notification",
+
+  "case.overflow.title": "Overflow",
 
   "case.scroll.title": "Scroll",
 

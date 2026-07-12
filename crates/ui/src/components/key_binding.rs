@@ -1,10 +1,15 @@
 //! KeyBinding —— 声明式键盘快捷键
 //!
-//! RML `<KeyBinding key="Ctrl+S" on-press={handle_save} />` 在子树获得焦点时
-//! 监听键盘事件，匹配快捷键组合后触发 on_press 回调。
+//! ## 推荐 RML 写法（焦点宿主子节点）
 //!
-//! 组件作为容器包裹子元素，通过 GPUI 事件冒泡机制接收子元素的 keydown 事件。
-//! 修饰键语法遵循 GPUI `Keystroke::parse`：ctrl / alt / shift / cmd / win / super / fn / secondary。
+//! ```rml
+//! <Input ref="demo_input">
+//!   <KeyBinding key="Ctrl+S" on-press={on_save} />
+//!   <KeyBinding key="Escape" on-press={on_clear} />
+//! </Input>
+//! ```
+//!
+//! 编译器将 Input 包裹在 KeyBinding 链中，子树获得焦点时通过事件冒泡监听 keydown。
 
 use gpui::{
     AnyElement, App, InteractiveElement, IntoElement, KeyDownEvent, Keystroke, ParentElement,
@@ -73,9 +78,21 @@ impl ParentElement for KeyBinding {
     }
 }
 
+/// 将 `Ctrl+S` / `Ctrl-S` / `ctrl+s` 等写法归一化为 GPUI `Keystroke::parse` 语法（`ctrl-s`）。
+pub fn normalize_key_source(source: &str) -> String {
+    source
+        .split(|c| c == '+' || c == '-')
+        .map(str::trim)
+        .filter(|part| !part.is_empty())
+        .map(|part| part.to_ascii_lowercase())
+        .collect::<Vec<_>>()
+        .join("-")
+}
+
 impl RenderOnce for KeyBinding {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
-        let target = Keystroke::parse(self.key.as_ref()).ok();
+        let normalized = normalize_key_source(self.key.as_ref());
+        let target = Keystroke::parse(&normalized).ok();
         let when = self.when;
         let on_press = self.on_press;
 
@@ -103,5 +120,33 @@ impl RenderOnce for KeyBinding {
         }
 
         container
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn normalize_ctrl_plus_s() {
+        assert_eq!(normalize_key_source("Ctrl+S"), "ctrl-s");
+    }
+
+    #[test]
+    fn normalize_ctrl_dash_o() {
+        assert_eq!(normalize_key_source("ctrl-o"), "ctrl-o");
+    }
+
+    #[test]
+    fn normalize_escape() {
+        assert_eq!(normalize_key_source("Escape"), "escape");
+    }
+
+    #[test]
+    fn parse_normalized_ctrl_s() {
+        let normalized = normalize_key_source("Ctrl+S");
+        let ks = Keystroke::parse(&normalized).expect("valid keystroke");
+        assert!(ks.modifiers.control);
+        assert_eq!(ks.key, "s");
     }
 }

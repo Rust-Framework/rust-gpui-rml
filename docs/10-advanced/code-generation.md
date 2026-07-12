@@ -1,6 +1,8 @@
 # 10.6 代码生成原理
 
 > **本节目标**：理解 RML 编译器如何把 `.rml` 模板转换为 GPUI 渲染代码，掌握 AST、语义验证、代码生成的完整链路。
+>
+> **语法说明**：RML 指令为 `if` / `each` / `show`（无 `r:` 前缀），双向绑定为 `value={field}`，事件为 `on-click={fn}`。下文若出现 `r:if` 等仅为 AST 说明中的历史标记，非实际写法。
 
 ## 10.6.1 编译流水线
 
@@ -32,7 +34,7 @@
 RML 使用基于 HTML 子集的词法分析器，产出 Token 流：
 
 ```
-<div class="card" r:if="visible">
+<div class="card" if={visible}>
   <p>{title}</p>
 </div>
 ```
@@ -42,7 +44,7 @@ Token 流：
 ```
 TagStart("div")
 Attr("class", "card")
-Attr("r:if", "visible")
+Attr("if", "visible")
 TagEnd
 Text("\n  ")
 TagStart("p")
@@ -96,7 +98,7 @@ BindingPath {
 
 ### 命令引用解析
 
-`on:click="login"` 中的 `login` 被解析为：
+`on-click={login}` 中的 `login` 被解析为：
 
 ```rust
 CommandRef {
@@ -132,7 +134,7 @@ ComponentRef {
 
 ### 常量折叠
 
-`r:if="true"` 被消除，body 直接内联：
+`if={true}` 被消除，body 直接内联：
 
 ```rust
 // 折叠前
@@ -143,7 +145,7 @@ if true { <p>{title}</p> }
 
 ### 死代码消除
 
-`r:if="false"` 的 body 被完全移除，不生成代码。
+`if={false}` 的 body 被完全移除，不生成代码。
 
 ### 静态子树提取
 
@@ -176,10 +178,10 @@ div()
     )
 ```
 
-### r:if 生成
+### if 生成
 
 ```html
-<p r:if="visible">{title}</p>
+<p if={visible}>{title}</p>
 ```
 
 生成：
@@ -192,10 +194,10 @@ if self.visible {
 }
 ```
 
-### r:each 生成
+### each 生成
 
 ```html
-<li r:each="items" r:key="id">{title}</li>
+<li each={item in items} key={item.id}>{item.title}</li>
 ```
 
 生成：
@@ -208,7 +210,7 @@ self.items.iter().map(|item| {
 
 ### 绑定生成
 
-`r:model="email"` 生成双向绑定：
+`value={email}` 生成双向绑定：
 
 ```rust
 input()
@@ -221,7 +223,7 @@ input()
 
 ### 命令生成
 
-`on:click="login"` 生成事件监听：
+`on-click={login}` 生成事件监听：
 
 ```rust
 button()

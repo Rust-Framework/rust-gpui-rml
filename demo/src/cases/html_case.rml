@@ -5,11 +5,12 @@
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
-            <Card title="基础用法">
+            <div class="demo-section">
+                <h3>基础用法</h3>
                 <p>html_content 字段值：</p>
                 <div html={html_content.clone()} />
                 <p>注：实际渲染为 Label 文本节点，HTML 标签作为字面量字符显示（未被解析为样式）。</p>
-            </Card>
+            </div>
         </template>
 
         <template slot="api">

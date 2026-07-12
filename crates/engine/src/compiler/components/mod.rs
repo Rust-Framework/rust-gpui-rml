@@ -26,6 +26,7 @@ pub mod grid;
 pub mod hover_card;
 pub mod icon;
 pub mod key_binding;
+pub mod shortcut_scope;
 pub mod input;
 pub mod kbd;
 pub mod label;

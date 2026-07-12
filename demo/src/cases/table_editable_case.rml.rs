@@ -219,14 +219,12 @@ impl ILifecycle for TableEditableCase {
         self.edit_delegate = Arc::new(EditableTableDelegate::new(rows));
 
         let (cols, rows) = build_api_table(&[
-            ("editable", "Column 标志属性", "标记列为可编辑（editable=\"\" 或 editable=\"true\"）"),
-            ("delegate", "Table 属性（绑定）", "Arc<dyn TableDelegate> —— 自定义编辑状态管理和编辑器渲染"),
-            ("on-cell-edit", "Table 事件属性", "单元格编辑提交回调（row, col, new_value, cx）"),
-            ("start_edit", "TableDelegate 方法", "进入编辑模式（由 Table 在点击可编辑单元格时调用）"),
-            ("stop_edit", "TableDelegate 方法", "退出编辑模式"),
-            ("is_editing", "TableDelegate 方法", "判断指定单元格是否处于编辑模式"),
-            ("render_editor", "TableDelegate 方法", "渲染编辑器元素（如 Input）"),
-            ("set_notify", "TableDelegate 方法", "注入重新渲染回调（由 Table 自动调用）"),
+            ("editable", "bool", "标记列为可编辑，如 editable=\"\" 或 editable=\"true\""),
+            ("delegate", "binding", "自定义编辑行为（code-behind 实现）"),
+            ("on-cell-edit", "event", "单元格编辑提交时回调"),
+            ("start_edit / stop_edit", "delegate 方法", "进入/退出编辑模式（code-behind）"),
+            ("is_editing", "delegate 方法", "判断单元格是否处于编辑模式（code-behind）"),
+            ("render_editor", "delegate 方法", "渲染编辑器元素，如 Input（code-behind）"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

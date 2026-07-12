@@ -48,7 +48,7 @@ impl ILifecycle for VirtualListCase {
             ("direction", "vertical/horizontal", "方向（默认 vertical，选择 v/h_virtual_list 构造器）"),
             ("item-sizes", "绑定", "Vec<Size<Pixels>>，每项尺寸（垂直用 height，水平用 width）"),
             ("on-scroll", "事件", "滚动事件（预留）"),
-            ("width/height", "样式", "VirtualList 实现 Styled trait，支持所有样式属性"),
+            ("width/height", "string", "宽高样式，如 width=\"100%\" height=\"400px\""),
             ("slot=render", "模板", "渲染模板，必须使用 each={i in range} 声明循环变量"),
         ]);
         self.api_columns = cols;

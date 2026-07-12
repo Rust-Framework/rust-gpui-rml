@@ -6,30 +6,34 @@
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
-            <Card title="L1 全局 CSS（.button-row）">
+            <div class="demo-section">
+                <h3>L1 全局 CSS（.button-row）</h3>
                 <p>使用全局样式表 styles.css 中的 .button-row 类（display:flex; gap:8px）：</p>
                 <div class="button-row">
                     <Button label="全局 CSS 1" />
                     <Button label="全局 CSS 2" primary />
                 </div>
-            </Card>
+            </div>
 
-            <Card title="L2 页面 CSS（.priority-box + CSS 变量）">
+            <div class="demo-section">
+                <h3>L2 页面 CSS（.priority-box + CSS 变量）</h3>
                 <p>本页 &lt;style&gt; 定义的 .priority-box 类，padding 来自 var(--card-padding)：</p>
                 <div class="priority-box">
                     <p>padding = var(--card-padding) = 16px</p>
                     <p>background = var(--surface)，border = var(--border)</p>
                 </div>
-            </Card>
+            </div>
 
-            <Card title="L3 内联 style">
+            <div class="demo-section">
+                <h3>L3 内联 style</h3>
                 <p>style 属性直接设置 padding + background + border-radius：</p>
                 <div style="padding: 20px; background: var(--surface-variant); border-radius: 6px;">
                     <p>内联 style: padding=20px, bg=var(--surface-variant), radius=6px</p>
                 </div>
-            </Card>
+            </div>
 
-            <Card title="L3 归一化属性">
+            <div class="demo-section">
+                <h3>L3 归一化属性</h3>
                 <p>padding/gap/display/flex-direction 属性自动归一化为 GPUI 方法：</p>
                 <div padding="16px" gap="8px" display="flex" flex-direction="column" background="var(--surface)">
                     <p>归一化属性: padding=16px gap=8px</p>
@@ -37,9 +41,10 @@
                         <p>嵌套: padding=8px bg=var(--background)</p>
                     </div>
                 </div>
-            </Card>
+            </div>
 
-            <Card title="优先级对比（归一化属性 > style > CSS class）">
+            <div class="demo-section">
+                <h3>优先级对比（归一化属性 > style > CSS class）</h3>
                 <p>三个元素都使用 .style-override 类（padding:8px），分别叠加不同覆盖层：</p>
                 <div class="nested-row">
                     <div class="style-override">
@@ -55,17 +60,19 @@
                         <p>padding = 24px（属性覆盖 class）</p>
                     </div>
                 </div>
-            </Card>
+            </div>
 
-            <Card title="CSS 变量动态注入">
+            <div class="demo-section">
+                <h3>CSS 变量动态注入</h3>
                 <p>var(--accent-color) 和 var(--spacing-md) 在 :root 中定义，构建期内联：</p>
                 <div class="var-demo">
                     <p>background = var(--accent-color) = var(--primary)</p>
                     <p>padding = var(--spacing-md) = 16px</p>
                 </div>
-            </Card>
+            </div>
 
-            <Card title="复杂嵌套（div > div > Button + Tag + Icon + Label）">
+            <div class="demo-section">
+                <h3>复杂嵌套（div > div > Button + Tag + Icon + Label）</h3>
                 <div class="nested-container">
                     <div class="nested-row">
                         <Button label="嵌套按钮" primary />
@@ -81,9 +88,10 @@
                         <Label>带归一化属性的行（padding=10px gap=12px）</Label>
                     </div>
                 </div>
-            </Card>
+            </div>
 
-            <Card title="动态样式（if 条件切换 class）">
+            <div class="demo-section">
+                <h3>动态样式（if 条件切换 class）</h3>
                 <p>当前状态：{status_label}</p>
                 <div class="button-row">
                     <Button label="激活" on-click={on_activate} primary />
@@ -95,7 +103,7 @@
                 <div if={!is_active} class="dynamic-inactive">
                     <p>停用状态：红色边框 + 浅红背景</p>
                 </div>
-            </Card>
+            </div>
         </template>
     </CaseDocPage>
 </component>

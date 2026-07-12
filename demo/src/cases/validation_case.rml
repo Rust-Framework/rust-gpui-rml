@@ -5,7 +5,8 @@
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
-            <Card title="表单字段">
+            <div class="demo-section">
+                <h3>表单字段</h3>
                 <p>姓名（必填）：</p>
                 <input value={name} placeholder="输入姓名" />
                 <p>当前姓名：{name}（有效：{name_valid}）</p>
@@ -17,11 +18,12 @@
                 <p>邮箱（自定义 #[computed] 验证）：</p>
                 <input value={email} placeholder="输入邮箱" />
                 <p>当前邮箱：{email}（有效：{email_valid}）</p>
-            </Card>
+            </div>
 
-            <Card title="验证状态">
+            <div class="demo-section">
+                <h3>验证状态</h3>
                 <p>{form_status}</p>
-            </Card>
+            </div>
         </template>
 
         <template slot="api">

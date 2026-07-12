@@ -5,12 +5,13 @@
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
-            <Card title="IDE 风格 Dock 布局">
+            <div class="demo-section">
+                <h3>IDE 风格 Dock 布局</h3>
                 <p>左侧文件树面板、中间编辑器标签页（支持拖拽）、底部终端面板。拖拽标签页可在面板间移动，面板边界可拖拽调整大小。</p>
                 <div style="margin-top: 12px; height: 480px; border: 1px solid var(--border); overflow: hidden; border-radius: 4px;">
                     <component content={dock_area} />
                 </div>
-            </Card>
+            </div>
         </template>
     </CaseDocPage>
 </component>

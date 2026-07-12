@@ -35,10 +35,10 @@ impl ILifecycle for IconCase {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         self.icon_index = 0;
         let (cols, rows) = build_api_table(&[
-            ("name", "IconName 枚举名", "图标名称（如 Settings/Bell/User），生成 Icon::new(IconName::Settings)"),
-            ("path", "字符串", "自定义图标路径（如 icons/foo.svg），生成 Icon::empty().path(...)"),
-            ("size", "枚举", "Sizable 尺寸：xsmall/small/medium/large"),
-            ("text_color", "颜色", "来自 Styled trait，设置图标颜色"),
+            ("name", "string", "内置图标名称，如 name=\"Settings\""),
+            ("path", "string", "自定义图标路径，如 path=\"icons/foo.svg\""),
+            ("size", "string", "尺寸：xsmall | small | medium | large"),
+            ("text-color", "string", "图标颜色，如 text-color=\"var(--primary)\""),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

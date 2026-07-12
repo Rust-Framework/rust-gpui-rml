@@ -87,14 +87,11 @@ impl ILifecycle for ContentBindingCase {
             Person { name: "Charlie".to_string() },
         ];
         let (cols, rows) = build_api_table(&[
-            ("content={i32}", "ToString", "数值格式化为文本"),
-            ("content={bool}", "ToString", "布尔格式化为文本"),
-            ("content={String}", "IntoElement", "字符串作为文本元素"),
-            ("content={SharedString}", "IntoElement", "共享字符串作为文本元素"),
-            ("content={AnyElement}", "IntoElement", "方法返回 AnyElement"),
-            ("content={Box<dyn IVisual>}", "IVisual", "调用 IVisual::render"),
-            ("content={&T} (self.field)", "&T blanket impl", "自动 & 借用，Clone 委托值类型"),
-            ("content={item} (each 循环)", "&T blanket impl", "循环变量已是 &T，直接转换"),
+            ("content={number}", "string", "数值格式化为文本"),
+            ("content={bool}", "string", "布尔格式化为文本"),
+            ("content={string}", "slot", "字符串作为文本元素"),
+            ("content={方法}", "slot", "方法返回的元素作为内容"),
+            ("content={each 变量}", "slot", "each 循环变量直接作为内容"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

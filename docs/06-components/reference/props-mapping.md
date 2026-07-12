@@ -67,14 +67,14 @@ RML 通过两层机制确保 codegen 属性映射齐全：
 | RML 属性 | 生成的 builder 方法 | 适用组件 |
 |----------|---------------------|----------|
 | `on-click={fn}` | `.on_click(cx.listener(...))` | 所有组件 |
-| `onchange={fn}` | `.on_change(cx.listener(...))` | Input / TextInput |
+| `on-change={fn}` | `.on_change(cx.listener(...))` | Input / TextInput |
 | `on_activate={fn}` | `.on_activate_rc(Rc::new(...))` | Tree |
 
 ## 组件专用属性
 
 | 组件 | 专用属性 | 说明 |
 |------|----------|------|
-| `Input` / `TextInput` | `onchange` | 输入变化事件 |
+| `Input` / `TextInput` | `on-change` | 输入变化事件 |
 | `Tree` | `items`, `on_activate`, `on_select` | 树数据与事件 |
 | `MenuBar` / `menu` | `items` | 菜单项数据绑定 |
 | `status_bar` | `items` | 状态栏项数据绑定 |
@@ -160,3 +160,4 @@ pub struct Card { ... }
 - [插槽与内容分发](../slots.md)
 - [窗口根元素](./window-roots.md)
 - [代码生成](../../10-advanced/code-generation.md)
+- [Demo 案例 API 表格规范](../../11-cookbook/demo-case-conventions.md#api-表格编写规范) — 案例页面向开发者展示的 API 表与本文档内部映射的区分

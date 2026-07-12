@@ -5,7 +5,8 @@
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
-            <Card title="双分支渲染">
+            <div class="demo-section">
+                <h3>双分支渲染</h3>
                 <p>show_a = {show_a}</p>
                 <div display="flex" flex-direction="row" gap="16px">
                     <Button label="切换分支" on-click={on_toggle} />
@@ -18,7 +19,7 @@
                         <p>show_a 为 false 时渲染此分支（else 分支，与同父 if 配对）。</p>
                     </Card>
                 </div>
-            </Card>
+            </div>
         </template>
 
         <template slot="api">

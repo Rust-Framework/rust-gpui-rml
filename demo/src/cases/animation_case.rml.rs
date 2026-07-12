@@ -43,7 +43,7 @@ impl ILifecycle for AnimationCase {
             ("animate=\"slide-left\"", "预设", "从右滑入：left(20px→0) + opacity"),
             ("animate=\"fade:500\"", "自定义时长", "冒号后指定毫秒数，覆盖默认 300ms"),
             ("animate + if", "组合", "if 切换时元素重新挂载，动画重播"),
-            ("animate + show", "组合", "show 降级为 if 语义（AnimationElement 不实现 Styled）"),
+            ("animate + show", "组合", "show 与 if 组合使用，切换时动画重播"),
             ("animate + each", "组合", "列表项逐一带入场动画"),
         ]);
         self.api_columns = cols;

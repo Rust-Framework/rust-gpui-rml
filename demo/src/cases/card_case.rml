@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.card.title")}
-        description="Card 是 RML 的卡片容器组件（Ant Design 风格），标签为 PascalCase Card。容器模式，通过 title/extra/cover/footer 属性组合内容。支持 bordered/borderless/hoverable 样式控制。"
+        description="Card 是 RML 的卡片容器组件。通过 title/extra/cover/footer 组合内容，支持 bordered/borderless/hoverable 样式控制。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">

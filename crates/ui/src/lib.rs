@@ -106,6 +106,7 @@ pub use components::{
     ComboboxState, ComboboxEvent, StringComboboxState, StringComboboxEvent,
     HoverCardState,
     KeyBinding,
+    ShortcutScope,
     Grid, GridItem,
     Markdown,
     DockArea, DockEvent, DockItem, DockPlacement, Panel, PanelControl, PanelEvent, PanelStyle,

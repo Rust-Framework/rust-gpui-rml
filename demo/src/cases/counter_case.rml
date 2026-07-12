@@ -5,19 +5,21 @@
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
-            <Card title="基础计数">
+            <div class="demo-section">
+                <h3>基础计数</h3>
                 <p>{counter_text}</p>
                 <div class="button-row">
                     <Button label="点击 +1" primary on-click={on_click} />
                     <Button label="重置" ghost on-click={on_reset} />
                 </div>
-            </Card>
-            <Card title="步长控制">
+            </div>
+            <div class="demo-section">
+                <h3>步长控制</h3>
                 <p>当前步长：{step}（每次点击 +步长）</p>
                 <div class="button-row">
                     <Button label="步长 +1" on-click={on_inc_step} />
                 </div>
-            </Card>
+            </div>
         </template>
         <template slot="api">
             <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />

@@ -5,32 +5,35 @@
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
-            <Card title="主题切换">
+            <div class="demo-section">
+                <h3>主题切换</h3>
                 <p>当前主题：{theme_label}</p>
                 <div display="flex" flex-direction="row" gap="16px">
                     <Button label="默认" on-click={on_theme_default} />
                     <Button label="主要" on-click={on_theme_primary} />
                     <Button label="危险" on-click={on_theme_danger} />
                 </div>
-            </Card>
+            </div>
 
-            <Card title="Badge 主题">
+            <div class="demo-section">
+                <h3>Badge 主题</h3>
                 <p>根据 theme_index 条件渲染不同变体的 Badge：</p>
                 <div display="flex" flex-direction="row" gap="16px">
                     <Badge if={theme_index == 0}>Default</Badge>
                     <Badge if={theme_index == 1}>Primary</Badge>
                     <Badge if={theme_index == 2}>Danger</Badge>
                 </div>
-            </Card>
+            </div>
 
-            <Card title="Tag 主题">
+            <div class="demo-section">
+                <h3>Tag 主题</h3>
                 <p>根据 theme_index 条件渲染不同变体的 Tag：</p>
                 <div display="flex" flex-direction="row" gap="16px">
                     <Tag if={theme_index == 0}>Default Tag</Tag>
                     <Tag primary if={theme_index == 1}>Primary Tag</Tag>
                     <Tag danger if={theme_index == 2}>Danger Tag</Tag>
                 </div>
-            </Card>
+            </div>
         </template>
 
         <template slot="api">

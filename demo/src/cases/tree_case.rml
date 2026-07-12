@@ -1,13 +1,13 @@
 <component>
     <CaseDocPage
         title={t("case.tree.title")}
-        description="Tree 是 RML 的树视图组件，标签为 PascalCase Tree。通过 ref 指令引用 TreeState，items 属性绑定 Vec<TreeData> 数据。on-activate 仅叶子节点触发，on-select 含文件夹节点触发。TreeData 通过 builder 模式构建（new/child/children/expanded/disabled），is_folder 根据 children 自动判断。框架在构造时自动将 TreeData 转换为内部 TreeItem。"
+        description="Tree 树视图组件，通过 ref 绑定到 ViewModel 同名字段，items 属性绑定树节点数据。on-activate 仅叶子节点触发，on-select 含文件夹节点触发。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
             <div class="demo-section">
                 <h3>1. 基础用法 + 事件对比</h3>
-                <p>Tree 通过 ref 引用 TreeState，items 绑定 ViewModel 中的 Vec&lt;TreeData&gt; 字段。Tree 标签同时绑定 on-activate 和 on-select 两个事件：on-activate 仅叶子节点点击触发，on-select 含文件夹节点触发。点击文件夹节点仅展开/折叠（不触发 on-activate），点击叶子节点同时触发两个事件。</p>
+                <p>Tree 通过 ref 绑定到 ViewModel 同名字段，items 绑定树节点数据。on-activate 仅叶子节点点击触发，on-select 含文件夹节点触发。点击文件夹节点仅展开/折叠，点击叶子节点同时触发两个事件。</p>
                 <p>当前激活（叶子）：{activated_text}</p>
                 <p>当前选中（含文件夹）：{selected_text}</p>
                 <Tree ref="basic_tree" items={tree_items} on-activate={on_activate} on-select={on_select} />

@@ -5,7 +5,8 @@
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
-            <Card title="焦点事件计数器">
+            <div class="demo-section">
+                <h3>焦点事件计数器</h3>
                 <p>获得焦点次数：{focus_count}</p>
                 <p>失去焦点次数：{blur_count}</p>
                 <div display="flex" flex-direction="column" gap="8px">
@@ -26,7 +27,7 @@
                         <p>可聚焦区域</p>
                     </div>
                 </div>
-            </Card>
+            </div>
         </template>
 
         <template slot="api">

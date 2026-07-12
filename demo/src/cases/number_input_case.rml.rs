@@ -57,16 +57,16 @@ impl ILifecycle for NumberInputCase {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
 
         let (cols, rows) = build_api_table(&[
-            ("ref", "字符串（指令）", "元素引用名，绑定到 ElementRef<InputState> 字段"),
-            ("value", "绑定属性", "双向绑定到 pub 字段（InputStateBridge，同 Input）"),
-            ("placeholder", "字符串", "占位文本"),
+            ("ref", "string", "元素引用名，绑定到 ViewModel 同名字段，如 ref=\"basic_input\""),
+            ("value", "binding", "双向绑定到 ViewModel 字段，如 value={count}"),
+            ("placeholder", "string", "占位文本"),
             ("appearance", "bool", "是否显示边框和背景（默认 true，appearance=\"false\" 移除）"),
-            ("disabled", "布尔/绑定", "禁用状态（Disableable trait 通用属性）"),
-            ("size", "xsmall/small/medium/large", "尺寸（Sizable trait 通用属性，绑定需返回 Size 枚举）"),
-            ("on_change", "事件", "内容变化回调（参数：&Entity<InputState>；通过 cx.subscribe 订阅 InputEvent::Change）"),
-            ("on_enter", "事件", "回车按下回调（InputEvent::PressEnter）"),
-            ("on_focus", "事件", "获得焦点回调（InputEvent::Focus）"),
-            ("on_blur", "事件", "失去焦点回调（InputEvent::Blur）"),
+            ("disabled", "bool / binding", "禁用状态"),
+            ("size", "string", "尺寸：xsmall | small | medium | large"),
+            ("on-change", "event", "内容变化时回调"),
+            ("on-enter", "event", "按回车时回调"),
+            ("on-focus", "event", "获得焦点时回调"),
+            ("on-blur", "event", "失去焦点时回调"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

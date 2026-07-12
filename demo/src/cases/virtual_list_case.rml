@@ -5,7 +5,8 @@
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
-            <Card title="垂直虚拟列表（1000 项）">
+            <div class="demo-section">
+                <h3>垂直虚拟列表（1000 项）</h3>
                 <p>使用 v_virtual_list 渲染 1000 项，每项固定高度 40px，支持滚动：</p>
                 <virtual-list direction="vertical" item-sizes={item_sizes} width="100%" height="400px">
                     <template slot="render" each={i in range}>
@@ -14,9 +15,10 @@
                         </div>
                     </template>
                 </virtual-list>
-            </Card>
+            </div>
 
-            <Card title="水平虚拟列表（1000 项）">
+            <div class="demo-section">
+                <h3>水平虚拟列表（1000 项）</h3>
                 <p>使用 direction="horizontal" 切换 h_virtual_list，每项宽度 800px：</p>
                 <virtual-list direction="horizontal" item-sizes={item_sizes} width="100%" height="60px">
                     <template slot="render" each={i in range}>
@@ -25,7 +27,7 @@
                         </div>
                     </template>
                 </virtual-list>
-            </Card>
+            </div>
         </template>
 
         <template slot="api">

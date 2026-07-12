@@ -42,9 +42,9 @@ impl ILifecycle for CalendarCase {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
 
         let (cols, rows) = build_api_table(&[
-            ("ref", "字符串（指令）", "元素引用名，绑定到 ElementRef<CalendarState> 字段"),
-            ("size", "xsmall/small/medium/large", "尺寸（Sizable trait 通用属性）"),
-            ("on_select", "事件", "日期选择回调（参数：Date；通过 cx.subscribe 订阅 CalendarEvent::Selected）"),
+            ("ref", "string", "元素引用名，绑定到 ViewModel 同名字段，如 ref=\"basic_calendar\""),
+            ("size", "string", "尺寸：xsmall | small | medium | large"),
+            ("on-select", "event", "选择日期时回调，参数为所选日期"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

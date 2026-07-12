@@ -45,10 +45,9 @@ impl ILifecycle for RefCase {
     fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         let (cols, rows) = build_api_table(&[
-            ("ref=\"name\"", "指令", "声明元素引用名，关联到 ElementRef<T> 字段"),
-            ("ElementRef<T>", "字段类型", "命令式访问句柄（focus/scroll/measure 等）"),
-            ("__rml_populate_refs", "方法", "首次 render 后由 RML Runtime 调用，注入 Entity<T>"),
-            ("with_mut(cx, f)", "方法", "可变访问底层 state；on_loaded 阶段返回 None（句柄未注入）"),
+            ("ref", "string", "元素引用名，绑定到 ViewModel 同名字段，如 ref=\"input_state\""),
+            ("ViewModel 字段", "ref 字段", "在 code-behind 声明与 ref 同名的引用字段，用于命令式访问"),
+            ("focus / set_value 等", "命令式 API", "在 #[command] 中通过引用字段调用 focus、set_value、scroll 等方法"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

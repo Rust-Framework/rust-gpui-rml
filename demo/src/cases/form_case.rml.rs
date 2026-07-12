@@ -38,8 +38,8 @@ impl ILifecycle for FormCase {
         let (cols, rows) = build_api_table(&[
             ("horizontal", "bool", "布尔属性，水平布局（标签在左）"),
             ("vertical", "bool", "布尔属性，垂直布局（默认，标签在上）"),
-            ("label_width", "string", "标签宽度（像素），如 \"120\" 或 \"120px\"，默认 140"),
-            ("label_text_size", "string", "标签文字大小（rems），如 \"0.875\""),
+            ("label-width", "string", "标签宽度，如 label-width=\"120px\"，默认 140"),
+            ("label-text-size", "string", "标签文字大小，如 label-text-size=\"0.875\""),
             ("columns", "string", "列数，如 \"2\"，默认 1"),
         ]);
         self.form_api_columns = cols;
@@ -50,10 +50,10 @@ impl ILifecycle for FormCase {
             ("description", "string", "字段描述/帮助文本"),
             ("required", "bool", "布尔属性，标记为必填（显示 *）"),
             ("visible", "bool", "是否可见，默认 true；visible=\"false\" 隐藏"),
-            ("label_indent", "bool", "标签缩进，默认 true；label_indent=\"false\" 关闭"),
-            ("col_span", "string", "跨列数，如 \"2\"，默认 1"),
-            ("col_start", "string", "起始列号"),
-            ("col_end", "string", "结束列号"),
+            ("label-indent", "bool", "标签缩进，默认 true；label-indent=\"false\" 关闭"),
+            ("col-span", "string", "跨列数，如 col-span=\"2\"，默认 1"),
+            ("col-start", "string", "起始列号"),
+            ("col-end", "string", "结束列号"),
         ]);
         self.field_api_columns = cols;
         self.field_api_rows = rows;

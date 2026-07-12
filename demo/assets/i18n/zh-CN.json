@@ -186,6 +186,8 @@
 
   "tree.group.framework": "框架能力",
 
+  "tree.group.business": "业务案例",
+
   "tree.case.menu.context": "上下文菜单",
 
   "tree.case.menu.dropdown": "下拉菜单",
@@ -306,6 +308,8 @@
 
   "case.card.title": "卡片 Card",
 
+  "case.edna.title": "连续环境DNA自动采样控制系统",
+
   "case.title_bar.title": "标题栏 TitleBar",
 
   "case.native_status_bar.title": "原生状态栏 NativeStatusBar",
@@ -411,6 +415,8 @@
   "case.alert_dialog.title": "警示对话框 AlertDialog",
 
   "case.notification.title": "通知 Notification",
+
+  "case.overflow.title": "溢出滚动 Overflow",
 
   "case.scroll.title": "滚动容器 Scroll",
 

@@ -36,9 +36,9 @@ impl ILifecycle for FocusEventCase {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
 
         let (cols, rows) = build_api_table(&[
-            ("on-focus", "事件", "获得焦点回调（参数：&FocusEvent；GPUI 回调无事件参数，RML 构造 FocusEvent::default()）"),
-            ("on-blur", "事件", "失去焦点回调（参数：&FocusEvent）"),
-            ("focusable", "布尔属性", "使元素可接收焦点（focusable=\"\" 或 focusable=\"true\"），配合 on-focus/on-blur 使用"),
+            ("on-focus", "event", "获得焦点时回调"),
+            ("on-blur", "event", "失去焦点时回调"),
+            ("focusable", "bool", "使元素可接收焦点，如 focusable=\"\" 或 focusable=\"true\""),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

@@ -39,12 +39,11 @@ impl ILifecycle for CheckboxCase {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         self.email_notify = true;
         let (cols, rows) = build_api_table(&[
-            ("label", "字符串", "标签文本"),
-            ("checked", "布尔/绑定", "勾选状态"),
-            ("disabled", "布尔/绑定", "禁用"),
-            ("tooltip", "字符串", "悬浮提示"),
-            ("text-size / text-color / font-weight", "样式属性", "来自 Styled trait"),
-            ("on-click", "事件", "点击回调（Fn(&bool, ...)）"),
+            ("label", "string / binding", "标签文本"),
+            ("checked", "bool / binding", "勾选状态"),
+            ("disabled", "bool / binding", "禁用"),
+            ("tooltip", "string", "悬浮提示"),
+            ("on-click", "event", "点击时回调，参数为切换后的勾选状态"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

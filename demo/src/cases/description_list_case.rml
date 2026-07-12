@@ -5,7 +5,8 @@
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
-            <Card title="演示效果">
+            <div class="demo-section">
+                <h3>演示效果</h3>
                 <div class="demo-section">
                     <h3>1. 水平布局 + bordered + columns={3}</h3>
                     <DescriptionList bordered="" columns="3" label-width="120">
@@ -73,7 +74,7 @@
                         <DescriptionItem label="字段 C" value="值 C" />
                     </DescriptionList>
                 </div>
-            </Card>
+            </div>
         </template>
 
         <template slot="api">

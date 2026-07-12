@@ -37,15 +37,16 @@ impl ILifecycle for DialogCase {
 
         let (cols, rows) = build_api_table(&[
             ("title", "string", "对话框标题文本，渲染在标题栏"),
-            ("footer", "string / slot", "对话框页脚，支持字符串属性或 slot=footer 元素注入（slot 覆盖属性）"),
-            ("width", "长度", "对话框宽度，支持 px/裸数字，如 500px / 600，默认 448px"),
-            ("overlay", "bool", "是否显示背景遮罩，默认 true；overlay=false 关闭"),
-            ("overlay-closable", "bool", "点击遮罩是否关闭对话框，默认 true；overlay-closable=false 禁用"),
-            ("close-button", "bool", "是否显示关闭按钮，默认 true；close-button=false 隐藏"),
-            ("keyboard", "bool", "是否支持 ESC 键关闭，默认 true；keyboard=false 禁用"),
-            ("on-close", "event", "关闭事件回调，签名为 Fn(&ClickEvent, &mut Window, &mut App)"),
-            ("on-ok", "event -> bool", "确认回调，返回 false 阻止关闭；签名 Fn(&ClickEvent, &mut Window, &mut App) -> bool"),
-            ("on-cancel", "event -> bool", "取消回调，返回 false 阻止关闭；签名 Fn(&ClickEvent, &mut Window, &mut App) -> bool"),
+            ("footer", "string / slot", "页脚文本，或通过 slot=\"footer\" 注入自定义内容"),
+            ("width", "string", "对话框宽度，如 width=\"500px\" 或 width=\"600\"，默认 448px"),
+            ("overlay", "bool", "是否显示背景遮罩，默认 true；overlay=\"false\" 关闭"),
+            ("overlay-closable", "bool", "点击遮罩是否关闭，默认 true；overlay-closable=\"false\" 禁用"),
+            ("close-button", "bool", "是否显示关闭按钮，默认 true；close-button=\"false\" 隐藏"),
+            ("keyboard", "bool", "是否支持 ESC 键关闭，默认 true；keyboard=\"false\" 禁用"),
+            ("slot=trigger", "slot", "触发器元素，如 Button slot=\"trigger\""),
+            ("on-close", "event", "对话框关闭时回调"),
+            ("on-ok", "event", "确认时回调；返回 false 可阻止关闭"),
+            ("on-cancel", "event", "取消时回调；返回 false 可阻止关闭"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

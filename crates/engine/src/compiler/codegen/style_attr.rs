@@ -68,6 +68,25 @@ pub fn is_style_attr(name: &str) -> bool {
     )
 }
 
+/// overflow 布尔标志（Tailwind 风格）：`overflow-y-auto=""` → `.overflow_y(Scroll)`
+pub fn apply_overflow_flag_attr(name: &str, value: &str) -> Option<String> {
+    if !(value.is_empty() || value.eq_ignore_ascii_case("true")) {
+        return None;
+    }
+    match name {
+        "overflow_y_auto" | "overflow_y_scroll" => {
+            Some(".overflow_y(gpui::Overflow::Scroll)".to_string())
+        }
+        "overflow_x_auto" | "overflow_x_scroll" => {
+            Some(".overflow_x(gpui::Overflow::Scroll)".to_string())
+        }
+        "overflow_y_hidden" => Some(".overflow_y_hidden()".to_string()),
+        "overflow_x_hidden" => Some(".overflow_x_hidden()".to_string()),
+        "overflow_hidden" => Some(".overflow_hidden()".to_string()),
+        _ => None,
+    }
+}
+
 /// 应用样式属性，返回 GPUI 方法调用代码（含前导 `.`）
 ///
 /// 如 `apply_style_attr("width", "full")` → `Some(".w_full()")`
@@ -121,6 +140,20 @@ fn parse_rml_value(s: &str) -> Option<Value> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ─── overflow 布尔标志 ───
+
+    #[test]
+    fn overflow_flag_y_auto_empty_value() {
+        let code = apply_overflow_flag_attr("overflow_y_auto", "").unwrap();
+        assert_eq!(code, ".overflow_y(gpui::Overflow::Scroll)");
+    }
+
+    #[test]
+    fn overflow_flag_x_auto_true_value() {
+        let code = apply_overflow_flag_attr("overflow_x_auto", "true").unwrap();
+        assert_eq!(code, ".overflow_x(gpui::Overflow::Scroll)");
+    }
 
     // ─── is_style_attr ───
 

@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.skeleton.title")}
-        description="Skeleton 是骨架屏占位组件，标签为 PascalCase Skeleton 或 kebab-case skeleton。无 ElementId 构造（RenderOnce），支持 secondary 布尔属性切换次级颜色。通过 style 控制宽高，适用于内容加载中的占位场景。"
+        description="Skeleton 是骨架屏占位组件。通过 style 控制宽高，secondary 切换次级颜色，适用于内容加载中的占位场景。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">

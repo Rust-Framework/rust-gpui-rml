@@ -17,6 +17,8 @@ use crate::cases::common::{build_api_table, CaseDocPage};
 pub struct KeyBindingCase {
     pub last_triggered: SharedString,
     pub trigger_count: u32,
+    pub global_triggered: SharedString,
+    pub global_count: u32,
     pub shortcut_enabled: bool,
     pub debug_count: u32,
     pub demo_input: ElementRef<InputState>,
@@ -39,13 +41,14 @@ impl ILifecycle for KeyBindingCase {
     fn on_loaded(&mut self, _window: &mut gpui::Window, cx: &mut gpui::Context<Self>) {
         self.case_doc_page = Some(cx.new(|_cx| CaseDocPage::default()));
         self.last_triggered = "无".into();
+        self.global_triggered = "无".into();
         self.shortcut_enabled = true;
         let (cols, rows) = build_api_table(&[
-            ("key", "static: String", "快捷键组合，如 'Ctrl+S' / 'Escape'。遵循 GPUI Keystroke::parse 语法"),
-            ("when", "bind: bool", "是否启用快捷键（默认 true）。传入 false 时禁用"),
-            ("on-press", "event: fn(&mut self, cx)", "快捷键触发回调，签名为 Fn(&mut Window, &mut App)"),
-            ("KeyBinding", "组件", "声明式键盘快捷键容器，RenderOnce + ParentElement，通过事件冒泡接收 keydown"),
-            ("Keystroke::parse", "GPUI API", "快捷键解析器，支持 ctrl/alt/shift/cmd/win/super/fn/secondary 修饰键"),
+            ("key", "string", "快捷键，如 key=\"Ctrl+S\" 或 key=\"Escape\""),
+            ("when", "bool / binding", "是否启用（默认 true）"),
+            ("on-press", "event", "命中快捷键时回调"),
+            ("ShortcutScope", "组件", "作用域级快捷键容器；子节点为 Shortcut 声明 + 页面内容"),
+            ("KeyBinding", "组件", "焦点宿主内声明式快捷键（作为 Input/CodeEditor 等子节点）"),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;
@@ -95,6 +98,18 @@ impl KeyBindingCase {
     #[command]
     pub fn on_debug(&mut self, _cx: &mut Context<Self>) {
         self.debug_count += 1;
+    }
+
+    #[command]
+    pub fn on_global_save(&mut self, _cx: &mut Context<Self>) {
+        self.global_triggered = "Ctrl+G (全局保存)".into();
+        self.global_count += 1;
+    }
+
+    #[command]
+    pub fn on_global_help(&mut self, _cx: &mut Context<Self>) {
+        self.global_triggered = "Ctrl+H (全局帮助)".into();
+        self.global_count += 1;
     }
 
     #[command]

@@ -1,0 +1,134 @@
+<component>
+    <div class="case-pane" display="flex" flex-direction="column" gap="12px">
+        <!-- ① 设备概览 -->
+        <Card borderless="">
+            <div display="flex" flex-direction="row" align-items="center" justify-content="space-between" gap="16px">
+                <div display="flex" flex-direction="row" align-items="center" gap="12px">
+                    <Icon name="Bot" size="medium" text-color="--primary" />
+                    <Tag success="" size="small">eDNA MEGA</Tag>
+                    <span font-semibold="">连续环境DNA自动采样控制系统</span>
+                </div>
+                <div display="flex" flex-direction="row" align-items="center" gap="16px">
+                    <div display="flex" flex-direction="row" align-items="center" gap="6px">
+                        <Icon name="ChartPie" size="small" />
+                        <span>设备状态</span>
+                        <Tag success="" size="small">{device_status}</Tag>
+                    </div>
+                    <div display="flex" flex-direction="row" align-items="center" gap="6px">
+                        <Icon name="Calendar" size="small" />
+                        <span>{current_time}</span>
+                    </div>
+                    <div display="flex" flex-direction="row" align-items="center" gap="6px">
+                        <Icon name="Network" size="small" />
+                        <span>通信状态</span>
+                        <Tag success="" size="small">{comm_status}</Tag>
+                    </div>
+                </div>
+            </div>
+        </Card>
+
+        <!-- 主体 -->
+        <div display="flex" flex-direction="row" gap="12px" align-items="flex-start">
+            <!-- 左栏 -->
+            <div display="flex" flex-direction="column" gap="12px" flex="1" min-width="0">
+                <!-- ② 工艺流程 -->
+                <Card title="工艺流程示意图" extra={header_extra}>
+                    <Stepper selected-index={process_step_index} text-center="">
+                        <step-item>待机</step-item>
+                        <step-item>清洗</step-item>
+                        <step-item>正式过滤</step-item>
+                        <step-item>吹扫</step-item>
+                        <step-item>保存液注入</step-item>
+                    </Stepper>
+                    <img src={process_diagram_src} style="width: 100%; height: 140px; object-fit: contain;" />
+                </Card>
+
+                <!-- ③ 通道计划 -->
+                <Card title="通道计划与状态">
+                    <Table
+                        delegate={channel_delegate}
+                        columns={channel_columns}
+                        rows={channel_rows}
+                        bordered=""
+                        stripe="" />
+                    <component content={self.render_plan_actions(_window, cx)} />
+                </Card>
+            </div>
+
+            <!-- 右栏 -->
+            <div display="flex" flex-direction="column" gap="12px" style="width: 400px;">
+                <!-- ④ 实时数据 -->
+                <Card title="实时数据监测" extra={refresh_label}>
+                    <component content={self.render_metrics_panel(_window, cx)} />
+                </Card>
+
+                <!-- ⑤ 运行状态 -->
+                <Card title="运行状态">
+                    <div display="flex" flex-direction="row" gap="12px" align-items="flex-start">
+                        <DescriptionList bordered="" columns="2" label-width="88">
+                            <DescriptionItem label="当前阶段" value={current_stage} />
+                            <DescriptionItem label="当前通道" value={channel_label} />
+                            <DescriptionItem label="运行时间" value={running_time} />
+                            <DescriptionItem label="阶段倒计时" value={stage_countdown} />
+                            <DescriptionItem label="报警状态" value={alarm_status} />
+                            <DescriptionItem label="滤芯状态" value={filter_status} />
+                            <DescriptionItem label="启动阈值" value={start_threshold} />
+                            <DescriptionItem label="上次滤芯值" value={last_filter_value} />
+                        </DescriptionList>
+                        <div display="flex" flex-direction="column" align-items="center" gap="6px">
+                            <ProgressCircle value={round_progress} size="large">
+                                <div display="flex" flex-direction="column" align-items="center">
+                                    <span font-bold="">{round_progress_text}</span>
+                                    <span>本轮进度</span>
+                                    <span>{round_channels_label}</span>
+                                </div>
+                            </ProgressCircle>
+                            <Button label="查看详情" primary="" link="" size="small" on-click={on_view_details} />
+                        </div>
+                    </div>
+                </Card>
+
+                <!-- ⑥ 参数与控制 -->
+                <Card title="参数设置与控制">
+                    <div display="flex" flex-direction="row" gap="12px">
+                        <Form horizontal="" label-width="110" columns="1">
+                            <Field label="目标体积 (L)">
+                                <NumberInput value={target_volume} appearance="false" />
+                            </Field>
+                            <Field label="清洗时间 (s)">
+                                <NumberInput value={cleaning_time} appearance="false" />
+                            </Field>
+                            <Field label="过滤体积 (L)">
+                                <NumberInput value={filter_volume} appearance="false" />
+                            </Field>
+                            <Field label="吹扫时间 (min)">
+                                <NumberInput value={purge_time} appearance="false" />
+                            </Field>
+                            <Field label="保存液体积 (mL)">
+                                <NumberInput value={preservative_volume} appearance="false" />
+                            </Field>
+                            <Field label="通道顺序">
+                                <Select items={channel_order_items} value={selected_channel_order} appearance="false" />
+                            </Field>
+                            <Field label="掉电顺序">
+                                <Switch label="启用" checked={power_off_order} on-click={on_toggle_power_off_order} />
+                            </Field>
+                        </Form>
+                        <component content={self.render_control_buttons(_window, cx)} />
+                    </div>
+                </Card>
+            </div>
+        </div>
+
+        <!-- ⑦ 事件日志 -->
+        <Card title="报警与事件日志">
+            <component content={self.render_log_toolbar(_window, cx)} />
+            <Table
+                delegate={event_delegate}
+                columns={event_columns}
+                rows={event_rows}
+                bordered=""
+                stripe="" />
+        </Card>
+    </div>
+</component>

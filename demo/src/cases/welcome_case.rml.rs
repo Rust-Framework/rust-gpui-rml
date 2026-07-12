@@ -117,6 +117,7 @@ impl WelcomeCase {
                     Some("i18n") => t_static("tree.group.i18n"),
                     Some("menu") => t_static("tree.group.menu"),
                     Some("framework") => t_static("tree.group.framework"),
+                    Some("business") => t_static("tree.group.business"),
                     Some(other) => SharedString::from(other.to_string()),
                     None => t_static("shell.welcome"),
                 };

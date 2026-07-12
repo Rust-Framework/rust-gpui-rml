@@ -38,7 +38,7 @@ impl ILifecycle for HoverCardCase {
             ("appearance", "bool", "是否应用默认样式（bg/border/shadow），默认 true；appearance=false 关闭"),
             ("open-delay", "数值", "鼠标悬浮后显示卡片的延迟（毫秒），默认 500ms"),
             ("close-delay", "数值", "鼠标移开后隐藏卡片的延迟（毫秒），默认 500ms"),
-            ("slot=trigger", "slot", "标记 trigger 元素，需实现 Selectable + IntoElement（如 Button）"),
+            ("slot=trigger", "slot", "触发器元素，如 Button slot=\"trigger\""),
         ]);
         self.api_columns = cols;
         self.api_rows = rows;

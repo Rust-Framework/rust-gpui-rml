@@ -1,7 +1,7 @@
 <component>
     <CaseDocPage
         title={t("case.dialog.title")}
-        description="Dialog 是 RML 的模态对话框组件，标签为 PascalCase Dialog。支持 title/footer 属性、width 尺寸控制、overlay/overlay-closable/close-button/keyboard 交互控制、on-close/on-ok/on-cancel 事件回调。slot=trigger 的子元素映射为 .trigger()，slot=footer 的子元素映射为 .footer()（覆盖 footer 属性），其余子节点通过 .child() 注入为 content。on-ok/on-cancel 回调返回 bool，返回 false 可阻止关闭对话框。注意：小写 <dialog> 为根标签（RootTag::DialogWindow），与本组件不同。"
+        description="Dialog 模态对话框，支持 title、footer、width、overlay、overlay-closable、close-button、keyboard 等属性，以及 on-close、on-ok、on-cancel 事件。slot=trigger 标记触发器，slot=footer 注入自定义页脚。on-ok/on-cancel 返回 false 可阻止关闭。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
