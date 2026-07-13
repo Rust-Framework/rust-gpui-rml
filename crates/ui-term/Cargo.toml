@@ -16,7 +16,7 @@ parking_lot = "0.12"
 arboard = "3"
 smol = "2"
 anyhow = { workspace = true }
-tracing = "0.4"
+tracing = "0.1"
 
 [features]
 default = []

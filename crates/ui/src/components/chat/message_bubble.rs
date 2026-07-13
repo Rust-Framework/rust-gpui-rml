@@ -1,10 +1,11 @@
 //! 单条消息气泡组件。
 
+use gpui::prelude::FluentBuilder as _;
 use gpui::*;
 use gpui_component::ActiveTheme;
 
-use crate::model::{Message, MessageRole};
-use crate::renderer::{render_content, RenderMode};
+use super::model::{Message, MessageRole};
+use super::renderer::{render_content, RenderMode};
 
 /// 消息气泡。
 ///
@@ -35,7 +36,7 @@ impl RenderOnce for ChatBubble {
         } else if is_system {
             theme.muted
         } else {
-            theme.surface
+            theme.muted
         };
         let text_color = if is_user {
             theme.accent_foreground

@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/core", "crates/macros", "crates/engine", "crates/ui", "crates/ui-term", "crates/ui-chat", "crates/app", "crates/rml", "crates/lsp", "demo"]
+members = ["crates/core", "crates/macros", "crates/engine", "crates/ui", "crates/ui-term", "crates/app", "crates/rml", "crates/lsp", "demo"]
 # dap 暂移出 workspace：其 lldb 重型 git 依赖在受限网络下阻塞编译。
 # 需要时 cd 进对应目录单独构建，或重新加入 members。
 exclude = ["crates/dap"]
@@ -25,7 +25,6 @@ rust-rml-macros = { path = "crates/macros" }
 rust-rml-engine = { path = "crates/engine" }
 rust-rml-ui = { path = "crates/ui" }
 rust-rml-ui-term = { path = "crates/ui-term" }
-rust-rml-ui-chat = { path = "crates/ui-chat" }
 rust-rml-app = { path = "crates/app" }
 rust-rml-lsp = { path = "crates/lsp" }
 rust-rml-dap = { path = "crates/dap" }

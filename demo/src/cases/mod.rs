@@ -227,4 +227,10 @@ pub mod skeleton_case;
 #[path = "breadcrumb_case.rml.rs"]
 pub mod breadcrumb_case;
 
+// Terminal / Chat 组件 demo
+#[path = "terminal_case.rml.rs"]
+pub mod terminal_case;
+#[path = "chat_case.rml.rs"]
+pub mod chat_case;
+
 pub mod edna;

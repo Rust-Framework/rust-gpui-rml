@@ -4,6 +4,7 @@ extern crate rust_rml_engine as rml;
 extern crate rust_rml_app as rml_app;
 extern crate rust_rml_core as rml_core;
 extern crate rust_rml_ui as rml_ui;
+extern crate rust_rml_ui_term as rml_ui_term;
 
 mod app;
 mod cases;

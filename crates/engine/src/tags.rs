@@ -4,6 +4,8 @@
 //! `compiler/translator/builtin/` 下的各 translator。
 //! 当前保留：扩展组件注册表、标签规范化、根节点识别等设计时/校验所需信息。
 
+use std::sync::{Mutex, OnceLock};
+
 /// 将 kebab-case 扩展组件标签规范化为 PascalCase。
 ///
 /// 通用规则：`context-menu` → `ContextMenu`，`menu-item` → `MenuItem`。
@@ -260,11 +262,21 @@ pub struct ComponentTag {
     pub container: bool,
 }
 
-/// 查询扩展组件元信息（仅查内置 gpui-component 路由表）
+/// 查询扩展组件元信息（内置静态表 + 动态注册表）
 ///
-/// 注意：用户自定义组件（`@component` 标注的 struct）由 codegen 在另一条路径处理，
+/// 先查内置 gpui-component 路由表，再查通过 [`register_extension_component`] 注册的
+/// 扩展组件。注意：用户自定义组件（`@component` 标注的 struct）由 codegen 在另一条路径处理，
 /// 不在本表查询范围内。
 pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
+    if let Some(c) = component_lookup_builtin(tag) {
+        return Some(c);
+    }
+    let registry = extension_components().lock().expect("extension components mutex poisoned");
+    registry.iter().find(|(t, _)| *t == tag).map(|(_, c)| *c)
+}
+
+/// 内置 gpui-component 路由表（静态）
+fn component_lookup_builtin(tag: &str) -> Option<ComponentTag> {
     match tag {
         "Button" => Some(ComponentTag {
             ctor_path: "rml_ui::Button",
@@ -829,7 +841,50 @@ pub fn component_lookup(tag: &str) -> Option<ComponentTag> {
             kind: ComponentKind::StatelessNoId,
             container: false,
         }),
+        // Chat：通用聊天面板（EntityRef），用户在 ViewModel on_loaded 中创建 Entity<ChatPanel>，
+        // 通过 set_backend 注入 ChatBackend 实现。RML 模板用 ref="chat" 引用。
+        "Chat" | "chat" => Some(ComponentTag {
+            ctor_path: "rml_ui::ChatPanel",
+            kind: ComponentKind::EntityRef,
+            container: false,
+        }),
         _ => None,
+    }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+//  扩展组件动态注册表
+//
+//  独立扩展 crate（如 ui-term）不作为 engine 的依赖，在使用方 build.rs 中
+//  通过 `register_extension_component` 注册，使 engine 无需直接引用扩展 crate。
+// ──────────────────────────────────────────────────────────────────────────
+
+static EXTENSION_COMPONENTS: OnceLock<Mutex<Vec<(&'static str, ComponentTag)>>> = OnceLock::new();
+
+fn extension_components() -> &'static Mutex<Vec<(&'static str, ComponentTag)>> {
+    EXTENSION_COMPONENTS.get_or_init(|| Mutex::new(Vec::new()))
+}
+
+/// 注册扩展组件（供独立扩展 crate 在使用方 `build.rs` 中调用）。
+///
+/// 独立扩展 crate（如 `rust-rml-ui-term`）不在 engine 的依赖链中，engine 无法
+/// 直接引用其类型。使用方在 `build.rs` 中调用本函数注册扩展组件标签，
+/// 使 RML 编译器能识别对应标签并路由到 EntityRef translator。
+///
+/// ```rust,ignore
+/// // build.rs
+/// rml::register_extension_component("Terminal", rml::tags::ComponentTag {
+///     ctor_path: "rml_ui_term::TerminalView",
+///     kind: rml::tags::ComponentKind::EntityRef,
+///     container: false,
+/// });
+/// ```
+pub fn register_extension_component(tag: &'static str, component: ComponentTag) {
+    let mut registry = extension_components().lock().expect("extension components mutex poisoned");
+    if let Some(existing) = registry.iter_mut().find(|(t, _)| *t == tag) {
+        existing.1 = component;
+    } else {
+        registry.push((tag, component));
     }
 }
 

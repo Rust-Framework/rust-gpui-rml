@@ -7,6 +7,7 @@ pub mod avatar;
 pub mod breadcrumb;
 pub mod calendar;
 pub mod card;
+pub mod chat;
 pub mod collapsible;
 pub mod color_picker;
 pub mod combobox;
@@ -108,3 +109,9 @@ pub use sidebar::{
 pub use spinner::Spinner;
 pub use stepper::{Stepper, StepperItem};
 pub use virtual_list::{VirtualList, VirtualListScrollHandle, h_virtual_list, v_virtual_list};
+
+pub use chat::{
+    ChatBackend, ChatBubble, ChatError, ChatEvent, ChatInput, ChatInputEvent, ChatPanel,
+    Conversation, Message, MessageListEvent, MessageListView, MessageMetadata, MessageRole,
+    RenderMode, ToolCall, render_content,
+};

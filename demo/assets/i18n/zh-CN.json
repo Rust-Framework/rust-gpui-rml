@@ -428,7 +428,11 @@
 
   "case.skeleton.title": "骨架屏 Skeleton",
 
-  "case.breadcrumb.title": "面包屑导航 Breadcrumb"
+  "case.breadcrumb.title": "面包屑导航 Breadcrumb",
+
+  "case.terminal.title": "终端 Terminal",
+
+  "case.chat.title": "聊天 Chat"
 
 }
 

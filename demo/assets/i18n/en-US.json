@@ -426,7 +426,11 @@
 
   "case.skeleton.title": "Skeleton",
 
-  "case.breadcrumb.title": "Breadcrumb"
+  "case.breadcrumb.title": "Breadcrumb",
+
+  "case.terminal.title": "Terminal",
+
+  "case.chat.title": "Chat"
 
 }
 

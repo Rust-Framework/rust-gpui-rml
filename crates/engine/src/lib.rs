@@ -27,6 +27,9 @@ pub mod parser;
 pub mod runtime;
 pub mod tags;
 
+/// 扩展组件动态注册（供使用方 build.rs 注册独立扩展 crate 的组件标签）
+pub use tags::{ComponentKind, ComponentTag, register_extension_component};
+
 pub mod prelude;
 
 /// 重导出 core 的资源模块,供用户 crate 通过 `rml::assets::load` 调用

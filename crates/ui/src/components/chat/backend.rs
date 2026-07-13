@@ -4,7 +4,7 @@
 //! - IM 场景：实现 [`ChatBackend::send_message`] 返回同步响应
 //! - AI 场景：通过 [`ChatBackend::stream_message`] 返回流式响应
 
-use crate::model::Conversation;
+use super::model::Conversation;
 
 /// 聊天后端错误。
 #[derive(Debug, Clone)]
@@ -31,21 +31,6 @@ impl std::error::Error for ChatError {}
 /// 实现此 trait 来对接不同的聊天服务：
 /// - IM 后端：`send_message` 返回对方回复
 /// - AI 后端：`stream_message` 通过回调推送增量 token
-///
-/// # 示例
-///
-/// ```ignore
-/// use rml_ui_chat::{ChatBackend, ChatError, Conversation};
-///
-/// struct EchoBackend;
-///
-/// impl ChatBackend for EchoBackend {
-///     fn send_message(&self, _conv: &Conversation, content: &str) -> Result<String, ChatError> {
-///         Ok(format!("echo: {}", content))
-///     }
-///     fn cancel(&self) -> Result<(), ChatError> { Ok(()) }
-/// }
-/// ```
 pub trait ChatBackend: Send + Sync {
     /// 发送消息，返回完整响应。
     fn send_message(

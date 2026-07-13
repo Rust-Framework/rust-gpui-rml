@@ -1,0 +1,21 @@
+<component>
+    <CaseDocPage
+        title={t("case.chat.title")}
+        description="通用聊天组件，支持 IM 聊天与 AI 聊天快速定制。EntityRef 组件，需在 on_loaded 中创建 Entity 并注入 ChatBackend 实现。本 demo 使用 Echo 后端，输入消息后将收到回显响应。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <div class="demo-section">
+                <h3>基础用法（Echo 后端）</h3>
+                <p>下方为聊天面板，输入消息后按回车发送：</p>
+                <Chat ref="chat" style="height: 480px" />
+            </div>
+        </template>
+
+        <template slot="api">
+            <h3>Chat</h3>
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+            <p>注：Chat 为 EntityRef 组件，无 RML 属性绑定。通过 set_backend 注入 ChatBackend trait 实现决定消息处理逻辑。</p>
+        </template>
+    </CaseDocPage>
+</component>

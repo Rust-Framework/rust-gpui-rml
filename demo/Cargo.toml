@@ -10,6 +10,7 @@ rust-rml-engine = { workspace = true }
 rust-rml-app = { workspace = true }
 rust-rml-core = { workspace = true }
 rust-rml-ui = { workspace = true }
+rust-rml-ui-term = { workspace = true }
 rust-rml-client = { workspace = true }
 gpui = { workspace = true }
 gpui-component = { workspace = true }

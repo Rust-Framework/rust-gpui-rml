@@ -5,9 +5,9 @@
 use gpui::*;
 use gpui_component::ActiveTheme;
 
-use crate::message_bubble::ChatBubble;
-use crate::model::Message;
-use crate::renderer::RenderMode;
+use super::message_bubble::ChatBubble;
+use super::model::Message;
+use super::renderer::RenderMode;
 
 /// 消息列表事件。
 #[derive(Debug, Clone)]

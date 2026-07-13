@@ -9,7 +9,7 @@ use gpui_component::input::{Input, InputEvent, InputState};
 use gpui_component::{ActiveTheme, IconName, Sizable as _};
 use gpui_component::button::{Button, ButtonVariants as _};
 
-use crate::event::ChatInputEvent;
+use super::event::ChatInputEvent;
 
 /// 聊天输入区域。
 pub struct ChatInput {

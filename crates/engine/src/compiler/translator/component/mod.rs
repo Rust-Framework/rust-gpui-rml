@@ -17,6 +17,7 @@ pub mod chart;
 pub mod code_editor;
 pub mod description_list;
 pub mod dialog;
+pub mod entity_ref;
 pub mod field;
 pub mod form;
 pub mod grid;
@@ -158,5 +159,6 @@ pub fn register_all(registry: &mut crate::compiler::translator::TranslatorRegist
     sidebar_menu::register(registry);
     sidebar_menu_item::register(registry);
     activity_bar::register(registry);
+    entity_ref::register(registry);
     registry.register(ComponentTranslator);
 }

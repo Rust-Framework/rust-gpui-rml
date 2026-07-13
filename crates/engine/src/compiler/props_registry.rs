@@ -330,6 +330,8 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
     ("PieChart", &["data", "value_field", "color_field", "outer_radius", "inner_radius", "pad_angle"]),
     // CandlestickChart：K 线图
     ("CandlestickChart", &["data", "x_field", "open_field", "high_field", "low_field", "close_field", "body_width_ratio", "tick_margin"]),
+    // Chat：EntityRef 组件，无 RML 属性绑定（配置通过 ElementRef<ChatPanel> API + set_backend）
+    ("Chat", &[]),
 ];
 
 /// 查询组件的所有已注册属性（通用 + 专用）

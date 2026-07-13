@@ -120,6 +120,9 @@ pub use components::{
     AnySettingField, GroupBoxVariant, NumberFieldOptions, RenderOptions, SelectIndex,
     SettingField, SettingFieldElement, SettingFieldType, SettingGroup, SettingItem, SettingPage,
     Settings,
+    ChatBackend, ChatBubble, ChatError, ChatEvent, ChatInput, ChatInputEvent, ChatPanel,
+    Conversation, Message, MessageListEvent, MessageListView, MessageMetadata, MessageRole,
+    RenderMode, ToolCall, render_content,
 };
 
 pub use state::RmlState;

@@ -2,6 +2,13 @@
 extern crate rust_rml_engine as rml;
 
 fn main() {
+    // 注册独立扩展组件（ui-term 不在 engine 依赖链中，由使用方注册）
+    rml::register_extension_component("Terminal", rml::ComponentTag {
+        ctor_path: "rml_ui_term::TerminalView",
+        kind: rml::ComponentKind::EntityRef,
+        container: false,
+    });
+
     rml::build()
         .scan_dir("src")
         .assets("assets", true)   // true = 嵌入二进制;false = 文件系统模式

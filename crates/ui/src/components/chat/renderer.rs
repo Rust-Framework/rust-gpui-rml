@@ -2,10 +2,10 @@
 //!
 //! 控制消息气泡中的内容如何渲染：
 //! - [`PlainText`]: 纯文本（IM 默认）
-//! - [`Markdown`]: Markdown 富文本（AI 默认），使用 RML 的 [`Markdown`](rml_ui::Markdown) 组件
+//! - [`Markdown`]: Markdown 富文本（AI 默认），使用 RML 的 [`Markdown`](crate::Markdown) 组件
 
-use gpui::{AnyElement, IntoElement, SharedString, Window, App};
-use rml_ui::Markdown as MarkdownView;
+use gpui::{AnyElement, IntoElement, ParentElement, SharedString, Window, App};
+use crate::Markdown as MarkdownView;
 
 /// 消息渲染模式。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

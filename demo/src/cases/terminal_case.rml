@@ -1,0 +1,21 @@
+<component>
+    <CaseDocPage
+        title={t("case.terminal.title")}
+        description="嵌入式终端组件，基于 alacritty_terminal + portable-pty。支持 PTY 进程管理、VTE 解析渲染、键盘/鼠标输入、选择滚动等。EntityRef 组件，需在 on_loaded 中创建 Entity 后通过 ref 引用。"
+        code-rml={rml_sample}
+        code-rust={rust_sample}>
+        <template slot="demo">
+            <div class="demo-section">
+                <h3>基础用法</h3>
+                <p>下方为嵌入式终端，可直接输入命令：</p>
+                <Terminal ref="term" style="height: 400px" />
+            </div>
+        </template>
+
+        <template slot="api">
+            <h3>Terminal</h3>
+            <Table columns={api_columns} rows={api_rows} bordered="" stripe="" />
+            <p>注：Terminal 为 EntityRef 组件，无 RML 属性绑定。配置通过 ElementRef API 在 ViewModel 中命令式操作。</p>
+        </template>
+    </CaseDocPage>
+</component>

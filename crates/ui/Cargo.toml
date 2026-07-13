@@ -10,6 +10,7 @@ rust-rml-core = { workspace = true, features = ["gpui-component"] }
 gpui = { workspace = true }
 gpui-component = { workspace = true }
 smallvec = "1"
+serde = { version = "1", features = ["derive"] }
 
 [features]
 default = ["ui-components"]
