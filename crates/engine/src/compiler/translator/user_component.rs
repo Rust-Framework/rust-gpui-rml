@@ -197,12 +197,14 @@ fn gen_user_component_body(
         // 仅首次注入 slot 闭包：每帧替换 SlotRenderer 会在 Select/Combobox 等 deferred
         // 弹出层仍打开时丢弃旧闭包，遗留错位第二层菜单（左下角锚点失效）。
         // prelude 中的 get_or_init_ref / subscribe 仍每帧执行；闭包内 update 读取最新字段。
+        let slot_id = format!("__rml_slot_{}", slot_name);
         code.push_str(&format!(
             "    if self.__rml_state.slot({slot_name:?}).is_none() {{\n    \
-             let {binding}: rml_core::slot::SlotRenderer = Box::new({{ let __rml_self_entity = __rml_self_entity.clone(); move |_scope: &dyn rml_core::slot::ISlotScope, _window: &mut gpui::Window, _app: &mut gpui::App| -> gpui::AnyElement {{ __rml_self_entity.update(_app, |this, cx| {{ let __rml_self_ref: &Self = this; ({slot_code_replaced}).into_any_element() }}) }} }});\n    \
+             let {binding}: rml_core::slot::SlotRenderer = Box::new({{ let __rml_self_entity = __rml_self_entity.clone(); move |_scope: &dyn rml_core::slot::ISlotScope, _window: &mut gpui::Window, _app: &mut gpui::App| -> gpui::AnyElement {{ __rml_self_entity.update(_app, |this, cx| {{ let __rml_self_ref: &Self = this; (gpui::div().id({slot_id:?}).child({slot_code_replaced})).into_any_element() }}) }} }});\n    \
              __rml_entity.update(cx, |this, _cx| {{ this.__rml_set_slot_{slot_name}({binding}); }});\n    \
              }}\n",
             slot_name = slot_name,
+            slot_id = slot_id,
             binding = binding,
             slot_code_replaced = slot_code_replaced,
         ));
@@ -224,9 +226,9 @@ fn gen_user_component_body(
             code.push_str(&format!("    {}\n", subscribe_prelude));
         }
         code.push_str("    if self.__rml_state.slot(\"default\").is_none() {\n");
-        code.push_str("    let __rml_slot_default_value: rml_core::slot::SlotRenderer = Box::new({ let __rml_self_entity = __rml_self_entity.clone(); move |_scope: &dyn rml_core::slot::ISlotScope, _window: &mut gpui::Window, _app: &mut gpui::App| -> gpui::AnyElement { __rml_self_entity.update(_app, |this, cx| { let __rml_self_ref: &Self = this; (");
+        code.push_str("    let __rml_slot_default_value: rml_core::slot::SlotRenderer = Box::new({ let __rml_self_entity = __rml_self_entity.clone(); move |_scope: &dyn rml_core::slot::ISlotScope, _window: &mut gpui::Window, _app: &mut gpui::App| -> gpui::AnyElement { __rml_self_entity.update(_app, |this, cx| { let __rml_self_ref: &Self = this; (gpui::div().id(\"__rml_slot_default\").child(");
         code.push_str(&default_code_replaced);
-        code.push_str(").into_any_element() }) } });\n");
+        code.push_str(")).into_any_element() }) } });\n");
         code.push_str(
             "    __rml_entity.update(cx, |this, _cx| { this.__rml_set_slot_default(__rml_slot_default_value); });\n    }\n",
         );
@@ -1061,6 +1063,38 @@ mod tests {
         assert!(
             code.contains("__rml_set_slot_default"),
             "expected default slot setter, got: {}",
+            code
+        );
+    }
+
+    #[test]
+    fn test_named_slot_root_has_stable_id() {
+        let info = make_info_with_slots("MyComp", &[], &["demo"]);
+        let elem = make_element(
+            "MyComp",
+            vec![],
+            vec![template_slot_node("demo", vec![Node::Text("content".into())])],
+        );
+        let code = gen(&info, &elem, &CodegenCtx::default());
+        assert!(
+            code.contains(r#".id("__rml_slot_demo")"#),
+            "expected named slot root to have stable id, got: {}",
+            code
+        );
+    }
+
+    #[test]
+    fn test_default_slot_root_has_stable_id() {
+        let info = make_info_with_slots("MyComp", &[], &["default"]);
+        let elem = make_element(
+            "MyComp",
+            vec![],
+            vec![interpolation_node("data")],
+        );
+        let code = gen(&info, &elem, &CodegenCtx::default());
+        assert!(
+            code.contains(r#".id("__rml_slot_default")"#),
+            "expected default slot root to have stable id, got: {}",
             code
         );
     }

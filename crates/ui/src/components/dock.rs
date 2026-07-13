@@ -50,8 +50,8 @@ use gpui::{
 
 // re-export gpui-component dock 类型，使 RML 用户可通过 rml_ui::DockArea 等直接引用
 pub use gpui_component::dock::{
-    DockArea, DockEvent, DockItem, DockPlacement, Panel, PanelControl, PanelEvent, PanelStyle,
-    PanelView, StackPanel, TabPanel, register_panel,
+    register_panel, DockArea, DockEvent, DockItem, DockPlacement, Panel, PanelControl, PanelEvent,
+    PanelStyle, PanelView, StackPanel, TabPanel,
 };
 
 /// 简单面板适配器 —— 将任意 `AnyView` 包装为 `Panel` trait 实现。

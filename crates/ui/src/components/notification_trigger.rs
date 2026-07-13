@@ -20,8 +20,8 @@
 //! 点击 trigger 时，构造 `Notification` 并调用 `window.push_notification()` 推送。
 
 use gpui::{
-    AnyElement, App, InteractiveElement, IntoElement, MouseButton, ParentElement, RenderOnce,
-    SharedString, StyleRefinement, Styled, Window, div,
+    div, AnyElement, App, InteractiveElement, IntoElement, MouseButton, ParentElement, RenderOnce,
+    SharedString, StyleRefinement, Styled, Window,
 };
 use gpui_component::notification::{Notification, NotificationType};
 use gpui_component::StyledExt as _;

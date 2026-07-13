@@ -3,8 +3,8 @@
 //! 自动通过 `WindowExt` 路由到 `Root` 管理的 `NotificationList`。
 //! 在 ViewModel 中调用：`window.notify_info("已保存", cx);`
 
-use gpui::{App, SharedString, Window};
 use crate::{Notification, WindowExt};
+use gpui::{App, SharedString, Window};
 
 /// 通知类型
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

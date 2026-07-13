@@ -18,8 +18,8 @@
 
 use gpui::SharedString;
 
-pub use gpui_component::select::{Select, SelectEvent, SelectState};
 pub use gpui_component::searchable_list::SearchableVec;
+pub use gpui_component::select::{Select, SelectEvent, SelectState};
 pub use gpui_component::IndexPath;
 
 /// 字符串 Select 的具体 State 类型（SearchableVec<SharedString> 委托）

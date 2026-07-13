@@ -38,5 +38,4 @@ pub type CellTemplate = Arc<
 /// 底部模板闭包
 ///
 /// 参数：`(cx) -> AnyElement`
-pub type FooterTemplate =
-    Arc<dyn Fn(&mut App) -> AnyElement + Send + Sync + 'static>;
+pub type FooterTemplate = Arc<dyn Fn(&mut App) -> AnyElement + Send + Sync + 'static>;

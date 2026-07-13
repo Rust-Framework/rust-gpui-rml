@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, SharedString, Window};
-use rml_core::contribution::{IContribution, IconSpec, IVisual, VisualAbilityExt};
+use rml_core::contribution::{IContribution, IVisual, IconSpec, VisualAbilityExt};
 
 use super::traits::IActivityPanel;
 

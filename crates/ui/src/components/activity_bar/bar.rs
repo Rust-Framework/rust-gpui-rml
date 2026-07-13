@@ -3,10 +3,13 @@
 use std::sync::Arc;
 
 use gpui::{
-    AnyElement, Context, IntoElement, ParentElement, Render, SharedString, Styled, Window,
-    div, px, prelude::FluentBuilder as _,
+    div, prelude::FluentBuilder as _, px, AnyElement, Context, IntoElement, ParentElement, Render,
+    SharedString, Styled, Window,
 };
-use gpui_component::{ActiveTheme, button::{Button, ButtonVariants as _}, h_flex, v_flex};
+use gpui_component::{
+    button::{Button, ButtonVariants as _},
+    h_flex, v_flex, ActiveTheme,
+};
 use rml_core::command::CallContext;
 use smallvec::SmallVec;
 
@@ -99,14 +102,16 @@ impl Render for ActivityBar {
                     .when(active && active_indicator, |btn| {
                         btn.border_l(px(2.)).border_color(cx.theme().primary)
                     })
-                    .on_click(cx.listener(move |this, _ev: &gpui::ClickEvent, _window, cx| {
-                        let new_id = if this.active_id.as_ref() == Some(&id) {
-                            None
-                        } else {
-                            Some(id.clone())
-                        };
-                        this.set_active_id(new_id, cx);
-                    }))
+                    .on_click(
+                        cx.listener(move |this, _ev: &gpui::ClickEvent, _window, cx| {
+                            let new_id = if this.active_id.as_ref() == Some(&id) {
+                                None
+                            } else {
+                                Some(id.clone())
+                            };
+                            this.set_active_id(new_id, cx);
+                        }),
+                    )
                     .into_any_element(),
             );
         }

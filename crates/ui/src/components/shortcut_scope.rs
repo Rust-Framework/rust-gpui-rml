@@ -14,8 +14,8 @@
 //! 作用域容器通过 `on_key_down` 监听子树键盘事件冒泡，无需 Input/CodeEditor 等焦点宿主。
 
 use gpui::{
-    AnyElement, App, InteractiveElement, IntoElement, KeyDownEvent, Keystroke, ParentElement,
-    RenderOnce, SharedString, StyleRefinement, Styled, Window, div,
+    div, AnyElement, App, InteractiveElement, IntoElement, KeyDownEvent, Keystroke, ParentElement,
+    RenderOnce, SharedString, StyleRefinement, Styled, Window,
 };
 use gpui_component::StyledExt as _;
 
@@ -88,25 +88,27 @@ impl RenderOnce for ShortcutScope {
         let mut container = div()
             .w_full()
             .h_full()
-            .on_key_down(move |event: &KeyDownEvent, window: &mut Window, cx: &mut App| {
-                for entry in &shortcuts {
-                    if !entry.when {
-                        continue;
-                    }
-                    let Some(target) = entry.target.as_ref() else {
-                        continue;
-                    };
-                    if event.keystroke.key == target.key
-                        && event.keystroke.modifiers == target.modifiers
-                    {
-                        if let Some(handler) = &entry.on_press {
-                            handler(window, cx);
-                            cx.stop_propagation();
-                            return;
+            .on_key_down(
+                move |event: &KeyDownEvent, window: &mut Window, cx: &mut App| {
+                    for entry in &shortcuts {
+                        if !entry.when {
+                            continue;
+                        }
+                        let Some(target) = entry.target.as_ref() else {
+                            continue;
+                        };
+                        if event.keystroke.key == target.key
+                            && event.keystroke.modifiers == target.modifiers
+                        {
+                            if let Some(handler) = &entry.on_press {
+                                handler(window, cx);
+                                cx.stop_propagation();
+                                return;
+                            }
                         }
                     }
-                }
-            })
+                },
+            )
             .refine_style(&self.style);
 
         for child in self.children {

@@ -38,7 +38,6 @@ pub struct TabItem {
     pub(super) preview: bool,
 }
 
-
 impl TabItem {
     /// 创建一个空 TabItem。
     pub fn new() -> Self {

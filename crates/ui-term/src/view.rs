@@ -554,10 +554,22 @@ impl TerminalView {
 
     /// Create a terminal with the system default shell and wire up PTY resize.
     ///
-    /// Spawns a PTY using [`spawn_terminal`] with default config, then constructs a
+    /// Spawns a PTY using [`spawn_terminal`] with theme-aware config, then constructs a
     /// [`TerminalView`] with a resize callback that propagates grid changes back to the PTY.
+    /// Also starts the async PTY reader task so output triggers repaints.
     pub fn spawn_default(cx: &mut Context<Self>) -> Self {
-        let config = TerminalConfig::default();
+        use crate::colors::palette_from_theme;
+        let theme = cx.theme().clone();
+        let config = TerminalConfig {
+            cols: 80,
+            rows: 24,
+            font_family: default_font_family(),
+            font_size: px(14.0),
+            scrollback: 10_000,
+            line_height_multiplier: 1.0,
+            padding: Edges::all(px(6.0)),
+            colors: palette_from_theme(&theme),
+        };
         let handles = spawn_terminal(
             None,
             None,
@@ -566,7 +578,7 @@ impl TerminalView {
         )
         .expect("failed to spawn default shell");
         let master = handles.master.clone();
-        Self::new(handles.writer, handles.reader, config, cx)
+        let mut view = Self::new(handles.writer, handles.reader, config, cx)
             .with_resize_callback(move |cols, rows| {
                 let _ = master.lock().resize(PtySize {
                     rows: rows as u16,
@@ -574,7 +586,9 @@ impl TerminalView {
                     pixel_width: 0,
                     pixel_height: 0,
                 });
-            })
+            });
+        view.start_pty_reader(cx);
+        view
     }
 
     fn follow_output_if_enabled(&mut self) {
@@ -1282,6 +1296,16 @@ impl TerminalView {
         let cols = ((width_f32 / cell_width_f32) as usize).max(1);
         let rows = ((height_f32 / cell_height_f32) as usize).max(1);
         (cols, rows)
+    }
+}
+
+fn default_font_family() -> String {
+    if cfg!(windows) {
+        "Cascadia Mono".to_string()
+    } else if cfg!(target_os = "macos") {
+        "Menlo".to_string()
+    } else {
+        "monospace".to_string()
     }
 }
 

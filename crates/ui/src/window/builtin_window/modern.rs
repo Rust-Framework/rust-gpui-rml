@@ -3,7 +3,7 @@
 //! 类比 WPF 带 chrome 的 `Window`。窗口内容为占位符，
 //! 用户创建带实际内容的窗口应使用 `#[window]` 宏。
 
-use gpui::{App, AnyWindowHandle, Context, IntoElement, Pixels, Render, px};
+use gpui::{px, AnyWindowHandle, App, Context, IntoElement, Pixels, Render};
 
 use rml_core::component::IComponent;
 use rml_core::lifecycle::ILifecycle;

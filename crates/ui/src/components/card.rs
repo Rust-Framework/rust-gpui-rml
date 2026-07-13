@@ -19,10 +19,10 @@
 
 use gpui::prelude::FluentBuilder as _;
 use gpui::{
-    AnyElement, App, BoxShadow, Div, ElementId, Hsla, InteractiveElement, IntoElement,
-    ParentElement, RenderOnce, StatefulInteractiveElement, Styled, Window, div, point, px,
+    div, point, px, AnyElement, App, BoxShadow, Div, ElementId, Hsla, InteractiveElement,
+    IntoElement, ParentElement, RenderOnce, StatefulInteractiveElement, Styled, Window,
 };
-use gpui_component::{ActiveTheme, Sizable, Size, StyledExt, h_flex};
+use gpui_component::{h_flex, ActiveTheme, Sizable, Size, StyledExt};
 use rust_rml_core::theme::color as theme_color;
 
 fn themed_hsla(name: &str, fallback: Hsla) -> Hsla {
@@ -209,7 +209,13 @@ impl RenderOnce for Card {
         };
 
         let body: Option<AnyElement> = if has_body {
-            Some(div().px(body_px).py(body_py).children(self.children).into_any_element())
+            Some(
+                div()
+                    .px(body_px)
+                    .py(body_py)
+                    .children(self.children)
+                    .into_any_element(),
+            )
         } else {
             None
         };

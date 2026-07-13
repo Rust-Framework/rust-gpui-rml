@@ -10,10 +10,10 @@
 //! `NativeStatusBar` 基于 gpui-component `StatusBar` 布局，去掉顶部边框以与 chrome 层视觉融合。
 
 use gpui::{
-    AnyElement, App, IntoElement, ParentElement, RenderOnce, StyleRefinement, Styled, Window,
-    prelude::FluentBuilder as _,
+    prelude::FluentBuilder as _, AnyElement, App, IntoElement, ParentElement, RenderOnce,
+    StyleRefinement, Styled, Window,
 };
-use gpui_component::{ActiveTheme, StyledExt, h_flex};
+use gpui_component::{h_flex, ActiveTheme, StyledExt};
 use smallvec::SmallVec;
 
 pub use rml_core::contribution::StatusBarAlign;

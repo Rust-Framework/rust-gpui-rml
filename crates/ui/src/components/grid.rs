@@ -8,7 +8,7 @@
 //! 需要非等宽布局时，请使用 `<Resizable>` + `<ResizablePanel>`。
 
 use gpui::{
-    AnyElement, App, IntoElement, ParentElement, RenderOnce, StyleRefinement, Styled, Window, div,
+    div, AnyElement, App, IntoElement, ParentElement, RenderOnce, StyleRefinement, Styled, Window,
 };
 use gpui_component::StyledExt as _;
 

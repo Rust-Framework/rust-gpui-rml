@@ -26,8 +26,8 @@
 extern crate rust_rml_core as rml_core;
 
 pub mod animation;
-pub mod prelude;
 pub mod components;
+pub mod prelude;
 pub mod state;
 pub mod styled;
 pub mod window;
@@ -43,19 +43,19 @@ pub fn init(cx: &mut gpui::App) {
 
 // 直接 re-export 高频组件，避免在每个使用点写完整路径
 pub use gpui_component::{
-    Icon, IconName, Root, TitleBar, WindowExt,
     accordion::{Accordion, AccordionItem},
     badge::Badge,
     button::{Button, ButtonGroup},
+    calendar::{Calendar, CalendarEvent, CalendarState, Date},
+    chart::{AreaChart, BarChart, CandlestickChart, LineChart, PieChart},
     checkbox::Checkbox,
     color_picker::{ColorPicker, ColorPickerEvent, ColorPickerState},
     combobox::Combobox,
-    description_list::{DescriptionItem, DescriptionList, DescriptionText},
-    calendar::{Calendar, CalendarEvent, CalendarState, Date},
-    chart::{AreaChart, BarChart, CandlestickChart, LineChart, PieChart},
     date_picker::{DatePicker, DatePickerEvent, DatePickerState},
+    description_list::{DescriptionItem, DescriptionList, DescriptionText},
     dialog::Dialog,
     form::{Field, Form},
+    h_flex,
     hover_card::HoverCard,
     input::{Input, InputEvent, InputState},
     kbd::Kbd,
@@ -66,6 +66,7 @@ pub use gpui_component::{
     popover::Popover,
     progress::{Progress, ProgressCircle},
     radio::Radio,
+    searchable_list::{SearchableListDelegate, SearchableVec},
     select::Select,
     separator::Separator,
     sheet::Sheet,
@@ -74,15 +75,14 @@ pub use gpui_component::{
     tag::{Tag, TagVariant},
     tooltip::Tooltip,
     tree::{TreeEntry, TreeEvent, TreeItem, TreeState},
-    searchable_list::{SearchableListDelegate, SearchableVec},
-    IndexPath,
-    Side, h_flex, v_flex,
+    v_flex, Icon, IconName, IndexPath, Root, Side, TitleBar, WindowExt,
 };
 
 // 共享 trait 体系
 pub use gpui_component::{
-    button::ButtonVariants, scroll::{ScrollableElement, ScrollbarAxis}, ActiveTheme, Disableable, Selectable,
-    Sizable, Size, StyledExt,
+    button::ButtonVariants,
+    scroll::{ScrollableElement, ScrollbarAxis},
+    ActiveTheme, Disableable, Selectable, Sizable, Size, StyledExt,
 };
 
 pub use styled::OverflowStyle;
@@ -94,35 +94,28 @@ pub use window::{
 };
 
 pub use components::{
-    ActivityAct, ActivityBar, ActivityPanel, AlertDialog, Alert, AlertVariant, Avatar,
-    AvatarGroup, Breadcrumb, BreadcrumbItem, BreadcrumbSibling, Card, CardVariant, CellTemplate,
-    Collapsible, DefaultTableDelegate, DialogAction, DialogButtonProps, DialogClose, DialogContent,
-    DialogDescription, DialogFooter, DialogHeader, DialogTitle, FooterTemplate, GroupBox,
-    GroupBoxVariants, HeaderTemplate, IActivityAct, IActivityPanel, Link, MenuBar,
-    NativeStatusBar, NumberInput, NumberInputEvent, NotificationTrigger, OtpInput, OtpState, Pagination, RadioGroup, Rating, ResizablePanel,
-    ResizablePanelEvent, ResizablePanelGroup, ResizableState, StatusBarAlign, Skeleton, Spinner, Stepper,
-    StepperItem, Tab, TabBar, TabItem, Tabs, Table, TableColumn, TableDelegate, TableRow,
-    TabVariant, Tree, TreeData, VisualActivityPanel, VirtualList, VirtualListScrollHandle,
-    SelectState, SelectEvent, StringSelectState, StringSelectEvent,
-    ComboboxState, ComboboxEvent, StringComboboxState, StringComboboxEvent,
-    HoverCardState,
-    KeyBinding,
-    ShortcutScope,
-    Grid, GridItem,
-    Markdown,
-    DockArea, DockEvent, DockItem, DockPlacement, Panel, PanelControl, PanelEvent, PanelStyle,
-    PanelView, SimplePanel, StackPanel, TabPanel, register_panel,
-    Scroll,
-    Sidebar, SidebarCollapsible, SidebarEntry, SidebarFooter, SidebarHeader, SidebarMenu,
-    SidebarMenuItem, SidebarToggleButton, ThemeSwitcher,
-    h_resizable, h_virtual_list, resizable_panel, v_resizable, v_virtual_list,
-    configure_menu_bar_popup, menu_bar_button,
-    AnySettingField, GroupBoxVariant, NumberFieldOptions, RenderOptions, SelectIndex,
-    SettingField, SettingFieldElement, SettingFieldType, SettingGroup, SettingItem, SettingPage,
-    Settings,
-    ChatBackend, ChatBubble, ChatError, ChatEvent, ChatInput, ChatInputEvent, ChatPanel,
-    Conversation, Message, MessageListEvent, MessageListView, MessageMetadata, MessageRole,
-    RenderMode, ToolCall, render_content,
+    configure_menu_bar_popup, h_resizable, h_virtual_list, menu_bar_button, register_panel,
+    render_content, resizable_panel, v_resizable, v_virtual_list, ActivityAct, ActivityBar,
+    ActivityPanel, Alert, AlertDialog, AlertVariant, AnySettingField, Avatar, AvatarGroup,
+    Breadcrumb, BreadcrumbItem, BreadcrumbSibling, Card, CardVariant, CellTemplate, ChatAttachment, ChatBubble, ChatConfig, ChatConversation, ChatError, ChatEvent, ChatInput, ChatInputEvent,
+    ChatMessage, ChatMessageAction, ChatMetadata, ChatPanel, ChatRequest, ChatRole, ChatStreamEvent,
+    ChatToolCall, MessageActionItem,
+    Collapsible, ComboboxEvent, ComboboxState, DefaultTableDelegate, DialogAction,
+    DialogButtonProps, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader,
+    DialogTitle, DockArea, DockEvent, DockItem, DockPlacement, FooterTemplate, Grid, GridItem,
+    GroupBox, GroupBoxVariant, GroupBoxVariants, HeaderTemplate, HoverCardState, IActivityAct,
+    IActivityPanel, IChatBackend, KeyBinding, Link, Markdown, MenuBar, MessageListEvent,
+    MessageListView, ModelInfo, NativeStatusBar, NotificationTrigger, NumberFieldOptions,
+    NumberInput, NumberInputEvent, OtpInput, OtpState, Pagination, Panel, PanelControl, PanelEvent,
+    PanelStyle, PanelView, RadioGroup, Rating, RenderMode, RenderOptions, ResizablePanel,
+    ResizablePanelEvent, ResizablePanelGroup, ResizableState, Scroll, SelectEvent, SelectIndex,
+    SelectState, SettingField, SettingFieldElement, SettingFieldType, SettingGroup, SettingItem,
+    SettingPage, Settings, ShortcutScope, Sidebar, SidebarCollapsible, SidebarEntry, SidebarFooter,
+    SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarToggleButton, SimplePanel, Skeleton,
+    Spinner, StackPanel, StatusBarAlign, Stepper, StepperItem, StringComboboxEvent,
+    StringComboboxState, StringSelectEvent, StringSelectState, Tab, TabBar, TabItem, TabPanel,
+    TabVariant, Table, TableColumn, TableDelegate, TableRow, Tabs, ThemeSwitcher, Tree, TreeData,
+    VirtualList, VirtualListScrollHandle, VisualActivityPanel,
 };
 
 pub use state::RmlState;

@@ -26,8 +26,8 @@ use std::sync::Arc;
 
 use gpui::prelude::FluentBuilder as _;
 use gpui::{
-    AnyElement, App, Div, ElementId, InteractiveElement, IntoElement, ParentElement, RenderOnce,
-    SharedString, StatefulInteractiveElement, Styled, TextAlign, Window, div, px,
+    div, px, AnyElement, App, Div, ElementId, InteractiveElement, IntoElement, ParentElement,
+    RenderOnce, SharedString, StatefulInteractiveElement, Styled, TextAlign, Window,
 };
 use gpui_component::{ActiveTheme, Sizable, Size, StyledExt};
 
@@ -117,11 +117,7 @@ impl Table {
 
     /// 声明式插槽：单元格模板（codegen 从 `<template slot="cell" field="key">` 生成）。
     /// `field` 参数指定列 key，仅对该列应用模板。
-    pub fn cell_template(
-        mut self,
-        field: impl Into<SharedString>,
-        template: CellTemplate,
-    ) -> Self {
+    pub fn cell_template(mut self, field: impl Into<SharedString>, template: CellTemplate) -> Self {
         self.cell_templates.insert(field.into(), template);
         self
     }
@@ -192,7 +188,12 @@ impl RenderOnce for Table {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let (border_color, header_bg, stripe_bg, radius) = {
             let theme = cx.theme();
-            (theme.border, theme.table_head, theme.table_even, theme.radius)
+            (
+                theme.border,
+                theme.table_head,
+                theme.table_even,
+                theme.radius,
+            )
         };
 
         let (text_size, cell_px, cell_py) = match self.size {
@@ -247,7 +248,9 @@ impl RenderOnce for Table {
                 div()
                     .flex()
                     .bg(header_bg)
-                    .when(bordered, |this| this.border_b_1().border_color(border_color))
+                    .when(bordered, |this| {
+                        this.border_b_1().border_color(border_color)
+                    })
                     .children(header_cells)
                     .into_any_element(),
             )
@@ -372,7 +375,9 @@ impl RenderOnce for Table {
             body_rows.push(
                 div()
                     .flex()
-                    .when(bordered, |this| this.border_b_1().border_color(border_color))
+                    .when(bordered, |this| {
+                        this.border_b_1().border_color(border_color)
+                    })
                     .children(cells)
                     .into_any_element(),
             );
@@ -382,7 +387,9 @@ impl RenderOnce for Table {
         let footer: Option<AnyElement> = footer_template.as_ref().map(|tpl| {
             div()
                 .flex()
-                .when(bordered, |this| this.border_t_1().border_color(border_color))
+                .when(bordered, |this| {
+                    this.border_t_1().border_color(border_color)
+                })
                 .child(tpl(cx))
                 .into_any_element()
         });

@@ -1,10 +1,10 @@
 //! 通用聊天后端 trait。
 //!
 //! 替代源项目的 ACP（Agent Client Protocol）耦合，提供统一的聊天后端抽象：
-//! - IM 场景：实现 [`ChatBackend::send_message`] 返回同步响应
-//! - AI 场景：通过 [`ChatBackend::stream_message`] 返回流式响应
+//! - IM 场景：实现 [`IChatBackend::send`] 返回同步响应
+//! - AI 场景：通过 [`IChatBackend::stream`] 返回流式响应，支持文本/思考/工具调用/附件事件
 
-use super::model::Conversation;
+use super::model::{ChatAttachment, ChatConversation, ChatMessage, ChatRequest, ChatToolCall};
 
 /// 聊天后端错误。
 #[derive(Debug, Clone)]
@@ -26,31 +26,50 @@ impl std::fmt::Display for ChatError {
 
 impl std::error::Error for ChatError {}
 
+/// 流式事件 — 后端通过 `on_event` 回调推送的增量事件。
+///
+/// 支持文本增量、AI 思考过程、工具调用、附件等多种事件类型，
+/// 使 UI 能实时渲染丰富的流式响应。
+#[derive(Debug, Clone)]
+pub enum ChatStreamEvent {
+    /// 文本增量。
+    Chunk(String),
+    /// AI 思考过程增量。
+    Thinking(String),
+    /// 工具调用（完整推送，非增量）。
+    ToolCall(ChatToolCall),
+    /// 附件（如生成的图片、文件）。
+    Attachment(ChatAttachment),
+    /// 流式结束。
+    Done,
+}
+
 /// 通用聊天后端 trait。
 ///
 /// 实现此 trait 来对接不同的聊天服务：
-/// - IM 后端：`send_message` 返回对方回复
-/// - AI 后端：`stream_message` 通过回调推送增量 token
-pub trait ChatBackend: Send + Sync {
+/// - IM 后端：`send` 返回对方回复
+/// - AI 后端：`stream` 通过回调推送增量事件（文本/思考/工具调用/附件）
+pub trait IChatBackend: Send + Sync {
     /// 发送消息，返回完整响应。
-    fn send_message(
+    fn send(
         &self,
-        conversation: &Conversation,
-        content: &str,
-    ) -> Result<String, ChatError>;
+        conversation: &ChatConversation,
+        request: &ChatRequest,
+    ) -> Result<ChatMessage, ChatError>;
 
-    /// 流式发送消息，通过 `on_chunk` 回调推送增量内容。
+    /// 流式发送消息，通过 `on_event` 回调推送增量事件。
     ///
-    /// 默认实现调用 `send_message` 并一次性推送完整响应。
-    fn stream_message(
+    /// 默认实现调用 `send` 并一次性推送 `Chunk` + `Done` 事件。
+    fn stream(
         &self,
-        conversation: &Conversation,
-        content: &str,
-        on_chunk: &dyn Fn(&str),
-    ) -> Result<(), ChatError> {
-        let response = self.send_message(conversation, content)?;
-        on_chunk(&response);
-        Ok(())
+        conversation: &ChatConversation,
+        request: &ChatRequest,
+        on_event: &dyn Fn(&ChatStreamEvent),
+    ) -> Result<ChatMessage, ChatError> {
+        let message = self.send(conversation, request)?;
+        on_event(&ChatStreamEvent::Chunk(message.content.clone()));
+        on_event(&ChatStreamEvent::Done);
+        Ok(message)
     }
 
     /// 取消当前请求。

@@ -14,25 +14,23 @@ use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use crate::components::tab::{TabItem, TabVariant, Tabs};
 use gpui::{
-    Animation, AnimationExt as _, AnyElement, App, Entity, InteractiveElement, IntoElement,
-    MouseButton, ParentElement, Pixels, RenderOnce, SharedString,
-    StatefulInteractiveElement as _, Styled, Window, WindowControlArea, div, px,
-    prelude::FluentBuilder as _,
+    div, prelude::FluentBuilder as _, px, Animation, AnimationExt as _, AnyElement, App, Entity,
+    InteractiveElement, IntoElement, MouseButton, ParentElement, Pixels, RenderOnce, SharedString,
+    StatefulInteractiveElement as _, Styled, Window, WindowControlArea,
 };
 use gpui_component::{
-    ActiveTheme, Icon, IconName, Size, Sizable as _,
     animation::cubic_bezier,
     h_flex,
     resizable::{h_resizable, resizable_panel, v_resizable, ResizableState},
     scroll::ScrollableElement as _,
-    v_flex, TITLE_BAR_HEIGHT,
+    v_flex, ActiveTheme, Icon, IconName, Sizable as _, Size, TITLE_BAR_HEIGHT,
 };
 use rml_core::contribution::{ContributionAbilityExt, VisualAbilityExt};
 use rml_core::slot::{ISlotScope, NullSlotScope, SlotRenderer};
 use rml_core::value::IValue;
 use rml_core::workbench::WorkbenchAbilityExt;
-use crate::components::tab::{TabItem, TabVariant, Tabs};
 use smallvec::SmallVec;
 
 type TabClickHandler = Rc<dyn Fn(usize, &mut Window, &mut App) + 'static>;
@@ -69,7 +67,10 @@ fn tab_list_fingerprint(tabs: &[Arc<dyn IValue>]) -> String {
 fn build_tab_items_from_values(
     tabs: &[Arc<dyn IValue>],
     selected_index: usize,
-) -> (Vec<TabItem>, Option<crate::components::tab::TabBodyRenderer>) {
+) -> (
+    Vec<TabItem>,
+    Option<crate::components::tab::TabBodyRenderer>,
+) {
     let mut selected_body = None;
     let items = tabs
         .iter()
@@ -78,15 +79,16 @@ fn build_tab_items_from_values(
             let c = Arc::clone(value);
             let title = c.as_contribution().map(|c| c.name()).unwrap_or_default();
             let closable = c.as_workbench().map(|w| w.closable()).unwrap_or(true);
-            let item = TabItem::new().title(title).closable(closable).body(
-                move |window, cx| {
+            let item = TabItem::new()
+                .title(title)
+                .closable(closable)
+                .body(move |window, cx| {
                     if let Some(visual) = c.as_visual() {
                         visual.render(window, cx)
                     } else {
                         gpui::div().into_any_element()
                     }
-                },
-            );
+                });
             if ix == selected_index {
                 selected_body = item.body_renderer();
             }
@@ -383,9 +385,7 @@ impl TabWindowShell {
 
     pub fn menu_slot(
         mut self,
-        renderer: Box<
-            dyn Fn(&dyn ISlotScope, &mut Window, &mut App) -> AnyElement + Send + Sync,
-        >,
+        renderer: Box<dyn Fn(&dyn ISlotScope, &mut Window, &mut App) -> AnyElement + Send + Sync>,
     ) -> Self {
         self.menu_slot = Some(renderer);
         self
@@ -393,9 +393,7 @@ impl TabWindowShell {
 
     pub fn title_ext_slot(
         mut self,
-        renderer: Box<
-            dyn Fn(&dyn ISlotScope, &mut Window, &mut App) -> AnyElement + Send + Sync,
-        >,
+        renderer: Box<dyn Fn(&dyn ISlotScope, &mut Window, &mut App) -> AnyElement + Send + Sync>,
     ) -> Self {
         self.title_ext_slot = Some(renderer);
         self
@@ -429,10 +427,7 @@ impl TabWindowShell {
         self.tabs.get(self.selected_index)
     }
 
-    pub fn on_tab_click(
-        mut self,
-        f: impl Fn(usize, &mut Window, &mut App) + 'static,
-    ) -> Self {
+    pub fn on_tab_click(mut self, f: impl Fn(usize, &mut Window, &mut App) + 'static) -> Self {
         self.on_tab_click = Some(Rc::new(f));
         self
     }
@@ -440,10 +435,7 @@ impl TabWindowShell {
     /// Set the close handler invoked when a tab's close button is clicked.
     /// The parameter is the index of the closed tab. The close button only
     /// renders on tabs whose `closable` flag is true.
-    pub fn on_tab_close(
-        mut self,
-        f: impl Fn(usize, &mut Window, &mut App) + 'static,
-    ) -> Self {
+    pub fn on_tab_close(mut self, f: impl Fn(usize, &mut Window, &mut App) + 'static) -> Self {
         self.on_tab_close = Some(Rc::new(f));
         self
     }
@@ -451,10 +443,7 @@ impl TabWindowShell {
     /// Set the handler invoked when the "Close All" context menu item is
     /// clicked. Forwarded to `Tabs::on_close_all`; the menu item only
     /// renders when this handler is registered.
-    pub fn on_tab_close_all(
-        mut self,
-        f: impl Fn(&mut Window, &mut App) + 'static,
-    ) -> Self {
+    pub fn on_tab_close_all(mut self, f: impl Fn(&mut Window, &mut App) + 'static) -> Self {
         self.on_tab_close_all = Some(Rc::new(f));
         self
     }
@@ -471,10 +460,7 @@ impl TabWindowShell {
         self
     }
 
-    pub fn on_chrome_toggle(
-        mut self,
-        f: impl Fn(&mut Window, &mut App) + 'static,
-    ) -> Self {
+    pub fn on_chrome_toggle(mut self, f: impl Fn(&mut Window, &mut App) + 'static) -> Self {
         self.on_chrome_toggle = Some(Rc::new(f));
         self
     }
@@ -587,44 +573,33 @@ impl RenderOnce for TabWindowShell {
         let bottom_ix = if has_bottom { Some(1usize) } else { None };
 
         // 持久化 resizable state entities（跨渲染复用，键由调用位置 + 字符串 ID 共同决定）
-        let h_state: Entity<ResizableState> = window.use_keyed_state(
-            "tab-window-h-state",
-            cx,
-            |_, _| ResizableState::default(),
-        );
-        let v_state: Entity<ResizableState> = window.use_keyed_state(
-            "tab-window-v-state",
-            cx,
-            |_, _| ResizableState::default(),
-        );
+        let h_state: Entity<ResizableState> =
+            window.use_keyed_state("tab-window-h-state", cx, |_, _| ResizableState::default());
+        let v_state: Entity<ResizableState> =
+            window.use_keyed_state("tab-window-v-state", cx, |_, _| ResizableState::default());
 
         // 持久化 prev_size（用于 maximize 记录原 size、restore 还原）
-        let prev_left: Entity<Mutex<Option<Pixels>>> = window.use_keyed_state(
-            "tab-window-prev-left",
-            cx,
-            |_, _| Mutex::new(None),
-        );
-        let prev_right: Entity<Mutex<Option<Pixels>>> = window.use_keyed_state(
-            "tab-window-prev-right",
-            cx,
-            |_, _| Mutex::new(None),
-        );
-        let prev_bottom: Entity<Mutex<Option<Pixels>>> = window.use_keyed_state(
-            "tab-window-prev-bottom",
-            cx,
-            |_, _| Mutex::new(None),
-        );
+        let prev_left: Entity<Mutex<Option<Pixels>>> =
+            window.use_keyed_state("tab-window-prev-left", cx, |_, _| Mutex::new(None));
+        let prev_right: Entity<Mutex<Option<Pixels>>> =
+            window.use_keyed_state("tab-window-prev-right", cx, |_, _| Mutex::new(None));
+        let prev_bottom: Entity<Mutex<Option<Pixels>>> =
+            window.use_keyed_state("tab-window-prev-bottom", cx, |_, _| Mutex::new(None));
 
         // === 构造各 slot 的 ISlotScope ===
         let menu_scope = NullSlotScope::new("menu");
         let title_scope = NullSlotScope::new("title");
         let footer_scope = NullSlotScope::new("footer");
         let left_scope = match (has_left, left_ix) {
-            (true, Some(ix)) => TabWindowSlotScope::new("left", h_state.clone(), ix, prev_left.clone()),
+            (true, Some(ix)) => {
+                TabWindowSlotScope::new("left", h_state.clone(), ix, prev_left.clone())
+            }
             _ => TabWindowSlotScope::null("left"),
         };
         let right_scope = match (has_right, right_ix) {
-            (true, Some(ix)) => TabWindowSlotScope::new("right", h_state.clone(), ix, prev_right.clone()),
+            (true, Some(ix)) => {
+                TabWindowSlotScope::new("right", h_state.clone(), ix, prev_right.clone())
+            }
             _ => TabWindowSlotScope::null("right"),
         };
         let bottom_scope = match (has_bottom, bottom_ix) {
@@ -636,22 +611,13 @@ impl RenderOnce for TabWindowShell {
 
         // === 调用 slot 闭包生成 AnyElement ===
         // 闭包从 self 中 take 出来，避免后续借用冲突。
-        let menu_elem = self
-            .menu_slot
-            .take()
-            .map(|f| f(&menu_scope, window, cx));
+        let menu_elem = self.menu_slot.take().map(|f| f(&menu_scope, window, cx));
         let title_ext_elem = self
             .title_ext_slot
             .take()
             .map(|f| f(&title_scope, window, cx));
-        let left_elem = self
-            .slot_left
-            .take()
-            .map(|f| f(&left_scope, window, cx));
-        let right_elem = self
-            .slot_right
-            .take()
-            .map(|f| f(&right_scope, window, cx));
+        let left_elem = self.slot_left.take().map(|f| f(&left_scope, window, cx));
+        let right_elem = self.slot_right.take().map(|f| f(&right_scope, window, cx));
         let bottom_elem = self
             .slot_bottom
             .take()
@@ -728,23 +694,14 @@ impl RenderOnce for TabWindowShell {
             );
         }
         if let Some(title) = self.title {
-            prefix_parts.push(
-                div()
-                    .px_2()
-                    .flex_shrink_0()
-                    .child(title)
-                    .into_any_element(),
-            );
+            prefix_parts.push(div().px_2().flex_shrink_0().child(title).into_any_element());
         }
 
         if !prefix_parts.is_empty() {
             // 用 use_keyed_state 跟踪上一次的 show_chrome（init 仅首次渲染调用），
             // 后续渲染返回持久化 Entity，state.update 触发 cx.notify 重渲。
-            let chrome_state = window.use_keyed_state(
-                "tab-window-chrome-anim",
-                cx,
-                |_, _| self.show_chrome,
-            );
+            let chrome_state =
+                window.use_keyed_state("tab-window-chrome-anim", cx, |_, _| self.show_chrome);
             let prev_chrome = *chrome_state.read(cx);
             let chrome_changed = prev_chrome != self.show_chrome;
             let target_chrome = self.show_chrome;
@@ -776,16 +733,12 @@ impl RenderOnce for TabWindowShell {
                     .gap_1()
                     .overflow_hidden()
                     .children(prefix_parts)
-                    .with_animation(
-                        "tab-window-chrome-slide",
-                        anim,
-                        move |this, delta| {
-                            // 展开：delta 0→1 对应 progress 0→1
-                            // 收起：delta 0→1 对应 progress 1→0
-                            let progress = if target_chrome { delta } else { 1.0 - delta };
-                            this.max_w(px(800.0) * progress).opacity(progress)
-                        },
-                    )
+                    .with_animation("tab-window-chrome-slide", anim, move |this, delta| {
+                        // 展开：delta 0→1 对应 progress 0→1
+                        // 收起：delta 0→1 对应 progress 1→0
+                        let progress = if target_chrome { delta } else { 1.0 - delta };
+                        this.max_w(px(800.0) * progress).opacity(progress)
+                    })
                     .into_any_element()
             } else if self.show_chrome {
                 h_flex()
@@ -822,7 +775,10 @@ impl RenderOnce for TabWindowShell {
         let selected_index = self.selected_index;
 
         if !self.tab_children.is_empty() {
-            for (ix, item) in std::mem::take(&mut self.tab_children).into_iter().enumerate() {
+            for (ix, item) in std::mem::take(&mut self.tab_children)
+                .into_iter()
+                .enumerate()
+            {
                 if ix == selected_index {
                     selected_body = item.body_renderer();
                 }
@@ -830,9 +786,8 @@ impl RenderOnce for TabWindowShell {
             }
         } else {
             let fingerprint = tab_list_fingerprint(&self.tabs);
-            let cache = window.use_keyed_state("tab-window-tab-cache", cx, |_, _| {
-                TabItemCache::default()
-            });
+            let cache =
+                window.use_keyed_state("tab-window-tab-cache", cx, |_, _| TabItemCache::default());
             let (tab_items, body) = {
                 let cache_hit = {
                     let cached = cache.read(cx);
@@ -852,8 +807,7 @@ impl RenderOnce for TabWindowShell {
                 if let Some(hit) = cache_hit {
                     hit
                 } else {
-                    let (items, body) =
-                        build_tab_items_from_values(&self.tabs, selected_index);
+                    let (items, body) = build_tab_items_from_values(&self.tabs, selected_index);
                     cache.update(cx, |c, _| {
                         c.fingerprint = fingerprint;
                         c.items = items.iter().map(TabItem::clone_for_cache).collect();
@@ -884,7 +838,8 @@ impl RenderOnce for TabWindowShell {
         }
 
         if let Some(on_close_others) = self.on_tab_close_others {
-            tab_bar = tab_bar.on_close_others(move |ix, window, cx| on_close_others(*ix, window, cx));
+            tab_bar =
+                tab_bar.on_close_others(move |ix, window, cx| on_close_others(*ix, window, cx));
         }
 
         // chrome_toggle 必须放在 title_row（Drag 区域）之外，否则在 Windows 上
@@ -931,43 +886,38 @@ impl RenderOnce for TabWindowShell {
             .child(render_window_controls(window, cx));
 
         let body_scroll_handle: gpui::ScrollHandle = window
-            .use_keyed_state(
-                "tab-window-body-scroll",
-                cx,
-                |_, _| gpui::ScrollHandle::default(),
-            )
+            .use_keyed_state("tab-window-body-scroll", cx, |_, _| {
+                gpui::ScrollHandle::default()
+            })
             .read(cx)
             .clone();
 
-        let body = resizable_panel()
-            .flex_1()
-            .bg(cx.theme().tab_active)
-            .child(
-                div()
-                    .id("tab-window-body")
-                    .flex_1()
-                    .min_h_0()
-                    .size_full()
-                    .relative()
-                    .bg(cx.theme().tab_active)
-                    .child(
-                        div()
-                            .id("tab-window-scroll-area")
-                            .size_full()
-                            .overflow_y_scroll()
-                            .track_scroll(&body_scroll_handle)
-                            .child(
-                                div()
-                                    .id("tab-window-scroll-content")
-                                    .w_full()
-                                    .when_some(selected_body, |this, body_fn| {
-                                        this.child(body_fn(window, cx))
-                                    })
-                                    .children(self.children),
-                            ),
-                    )
-                    .vertical_scrollbar(&body_scroll_handle),
-            );
+        let body = resizable_panel().flex_1().bg(cx.theme().tab_active).child(
+            div()
+                .id("tab-window-body")
+                .flex_1()
+                .min_h_0()
+                .size_full()
+                .relative()
+                .bg(cx.theme().tab_active)
+                .child(
+                    div()
+                        .id("tab-window-scroll-area")
+                        .size_full()
+                        .overflow_y_scroll()
+                        .track_scroll(&body_scroll_handle)
+                        .child(
+                            div()
+                                .id("tab-window-scroll-content")
+                                .w_full()
+                                .when_some(selected_body, |this, body_fn| {
+                                    this.child(body_fn(window, cx))
+                                })
+                                .children(self.children),
+                        ),
+                )
+                .vertical_scrollbar(&body_scroll_handle),
+        );
 
         // center_col：v_resizable 始终包含 body；bottom 展开时进 v_resizable，
         // 折叠时移出 v_resizable 放到下方独立 div（无 resize handle）。

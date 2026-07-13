@@ -6,7 +6,7 @@
 //! 组件不渲染可见内容（返回空 div），仅作为声明式副作用触发器。
 //! `set_theme` 内部仅在主题实际变化时刷新窗口，因此每次 render 调用是安全的。
 
-use gpui::{App, IntoElement, RenderOnce, SharedString, Window, div};
+use gpui::{div, App, IntoElement, RenderOnce, SharedString, Window};
 use rml_core::theme::ThemeExt;
 
 /// 声明式主题切换器

@@ -20,8 +20,8 @@ use std::sync::Mutex;
 
 use gpui::{AnyWindowHandle, AppContext, Entity, SharedString};
 
-use crate::InputState;
 use crate::window::actions::{IWindowActions, NotificationKind};
+use crate::InputState;
 
 /// 组件运行时状态容器
 ///
@@ -52,7 +52,8 @@ pub struct RmlState {
     ///
     /// key 为 bridge_key（如 "slider"），value 为字段名→Entity 的映射。
     /// 惰性初始化：首次 `__rml_get_or_init_<suffix>_state(field)` 时创建并订阅。
-    pub state_bridge_entities: HashMap<&'static str, HashMap<String, Box<dyn std::any::Any + Send + Sync>>>,
+    pub state_bridge_entities:
+        HashMap<&'static str, HashMap<String, Box<dyn std::any::Any + Send + Sync>>>,
 
     /// StateBridge 正向同步版本号，key 为 `"<bridge_key>:<field>"`
     pub state_bridge_versions: HashMap<String, u64>,
@@ -318,11 +319,7 @@ impl RmlState {
     /// 后续渲染复用同一 handle，用 `.track_focus(&handle)` 关联到元素。
     ///
     /// 签名为 `&self`（通过 `Mutex` 内部可变性），使 slot 闭包内也能调用。
-    pub fn get_or_init_focus_handle(
-        &self,
-        key: &str,
-        cx: &mut gpui::App,
-    ) -> gpui::FocusHandle {
+    pub fn get_or_init_focus_handle(&self, key: &str, cx: &mut gpui::App) -> gpui::FocusHandle {
         let cache = self.focus_handles.lock().unwrap();
         if let Some(handle) = cache.get(key) {
             return handle.clone();

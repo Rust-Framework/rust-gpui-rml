@@ -33,11 +33,7 @@ impl TableRow {
     }
 
     /// 添加单元格数据。`key` 对应 `TableColumn.key`，`value` 为显示文本。
-    pub fn cell(
-        mut self,
-        key: impl Into<SharedString>,
-        value: impl Into<SharedString>,
-    ) -> Self {
+    pub fn cell(mut self, key: impl Into<SharedString>, value: impl Into<SharedString>) -> Self {
         self.cells.insert(key.into(), value.into());
         self
     }
@@ -106,9 +102,7 @@ mod tests {
 
     #[test]
     fn clone_preserves_data() {
-        let row = TableRow::new()
-            .cell("name", "John")
-            .col_span("name", 2);
+        let row = TableRow::new().cell("name", "John").col_span("name", 2);
         let cloned = row.clone();
         assert_eq!(cloned.cells.get("name"), Some(&SharedString::from("John")));
         assert_eq!(cloned.col_spans.get("name"), Some(&2));

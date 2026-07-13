@@ -6,13 +6,13 @@
 use std::rc::Rc;
 
 use gpui::{
-    App, Entity, IntoElement, ParentElement, RenderOnce, SharedString, Styled, Window, div, px,
+    div, px, App, Entity, IntoElement, ParentElement, RenderOnce, SharedString, Styled, Window,
 };
 use gpui_component::{
-    Icon, IconName, Sizable as _,
     h_flex,
     list::ListItem,
     tree::{Tree as NativeTree, TreeItem, TreeState},
+    Icon, IconName, Sizable as _,
 };
 
 type TreeItemHandler = Rc<dyn Fn(TreeItem, &mut Window, &mut App) + 'static>;
@@ -45,10 +45,7 @@ impl Tree {
         self
     }
 
-    pub fn on_activate_rc(
-        mut self,
-        handler: TreeItemHandler,
-    ) -> Self {
+    pub fn on_activate_rc(mut self, handler: TreeItemHandler) -> Self {
         self.on_activate = Some(handler);
         self
     }
@@ -62,10 +59,7 @@ impl Tree {
         self
     }
 
-    pub fn on_select_rc(
-        mut self,
-        handler: TreeItemHandler,
-    ) -> Self {
+    pub fn on_select_rc(mut self, handler: TreeItemHandler) -> Self {
         self.on_select = Some(handler);
         self
     }

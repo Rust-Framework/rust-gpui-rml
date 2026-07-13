@@ -3,7 +3,7 @@
 //! 类比 WPF `Window` 类：可直用，也可作为更复杂窗口的基础。
 //! 窗口内容为占位符，用户创建带实际内容的窗口应使用 `#[window]` 宏。
 
-use gpui::{App, AnyWindowHandle, Context, IntoElement, ParentElement, Pixels, Render, div, px};
+use gpui::{div, px, AnyWindowHandle, App, Context, IntoElement, ParentElement, Pixels, Render};
 
 use rml_core::component::IComponent;
 use rml_core::lifecycle::ILifecycle;

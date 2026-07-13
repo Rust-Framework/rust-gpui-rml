@@ -6,6 +6,7 @@
 pub mod assets_processor;
 pub mod cache;
 pub mod contribution_generator;
+pub mod extension_registry;
 pub mod i18n_extractor;
 pub mod scanner;
 
@@ -173,6 +174,9 @@ impl Builder {
 
     /// 执行编译主流程。
     pub fn build(self) -> Result<(), BuildError> {
+        // 自动扫描依赖树中 [rml.metadata] 声明的扩展组件
+        extension_registry::auto_register_extensions();
+
         // 所有 &self 借用必须在 self.output_dir 移动前完成
         let (stylesheet, style_hash) = self.load_stylesheets()?;
         let rml_files = scanner::scan(&self.scan_dirs);

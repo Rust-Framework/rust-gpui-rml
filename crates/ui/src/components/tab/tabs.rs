@@ -1,20 +1,20 @@
 use std::{cell::RefCell, rc::Rc, time::Duration};
 
 use gpui::{
-    Anchor, Animation, AnimationExt as _, AnyElement, App, Background, Bounds, Context, Corners,
-    Div, Edges, ElementId, Entity, InteractiveElement, IntoElement, Overflow, ParentElement,
-    Pixels, RenderOnce, ScrollHandle, SharedString, Stateful, StatefulInteractiveElement as _,
-    StyleRefinement, Styled, Window, div, prelude::FluentBuilder as _, px,
+    div, prelude::FluentBuilder as _, px, Anchor, Animation, AnimationExt as _, AnyElement, App,
+    Background, Bounds, Context, Corners, Div, Edges, ElementId, Entity, InteractiveElement,
+    IntoElement, Overflow, ParentElement, Pixels, RenderOnce, ScrollHandle, SharedString, Stateful,
+    StatefulInteractiveElement as _, StyleRefinement, Styled, Window,
 };
 use smallvec::SmallVec;
 
 use super::{Tab, TabItem, TabVariant};
 use crate::OverflowStyle;
-use gpui_component::animation::{Lerp, ease_in_out_cubic};
+use gpui_component::animation::{ease_in_out_cubic, Lerp};
 use gpui_component::button::{Button, ButtonVariants as _};
 use gpui_component::menu::{DropdownMenu as _, PopupMenu, PopupMenuItem};
 use gpui_component::{
-    ActiveTheme, ElementExt, Icon, IconName, Selectable, Sizable, Size, StyledExt, h_flex, v_flex,
+    h_flex, v_flex, ActiveTheme, ElementExt, Icon, IconName, Selectable, Sizable, Size, StyledExt,
 };
 use rust_rml_core::i18n::t_or_default;
 
@@ -319,12 +319,10 @@ impl Tabs {
                         .rounded(inner_radius)
                         .shadow_xs(),
                 ),
-                TabVariant::Pill => el.flex().items_center().child(
-                    div()
-                        .size_full()
-                        .bg(cx.theme().primary)
-                        .rounded(px(99.)),
-                ),
+                TabVariant::Pill => el
+                    .flex()
+                    .items_center()
+                    .child(div().size_full().bg(cx.theme().primary).rounded(px(99.))),
                 TabVariant::Underline => el.child(
                     div()
                         .absolute()
@@ -561,8 +559,7 @@ impl RenderOnce for Tabs {
             None
         };
         let overflow_state: Option<Entity<bool>> = if enable_overflow {
-            let state =
-                window.use_keyed_state(format!("{}-overflow", self.id), cx, |_, _| false);
+            let state = window.use_keyed_state(format!("{}-overflow", self.id), cx, |_, _| false);
             let init =
                 window.use_keyed_state(format!("{}-overflow-init", self.id), cx, |_, _| false);
             if !*init.read(cx) {
@@ -580,12 +577,18 @@ impl RenderOnce for Tabs {
             None
         };
 
-        let show_menu =
-            self.menu && overflow_state.as_ref().map(|s| *s.read(cx)).unwrap_or(false);
+        let show_menu = self.menu
+            && overflow_state
+                .as_ref()
+                .map(|s| *s.read(cx))
+                .unwrap_or(false);
         // Raw overflow flag (not gated by `self.menu`): when true, tabs switch
         // from fixed-width scroll mode to browser-like compression (flex_1 +
         // min_w_0 + label ellipsis).
-        let is_overflow = overflow_state.as_ref().map(|s| *s.read(cx)).unwrap_or(false);
+        let is_overflow = overflow_state
+            .as_ref()
+            .map(|s| *s.read(cx))
+            .unwrap_or(false);
         let has_suffix_or_menu = self.suffix.is_some() || show_menu;
         let mut item_metas: Vec<(Option<SharedString>, Option<Icon>, bool)> = Vec::new();
         let selected_index = self.selected_index;
@@ -622,7 +625,8 @@ impl RenderOnce for Tabs {
             Vec::new()
         };
 
-        let header = self.base
+        let header = self
+            .base
             .group("tab-bar")
             .relative()
             .flex()
@@ -711,56 +715,80 @@ impl RenderOnce for Tabs {
                             .child(
                                 h_flex()
                                     .gap(gap)
-                                    .when_else(is_overflow, |this| this.flex_1().min_w_0(), |this| this.flex_shrink_0())
-                                    .children(self.children.into_iter().enumerate().map(|(ix, item)| {
-                                        item_metas.push((
-                                            item.title_label.clone(),
-                                            item.title_icon.clone(),
-                                            item.disabled,
-                                        ));
-                                        // 当前 tab 的 closable 状态：控制 "Close" 菜单项是否显示。
-                                        let tab_closable = item.closable;
-                                        // 其他可关闭 tab 数量：控制 "Close Others" disabled 状态。
-                                        let other_closable_count =
-                                            closable_count - if tab_closable { 1 } else { 0 };
-                                        let tab_bar_prefix = item.tab_bar_prefix.unwrap_or(true);
-                                        let mut tab = item
-                                            .ix(ix)
-                                            .tab_bar_prefix(tab_bar_prefix)
-                                            .into_header_tab()
-                                            .with_variant(self.variant)
-                                            .with_size(self.size)
-                                            .compress(is_overflow);
-                                        tab.indicator_active = has_indicator;
-                                        tab.indicator_ready = indicator_ready;
-                                        tab.indicator_epoch = indicator_epoch;
-                                        let tab = tab
-                                            .connect_body(connect_body)
-                                            .when_some(self.selected_index, |this, selected_ix| {
-                                                this.selected(selected_ix == ix)
-                                            })
-                                            .when_some(self.on_click.clone(), move |this, on_click| {
-                                                this.on_click(move |_, window, cx| on_click(&ix, window, cx))
-                                            })
-                                            .when_some(self.on_close.clone(), move |this, on_close| {
-                                                this.on_close(move |_, window, cx| on_close(&ix, window, cx))
-                                            })
-                                            .when_some(self.on_promote.clone(), move |this, on_promote| {
-                                                this.on_promote(move |window, cx| on_promote(&ix, window, cx))
-                                            });
+                                    .when_else(
+                                        is_overflow,
+                                        |this| this.flex_1().min_w_0(),
+                                        |this| this.flex_shrink_0(),
+                                    )
+                                    .children(self.children.into_iter().enumerate().map(
+                                        |(ix, item)| {
+                                            item_metas.push((
+                                                item.title_label.clone(),
+                                                item.title_icon.clone(),
+                                                item.disabled,
+                                            ));
+                                            // 当前 tab 的 closable 状态：控制 "Close" 菜单项是否显示。
+                                            let tab_closable = item.closable;
+                                            // 其他可关闭 tab 数量：控制 "Close Others" disabled 状态。
+                                            let other_closable_count =
+                                                closable_count - if tab_closable { 1 } else { 0 };
+                                            let tab_bar_prefix =
+                                                item.tab_bar_prefix.unwrap_or(true);
+                                            let mut tab = item
+                                                .ix(ix)
+                                                .tab_bar_prefix(tab_bar_prefix)
+                                                .into_header_tab()
+                                                .with_variant(self.variant)
+                                                .with_size(self.size)
+                                                .compress(is_overflow);
+                                            tab.indicator_active = has_indicator;
+                                            tab.indicator_ready = indicator_ready;
+                                            tab.indicator_epoch = indicator_epoch;
+                                            let tab = tab
+                                                .connect_body(connect_body)
+                                                .when_some(
+                                                    self.selected_index,
+                                                    |this, selected_ix| {
+                                                        this.selected(selected_ix == ix)
+                                                    },
+                                                )
+                                                .when_some(
+                                                    self.on_click.clone(),
+                                                    move |this, on_click| {
+                                                        this.on_click(move |_, window, cx| {
+                                                            on_click(&ix, window, cx)
+                                                        })
+                                                    },
+                                                )
+                                                .when_some(
+                                                    self.on_close.clone(),
+                                                    move |this, on_close| {
+                                                        this.on_close(move |_, window, cx| {
+                                                            on_close(&ix, window, cx)
+                                                        })
+                                                    },
+                                                )
+                                                .when_some(
+                                                    self.on_promote.clone(),
+                                                    move |this, on_promote| {
+                                                        this.on_promote(move |window, cx| {
+                                                            on_promote(&ix, window, cx)
+                                                        })
+                                                    },
+                                                );
 
-                                        // 框架内置右键菜单：Close / Close Others / Close All。
-                                        // 仅在业务层提供至少一个回调时挂载，菜单项文本走 i18n。
-                                        // closable=false 的 tab 不显示 "Close" 项（与关闭按钮可见性一致），
-                                        // 但仍显示 "Close Others" / "Close All"（可关闭其他 tab）。
-                                        let on_close_for_menu = self.on_close.clone();
-                                        let on_close_all = self.on_close_all.clone();
-                                        let on_close_others = self.on_close_others.clone();
-                                        let has_context_menu = on_close_for_menu.is_some()
-                                            || on_close_all.is_some()
-                                            || on_close_others.is_some();
-                                        let tab = if has_context_menu {
-                                            let provider = move |mut menu: PopupMenu,
+                                            // 框架内置右键菜单：Close / Close Others / Close All。
+                                            // 仅在业务层提供至少一个回调时挂载，菜单项文本走 i18n。
+                                            // closable=false 的 tab 不显示 "Close" 项（与关闭按钮可见性一致），
+                                            // 但仍显示 "Close Others" / "Close All"（可关闭其他 tab）。
+                                            let on_close_for_menu = self.on_close.clone();
+                                            let on_close_all = self.on_close_all.clone();
+                                            let on_close_others = self.on_close_others.clone();
+                                            let has_context_menu = on_close_for_menu.is_some()
+                                                || on_close_all.is_some()
+                                                || on_close_others.is_some();
+                                            let tab = if has_context_menu {
+                                                let provider = move |mut menu: PopupMenu,
                                                                  _window: &mut Window,
                                                                  cx: &mut Context<PopupMenu>|
                                                   -> PopupMenu {
@@ -817,26 +845,31 @@ impl RenderOnce for Tabs {
                                                 }
                                                 menu
                                             };
-                                            tab.context_menu_provider(provider)
-                                        } else {
-                                            tab
-                                        };
+                                                tab.context_menu_provider(provider)
+                                            } else {
+                                                tab
+                                            };
 
-                                        if let Some(ref rc) = bounds_rc {
-                                            let rc = rc.clone();
-                                            div()
-                                                .on_prepaint(move |bounds, _, _| {
-                                                    if let Some(slot) = rc.borrow_mut().tabs.get_mut(ix) {
-                                                        *slot = bounds;
-                                                    }
-                                                })
-                                                .child(tab)
-                                                .into_any_element()
-                                        } else {
-                                            tab.into_any_element()
-                                        }
-                                    }))
-                                    .when(has_suffix_or_menu, |this| this.child(div().w(gap).child(self.last_empty_space))),
+                                            if let Some(ref rc) = bounds_rc {
+                                                let rc = rc.clone();
+                                                div()
+                                                    .on_prepaint(move |bounds, _, _| {
+                                                        if let Some(slot) =
+                                                            rc.borrow_mut().tabs.get_mut(ix)
+                                                        {
+                                                            *slot = bounds;
+                                                        }
+                                                    })
+                                                    .child(tab)
+                                                    .into_any_element()
+                                            } else {
+                                                tab.into_any_element()
+                                            }
+                                        },
+                                    ))
+                                    .when(has_suffix_or_menu, |this| {
+                                        this.child(div().w(gap).child(self.last_empty_space))
+                                    }),
                             ),
                     ),
             )

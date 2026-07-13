@@ -32,10 +32,7 @@ impl ActivityAct {
         }
     }
 
-    pub fn on_click(
-        mut self,
-        f: impl Fn(&mut Window, &mut App) + Send + Sync + 'static,
-    ) -> Self {
+    pub fn on_click(mut self, f: impl Fn(&mut Window, &mut App) + Send + Sync + 'static) -> Self {
         self.on_click = Some(Arc::new(f));
         self
     }

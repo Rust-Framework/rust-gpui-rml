@@ -24,9 +24,7 @@
 //! ```
 
 use gpui::{App, ElementId, IntoElement, Window};
-use gpui_component::sidebar::{
-    Sidebar as GpuiSidebar, SidebarItem,
-};
+use gpui_component::sidebar::{Sidebar as GpuiSidebar, SidebarItem};
 use gpui_component::Collapsible;
 
 /// 侧边栏条目枚举 —— 统一 `SidebarMenu` 和 `SidebarMenuItem` 为单一类型，

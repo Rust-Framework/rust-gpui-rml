@@ -20,3 +20,8 @@ tracing = "0.1"
 
 [features]
 default = []
+
+[rml.metadata]
+components = [
+    { tag = "Terminal", ctor_path = "rml_ui_term::TerminalView", kind = "EntityRef", container = false },
+]

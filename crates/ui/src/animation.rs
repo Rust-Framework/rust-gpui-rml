@@ -17,7 +17,7 @@
 
 use std::time::Duration;
 
-use gpui::{Animation, AnimationElement, AnimationExt, IntoElement, Styled, ease_in_out, px};
+use gpui::{ease_in_out, px, Animation, AnimationElement, AnimationExt, IntoElement, Styled};
 
 /// 淡入动画：opacity 0→1
 pub fn fade<E: Styled + IntoElement + 'static>(
@@ -27,8 +27,7 @@ pub fn fade<E: Styled + IntoElement + 'static>(
 ) -> AnimationElement<E> {
     el.with_animation(
         id,
-        Animation::new(Duration::from_millis(duration_ms as u64))
-            .with_easing(ease_in_out),
+        Animation::new(Duration::from_millis(duration_ms as u64)).with_easing(ease_in_out),
         |el, value| el.opacity(value),
     )
 }
@@ -41,13 +40,8 @@ pub fn slide_up<E: Styled + IntoElement + 'static>(
 ) -> AnimationElement<E> {
     el.with_animation(
         id,
-        Animation::new(Duration::from_millis(duration_ms as u64))
-            .with_easing(ease_in_out),
-        |el, value| {
-            el.relative()
-                .opacity(value)
-                .top(px((1.0 - value) * 20.0))
-        },
+        Animation::new(Duration::from_millis(duration_ms as u64)).with_easing(ease_in_out),
+        |el, value| el.relative().opacity(value).top(px((1.0 - value) * 20.0)),
     )
 }
 
@@ -59,13 +53,8 @@ pub fn slide_down<E: Styled + IntoElement + 'static>(
 ) -> AnimationElement<E> {
     el.with_animation(
         id,
-        Animation::new(Duration::from_millis(duration_ms as u64))
-            .with_easing(ease_in_out),
-        |el, value| {
-            el.relative()
-                .opacity(value)
-                .top(px((1.0 - value) * -20.0))
-        },
+        Animation::new(Duration::from_millis(duration_ms as u64)).with_easing(ease_in_out),
+        |el, value| el.relative().opacity(value).top(px((1.0 - value) * -20.0)),
     )
 }
 
@@ -77,13 +66,8 @@ pub fn slide_left<E: Styled + IntoElement + 'static>(
 ) -> AnimationElement<E> {
     el.with_animation(
         id,
-        Animation::new(Duration::from_millis(duration_ms as u64))
-            .with_easing(ease_in_out),
-        |el, value| {
-            el.relative()
-                .opacity(value)
-                .left(px((1.0 - value) * 20.0))
-        },
+        Animation::new(Duration::from_millis(duration_ms as u64)).with_easing(ease_in_out),
+        |el, value| el.relative().opacity(value).left(px((1.0 - value) * 20.0)),
     )
 }
 

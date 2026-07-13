@@ -61,6 +61,23 @@ impl IRmlTranslator for StatefulComponentTranslator {
             _ => None,
         });
 
+        // 编译期拒绝 StatefulWithDelegate 组件同时写 ref 与双向绑定属性（如 Select 的 value）
+        if let Some(spec) = lookup_state_bridge_for_tag(canonical.as_str()) {
+            if ref_name.is_some()
+                && elem.attributes.iter().any(|attr| {
+                    matches!(attr, Attribute::Bind { name, .. } if name == spec.bind_property)
+                })
+            {
+                return Err(CodegenError {
+                    message: format!(
+                        "<{}> cannot use both 'ref' and '{}' binding; use 'ref' with on-change or '{}' without ref",
+                        tag, spec.bind_property, spec.bind_property
+                    ),
+                    span: Some(elem.span),
+                });
+            }
+        }
+
         // C2: InputStateBridge — Input/TextInput/NumberInput + value={field} → gen_model_input
         // 复用小写 <input> 的 InputState 双向同步机制（正向版本追踪 + 反向事件订阅）
         if matches!(canonical.as_str(), "Input" | "TextInput" | "NumberInput") {
@@ -511,4 +528,103 @@ fn augment_state_ctor(elem: &Element, canonical: &str, state_ctor: &str) -> Stri
 
 pub fn register(registry: &mut crate::compiler::translator::TranslatorRegistry) {
     registry.register(StatefulComponentTranslator);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parser::ast::{Attribute, Directive, Element};
+    use crate::parser::Span;
+
+    fn ctx() -> CodegenCtx {
+        CodegenCtx {
+            view_struct_name: "TestView".into(),
+            view_module_path: "test::view".into(),
+            ..Default::default()
+        }
+    }
+
+    fn make_element(tag: &str, directives: Vec<Directive>, attrs: Vec<Attribute>) -> Element {
+        Element {
+            tag: tag.into(),
+            attributes: attrs,
+            directives,
+            children: vec![],
+            slot_name: None,
+            ..Default::default()
+        }
+    }
+
+    fn ref_directive(name: &str) -> Directive {
+        Directive::Ref {
+            name: name.into(),
+            span: Span::empty(),
+        }
+    }
+
+    fn bind_attr(name: &str, expr: &str) -> Attribute {
+        Attribute::Bind {
+            name: name.into(),
+            expr: expr.into(),
+            span: Span::empty(),
+        }
+    }
+
+    #[test]
+    fn reject_select_ref_and_value_binding() {
+        let elem = make_element(
+            "Select",
+            vec![ref_directive("my_select")],
+            vec![
+                bind_attr("items", "basic_items"),
+                bind_attr("value", "bound_fruit"),
+            ],
+        );
+        let mut id = 0;
+        let err = StatefulComponentTranslator
+            .to_rust(&elem, &ctx(), &mut id, &Vec::new(), &[])
+            .unwrap_err();
+        assert!(
+            err.message.contains("cannot use both 'ref' and 'value' binding"),
+            "expected ref+value conflict error, got: {}",
+            err.message
+        );
+    }
+
+    #[test]
+    fn reject_combobox_ref_and_value_binding() {
+        let elem = make_element(
+            "Combobox",
+            vec![ref_directive("my_combobox")],
+            vec![
+                bind_attr("items", "basic_items"),
+                bind_attr("value", "bound_fruit"),
+            ],
+        );
+        let mut id = 0;
+        let err = StatefulComponentTranslator
+            .to_rust(&elem, &ctx(), &mut id, &Vec::new(), &[])
+            .unwrap_err();
+        assert!(
+            err.message.contains("cannot use both 'ref' and 'value' binding"),
+            "expected ref+value conflict error, got: {}",
+            err.message
+        );
+    }
+
+    #[test]
+    fn allow_select_ref_without_value_binding() {
+        let elem = make_element(
+            "Select",
+            vec![ref_directive("my_select")],
+            vec![bind_attr("items", "basic_items")],
+        );
+        let mut id = 0;
+        let result = StatefulComponentTranslator.to_rust(&elem, &ctx(), &mut id, &Vec::new(), &[]);
+        assert!(
+            result.is_ok(),
+            "Select with ref and items (no value) should compile, got: {:?}",
+            result
+        );
+    }
 }

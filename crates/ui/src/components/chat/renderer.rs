@@ -4,8 +4,8 @@
 //! - [`PlainText`]: 纯文本（IM 默认）
 //! - [`Markdown`]: Markdown 富文本（AI 默认），使用 RML 的 [`Markdown`](crate::Markdown) 组件
 
-use gpui::{AnyElement, IntoElement, ParentElement, SharedString, Window, App};
 use crate::Markdown as MarkdownView;
+use gpui::{AnyElement, App, IntoElement, ParentElement, SharedString, Window};
 
 /// 消息渲染模式。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -18,7 +18,12 @@ pub enum RenderMode {
 }
 
 /// 将消息内容渲染为元素。
-pub fn render_content(mode: RenderMode, content: &str, _window: &mut Window, _cx: &mut App) -> AnyElement {
+pub fn render_content(
+    mode: RenderMode,
+    content: &str,
+    _window: &mut Window,
+    _cx: &mut App,
+) -> AnyElement {
     match mode {
         RenderMode::PlainText => gpui::div()
             .child(SharedString::from(content.to_string()))

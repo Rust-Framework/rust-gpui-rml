@@ -10,7 +10,7 @@
 //!
 //! `Icon` 实例使用默认尺寸(18px,未调用 `Sizable::small()`),与 36px 按钮容器比例协调。
 
-use gpui::{AnyElement, IntoElement, Styled, Window, img};
+use gpui::{img, AnyElement, IntoElement, Styled, Window};
 use gpui_component::{Icon, IconName};
 use rml_core::contribution::IconSpec;
 

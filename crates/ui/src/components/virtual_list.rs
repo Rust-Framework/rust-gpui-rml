@@ -13,4 +13,4 @@
 //! </virtual-list>
 //! ```
 
-pub use gpui_component::{VirtualList, VirtualListScrollHandle, h_virtual_list, v_virtual_list};
+pub use gpui_component::{h_virtual_list, v_virtual_list, VirtualList, VirtualListScrollHandle};

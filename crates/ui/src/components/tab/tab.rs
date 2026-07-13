@@ -1,18 +1,21 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc, time::{Duration, Instant}};
-
-use gpui_component::animation::{Lerp, ease_in_out_cubic};
-use gpui_component::{
-    ActiveTheme, Icon, IconName, Selectable, Sizable, Size, StyledExt, h_flex,
+use std::{
+    cell::RefCell,
+    collections::HashMap,
+    rc::Rc,
+    time::{Duration, Instant},
 };
-use rust_rml_core::i18n::t_or_default;
+
 use crate::{ContextMenuExt, OverflowStyle, PopupMenu, Tooltip};
 use gpui::prelude::FluentBuilder as _;
 use gpui::{
-    Animation, AnimationExt as _, AnyElement, App, Background, ClickEvent, Context, Corners, Div,
-    Edges, ElementId, Global, Hsla, InteractiveElement, IntoElement, MouseButton, Overflow,
-    ParentElement, Pixels, RenderOnce, SharedString, StatefulInteractiveElement, Styled, Window, div,
-    px, relative,
+    div, px, relative, Animation, AnimationExt as _, AnyElement, App, Background, ClickEvent,
+    Context, Corners, Div, Edges, ElementId, Global, Hsla, InteractiveElement, IntoElement,
+    MouseButton, Overflow, ParentElement, Pixels, RenderOnce, SharedString,
+    StatefulInteractiveElement, Styled, Window,
 };
+use gpui_component::animation::{ease_in_out_cubic, Lerp};
+use gpui_component::{h_flex, ActiveTheme, Icon, IconName, Selectable, Sizable, Size, StyledExt};
+use rust_rml_core::i18n::t_or_default;
 
 type TabClickHandler = Rc<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>;
 type TabContextMenuProvider =
@@ -81,17 +84,23 @@ impl TabVariant {
     pub(super) fn inner_height(&self, size: Size) -> Pixels {
         match size {
             Size::XSmall => match self {
-                TabVariant::Tab | TabVariant::Flat | TabVariant::Outline | TabVariant::Pill => px(18.),
+                TabVariant::Tab | TabVariant::Flat | TabVariant::Outline | TabVariant::Pill => {
+                    px(18.)
+                }
                 TabVariant::Segmented => px(16.),
                 TabVariant::Underline => px(20.),
             },
             Size::Small => match self {
-                TabVariant::Tab | TabVariant::Flat | TabVariant::Outline | TabVariant::Pill => px(22.),
+                TabVariant::Tab | TabVariant::Flat | TabVariant::Outline | TabVariant::Pill => {
+                    px(22.)
+                }
                 TabVariant::Segmented => px(18.),
                 TabVariant::Underline => px(22.),
             },
             Size::Large => match self {
-                TabVariant::Tab | TabVariant::Flat | TabVariant::Outline | TabVariant::Pill => px(36.),
+                TabVariant::Tab | TabVariant::Flat | TabVariant::Outline | TabVariant::Pill => {
+                    px(36.)
+                }
                 TabVariant::Segmented => px(28.),
                 TabVariant::Underline => px(32.),
             },
@@ -420,7 +429,13 @@ impl TabVariant {
         }
     }
 
-    fn corner_radii(&self, size: Size, selected: bool, disabled: bool, cx: &App) -> Corners<Pixels> {
+    fn corner_radii(
+        &self,
+        size: Size,
+        selected: bool,
+        disabled: bool,
+        cx: &App,
+    ) -> Corners<Pixels> {
         let _ = (selected, disabled);
         Corners::all(self.radius(size, cx))
     }
@@ -666,10 +681,7 @@ impl Tab {
 
     /// 双击 tab 时触发 promote 回调。由 TabBar 透传，Tab 内部在
     /// `on_mouse_down` 中检测 250ms 时间窗口内的双击。
-    pub(crate) fn on_promote(
-        mut self,
-        handler: impl Fn(&mut Window, &mut App) + 'static,
-    ) -> Self {
+    pub(crate) fn on_promote(mut self, handler: impl Fn(&mut Window, &mut App) + 'static) -> Self {
         self.on_promote = Some(Rc::new(handler));
         self
     }
@@ -824,8 +836,7 @@ impl RenderOnce for Tab {
         // appears, then the indicator takes over. Skip disabled tabs so a
         // disabled-selected tab keeps its dimmed styling instead of the
         // full-strength indicator color.
-        let suppress_active_visual =
-            self.selected && !self.disabled && self.indicator_active;
+        let suppress_active_visual = self.selected && !self.disabled && self.indicator_active;
         // Pill paints its active state via the outer `bg`.
         let outer_bg = if suppress_active_visual && self.variant == TabVariant::Pill {
             cx.theme().transparent.into()
@@ -862,7 +873,11 @@ impl RenderOnce for Tab {
             .items_center()
             .overflow_hidden()
             .margins(inner_margins)
-            .when_else(self.compress, |this| this.min_w_0(), |this| this.flex_shrink_0())
+            .when_else(
+                self.compress,
+                |this| this.min_w_0(),
+                |this| this.flex_shrink_0(),
+            )
             .map(|this| match self.icon {
                 Some(icon) => this
                     .w(inner_height * 1.25)
@@ -926,20 +941,22 @@ impl RenderOnce for Tab {
             .flex()
             .flex_wrap()
             .items_center()
-            .when_else(self.compress, |this| {
-                this.flex_1()
-                    .when(self.selected, |this| this.min_w(COMPRESS_ACTIVE_MIN_W))
-                    .when(!self.selected, |this| this.min_w_0())
-            }, |this| this.flex_shrink_0())
+            .when_else(
+                self.compress,
+                |this| {
+                    this.flex_1()
+                        .when(self.selected, |this| this.min_w(COMPRESS_ACTIVE_MIN_W))
+                        .when(!self.selected, |this| this.min_w_0())
+                },
+                |this| this.flex_shrink_0(),
+            )
             .h(height)
             .when_else(
                 merge_with_body,
                 |this| {
                     // Extend the active tab 1px over the strip separator and pull the
                     // body up so layout height stays unchanged.
-                    this.overflow(Overflow::Visible)
-                        .pb(px(1.))
-                        .mb(-px(1.))
+                    this.overflow(Overflow::Visible).pb(px(1.)).mb(-px(1.))
                 },
                 |this| this.overflow_hidden(),
             )
@@ -1074,7 +1091,12 @@ impl RenderOnce for Tab {
                     }
                     let is_dbl = {
                         let state = cx.global::<TabDblClickState>();
-                        let prev = state.last_clicks.borrow().get(&dbl_key).copied().unwrap_or(None);
+                        let prev = state
+                            .last_clicks
+                            .borrow()
+                            .get(&dbl_key)
+                            .copied()
+                            .unwrap_or(None);
                         is_double_click(prev, now)
                     };
                     if is_dbl {

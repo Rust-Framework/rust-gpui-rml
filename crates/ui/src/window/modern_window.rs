@@ -9,10 +9,10 @@
 //! ViewModel 仅持有 `Arc<dyn ICommand>` 字段。
 
 use gpui::{
-    AnyElement, App, IntoElement, ParentElement, RenderOnce, Styled, Window, div,
-    prelude::FluentBuilder as _,
+    div, prelude::FluentBuilder as _, AnyElement, App, IntoElement, ParentElement, RenderOnce,
+    Styled, Window,
 };
-use gpui_component::{ActiveTheme, Icon, Sizable as _, TitleBar, h_flex};
+use gpui_component::{h_flex, ActiveTheme, Icon, Sizable as _, TitleBar};
 use smallvec::SmallVec;
 
 /// ModernWindowShell —— 内置封装 TitleBar + 插槽 + StatusBar 的 RenderOnce 组件
@@ -100,34 +100,39 @@ impl RenderOnce for ModernWindowShell {
             .size_full()
             .bg(cx.theme().background)
             .child(
-                TitleBar::new()
-                    .child(
-                        h_flex()
-                            .flex_1()
-                            .h_full()
-                            .items_center()
-                            .when_some(self.icon, |this, icon| {
-                                this.child(
-                                    h_flex()
-                                        .items_center()
-                                        .pl_2()
-                                        .child(Icon::empty().path(icon).small()),
+                TitleBar::new().child(
+                    h_flex()
+                        .flex_1()
+                        .h_full()
+                        .items_center()
+                        .when_some(self.icon, |this, icon| {
+                            this.child(
+                                h_flex()
+                                    .items_center()
+                                    .pl_2()
+                                    .child(Icon::empty().path(icon).small()),
+                            )
+                        })
+                        .when(self.show_chrome, |this| {
+                            this.when_some(self.menu_slot, |bar, menu| bar.child(menu))
+                                .child(
+                                    div()
+                                        .flex_1()
+                                        .text_center()
+                                        .when_some(self.title, |el, title| el.child(title)),
                                 )
-                            })
-                            .when(self.show_chrome, |this| {
-                                this.when_some(self.menu_slot, |bar, menu| bar.child(menu))
-                                    .child(
-                                        div()
-                                            .flex_1()
-                                            .text_center()
-                                            .when_some(self.title, |el, title| el.child(title)),
-                                    )
-                            })
-                            .when(!self.show_chrome, |this| this.child(div().flex_1()))
-                            .when_some(self.title_ext_slot, |this, ext| this.child(ext)),
-                    ),
+                        })
+                        .when(!self.show_chrome, |this| this.child(div().flex_1()))
+                        .when_some(self.title_ext_slot, |this, ext| this.child(ext)),
+                ),
             )
-            .child(div().flex_1().min_h_0().bg(cx.theme().background).children(self.children))
+            .child(
+                div()
+                    .flex_1()
+                    .min_h_0()
+                    .bg(cx.theme().background)
+                    .children(self.children),
+            )
             .when_some(self.status_slot, |this, slot| this.child(slot))
     }
 }

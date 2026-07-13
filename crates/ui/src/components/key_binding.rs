@@ -12,8 +12,8 @@
 //! 编译器将 Input 包裹在 KeyBinding 链中，子树获得焦点时通过事件冒泡监听 keydown。
 
 use gpui::{
-    AnyElement, App, InteractiveElement, IntoElement, KeyDownEvent, Keystroke, ParentElement,
-    RenderOnce, SharedString, StyleRefinement, Styled, Window, div,
+    div, AnyElement, App, InteractiveElement, IntoElement, KeyDownEvent, Keystroke, ParentElement,
+    RenderOnce, SharedString, StyleRefinement, Styled, Window,
 };
 use gpui_component::StyledExt as _;
 
@@ -97,22 +97,24 @@ impl RenderOnce for KeyBinding {
         let on_press = self.on_press;
 
         let mut container = div()
-            .on_key_down(move |event: &KeyDownEvent, window: &mut Window, cx: &mut App| {
-                if !when {
-                    return;
-                }
-                let Some(target) = target.as_ref() else {
-                    return;
-                };
-                if event.keystroke.key == target.key
-                    && event.keystroke.modifiers == target.modifiers
-                {
-                    if let Some(handler) = &on_press {
-                        handler(window, cx);
-                        cx.stop_propagation();
+            .on_key_down(
+                move |event: &KeyDownEvent, window: &mut Window, cx: &mut App| {
+                    if !when {
+                        return;
                     }
-                }
-            })
+                    let Some(target) = target.as_ref() else {
+                        return;
+                    };
+                    if event.keystroke.key == target.key
+                        && event.keystroke.modifiers == target.modifiers
+                    {
+                        if let Some(handler) = &on_press {
+                            handler(window, cx);
+                            cx.stop_propagation();
+                        }
+                    }
+                },
+            )
             .refine_style(&self.style);
 
         for child in self.children {

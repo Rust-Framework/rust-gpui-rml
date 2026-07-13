@@ -6,11 +6,11 @@
 //! `self.<field>.as_ref().expect("init <field> in on_loaded").clone()`。
 
 use super::super::{ComponentCategory, IRmlTranslator, PrintError, PrinterCtx, TranslatorMetadata};
-use crate::compiler::codegen::attribute::apply_css_styles;
+use crate::compiler::codegen::attribute::{apply_css_styles, apply_inline_style};
 use crate::compiler::expr::current_self_alias;
 use crate::compiler::{CodegenCtx, CodegenError};
 use crate::css::ParentInfo;
-use crate::parser::ast::{Directive, Element};
+use crate::parser::ast::{Attribute, Directive, Element};
 use crate::tags;
 
 #[derive(Debug)]
@@ -51,17 +51,28 @@ impl IRmlTranslator for EntityRefComponentTranslator {
         })?;
 
         let alias = current_self_alias().unwrap_or("self");
-        let mut code = format!(
+        let entity_code = format!(
             "{}.{}.as_ref().expect(\"init {} in on_loaded\").clone()",
             alias, name, name
         );
 
+        let mut style_code = String::new();
         if let Some(sheet) = &ctx.stylesheet {
-            let style_code = apply_css_styles(elem, &canonical, sheet, parents);
-            if !style_code.is_empty() {
-                code.push_str(&style_code);
+            style_code.push_str(&apply_css_styles(elem, &canonical, sheet, parents));
+        }
+        if let Some(Attribute::Static { name: attr_name, value, .. }) = elem.attributes.iter().find(|a| {
+            matches!(a, Attribute::Static { name, .. } if name == "style")
+        }) {
+            if attr_name == "style" {
+                style_code.push_str(&apply_inline_style(value));
             }
         }
+
+        let code = if style_code.is_empty() {
+            entity_code
+        } else {
+            format!("gpui::div().w_full(){}.child({})", style_code, entity_code)
+        };
         Ok((code, false))
     }
 

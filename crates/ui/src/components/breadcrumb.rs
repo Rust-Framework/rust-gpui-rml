@@ -11,13 +11,14 @@
 use std::rc::Rc;
 
 use gpui::{
-    Anchor, App, IntoElement, ParentElement, RenderOnce, SharedString, Styled, Window, div, px,
-    prelude::FluentBuilder as _,
+    div, prelude::FluentBuilder as _, px, Anchor, App, IntoElement, ParentElement, RenderOnce,
+    SharedString, Styled, Window,
 };
 use gpui_component::{
-    ActiveTheme, Icon, IconName, Selectable, Sizable, Size, h_flex,
+    h_flex,
     menu::{PopupMenu, PopupMenuItem},
     popover::Popover,
+    ActiveTheme, Icon, IconName, Selectable, Sizable, Size,
 };
 
 /// 面包屑同级元素（用于下拉列表项）
@@ -214,56 +215,61 @@ impl RenderOnce for Breadcrumb {
             .gap_1()
             .text_xs()
             .text_color(theme.muted_foreground)
-            .children(self.items.into_iter().enumerate().flat_map(move |(level, item)| {
-                let is_last = level == total.saturating_sub(1);
-                let mut elements: Vec<gpui::AnyElement> = Vec::new();
+            .children(
+                self.items
+                    .into_iter()
+                    .enumerate()
+                    .flat_map(move |(level, item)| {
+                        let is_last = level == total.saturating_sub(1);
+                        let mut elements: Vec<gpui::AnyElement> = Vec::new();
 
-                let siblings_rc = Rc::new(item.siblings.clone());
-                let on_select_rc = on_select.clone();
-                let selected_index = item.selected_index;
-                let trigger = BreadcrumbTrigger::new(item.label.clone(), item.icon);
-                let popover_id = SharedString::from(format!("breadcrumb:{}", level));
+                        let siblings_rc = Rc::new(item.siblings.clone());
+                        let on_select_rc = on_select.clone();
+                        let selected_index = item.selected_index;
+                        let trigger = BreadcrumbTrigger::new(item.label.clone(), item.icon);
+                        let popover_id = SharedString::from(format!("breadcrumb:{}", level));
 
-                let popover = Popover::new(popover_id)
-                    .appearance(false)
-                    .anchor(Anchor::BottomLeft)
-                    .trigger(trigger)
-                    .content(move |_, window, cx| {
-                        let siblings = siblings_rc.clone();
-                        let on_select_clone = on_select_rc.clone();
-                        PopupMenu::build(window, cx, move |mut menu, _w, _cx| {
-                            for (idx, sib) in siblings.iter().enumerate() {
-                                let label = sib.label.clone();
-                                let icon = sib.icon.clone();
-                                let cb_clone = on_select_clone.clone();
-                                let mut menu_item = PopupMenuItem::new(label);
-                                if let Some(icon) = icon {
-                                    menu_item = menu_item.icon(icon);
-                                }
-                                menu_item = menu_item.checked(idx == selected_index);
-                                menu_item = menu_item.on_click(move |_, w, app| {
-                                    if let Some(cb) = cb_clone.as_ref() {
-                                        cb(level, idx, w, app);
+                        let popover = Popover::new(popover_id)
+                            .appearance(false)
+                            .anchor(Anchor::BottomLeft)
+                            .trigger(trigger)
+                            .content(move |_, window, cx| {
+                                let siblings = siblings_rc.clone();
+                                let on_select_clone = on_select_rc.clone();
+                                PopupMenu::build(window, cx, move |mut menu, _w, _cx| {
+                                    for (idx, sib) in siblings.iter().enumerate() {
+                                        let label = sib.label.clone();
+                                        let icon = sib.icon.clone();
+                                        let cb_clone = on_select_clone.clone();
+                                        let mut menu_item = PopupMenuItem::new(label);
+                                        if let Some(icon) = icon {
+                                            menu_item = menu_item.icon(icon);
+                                        }
+                                        menu_item = menu_item.checked(idx == selected_index);
+                                        menu_item = menu_item.on_click(move |_, w, app| {
+                                            if let Some(cb) = cb_clone.as_ref() {
+                                                cb(level, idx, w, app);
+                                            }
+                                        });
+                                        menu = menu.item(menu_item);
                                     }
-                                });
-                                menu = menu.item(menu_item);
-                            }
-                            menu
-                        })
-                        .into_any_element()
-                    });
+                                    menu
+                                })
+                                .into_any_element()
+                            });
 
-                elements.push(popover.into_any_element());
+                        elements.push(popover.into_any_element());
 
-                if !is_last {
-                    elements.push(
-                        div()
-                            .text_color(theme.border)
-                            .child(SharedString::from("›"))
-                            .into_any_element(),
-                    );
-                }
-                elements
-            }))
+                        if !is_last {
+                            elements.push(
+                                div()
+                                    .text_color(theme.border)
+                                    .child(SharedString::from("›"))
+                                    .into_any_element(),
+                            );
+                        }
+                        elements
+                    }),
+            )
     }
 }

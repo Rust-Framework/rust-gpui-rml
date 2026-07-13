@@ -25,7 +25,7 @@
 
 use std::sync::Arc;
 
-use gpui::{AnyElement, App, IntoElement, ParentElement, SharedString, Styled, Window, div};
+use gpui::{div, AnyElement, App, IntoElement, ParentElement, SharedString, Styled, Window};
 
 use super::table_column::TableColumn;
 use super::table_row::TableRow;
@@ -33,12 +33,7 @@ use super::table_row::TableRow;
 /// 表格模板委托 —— 支持自定义列头和单元格渲染
 pub trait TableDelegate: 'static + Send + Sync {
     /// 渲染列头。默认实现返回 `column.title` 文本。
-    fn render_header(
-        &self,
-        _col: usize,
-        column: &TableColumn,
-        _cx: &mut App,
-    ) -> AnyElement {
+    fn render_header(&self, _col: usize, column: &TableColumn, _cx: &mut App) -> AnyElement {
         div()
             .whitespace_nowrap()
             .overflow_hidden()
@@ -104,14 +99,7 @@ pub trait TableDelegate: 'static + Send + Sync {
 
     /// 单元格编辑提交回调。编辑完成时调用，`new_value` 为编辑后的新值。
     /// 默认实现为空操作，用户应覆写此方法处理数据更新。
-    fn on_cell_commit(
-        &self,
-        _row: usize,
-        _col: usize,
-        _new_value: SharedString,
-        _cx: &mut App,
-    ) {
-    }
+    fn on_cell_commit(&self, _row: usize, _col: usize, _new_value: SharedString, _cx: &mut App) {}
 }
 
 /// 默认委托（纯文本渲染）

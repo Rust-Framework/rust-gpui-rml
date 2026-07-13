@@ -18,6 +18,6 @@
 //! ```
 
 pub use gpui_component::resizable::{
-    ResizablePanel, ResizablePanelEvent, ResizablePanelGroup, ResizableState, h_resizable,
-    resizable_panel, v_resizable,
+    h_resizable, resizable_panel, v_resizable, ResizablePanel, ResizablePanelEvent,
+    ResizablePanelGroup, ResizableState,
 };

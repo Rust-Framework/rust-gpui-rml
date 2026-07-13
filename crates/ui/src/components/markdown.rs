@@ -7,14 +7,13 @@
 /// 声明式语法：`<Markdown content={text} />`
 ///
 /// 适用于 AI 聊天输出、帮助文档、发布说明等富文本展示场景。
-
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use gpui::{
     App, ElementId, IntoElement, RenderOnce, SharedString, StyleRefinement, Styled, Window,
 };
-use gpui_component::StyledExt as _;
 use gpui_component::text::TextView;
+use gpui_component::StyledExt as _;
 
 static MARKDOWN_ID_COUNTER: AtomicUsize = AtomicUsize::new(0);
 

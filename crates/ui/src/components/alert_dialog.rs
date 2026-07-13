@@ -33,4 +33,3 @@ pub use gpui_component::dialog::{
     AlertDialog, DialogAction, DialogButtonProps, DialogClose, DialogContent, DialogDescription,
     DialogFooter, DialogHeader, DialogTitle,
 };
-
