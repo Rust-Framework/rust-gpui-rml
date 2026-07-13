@@ -211,7 +211,32 @@ pub fn apply_event(name: &str, handler: &EventHandler, _ctx: &CodegenCtx) -> Str
             } else {
                 // Phase B-1 简化：仅支持单参数
                 let arg = &args[0];
-                if slot {
+                // 特殊参数 "window"：传递 _window 给 command 方法（用于 open_sheet 等需要 Window 的 API）
+                if arg == "window" {
+                    if slot {
+                        format!(
+                            ".{on_method}({{\n    \
+                             let __rml_evt_entity = __rml_self_entity.clone();\n    \
+                             move |ev: &{gpui_type}, _window: &mut gpui::Window, cx: &mut gpui::App| {{\n        \
+                             __rml_evt_entity.update(cx, |this, cx| {{\n            \
+                             let rml_ev = {convert_expr};\n            \
+                             this.{method}(_window, &rml_ev, cx);\n            \
+                             if rml_ev.is_propagation_stopped() {{ cx.stop_propagation(); }}\n        \
+                             }});\n    }}\n}})",
+                            on_method = on_method,
+                            gpui_type = gpui_type,
+                            convert_expr = convert_expr,
+                            method = method,
+                        )
+                    } else {
+                        format!(
+                            ".{}(cx.listener(move |this, ev: &{}, _window, cx| {{\n                    \
+                             let rml_ev = {};\n                    this.{}(_window, &rml_ev, cx);\n                    \
+                             if rml_ev.is_propagation_stopped() {{ cx.stop_propagation(); }}\n                }}))",
+                            on_method, gpui_type, convert_expr, method
+                        )
+                    }
+                } else if slot {
                     format!(
                         ".{on_method}({{\n    \
                          let __rml_evt_entity = __rml_self_entity.clone();\n    \

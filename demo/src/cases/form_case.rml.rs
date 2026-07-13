@@ -15,6 +15,19 @@ use crate::cases::common::{build_api_table, CaseDocPage};
 #[component]
 #[derive(Default)]
 pub struct FormCase {
+    pub username_input: ElementRef<rml_ui::InputState>,
+    pub email_input: ElementRef<rml_ui::InputState>,
+    pub remark_input: ElementRef<rml_ui::InputState>,
+    pub name_input: ElementRef<rml_ui::InputState>,
+    pub age_input: ElementRef<rml_ui::InputState>,
+    pub address_input: ElementRef<rml_ui::InputState>,
+    pub password_input: ElementRef<rml_ui::InputState>,
+    pub confirm_input: ElementRef<rml_ui::InputState>,
+    pub first_name_input: ElementRef<rml_ui::InputState>,
+    pub last_name_input: ElementRef<rml_ui::InputState>,
+    pub city_input: ElementRef<rml_ui::InputState>,
+    pub zipcode_input: ElementRef<rml_ui::InputState>,
+    pub full_address_input: ElementRef<rml_ui::InputState>,
     pub form_api_columns: Vec<TableColumn>,
     pub form_api_rows: Vec<TableRow>,
     pub field_api_columns: Vec<TableColumn>,

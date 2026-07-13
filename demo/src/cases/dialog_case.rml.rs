@@ -15,6 +15,16 @@ use crate::cases::common::{build_api_table, CaseDocPage};
 #[component]
 #[derive(Default)]
 pub struct DialogCase {
+    /// 受控模式：9 个对话框的显隐状态
+    pub show_dialog1: bool,
+    pub show_dialog2: bool,
+    pub show_dialog3: bool,
+    pub show_dialog4: bool,
+    pub show_dialog5: bool,
+    pub show_dialog6: bool,
+    pub show_dialog7: bool,
+    pub show_dialog8: bool,
+    pub show_dialog9: bool,
     /// on-ok/on-cancel 验证演示：输入为空时阻止关闭
     pub validate_input: ElementRef<rml_ui::InputState>,
     pub api_columns: Vec<TableColumn>,
@@ -62,6 +72,69 @@ impl DialogCase {
     #[computed]
     pub fn rust_sample(&self) -> String {
         include_str!("dialog_case.rml.rs").to_string()
+    }
+
+    #[command]
+    pub fn open_dialog1(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+        self.show_dialog1 = true;
+        self.__rml_bump_version("show_dialog1");
+        cx.notify();
+    }
+
+    #[command]
+    pub fn open_dialog2(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+        self.show_dialog2 = true;
+        self.__rml_bump_version("show_dialog2");
+        cx.notify();
+    }
+
+    #[command]
+    pub fn open_dialog3(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+        self.show_dialog3 = true;
+        self.__rml_bump_version("show_dialog3");
+        cx.notify();
+    }
+
+    #[command]
+    pub fn open_dialog4(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+        self.show_dialog4 = true;
+        self.__rml_bump_version("show_dialog4");
+        cx.notify();
+    }
+
+    #[command]
+    pub fn open_dialog5(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+        self.show_dialog5 = true;
+        self.__rml_bump_version("show_dialog5");
+        cx.notify();
+    }
+
+    #[command]
+    pub fn open_dialog6(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+        self.show_dialog6 = true;
+        self.__rml_bump_version("show_dialog6");
+        cx.notify();
+    }
+
+    #[command]
+    pub fn open_dialog7(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+        self.show_dialog7 = true;
+        self.__rml_bump_version("show_dialog7");
+        cx.notify();
+    }
+
+    #[command]
+    pub fn open_dialog8(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+        self.show_dialog8 = true;
+        self.__rml_bump_version("show_dialog8");
+        cx.notify();
+    }
+
+    #[command]
+    pub fn open_dialog9(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+        self.show_dialog9 = true;
+        self.__rml_bump_version("show_dialog9");
+        cx.notify();
     }
 
     #[command]

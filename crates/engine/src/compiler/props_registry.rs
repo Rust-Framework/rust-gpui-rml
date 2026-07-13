@@ -170,16 +170,16 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
     ("Popover", &["anchor", "mouse_button", "appearance", "overlay_closable", "default_open"]),
     // HoverCard 专用（悬浮卡片：trigger slot + content 子节点 + anchor 定位 + open/close 延迟）
     ("HoverCard", &["anchor", "appearance", "open_delay", "close_delay"]),
-    // Sheet 专用（侧边抽屉：title/footer + size + resizable/overlay/overlay_closable + on_close）
+    // Sheet 专用（侧边抽屉：title/footer + size + resizable/overlay/overlay_closable + on_close + open 受控模式）
     // 构造器 Sheet::new(&mut Window, &mut App)，codegen 使用 render 上下文变量
-    ("Sheet", &["title", "footer", "size", "resizable", "overlay", "overlay_closable", "on_close"]),
+    ("Sheet", &["title", "footer", "size", "resizable", "overlay", "overlay_closable", "on_close", "open"]),
     // Dialog 专用（模态对话框：title/footer + width + overlay/overlay_closable/close_button/keyboard + on_close/on_ok/on_cancel）
     // 构造器 Dialog::new(cx: &mut App)，仅需 render 上下文的 cx 变量
     ("Dialog", &["title", "footer", "width", "overlay", "overlay_closable", "close_button", "keyboard", "open", "on_close", "on_ok", "on_cancel"]),
     // AlertDialog 专用（警示对话框：title/description + width + confirm/show_cancel + overlay_closable/close_button/keyboard + on_close/on_ok/on_cancel）
     // 构造器 AlertDialog::new(cx: &mut App)，仅需 render 上下文的 cx 变量
     // 与 Dialog 区别：默认 close_button(false)+overlay_closable(false)，提供 description/confirm/show_cancel 便捷方法
-    ("AlertDialog", &["title", "description", "width", "confirm", "show_cancel", "overlay_closable", "close_button", "keyboard", "on_close", "on_ok", "on_cancel"]),
+    ("AlertDialog", &["title", "description", "width", "confirm", "show_cancel", "overlay_closable", "close_button", "keyboard", "open", "on_close", "on_ok", "on_cancel"]),
     // Notification 专用（声明式通知触发器：title/message + variant 布尔属性 + autohide）
     // 构造器 NotificationTrigger::new()（RenderOnce 无 ElementId、无 cx）
     // variant 布尔属性: success/info/warning/error → .with_type(NotificationType::*)

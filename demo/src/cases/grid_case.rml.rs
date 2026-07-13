@@ -9,7 +9,7 @@ use crate::cases::common::{build_api_table, CaseDocPage};
     host_id = "demo.shell",
     id = "framework.grid",
     kind = "case",
-    group = "framework",
+    group = "layout",
     order = 58,
 )]
 #[component]

@@ -852,6 +852,7 @@ pub fn is_item_builder_tag(tag: &str) -> bool {
             | "SettingGroup" | "setting-group"
             | "SettingItem" | "setting-item"
             | "Area"
+            | "Shortcut"
     ) || normalize_component_tag(tag) == "AccordionItem"
         || normalize_component_tag(tag) == "Tab"
         || normalize_component_tag(tag) == "Column"
@@ -863,6 +864,7 @@ pub fn is_item_builder_tag(tag: &str) -> bool {
         || normalize_component_tag(tag) == "SettingGroup"
         || normalize_component_tag(tag) == "SettingItem"
         || normalize_component_tag(tag) == "Area"
+        || normalize_component_tag(tag) == "Shortcut"
 }
 
 /// 判断标签是否为菜单容器（ContextMenu / DropdownMenu / MenuBar / AppMenuBar / menu）

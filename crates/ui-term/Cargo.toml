@@ -1,0 +1,22 @@
+[package]
+name = "rust-rml-ui-term"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "RML 终端组件：基于 alacritty_terminal + portable-pty 的嵌入式终端"
+
+[dependencies]
+rust-rml-core = { workspace = true, features = ["gpui-component"] }
+gpui = { workspace = true }
+gpui-component = { workspace = true }
+alacritty_terminal = "0.26"
+portable-pty = "0.9"
+flume = "0.12"
+parking_lot = "0.12"
+arboard = "3"
+smol = "2"
+anyhow = { workspace = true }
+tracing = "0.4"
+
+[features]
+default = []

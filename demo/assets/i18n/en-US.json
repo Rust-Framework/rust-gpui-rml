@@ -184,6 +184,8 @@
 
   "tree.group.framework": "Framework",
 
+  "tree.group.layout": "Layout",
+
   "tree.group.business": "Business Cases",
 
   "tree.case.menu.context": "Context menu",

@@ -22,13 +22,11 @@ pub struct CaseDocPage {
 }
 
 impl CaseDocPage {
-    /// 代码行高约 20px（13px 字号 × 1.5 行高）；上下留白 16px。
+    /// Input 的 LINE_HEIGHT = 1.25rem = 20px（gpui-component input.rs）。
+    /// CodeEditor 模式非 auto_grow，内部编辑器 height=100% 需父容器确定高度，
+    /// 否则回退到 min_size.height（一行），故必须按行数计算 height。
+    /// CSS padding:0 已覆盖 Input 内部 padding，无需额外补偿。
     const CODE_LINE_HEIGHT_PX: f32 = 20.0;
-    const CODE_EDITOR_PADDING_PX: f32 = 16.0;
-    /// 与 `.rml-code-editor { min-height: 12rem }` 对齐。
-    const CODE_EDITOR_MIN_PX: f32 = 192.0;
-    /// 避免在 TabWindow 滚动区内撑满视口；超出部分在编辑器内滚动。
-    const CODE_EDITOR_MAX_PX: f32 = 480.0;
 
     /// .rml 源码（computed 桥接，避免 String 字段在绑定中 move 出 &self）
     #[computed]
@@ -42,7 +40,7 @@ impl CaseDocPage {
         self.code_rust.clone()
     }
 
-    /// 按当前源码行数自适应 CodeEditor 高度（有界、可参与文档流，不依赖视口 h_full）。
+    /// 按代码行数计算 CodeEditor 高度，完整显示无留白。
     #[computed]
     pub fn code_editor_height(&self) -> f32 {
         let lines = self
@@ -50,9 +48,8 @@ impl CaseDocPage {
             .lines()
             .count()
             .max(self.code_rust.lines().count())
-            .max(6);
-        (lines as f32 * Self::CODE_LINE_HEIGHT_PX + Self::CODE_EDITOR_PADDING_PX)
-            .clamp(Self::CODE_EDITOR_MIN_PX, Self::CODE_EDITOR_MAX_PX)
+            .max(1);
+        lines as f32 * Self::CODE_LINE_HEIGHT_PX
     }
 
     /// 切换代码 Tab

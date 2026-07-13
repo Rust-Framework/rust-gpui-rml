@@ -15,6 +15,15 @@ use crate::cases::common::{build_api_table, CaseDocPage};
 #[component]
 #[derive(Default)]
 pub struct AlertDialogCase {
+    /// 受控模式：8 个对话框的显隐状态
+    pub show_alert1: bool,
+    pub show_alert2: bool,
+    pub show_alert3: bool,
+    pub show_alert4: bool,
+    pub show_alert5: bool,
+    pub show_alert6: bool,
+    pub show_alert7: bool,
+    pub show_alert8: bool,
     pub api_columns: Vec<TableColumn>,
     pub api_rows: Vec<TableRow>,
     pub case_doc_page: Option<gpui::Entity<CaseDocPage>>,
@@ -60,6 +69,62 @@ impl AlertDialogCase {
     #[computed]
     pub fn rust_sample(&self) -> String {
         include_str!("alert_dialog_case.rml.rs").to_string()
+    }
+
+    #[command]
+    pub fn open_alert1(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+        self.show_alert1 = true;
+        self.__rml_bump_version("show_alert1");
+        cx.notify();
+    }
+
+    #[command]
+    pub fn open_alert2(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+        self.show_alert2 = true;
+        self.__rml_bump_version("show_alert2");
+        cx.notify();
+    }
+
+    #[command]
+    pub fn open_alert3(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+        self.show_alert3 = true;
+        self.__rml_bump_version("show_alert3");
+        cx.notify();
+    }
+
+    #[command]
+    pub fn open_alert4(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+        self.show_alert4 = true;
+        self.__rml_bump_version("show_alert4");
+        cx.notify();
+    }
+
+    #[command]
+    pub fn open_alert5(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+        self.show_alert5 = true;
+        self.__rml_bump_version("show_alert5");
+        cx.notify();
+    }
+
+    #[command]
+    pub fn open_alert6(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+        self.show_alert6 = true;
+        self.__rml_bump_version("show_alert6");
+        cx.notify();
+    }
+
+    #[command]
+    pub fn open_alert7(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+        self.show_alert7 = true;
+        self.__rml_bump_version("show_alert7");
+        cx.notify();
+    }
+
+    #[command]
+    pub fn open_alert8(&mut self, _: &ClickEvent, cx: &mut Context<Self>) {
+        self.show_alert8 = true;
+        self.__rml_bump_version("show_alert8");
+        cx.notify();
     }
 
     #[command]

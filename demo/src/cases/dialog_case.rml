@@ -1,15 +1,15 @@
 <component>
     <CaseDocPage
         title={t("case.dialog.title")}
-        description="Dialog 模态对话框，支持 title、footer、width、overlay、overlay-closable、close-button、keyboard 等属性，以及 on-close、on-ok、on-cancel 事件。slot=trigger 标记触发器，slot=footer 注入自定义页脚。on-ok/on-cancel 返回 false 可阻止关闭。"
+        description="Dialog 模态对话框，支持 title、footer、width、overlay、overlay-closable、close-button、keyboard 等属性，以及 on-close、on-ok、on-cancel 事件。受控模式（open 属性绑定字段）通过 ViewModel 状态驱动显示/隐藏，slot=footer 注入自定义页脚。on-ok/on-cancel 返回 false 可阻止关闭。"
         code-rml={rml_sample}
         code-rust={rust_sample}>
         <template slot="demo">
             <div class="demo-section">
                 <h3>基础用法</h3>
-                <p>Dialog 包裹若干子节点作为 content。设置 title 属性显示标题栏，默认居中显示并带遮罩层。通过 slot=trigger 的子元素提供触发按钮。</p>
-                <Dialog title="基础对话框">
-                    <Button slot="trigger" label="打开对话框" />
+                <p>Dialog 包裹若干子节点作为 content。设置 title 属性显示标题栏，默认居中显示并带遮罩层。通过 Button on-click 打开对话框，open 属性绑定 ViewModel 字段控制显示。</p>
+                <Button label="打开对话框" on-click={open_dialog1} />
+                <Dialog open={show_dialog1} title="基础对话框">
                     <div class="dialog-content">
                         <p>这是对话框内容区域。</p>
                         <p>可以放置任意 GPUI 元素。</p>
@@ -20,8 +20,8 @@
             <div class="demo-section">
                 <h3>宽度控制 width</h3>
                 <p>width 属性控制对话框宽度，支持 px 和裸数字单位。默认宽度为 448px。下方演示 width=600px 的效果。</p>
-                <Dialog title="宽对话框" width="600px">
-                    <Button slot="trigger" label="打开 600px 对话框" />
+                <Button label="打开 600px 对话框" on-click={open_dialog2} />
+                <Dialog open={show_dialog2} title="宽对话框" width="600px">
                     <div class="dialog-tip">此对话框宽度为 600px</div>
                 </Dialog>
             </div>
@@ -29,8 +29,8 @@
             <div class="demo-section">
                 <h3>页脚 footer</h3>
                 <p>footer 属性设置对话框底部页脚内容，适用于放置操作提示文本。</p>
-                <Dialog title="带页脚的对话框" footer="确认要继续吗？">
-                    <Button slot="trigger" label="打开带页脚对话框" />
+                <Button label="打开带页脚对话框" on-click={open_dialog3} />
+                <Dialog open={show_dialog3} title="带页脚的对话框" footer="确认要继续吗？">
                     <div class="dialog-tip">此对话框带有 footer 页脚区域</div>
                 </Dialog>
             </div>
@@ -38,8 +38,8 @@
             <div class="demo-section">
                 <h3>footer slot 元素注入</h3>
                 <p>使用 slot=footer 的子元素注入自定义页脚内容（如按钮），覆盖 footer 属性。适用于在页脚放置操作按钮。</p>
-                <Dialog title="自定义页脚">
-                    <Button slot="trigger" label="打开 footer slot 对话框" />
+                <Button label="打开 footer slot 对话框" on-click={open_dialog4} />
+                <Dialog open={show_dialog4} title="自定义页脚">
                     <div class="dialog-tip">使用 slot=footer 注入自定义按钮</div>
                     <Button slot="footer" label="自定义保存" primary />
                 </Dialog>
@@ -49,16 +49,16 @@
                 <h3>交互控制</h3>
                 <p>overlay=false 关闭背景遮罩，close-button=false 隐藏关闭按钮，keyboard=false 禁用 ESC 键盘关闭。适用于需要强制用户交互的场景。</p>
                 <div class="dialog-row">
-                    <Dialog title="无遮罩" overlay="false">
-                        <Button slot="trigger" label="无遮罩对话框" />
+                    <Button label="无遮罩对话框" on-click={open_dialog5} />
+                    <Dialog open={show_dialog5} title="无遮罩" overlay="false">
                         <div class="dialog-tip">overlay=false：无背景遮罩</div>
                     </Dialog>
-                    <Dialog title="无关闭按钮" close-button="false">
-                        <Button slot="trigger" label="无关闭按钮对话框" />
+                    <Button label="无关闭按钮对话框" on-click={open_dialog6} />
+                    <Dialog open={show_dialog6} title="无关闭按钮" close-button="false">
                         <div class="dialog-tip">close-button=false：隐藏右上角关闭按钮</div>
                     </Dialog>
-                    <Dialog title="禁用键盘关闭" keyboard="false">
-                        <Button slot="trigger" label="禁用 ESC 对话框" />
+                    <Button label="禁用 ESC 对话框" on-click={open_dialog7} />
+                    <Dialog open={show_dialog7} title="禁用键盘关闭" keyboard="false">
                         <div class="dialog-tip">keyboard=false：ESC 键不关闭对话框</div>
                     </Dialog>
                 </div>
@@ -67,8 +67,8 @@
             <div class="demo-section">
                 <h3>on-ok / on-cancel 事件验证</h3>
                 <p>on-ok 和 on-cancel 回调返回 bool 值：返回 true 关闭对话框，返回 false 阻止关闭。下方演示表单验证场景——输入框为空时点击 OK 不会关闭对话框。</p>
-                <Dialog title="表单验证" on-ok={on_validate_ok} on-cancel={on_validate_cancel}>
-                    <Button slot="trigger" label="打开验证对话框" />
+                <Button label="打开验证对话框" on-click={open_dialog8} />
+                <Dialog open={show_dialog8} title="表单验证" on-ok={on_validate_ok} on-cancel={on_validate_cancel}>
                     <div class="dialog-panel">
                         <p class="hint">请输入内容（留空则点击 OK 无法关闭）：</p>
                         <Input ref="validate_input" placeholder="请输入内容" />
@@ -79,8 +79,8 @@
             <div class="demo-section">
                 <h3>富内容 Rich Content</h3>
                 <p>对话框内容支持任意 GPUI 元素，包括表单、按钮、列表等。下方演示一个含标题、输入框和操作按钮的富内容对话框。</p>
-                <Dialog title="用户设置" width="500px">
-                    <Button slot="trigger" label="打开设置对话框" />
+                <Button label="打开设置对话框" on-click={open_dialog9} />
+                <Dialog open={show_dialog9} title="用户设置" width="500px">
                     <div class="dialog-panel">
                         <h4>个人信息</h4>
                         <p class="hint">在此区域放置表单或操作按钮。</p>
@@ -99,6 +99,7 @@
             <p>注意：仅 PascalCase <code>&lt;Dialog&gt;</code> 为本组件，小写 <code>&lt;dialog&gt;</code> 为根标签（RootTag::DialogWindow），两者不同。</p>
             <p>另：on-ok/on-cancel 回调返回 bool，返回 false 可阻止关闭对话框（如表单验证失败时）。</p>
             <p>另：footer 支持两种形式——字符串属性 <code>footer="文本"</code> 或 slot 元素 <code>&lt;Button slot="footer" /&gt;</code>，slot 覆盖属性。</p>
+            <p>另：受控模式 <code>open=字段</code> 通过 ViewModel bool 字段驱动显示/隐藏，框架自动注入 on-close 回写 field=false。</p>
         </template>
     </CaseDocPage>
 </component>

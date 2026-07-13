@@ -9,7 +9,7 @@ use crate::cases::common::{build_api_table, CaseDocPage};
     host_id = "demo.shell",
     id = "components.resizable",
     kind = "case",
-    group = "components",
+    group = "layout",
     order = 74,
 )]
 #[component]

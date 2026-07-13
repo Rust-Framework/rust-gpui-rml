@@ -142,7 +142,7 @@ impl Render for TerminalView {
     host_id = "demo.shell",
     id = "framework.dock",
     kind = "case",
-    group = "framework",
+    group = "layout",
     order = 60,
 )]
 #[component]

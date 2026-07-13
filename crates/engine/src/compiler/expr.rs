@@ -1282,7 +1282,7 @@ mod tests {
     #[test]
     fn to_rust_unary_not() {
         let expr = Expr::Unary(UnaryOp::Not, Box::new(Expr::Field("flag".into())));
-        assert_eq!(to_rust_code(&expr), "(!self.flag)");
+        assert_eq!(to_rust_code(&expr), "!self.flag");
     }
 
     #[test]

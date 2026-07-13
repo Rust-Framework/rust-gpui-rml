@@ -10,13 +10,13 @@
                 <p>Form 默认垂直布局，标签位于内容上方。每个 Field 通过 label 属性设置标签文本。</p>
                 <Form class="form-demo">
                     <Field label="用户名">
-                        <Label text="input_field" />
+                        <Input ref="username_input" placeholder="请输入用户名" />
                     </Field>
                     <Field label="邮箱">
-                        <Label text="input_field" />
+                        <Input ref="email_input" placeholder="请输入邮箱" />
                     </Field>
                     <Field label="备注">
-                        <Label text="input_field" />
+                        <Input ref="remark_input" placeholder="请输入备注" />
                     </Field>
                 </Form>
             </div>
@@ -26,13 +26,13 @@
                 <p>通过 horizontal 属性切换为水平布局，标签位于内容左侧。label-width 控制标签宽度（默认 140px）。</p>
                 <Form horizontal label-width="100" class="form-demo">
                     <Field label="姓名">
-                        <Label text="input_field" />
+                        <Input ref="name_input" placeholder="请输入姓名" />
                     </Field>
                     <Field label="年龄">
-                        <Label text="input_field" />
+                        <Input ref="age_input" placeholder="请输入年龄" />
                     </Field>
                     <Field label="地址">
-                        <Label text="input_field" />
+                        <Input ref="address_input" placeholder="请输入地址" />
                     </Field>
                 </Form>
             </div>
@@ -42,10 +42,10 @@
                 <p>Field 支持 required 布尔属性（显示 * 标记）和 description 属性（显示帮助文本）。</p>
                 <Form horizontal label-width="100" class="form-demo">
                     <Field label="密码" required description="至少 8 位字符">
-                        <Label text="input_field" />
+                        <Input ref="password_input" placeholder="请输入密码" masked />
                     </Field>
                     <Field label="确认密码" required description="再次输入密码">
-                        <Label text="input_field" />
+                        <Input ref="confirm_input" placeholder="再次输入密码" masked />
                     </Field>
                 </Form>
             </div>
@@ -55,19 +55,19 @@
                 <p>通过 columns 属性设置列数，Field 通过 col-span 控制跨列。适用于紧凑的表单布局。</p>
                 <Form horizontal label-width="80" columns="2" class="form-demo">
                     <Field label="名">
-                        <Label text="input_field" />
+                        <Input ref="first_name_input" placeholder="名" />
                     </Field>
                     <Field label="姓">
-                        <Label text="input_field" />
+                        <Input ref="last_name_input" placeholder="姓" />
                     </Field>
                     <Field label="城市">
-                        <Label text="input_field" />
+                        <Input ref="city_input" placeholder="城市" />
                     </Field>
                     <Field label="邮编">
-                        <Label text="input_field" />
+                        <Input ref="zipcode_input" placeholder="邮编" />
                     </Field>
                     <Field label="地址" col-span="2">
-                        <Label text="input_field" />
+                        <Input ref="full_address_input" placeholder="请输入地址" />
                     </Field>
                 </Form>
             </div>
