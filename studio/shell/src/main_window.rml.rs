@@ -16,7 +16,11 @@ use rml::prelude::*;
 use rml_core::observable::ObservableVec;
 use rml_core::value::IValue;
 use rml_core::workbench::{IWorkbench, IWorkbenchManager, Uri};
+use rml_ui::{ActivityBar, IActivityPanel, VisualActivityPanel};
 use rust_dix::ServiceProvider;
+use studio_core::workspace::{IWorkspace, IWorkspaceManager};
+use studio_explorer::explorer_panel::{register_explorer_abilities, ExplorerPanel};
+use studio_explorer::git_worktree::GitWorktree;
 
 use crate::di;
 use crate::shell_manager::ArcShellManager;
@@ -27,6 +31,8 @@ use crate::welcome::register_welcome_abilities;
 /// - `manager` —— DI singleton,impl `IWorkbenchManager` + `IWorkspaceManager`
 /// - `workbenches` —— 与 manager 共享的 `ObservableVec` 副本(版本号 + 数据共享)
 /// - `activated` —— 与 manager 共享的 `Arc<RwLock<...>>`(同一 RwLock 实例)
+/// - `activity_bar` —— 左侧 ActivityBar(GPUI Entity),`on_loaded` 中手动创建
+/// - `activities` —— ActivityBar 的面板列表(ExplorerPanel 等)
 ///
 /// `#[computed] tab_items` / `selected_tab` 依赖上述字段的版本号,
 /// manager 写操作经 flume 通道触发背景任务 `cx.notify()` → 重渲 → computed 失效重算。
@@ -40,6 +46,12 @@ pub struct MainWindow {
     /// `on_tab_click` 直接写入,`#[computed] selected_tab` 直接读取 —— 无需镜像同步。
     activated: Arc<RwLock<Option<Arc<dyn IWorkbench>>>>,
     show_chrome: bool,
+    /// 左侧 ActivityBar 插槽宽度(折叠时 48px,展开时 260px)。
+    slot_left_size: gpui::Pixels,
+    /// ActivityBar Entity —— `on_loaded` 中手动创建,经 `ref="activity_bar"` 绑定模板。
+    activity_bar: Option<gpui::Entity<ActivityBar>>,
+    /// ActivityBar 面板列表(ExplorerPanel 经 VisualActivityPanel 适配)。
+    activities: Vec<Arc<dyn IActivityPanel>>,
 }
 
 impl Default for MainWindow {
@@ -54,6 +66,9 @@ impl Default for MainWindow {
             workbenches,
             activated,
             show_chrome: true,
+            slot_left_size: gpui::px(260.),
+            activity_bar: None,
+            activities: Vec::new(),
             __rml_state: Default::default(),
         }
     }
@@ -89,14 +104,80 @@ impl ILifecycle for MainWindow {
         })
         .detach();
 
-        // 4. 注册 welcome 能力(IContribution + IVisual + IWorkbench 能力 cast)
+        // 4. 注册能力(IContribution + IVisual 能力 cast,使 as_visual() 查询生效)
         register_welcome_abilities();
+        register_explorer_abilities();
 
-        // 5. 打开欢迎页(manager.open → push workbench → ObservableVec bump + flume send
+        // 5. 初始化默认工作空间(打开当前目录为 GitWorktree)
+        self.init_default_workspace();
+
+        // 6. 初始化 ActivityBar(创建 ExplorerPanel + VisualActivityPanel + ActivityBar)
+        //    必须在 init_default_workspace 之后 —— ExplorerPanel::on_loaded 会查询 IWorkspaceManager
+        self.init_activity_bar(cx);
+
+        // 7. 打开欢迎页(manager.open → push workbench → ObservableVec bump + flume send
         //    → 背景任务 cx.notify → #[computed] 重算 → TabBar 新增 Tab)
         let uri: Uri = "rml://welcome".parse().unwrap();
         if self.manager.open(&uri).is_some() {
             self.__rml_bump_version("activated");
+        }
+    }
+}
+
+impl MainWindow {
+    /// 初始化默认工作空间 —— 打开当前目录为 GitWorktree。
+    ///
+    /// 非 git 目录时静默跳过(用户可后续经命令打开其他目录)。
+    fn init_default_workspace(&self) {
+        if let Ok(cwd) = std::env::current_dir() {
+            match GitWorktree::open(cwd) {
+                Ok(wt) => {
+                    self.manager
+                        .add(Arc::new(wt) as Arc<dyn IWorkspace>);
+                }
+                Err(e) => {
+                    log::info!("MainWindow: current dir is not a git worktree: {e}");
+                }
+            }
+        }
+    }
+
+    /// 构建 ActivityBar + 激活首项 + observe active_id 同步 slot_left_size。
+    ///
+    /// 创建 ExplorerPanel → VisualActivityPanel 适配 → ActivityBar。
+    /// ExplorerPanel::on_loaded(首次渲染时触发)经 DI 查询 IWorkspaceManager 渲染文件树。
+    fn init_activity_bar(&mut self, cx: &mut Context<Self>) {
+        // 创建 ExplorerPanel 贡献 → VisualActivityPanel 适配
+        let explorer = Arc::new(ExplorerPanel::default()) as Arc<dyn IContribution>;
+        if let Some(panel) = VisualActivityPanel::new(explorer) {
+            self.activities = vec![Arc::new(panel) as Arc<dyn IActivityPanel>];
+        }
+
+        // 创建 ActivityBar Entity
+        self.activity_bar = Some(cx.new(|_| ActivityBar::new(self.activities.clone())));
+
+        // 激活首项(触发 ExplorerPanel 渲染 → on_loaded → refresh_tree)
+        if let Some(bar) = &self.activity_bar {
+            bar.update(cx, |bar, cx| {
+                bar.activate_first(cx);
+            });
+        }
+
+        self.show_chrome = true;
+        self.slot_left_size = gpui::px(260.);
+
+        // observe ActivityBar active_id 变化 → 同步 slot_left_size
+        if let Some(bar) = &self.activity_bar {
+            cx.observe(bar, |this, bar, cx| {
+                let collapsed = bar.read(cx).active_id().is_none();
+                this.slot_left_size = if collapsed {
+                    gpui::px(48.)
+                } else {
+                    gpui::px(260.)
+                };
+                cx.notify();
+            })
+            .detach();
         }
     }
 }

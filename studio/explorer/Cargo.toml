@@ -13,6 +13,7 @@ rust-rml-ui = { workspace = true }
 studio-core = { workspace = true }
 gpui = { workspace = true }
 rust-dix = { workspace = true }
+git2 = { workspace = true }
 url = "2"
 log = { workspace = true }
 

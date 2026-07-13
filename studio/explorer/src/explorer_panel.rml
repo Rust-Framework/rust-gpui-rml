@@ -1,0 +1,3 @@
+<component>
+    <Tree ref="tree_state" items={tree_items} on-activate="on_file_activate" />
+</component>

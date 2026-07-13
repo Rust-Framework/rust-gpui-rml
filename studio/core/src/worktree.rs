@@ -42,6 +42,24 @@ pub enum WorktreeChange {
     Renamed { from: PathBuf, to: PathBuf },
 }
 
+/// 文件的 git 状态(git worktree 核心标识)。
+///
+/// 驱动 ExplorerPanel 文件树的状态指示器(modified=橙色点、untracked=绿色点等),
+/// 以及 AI 模块识别可修改/已暂存的文件。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FileStatus {
+    /// 未修改,已提交的干净状态。
+    Clean,
+    /// 已修改但未暂存。
+    Modified,
+    /// 已暂存待提交。
+    Staged,
+    /// 未追踪的新文件。
+    Untracked,
+    /// 被 .gitignore 忽略。
+    Ignored,
+}
+
 /// 文件系统抽象 —— 文件枚举、路径解析、读写、元数据、变更监听。
 ///
 /// 继承 `IContribution`(`id`/`name` 标识 fs 类型)。
@@ -83,4 +101,16 @@ pub trait IWorktree: IContribution {
 
     /// 订阅文件变更。返回取消订阅句柄(调用即停止监听)。
     fn watch(&self, on_change: Arc<dyn Fn(&WorktreeChange) + Send + Sync>) -> Box<dyn FnOnce()>;
+
+    /// 当前 worktree 检出的分支名(git worktree 核心标识)。
+    ///
+    /// detached HEAD 时返回 `None`,由 ExplorerPanel 显示 commit hash 短串。
+    /// 驱动文件树根节点的分支标签渲染。
+    fn branch(&self) -> Option<SharedString>;
+
+    /// 文件的 git 状态(modified/staged/untracked/clean/ignored)。
+    ///
+    /// 驱动 ExplorerPanel 文件树节点的状态指示器,
+    /// 以及 AI 模块识别可修改/已暂存的文件。
+    fn file_status(&self, path: &Path) -> FileStatus;
 }

@@ -8,5 +8,11 @@
     selected-index={selected_tab}
     on-tab-click="on_tab_click"
     on-tab-close="on_tab_close"
-    show-chrome={show_chrome}>
+    show-chrome={show_chrome}
+    left-size={slot_left_size}>
+
+    <template slot="left">
+        <ActivityBar ref="activity_bar" />
+    </template>
+
 </tab-window>
