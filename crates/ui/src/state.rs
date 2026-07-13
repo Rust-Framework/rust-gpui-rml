@@ -81,6 +81,16 @@ pub struct RmlState {
     /// key 为插槽名（`'static str`，来自 `#[component(slots = [...])]` 声明）。
     pub slots: HashMap<&'static str, rml_core::slot::SlotRenderer>,
 
+    /// 父视图已注入到子组件的 slot 名称集合
+    ///
+    /// `user_component.rs` 生成 `is_none()` 守卫时，检查的是父视图自身的 `RmlState`，
+    /// 而 slot 闭包被设置到子组件的 `RmlState`。若直接用 `self.slots.get(name)` 判断，
+    /// 永远返回 None，导致每次父视图渲染都重新创建并覆盖子组件的 slot 闭包，
+    /// 旧 slot 闭包内的 deferred 弹窗未被回收 → 双下拉框。
+    ///
+    /// 此字段在父视图的 `RmlState` 中记录已注入的 slot 名，确保仅首次注入。
+    pub injected_slots: HashSet<&'static str>,
+
     /// `once` 指令的数据快照缓存
     ///
     /// key 为编译期生成的唯一标识（`once_0`、`once_1`、...），value 为类型擦除的快照值。
@@ -169,6 +179,16 @@ impl RmlState {
     /// 查询具名插槽渲染闭包
     pub fn slot(&self, name: &str) -> Option<&rml_core::slot::SlotRenderer> {
         self.slots.get(name)
+    }
+
+    /// 检查父视图是否已将指定 slot 注入到子组件
+    pub fn is_slot_injected(&self, name: &str) -> bool {
+        self.injected_slots.iter().any(|s| *s == name)
+    }
+
+    /// 标记父视图已将指定 slot 注入到子组件
+    pub fn mark_slot_injected(&mut self, name: &'static str) {
+        self.injected_slots.insert(name);
     }
 
     /// `once` 指令的数据快照访问入口

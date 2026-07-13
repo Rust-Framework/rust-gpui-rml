@@ -197,11 +197,15 @@ fn gen_user_component_body(
         // 仅首次注入 slot 闭包：每帧替换 SlotRenderer 会在 Select/Combobox 等 deferred
         // 弹出层仍打开时丢弃旧闭包，遗留错位第二层菜单（左下角锚点失效）。
         // prelude 中的 get_or_init_ref / subscribe 仍每帧执行；闭包内 update 读取最新字段。
+        //
+        // 守卫检查父视图自身的 injected_slots（而非子组件的 slots），因为 slot 闭包
+        // 被设置到子组件的 RmlState，父视图自身的 slots 始终为空。
         let slot_id = format!("__rml_slot_{}", slot_name);
         code.push_str(&format!(
-            "    if self.__rml_state.slot({slot_name:?}).is_none() {{\n    \
+            "    if !self.__rml_state.is_slot_injected({slot_name:?}) {{\n    \
              let {binding}: rml_core::slot::SlotRenderer = Box::new({{ let __rml_self_entity = __rml_self_entity.clone(); move |_scope: &dyn rml_core::slot::ISlotScope, _window: &mut gpui::Window, _app: &mut gpui::App| -> gpui::AnyElement {{ __rml_self_entity.update(_app, |this, cx| {{ let __rml_self_ref: &Self = this; (gpui::div().id({slot_id:?}).child({slot_code_replaced})).into_any_element() }}) }} }});\n    \
              __rml_entity.update(cx, |this, _cx| {{ this.__rml_set_slot_{slot_name}({binding}); }});\n    \
+             self.__rml_state.mark_slot_injected({slot_name:?});\n    \
              }}\n",
             slot_name = slot_name,
             slot_id = slot_id,
@@ -225,12 +229,12 @@ fn gen_user_component_body(
         if !subscribe_prelude.is_empty() {
             code.push_str(&format!("    {}\n", subscribe_prelude));
         }
-        code.push_str("    if self.__rml_state.slot(\"default\").is_none() {\n");
+        code.push_str("    if !self.__rml_state.is_slot_injected(\"default\") {\n");
         code.push_str("    let __rml_slot_default_value: rml_core::slot::SlotRenderer = Box::new({ let __rml_self_entity = __rml_self_entity.clone(); move |_scope: &dyn rml_core::slot::ISlotScope, _window: &mut gpui::Window, _app: &mut gpui::App| -> gpui::AnyElement { __rml_self_entity.update(_app, |this, cx| { let __rml_self_ref: &Self = this; (gpui::div().id(\"__rml_slot_default\").child(");
         code.push_str(&default_code_replaced);
         code.push_str(")).into_any_element() }) } });\n");
         code.push_str(
-            "    __rml_entity.update(cx, |this, _cx| { this.__rml_set_slot_default(__rml_slot_default_value); });\n    }\n",
+            "    __rml_entity.update(cx, |this, _cx| { this.__rml_set_slot_default(__rml_slot_default_value); });\n    self.__rml_state.mark_slot_injected(\"default\");\n    }\n",
         );
     }
 
@@ -1081,6 +1085,16 @@ mod tests {
             "expected named slot root to have stable id, got: {}",
             code
         );
+        assert!(
+            code.contains("is_slot_injected"),
+            "expected named slot guard to use is_slot_injected, got: {}",
+            code
+        );
+        assert!(
+            code.contains("mark_slot_injected"),
+            "expected named slot to mark injection, got: {}",
+            code
+        );
     }
 
     #[test]
@@ -1095,6 +1109,11 @@ mod tests {
         assert!(
             code.contains(r#".id("__rml_slot_default")"#),
             "expected default slot root to have stable id, got: {}",
+            code
+        );
+        assert!(
+            code.contains("is_slot_injected"),
+            "expected default slot guard to use is_slot_injected, got: {}",
             code
         );
     }

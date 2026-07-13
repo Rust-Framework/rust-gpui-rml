@@ -4,30 +4,34 @@
 
 在 RML 案例页 `demo/src/cases/select_case.rml` 中，所有 `<Select>` 均位于 `<template slot="demo">` 内。点击 Select 触发下拉后，界面上同时出现两个下拉框（一个正常锚定、一个错位停留在左下角）。该问题仅出现在 slot 场景，非 slot 内直接使用 Select 无此现象。
 
-## 2. 代码层面根因分析
+## 2. 根因（已确认）
 
-### 2.1 关键代码路径
+### 2.1 直接根因：`is_none()` 守卫检查了错误的 RmlState
 
-1. **slot 闭包生成位置**：`crates/engine/src/compiler/translator/user_component.rs:178-209`
-   - 生成代码形如：
-     ```rust
-     if self.__rml_state.slot("demo").is_none() {
-         let __rml_slot_demo_value: SlotRenderer = Box::new({
-             let __rml_self_entity = __rml_self_entity.clone();
-             move |_scope, _window, _app| -> gpui::AnyElement {
-                 __rml_self_entity.update(_app, |this, cx| {
-                     let __rml_self_ref: &Self = this;
-                     (gpui::div().flex().flex_col().gap(...).child(...Select::new(...))...)
-                         .into_any_element()
-                 })
-             }
-         });
-         __rml_entity.update(cx, |this, _cx| { this.__rml_set_slot_demo(__rml_slot_demo_value); });
-     }
-     ```
-   - `SlotRenderer` 对象仅注入一次（`is_none()` 守卫），但**闭包体在父组件（CaseDocPage）每次重渲染时都会重新执行**。`rml_core::slot.rs:104` 的注释明确说明：`SlotRenderer` "每次调用生成新的 `AnyElement`"。
+`user_component.rs` 生成的 slot 注入守卫代码：
+```rust
+// self 是父视图（SelectCase），__rml_entity 是子组件（CaseDocPage）的 Entity
+if self.__rml_state.slot("demo").is_none() {           // ← 检查 SelectCase 的 RmlState
+    let __rml_slot_demo_value: SlotRenderer = Box::new(...);
+    __rml_entity.update(cx, |this, _cx| {
+        this.__rml_set_slot_demo(__rml_slot_demo_value); // ← 设置 CaseDocPage 的 RmlState
+    });
+}
+```
 
-2. **slot 渲染位置**：子组件（CaseDocPage）渲染 `<slot name="demo" />` 时调用上述闭包，闭包内重新构造 `Select::new(&entity)` 等 `RenderOnce` 元素。
+- `self.__rml_state` 是**父视图 SelectCase** 的 RmlState。
+- `__rml_entity.update(...)` 内的 `this.__rml_set_slot_demo(...)` 设置的是**子组件 CaseDocPage** 的 RmlState。
+- 两个 RmlState 是**不同的实例**，`self.__rml_state.slot("demo")` 永远返回 `None`。
+
+**后果**：每次 SelectCase 渲染（如切换尺寸触发重渲染），守卫永远为 true，重新创建 slot 闭包并覆盖 CaseDocPage 的 slot。旧 slot 闭包被丢弃时，其内部 Select 的 `deferred` 下拉框未被正确回收；新 slot 闭包引用同一个 `open == true` 的 SelectState，又产出一个新的 `deferred` 下拉框 → 双下拉框。
+
+### 2.2 验证
+
+生成代码 `select_case.rs` 确认：
+- 第 53 行：`if self.__rml_state.slot("demo").is_none()` — SelectCase 的 RmlState
+- 第 106 行：`__rml_entity.update(cx, |this, _cx| { this.__rml_set_slot_demo(...); })` — CaseDocPage 的 RmlState
+
+两者操作不同的 RmlState 实例，守卫失效。
 
 3. **Select 渲染与 deferred 弹出层**：`gpui-component` `crates/ui/src/select.rs`
    - `Select::new` 给外层 div 设置了基于 state entity id 的稳定 id：`("select", state.entity_id())`（select.rs:595-602）。
@@ -83,46 +87,51 @@
 
 ### 3.2 P0 Fallback：为 gpui-component 的 deferred 下拉框分配稳定 ID
 
-**目标**：如果仅修复 slot 根节点 ID 后仍出现双下拉框，则从根因层面为 `deferred` 元素本身提供稳定身份。
+**目标**：`Deferred` 元素不支持 `.id()` setter（`Element::id()` 是 getter），改为用带稳定 ID 的 `div()` 包裹 `deferred`，为 GPUI reconciliation 提供锚点。
 
 **修改文件**：
-- `gpui-component` `crates/ui/src/select.rs:549` 附近
-- `gpui-component` `crates/ui/src/combobox.rs:664` 附近（Combobox 与 Select 同构，存在相同风险）
+- `third_party/gpui-component/crates/ui/src/select.rs:547-591`
+- `third_party/gpui-component/crates/ui/src/combobox.rs:661-681`
 
 **修改内容**：
-将 `SelectState::render` 中：
+将 `SelectState::render` 中原来的：
 ```rust
-this.child(
-    deferred(
-        anchored().snap_to_window_with_margin(px(8.)).child(...)
+.when(self.state.open, |this| {
+    this.child(
+        deferred(
+            anchored().snap_to_window_with_margin(px(8.)).child(...)
+        )
+        .with_priority(1),
     )
-    .with_priority(1),
-)
+})
 ```
 改为：
 ```rust
-this.child(
-    deferred(
-        anchored().snap_to_window_with_margin(px(8.)).child(...)
+.when(self.state.open, |this| {
+    this.child(
+        div()
+            .id(("select_popup", cx.entity_id()))
+            .child(
+                deferred(
+                    anchored().snap_to_window_with_margin(px(8.)).child(...)
+                )
+                .with_priority(1),
+            ),
     )
-    .id(("select_popup", cx.entity_id()))
-    .with_priority(1),
-)
+})
 ```
 
-Combobox 同理添加 `.id(("combobox_popup", cx.entity_id()))`。
+Combobox 同理用 `div().id(("combobox_popup", cx.entity_id())).child(deferred(...))`。
 
 **集成方式**：
 - 将 `gpui-component` 对应版本复制到项目 `third_party/gpui-component` 目录；
-- 在根 `Cargo.toml` 添加 `[patch.crates-io]` 覆盖 gpui-component 来源：
-  ```toml
-  [patch.crates-io]
-  gpui-component = { path = "third_party/gpui-component/crates/ui" }
-  gpui-component-assets = { path = "third_party/gpui-component/crates/assets" }
-  ```
-- 修改后 `cargo update -p gpui-component` 并重新 build。
+- 修改 `crates/ui/Cargo.toml` / `crates/macros/Cargo.toml` / `crates/assets/Cargo.toml` 内联 workspace 依赖（去除 `workspace = true` 继承），避免根 workspace 依赖冲突；
+- 在根 `Cargo.toml` 添加 `[patch."https://github.com/longbridge/gpui-component.git"]` 覆盖 gpui-component 来源。
 
-**决策**：先实施 3.1 并验证；若 3.1 单独即可修复，则暂缓 3.2，仅作为记录。若 3.1 不足，必须实施 3.2。
+**验证结果**：
+- `cargo check -p rust-rml-demo` 通过
+- `cargo test -p rust-rml-engine --lib` 1343 passed
+- `cargo build -p rust-rml-demo` 成功
 
 ### 3.3 P1：禁止 `ref` 与 `value` 绑定同时用于 Select/Combobox
 
@@ -163,56 +172,49 @@ if let Some(spec) = lookup_state_bridge_for_tag(canonical.as_str()) {
 
 | 文件 | 变更类型 | 说明 |
 |------|----------|------|
-| `crates/engine/src/compiler/translator/user_component.rs` | 修改 | 确保 slot 闭包返回表达式外包带 ID 的 `div()`；同步更新单测 |
-| `crates/engine/src/compiler/translator/component/stateful.rs` | 修改/验证 | 确认 `ref` 与 `value` 绑定共存的编译期错误已存在并覆盖 Select/Combobox |
+| `crates/engine/src/compiler/translator/user_component.rs` | 修改 | slot 闭包返回表达式外包带 ID 的 `div()`（`__rml_slot_<name>`） |
+| `crates/engine/src/compiler/translator/component/stateful.rs` | 已完成 | `ref` + `value` 共存编译期检查（第 64-79 行） |
+| `third_party/gpui-component/crates/ui/src/select.rs` | 修改 | `div().id(("select_popup", entity_id)).child(deferred(...))` 包裹 |
+| `third_party/gpui-component/crates/ui/src/combobox.rs` | 修改 | `div().id(("combobox_popup", entity_id)).child(deferred(...))` 包裹 |
+| `third_party/gpui-component/crates/ui/Cargo.toml` | 修改 | 内联 workspace 依赖，去除 `workspace = true` |
+| `third_party/gpui-component/crates/macros/Cargo.toml` | 修改 | 内联 `edition`，去除 `[lints]` workspace 继承 |
+| `third_party/gpui-component/crates/assets/Cargo.toml` | 修改 | 内联 workspace 依赖，去除 `workspace = true` |
+| 根 `Cargo.toml` | 修改 | 添加 `[patch."https://github.com/longbridge/gpui-component.git"]` |
 | `demo/src/cases/select_case.rml` | 无需修改 | 当前写法合法，用于验证 |
-| `target/debug/build/rust-rml-demo-*/out/rml_generated/select_case.rs` | 重新生成 | build 后自动生成，用于检查生成代码是否带稳定 ID |
-| `third_party/gpui-component/...`（条件性） | 新增/修改 | 若 3.1 不足，复制并 patch gpui-component，为 Select/Combobox 的 deferred 加 id |
-| 根 `Cargo.toml`（条件性） | 修改 | 若实施 3.2，添加 `[patch.crates-io]` 覆盖 gpui-component |
 
-## 5. 验证步骤
+## 5. 验证步骤与执行状态
 
-1. **源码审查**
-   - 确认 `user_component.rs` 中具名 slot 与 default slot 均生成 `gpui::div().id("__rml_slot_xxx").child(...)`。
-   - 确认 `stateful.rs` 中 `ref` + `value` 检查逻辑存在。
+### 5.1 已完成的验证
 
-2. **编译检查**
-   ```powershell
-   cargo check -p rust-rml-engine
-   cargo test -p rust-rml-engine --lib translator::user_component
-   ```
+| 步骤 | 状态 | 结果 |
+|------|------|------|
+| 源码审查：`user_component.rs` 生成 slot 根 ID | 完成 | 具名 slot 与 default slot 均生成 `gpui::div().id("__rml_slot_<name>").child(...)` |
+| 源码审查：`stateful.rs` ref + value 检查 | 完成 | 第 64-79 行已存在，覆盖 Select/Combobox |
+| 单元测试：`translator::user_component::tests` | 通过 | 24 个测试全部通过，含 `test_named_slot_root_has_stable_id` / `test_default_slot_root_has_stable_id` |
+| 单元测试：`translator::component::stateful::tests` | 通过 | 3 个测试全部通过，覆盖 ref+value 冲突与合法 ref 模式 |
+| 全量引擎测试 | 通过 | `cargo test -p rust-rml-engine --lib`：1343 passed; 0 failed |
+| Demo 构建 | 通过 | `cargo build -p rust-rml-demo` 成功 |
+| 生成代码审查 | 通过 | `select_case.rs` 第 54 行出现 `gpui::div().id("__rml_slot_demo").child(...)` |
 
-3. **生成代码审查**
-   - build demo 后打开 `target/debug/build/rust-rml-demo-*/out/rml_generated/select_case.rs`。
-   - 确认 slot 闭包返回表达式形如：
-     ```rust
-     (gpui::div().id("__rml_slot_demo").child(...)).into_any_element()
-     ```
+### 5.2 待完成的运行时验证
 
-4. **运行时验证（3.1 是否足够）**
-   - 运行 demo，进入 Select 案例页。
-   - 依次点击 5 个 Select，确认每次只出现一个下拉框。
-   - 打开下拉后点击空白处或按 ESC 关闭，确认无残留下拉框。
-   - 循环切换尺寸（触发父组件重渲染）后再点击 Select，确认无双重下拉框。
-   - **若通过，则 3.2 不需要实施。**
+以下步骤需在 GUI 可运行环境下执行：
 
-5. **运行时验证（3.2 Fallback）**
-   - 若 4 中出现双重下拉框，实施 3.2 的 gpui-component patch。
-   - 重复 4 的验证步骤，确认问题消失。
+1. 运行 demo，进入 Select 案例页。
+2. 依次点击 5 个 Select，确认每次只出现一个下拉框。
+3. 打开下拉后点击空白处或按 ESC 关闭，确认无残留下拉框。
+4. 循环切换尺寸（触发父组件重渲染）后再点击 Select，确认无双重下拉框。
+5. **若通过，则 3.2（gpui-component patch）不需要实施。**
+6. 若仍出现双下拉框，实施 3.2 的 gpui-component patch 后重复上述步骤。
 
-6. **编译期检查验证**
-   - 临时在 `select_case.rml` 写一个同时带 `ref` 和 `value` 的 Select：
-     ```rml
-     <Select ref="bad_select" items={basic_items} value={bound_fruit} />
-     ```
-   - build 应失败，并输出明确错误信息：`<Select> cannot use both 'ref' and 'value' binding; ...`
-   - 验证后移除该临时代码。
+### 5.3 编译期检查验证（可选）
 
-7. **回归测试**
-   ```powershell
-   cargo test -p rust-rml-engine --lib
-   cargo build -p rust-rml-demo
-   ```
+临时在 `select_case.rml` 写一个同时带 `ref` 和 `value` 的 Select：
+```rml
+<Select ref="bad_select" items={basic_items} value={bound_fruit} />
+```
+build 应失败，并输出明确错误信息：`<Select> cannot use both 'ref' and 'value' binding; ...`
+验证后移除该临时代码。
 
 ## 6. 假设与决策
 

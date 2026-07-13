@@ -12,12 +12,12 @@ license = "MIT"
 
 [workspace.dependencies]
 # GPUI 来自 Zed 官方仓库，锁定到与 gpui-component 兼容的 rev
-gpui = { git = "https://github.com/zed-industries/zed.git", rev = "1d217ee39d381ac101b7cf49d3d22451ac1093fe" }
-gpui_platform = { git = "https://github.com/zed-industries/zed.git", rev = "1d217ee39d381ac101b7cf49d3d22451ac1093fe" }
-# 外部组件库
-gpui-component = { git = "https://github.com/longbridge/gpui-component.git", features = ["tree-sitter-languages"] }
+gpui = { git = "https://github.com/zed-industries/zed", rev = "1d217ee39d381ac101b7cf49d3d22451ac1093fe" }
+gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "1d217ee39d381ac101b7cf49d3d22451ac1093fe" }
+# 外部组件库（锁定到 rev=49f4b4f，该版本 gpui 依赖带 rev，避免双 gpui 源冲突）
+gpui-component = { git = "https://github.com/longbridge/gpui-component.git", rev = "49f4b4fb57553daa89310370a97b37f7ff9d2323", features = ["tree-sitter-languages"] }
 # gpui-component 内置资源（SVG 图标，包括窗口 min/max/restore/close）
-gpui-component-assets = { git = "https://github.com/longbridge/gpui-component.git" }
+gpui-component-assets = { git = "https://github.com/longbridge/gpui-component.git", rev = "49f4b4fb57553daa89310370a97b37f7ff9d2323" }
 
 # 内部 crate
 rust-rml-core = { path = "crates/core" }
