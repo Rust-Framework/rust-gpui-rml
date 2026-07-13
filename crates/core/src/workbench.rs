@@ -33,6 +33,10 @@ pub use url::Url as Uri;
 ///
 /// **设计理由**(WPF `ContentControl` 类比):workbench 本质是视觉的——已打开资源必然有视图。
 /// 无视图的"后台任务"应实现 `IContribution` 而非 `IWorkbench`。
+///
+/// **Host 语义**:工作台是否受理子贡献(如 `IWorkbenchComponent`,实现编辑/预览/设计多态呈现)
+/// 由**实现决定**——需要受理子组件的工作台(如 `EditorWorkbench`)直接 `impl IContributionHost`
+/// 即可,无需在 trait 层强制。这与 `IContributionHost` 所有方法有默认空实现的设计一致。
 pub trait IWorkbench: IContribution + IVisual {
     /// 此工作台的 Uri（唯一标识，用于去重与查找）。
     fn uri(&self) -> &str;

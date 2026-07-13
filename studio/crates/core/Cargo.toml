@@ -1,0 +1,11 @@
+[package]
+name = "studio-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Arc Studio IDE 核心契约 —— 工作台组件/编辑器命令/工作树/工作空间抽象"
+
+[dependencies]
+rust-rml-core = { workspace = true }
+gpui = { workspace = true }
+url = "2"
