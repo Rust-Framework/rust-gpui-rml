@@ -1,0 +1,16 @@
+[package]
+name = "arc-studio"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Arc Studio IDE —— 基于 rust-gpui-rml 的 IDE 产品"
+
+[dependencies]
+rust-rml-engine = { workspace = true }
+rust-rml-app = { workspace = true }
+rust-rml-core = { workspace = true }
+studio-shell = { workspace = true }
+gpui = { workspace = true }
+
+[build-dependencies]
+rust-rml-engine = { workspace = true }

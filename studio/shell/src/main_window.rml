@@ -1,0 +1,12 @@
+<tab-window
+    title="Arc Studio"
+    width="1100"
+    height="720"
+    icon="logo.svg"
+    startup="CenterScreen"
+    tabs={tab_items}
+    selected-index={selected_tab}
+    on-tab-click="on_tab_click"
+    on-tab-close="on_tab_close"
+    show-chrome={show_chrome}>
+</tab-window>

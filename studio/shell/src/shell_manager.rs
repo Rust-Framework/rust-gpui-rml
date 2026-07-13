@@ -1,7 +1,7 @@
 //! ArcShellManager —— 纯逻辑管理器(无 GPUI 依赖)。
 //!
 //! 同时 impl `IWorkbenchManager` + `IWorkspaceManager`,注册为 DI singleton。
-//! `ArcShell`(GPUI Entity)持有 `Arc<ArcShellManager>` 用于 UI 渲染。
+//! `MainWindow`(GPUI Entity)持有 `Arc<ArcShellManager>` 用于 UI 渲染。
 //!
 //! # 二阶段注入
 //!
@@ -19,14 +19,16 @@ use studio_core::workspace::{IWorkspace, IWorkspaceManager};
 /// 纯逻辑管理器 —— 无 GPUI 依赖,可注册进 DI 容器。
 ///
 /// 同时 impl IWorkbenchManager + IWorkspaceManager。
-/// ArcShell(GPUI Entity)持有 Arc<ArcShellManager> 用于 UI 渲染。
+/// MainWindow(GPUI Entity)持有 Arc<ArcShellManager> 用于 UI 渲染。
 pub struct ArcShellManager {
     /// DI 容器(二阶段注入) —— 用于解析 IWorkbenchProvider 等子服务。
     provider: OnceLock<Arc<ServiceProvider>>,
-    /// 已打开的工作台会话(Tab)。
+    /// 已打开的工作台会话(Tab)。带 flume 通知通道,push/remove 时 send。
     workbenches: ObservableVec<Arc<dyn IWorkbench>>,
-    /// 当前激活的工作台。
-    activated: RwLock<Option<Arc<dyn IWorkbench>>>,
+    /// flume 接收端 —— MainWindow 在 on_loaded 中 clone 取走,驱动 cx.notify。
+    notify_rx: flume::Receiver<()>,
+    /// 当前激活的工作台。`Arc<RwLock<...>>` 共享给 MainWindow,避免镜像同步。
+    activated: Arc<RwLock<Option<Arc<dyn IWorkbench>>>>,
     /// 已打开的工作空间(多根目录)。
     workspaces: RwLock<Vec<Arc<dyn IWorkspace>>>,
 }
@@ -35,10 +37,12 @@ impl ArcShellManager {
     /// 创建管理器(不带 provider)。
     /// 构建后需调用 `set_provider()` 注入 DI 容器。
     pub fn new() -> Self {
+        let (tx, rx) = flume::unbounded();
         Self {
             provider: OnceLock::new(),
-            workbenches: ObservableVec::new(),
-            activated: RwLock::new(None),
+            workbenches: ObservableVec::with_notify(tx),
+            notify_rx: rx,
+            activated: Arc::new(RwLock::new(None)),
             workspaces: RwLock::new(Vec::new()),
         }
     }
@@ -46,6 +50,24 @@ impl ArcShellManager {
     /// 二阶段注入 ServiceProvider(解决循环依赖)。
     pub fn set_provider(&self, provider: Arc<ServiceProvider>) {
         let _ = self.provider.set(provider);
+    }
+
+    /// 返回 workbenches 的克隆句柄(共享底层数据 + 版本号)。
+    /// MainWindow 持有此克隆,#[computed] 经 version() 追踪变更。
+    pub fn workbenches_handle(&self) -> ObservableVec<Arc<dyn IWorkbench>> {
+        self.workbenches.clone()
+    }
+
+    /// 返回 flume 接收端克隆(MainWindow 背景任务 recv → cx.notify)。
+    pub fn notify_receiver(&self) -> flume::Receiver<()> {
+        self.notify_rx.clone()
+    }
+
+    /// 返回 activated 的共享句柄(同一 RwLock 实例)。
+    /// MainWindow 持有此句柄,`#[computed] selected_tab` 直接读取,
+    /// `on_tab_click` 直接写入 —— 无需镜像同步。
+    pub fn activated_handle(&self) -> Arc<RwLock<Option<Arc<dyn IWorkbench>>>> {
+        self.activated.clone()
     }
 
     fn provider(&self) -> &Arc<ServiceProvider> {

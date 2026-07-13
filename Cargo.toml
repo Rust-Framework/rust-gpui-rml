@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/core", "crates/macros", "crates/engine", "crates/ui", "crates/ui-term", "crates/app", "crates/rml", "crates/lsp", "demo", "studio/crates/core", "studio/crates/shell"]
+members = ["crates/core", "crates/macros", "crates/engine", "crates/ui", "crates/ui-term", "crates/app", "crates/rml", "crates/lsp", "demo", "studio/core", "studio/shell", "studio/app"]
 # dap 暂移出 workspace：其 lldb 重型 git 依赖在受限网络下阻塞编译。
 # 需要时 cd 进对应目录单独构建，或重新加入 members。
 exclude = ["crates/dap"]
@@ -31,7 +31,8 @@ rust-rml-dap = { path = "crates/dap" }
 rust-rml-client = { path = "crates/rml", package = "rust-rml-client" }
 
 # Studio 内部 crate
-studio-core = { path = "studio/crates/core" }
+studio-core = { path = "studio/core" }
+studio-shell = { path = "studio/shell" }
 
 # 客户端共用依赖（rust-rml-client 与 demo 共用）
 tree-sitter = "0.26"

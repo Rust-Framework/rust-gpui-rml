@@ -1,0 +1,16 @@
+// 包名统一为 rust-rml-* 前缀，通过 extern crate 别名保留源码中的短名引用
+extern crate rust_rml_engine as rml;
+
+fn main() {
+    rml::build()
+        .scan_dir("src")
+        .assets("assets", true)
+        .output_dir(std::env::var("OUT_DIR").expect("OUT_DIR not set"))
+        .build()
+        .expect("RML build failed");
+
+    // Windows 默认主线程栈 1MB。GPUI 深层元素树在 debug 构建下栈帧较大,
+    // prepaint/paint 递归遍历可能溢出。通过 PE header 设置 8MB 栈预留。
+    #[cfg(target_os = "windows")]
+    println!("cargo:rustc-link-arg=/STACK:8388608");
+}
