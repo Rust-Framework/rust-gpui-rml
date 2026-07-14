@@ -17,7 +17,9 @@ use rml_core::contribution::{
 };
 use rml_core::workbench::{IWorkbench, Uri, register_workbench_ability};
 use rust_rml_client::{file_path_to_uri, LanguageClient};
-use studio_core::ability_ext::WorkbenchComponentAbilityExt;
+use studio_core::ability_ext::register_workbench_component_host_ability;
+use studio_core::component::{IWorkbenchComponent, IWorkbenchComponentHost};
+use studio_core::document::{WorkbenchDocument, WorkbenchState, document_kind};
 use studio_core::get_workbench_components;
 
 /// 代码编辑器工作台 —— IWorkbench 实现，承载文件编辑 + LSP 集成。
@@ -39,6 +41,21 @@ pub struct EditorWorkbench {
     /// 匹配当前 URI 的视图组件名称列表(each 指令要求字段而非方法)。
     /// 在 `init_editor` 中经 `compute_view_names()` 填充。
     view_names: Vec<SharedString>,
+    /// 共享文档模型 —— IWorkbenchComponent 间数据同步的单一真相源。
+    ///
+    /// Phase 2a 新增。当前与 `editor_state` 并存(渐进式迁移):
+    /// - `editor_state` 仍承载实际编辑器视图(CodeEditor 经 RML 绑定)
+    /// - `document` 作为组件间共享数据源,Phase 3 由 CodeComponent 接管后即唯一真相源
+    document: Option<Entity<WorkbenchDocument>>,
+    /// 共享工作台状态 —— 跨组件统一管理 dirty/saving 等。
+    ///
+    /// observe `document` 变化 → 更新 `dirty` → Tab 标题联动。
+    state: Option<Entity<WorkbenchState>>,
+    /// 当前激活的 IWorkbenchComponent id(空串表示未激活)。
+    ///
+    /// 在 `init_editor` 中默认激活首个匹配组件;Header 视图切换按钮经
+    /// `switch_component` 更新此字段。
+    active_component_id: SharedString,
 }
 
 impl IContribution for EditorWorkbench {
@@ -80,6 +97,21 @@ impl IVisual for EditorWorkbench {
 
 impl ILifecycle for EditorWorkbench {
     fn on_loaded(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        // Phase 2a: 初始化共享 document + state(IWorkbenchComponent 间数据同步媒介)
+        self.document = Some(cx.new(|_| WorkbenchDocument::default()));
+        self.state = Some(cx.new(|_| WorkbenchState::default()));
+
+        // observe document → state.set_dirty
+        // 注册一次即可,后续 document.reload / set_content 均触发此回调
+        if let (Some(doc), Some(state)) = (self.document.as_ref(), self.state.as_ref()) {
+            let state_clone = state.clone();
+            cx.observe(doc, move |_: &mut Self, doc, cx| {
+                let dirty = doc.read(cx).is_dirty();
+                state_clone.update(cx, |s, _| s.set_dirty(dirty));
+            })
+            .detach();
+        }
+
         self.init_editor(window, cx);
     }
 }
@@ -101,6 +133,45 @@ impl IWorkbench for EditorWorkbench {
 
     fn closable(&self) -> bool {
         true
+    }
+}
+
+impl IWorkbenchComponentHost for EditorWorkbench {
+    fn components(&self) -> Vec<Arc<dyn IWorkbenchComponent>> {
+        let Ok(uri) = self.uri.parse::<Uri>() else {
+            return Vec::new();
+        };
+        get_workbench_components()
+            .into_iter()
+            .filter(|c| c.matches(&uri))
+            .collect()
+    }
+
+    fn active_component_id(&self) -> SharedString {
+        self.active_component_id.clone()
+    }
+
+    fn switch_component(&self, id: &str, cx: &mut App) {
+        // 经 `get_or_create_entity` 取 host Entity,update 内部可变性更新字段。
+        // RML 模板经 active_component_id 字段访问触发条件分支重新渲染。
+        let entity = get_or_create_entity::<EditorWorkbench>(cx);
+        entity.update(cx, |this, _| {
+            this.active_component_id = id.to_string().into();
+        });
+    }
+
+    fn document(&self) -> Entity<WorkbenchDocument> {
+        self.document
+            .as_ref()
+            .expect("document initialized in on_loaded")
+            .clone()
+    }
+
+    fn state(&self) -> Entity<WorkbenchState> {
+        self.state
+            .as_ref()
+            .expect("state initialized in on_loaded")
+            .clone()
     }
 }
 
@@ -135,11 +206,8 @@ impl EditorWorkbench {
         };
         get_workbench_components()
             .iter()
-            .filter_map(|c| {
-                c.as_workbench_component()
-                    .filter(|wc| wc.matches(&uri))
-                    .map(|wc| wc.name())
-            })
+            .filter(|c| c.matches(&uri))
+            .map(|c| c.name())
             .collect()
     }
 
@@ -163,6 +231,15 @@ impl EditorWorkbench {
         // 填充视图组件名称列表(Header 视图切换按钮数据源)
         self.view_names = self.compute_view_names();
 
+        // 默认激活首个匹配组件(切换 Tab 时仅首次激活,后续保留用户选择)
+        if self.active_component_id.is_empty() {
+            self.active_component_id = self
+                .components()
+                .first()
+                .map(|c| c.id().to_string().into())
+                .unwrap_or_default();
+        }
+
         if self.file_path.as_os_str().is_empty() {
             self.editor_state =
                 Some(cx.new(|cx| InputState::new(window, cx).multi_line(true)));
@@ -171,6 +248,14 @@ impl EditorWorkbench {
 
         let text = std::fs::read_to_string(&self.file_path).unwrap_or_default();
         let language = detect_language(&self.file_path);
+        let kind = infer_kind(&self.file_path);
+
+        // Phase 2a: 同步到共享 document(供其他 IWorkbenchComponent 读取最新内容)
+        if let Some(doc) = self.document.as_ref() {
+            doc.update(cx, |d, _| {
+                d.reload(self.uri.clone(), text.clone().into(), kind);
+            });
+        }
 
         // 创建 LanguageClient（按工作区根目录缓存，避免重复启动 LSP server）
         let client = self.get_or_create_language_client(&self.file_path);
@@ -238,6 +323,20 @@ fn detect_language(path: &std::path::Path) -> &str {
     }
 }
 
+/// 从文件扩展名推断文档类型标识(开放字符串)。
+///
+/// 返回 [`studio_core::document::document_kind`] 模块的内置常量,
+/// 插件可用自定义字符串扩展。组件经此 kind 判断渲染策略(如 PreviewComponent
+/// 对 markdown 走 GFM 渲染,对 html 走源码展示)。
+fn infer_kind(path: &std::path::Path) -> SharedString {
+    match path.extension().and_then(|e| e.to_str()) {
+        Some("md") | Some("markdown") => document_kind::MARKDOWN.into(),
+        Some("html") | Some("htm") => document_kind::HTML.into(),
+        Some("rml") => document_kind::RML.into(),
+        _ => document_kind::TEXT.into(),
+    }
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 //  能力注册:EditorWorkbench 需注册 IContribution + IVisual + IWorkbench
 //  能力 cast,使 MainWindow 的 as_visual() / as_workbench() 查询生效。
@@ -250,5 +349,8 @@ pub fn register_editor_abilities() {
         register_contribution_ability::<EditorWorkbench>();
         register_visual_ability::<EditorWorkbench>();
         register_workbench_ability::<EditorWorkbench>();
+        // Phase 2a: 注册 IWorkbenchComponentHost 能力 cast,
+        // 使 as_workbench_component_host() 查询生效,组件经此取 host 共享 Entity。
+        register_workbench_component_host_ability::<EditorWorkbench>();
     });
 }

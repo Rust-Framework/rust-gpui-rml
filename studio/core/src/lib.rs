@@ -2,7 +2,9 @@
 //!
 //! 此 crate 定义 Arc Studio IDE 的核心抽象:
 //! - [`component::IWorkbenchComponent`] —— 工作台内部呈现组件贡献点(编辑/预览/设计多态)
+//! - [`component::IWorkbenchComponentHost`] —— IWorkbench 实现按需 impl,统筹管理多个组件
 //! - [`component::TextPosition`] / [`component::TextSpan`] —— 文本位置(点)与文本块(范围)
+//! - [`document::WorkbenchDocument`] / [`document::WorkbenchState`] —— 组件间共享的文档与状态模型
 //! - [`command::IEditorCommand`] —— 编辑器命令,扩展 `ICommand` 添加 `gesture()`
 //! - [`worktree::IWorktree`] —— 文件系统抽象,AI 并行编程依赖此能力
 //! - [`workspace::IWorkspace`] / [`workspace::IWorkspaceManager`] —— IDE 工作空间管理
@@ -17,6 +19,7 @@ extern crate rust_rml_core as rml_core;
 pub mod ability_ext;
 pub mod command;
 pub mod component;
+pub mod document;
 pub mod registry;
 pub mod worktree;
 pub mod workspace;

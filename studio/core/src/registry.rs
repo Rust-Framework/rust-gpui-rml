@@ -11,8 +11,7 @@
 use std::path::Path;
 use std::sync::{Arc, Mutex, OnceLock};
 
-use rml_core::contribution::IContribution;
-
+use crate::component::IWorkbenchComponent;
 use crate::workspace::IWorkspace;
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -54,18 +53,16 @@ pub fn open_workspace(path: &Path) -> Option<Arc<dyn IWorkspace>> {
 //  工作台组件注册表
 // ──────────────────────────────────────────────────────────────────────────
 
-type WorkbenchComponentFactory = Box<dyn Fn() -> Arc<dyn IContribution> + Send + Sync>;
+type WorkbenchComponentFactory = Box<dyn Fn() -> Arc<dyn IWorkbenchComponent> + Send + Sync>;
 
 static WORKBENCH_COMPONENTS: OnceLock<Mutex<Vec<WorkbenchComponentFactory>>> = OnceLock::new();
 
 /// 注册工作台组件工厂。通常在 `#[ctor::ctor]` 函数中调用。
 ///
-/// 工厂返回 `Arc<dyn IContribution>`,Workbench 经 `as_workbench_component()`
-/// 查询 `IWorkbenchComponent` 能力后调用 `matches(uri)` 过滤。
-/// 返回 `IContribution` 而非 `IWorkbenchComponent` 是为了与 ActivityBar
-/// 面板注册表模式保持一致(`register_activity_panel` 同构)。
+/// 工厂返回 `Arc<dyn IWorkbenchComponent>`,Workbench 经 `IWorkbenchComponentHost::components()`
+/// 取得后直接调用 `matches(uri)` 过滤,无需经能力查询中转。
 pub fn register_workbench_component(
-    f: impl Fn() -> Arc<dyn IContribution> + Send + Sync + 'static,
+    f: impl Fn() -> Arc<dyn IWorkbenchComponent> + Send + Sync + 'static,
 ) {
     WORKBENCH_COMPONENTS
         .get_or_init(|| Mutex::new(Vec::new()))
@@ -76,9 +73,9 @@ pub fn register_workbench_component(
 
 /// 枚举所有已注册的工作台组件(经工厂构造)。
 ///
-/// 返回 `Vec<Arc<dyn IContribution>>`,调用方经 `as_workbench_component()`
-/// 查询能力后按 `matches(uri)` 过滤。未经注册时返回空 Vec。
-pub fn get_workbench_components() -> Vec<Arc<dyn IContribution>> {
+/// 返回 `Vec<Arc<dyn IWorkbenchComponent>>`,调用方按 `matches(uri)` 过滤。
+/// 未经注册时返回空 Vec。
+pub fn get_workbench_components() -> Vec<Arc<dyn IWorkbenchComponent>> {
     match WORKBENCH_COMPONENTS.get() {
         Some(registry) => registry.lock().unwrap().iter().map(|f| f()).collect(),
         None => Vec::new(),

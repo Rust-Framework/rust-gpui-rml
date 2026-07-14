@@ -11,7 +11,7 @@ use std::any::Any;
 use rml_core::value::IValue;
 
 use crate::command::IEditorCommand;
-use crate::component::IWorkbenchComponent;
+use crate::component::{IWorkbenchComponent, IWorkbenchComponentHost};
 use crate::workspace::IWorkspace;
 use crate::worktree::IWorktree;
 
@@ -55,6 +55,44 @@ impl WorkbenchComponentAbilityExt for dyn rml_core::contribution::IContribution 
         let iv: &dyn IValue = self;
         iv.as_workbench_component()
     }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+//  IWorkbenchComponentHost
+// ──────────────────────────────────────────────────────────────────────────
+
+/// 工作台组件宿主能力扩展 —— 让 `dyn IValue` 可查询 `IWorkbenchComponentHost` 能力。
+///
+/// 与 `WorkbenchComponentAbilityExt` 模式一致。`EditorWorkbench` impl
+/// `IWorkbenchComponentHost` 后,经 `register_workbench_component_host_ability::<T>()`
+/// 注册,`as_workbench_component_host()` 查询即可生效。
+pub trait WorkbenchComponentHostAbilityExt {
+    /// 若此值实现了 `IWorkbenchComponentHost`,返回引用;否则 `None`。
+    fn as_workbench_component_host(&self) -> Option<&dyn IWorkbenchComponentHost>;
+}
+
+#[allow(unsafe_code)]
+impl WorkbenchComponentHostAbilityExt for dyn IValue {
+    fn as_workbench_component_host(&self) -> Option<&dyn IWorkbenchComponentHost> {
+        let erased = rml_core::ability::query::<dyn IWorkbenchComponentHost>(self)?;
+        Some(unsafe { rml_core::ability::restore::<dyn IWorkbenchComponentHost>(erased) })
+    }
+}
+
+/// 为实现 `IWorkbenchComponentHost` 的类型注册能力 cast 函数。
+///
+/// `EditorWorkbench` impl `IWorkbenchComponentHost` 后,需在 `#[ctor::ctor]` 中
+/// 调用此函数注册,使 `as_workbench_component_host()` 查询生效。组件经此查询
+/// 可取到 host 的 `document()` / `state()` 等共享 Entity。
+#[allow(unsafe_code)]
+pub fn register_workbench_component_host_ability<T: IWorkbenchComponentHost + 'static>() {
+    rml_core::ability::register::<T, dyn IWorkbenchComponentHost>(|c| {
+        let any: &dyn Any = c;
+        any.downcast_ref::<T>().map(|s| {
+            let h: &dyn IWorkbenchComponentHost = s;
+            unsafe { rml_core::ability::erase(h) }
+        })
+    });
 }
 
 // ──────────────────────────────────────────────────────────────────────────

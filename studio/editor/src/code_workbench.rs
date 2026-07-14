@@ -23,6 +23,9 @@ use studio_core::ability_ext::register_workbench_component_ability;
 use studio_core::component::IWorkbenchComponent;
 use studio_core::register_workbench_component;
 
+// 注意:此文件为 Phase 1 占位实现,Phase 3 将重写为 CodeComponent
+// (改名 code_workbench.rs → code_component.rml.rs,改造为 #[component] + .rml 模板)。
+
 /// 默认代码编辑视图组件。
 ///
 /// `matches(uri)` 使用默认实现(返回 `true`)—— 所有资源均可使用代码视图。
@@ -59,6 +62,6 @@ impl IWorkbenchComponent for CodeWorkbench {
 pub fn register_code_workbench() {
     register_workbench_component_ability::<CodeWorkbench>();
     register_workbench_component(|| {
-        Arc::new(CodeWorkbench) as Arc<dyn IContribution>
+        Arc::new(CodeWorkbench) as Arc<dyn IWorkbenchComponent>
     });
 }
