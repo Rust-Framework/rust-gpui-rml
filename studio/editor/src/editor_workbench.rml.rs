@@ -28,6 +28,7 @@ use studio_core::document::{WorkbenchDocument, WorkbenchState, document_kind};
 use studio_core::get_workbench_components;
 
 use crate::code_component::CodeComponent;
+use crate::preview_component::PreviewComponent;
 
 /// 代码编辑器工作台 —— IWorkbench + IWorkbenchComponentHost,纯壳。
 ///
@@ -63,6 +64,11 @@ pub struct EditorWorkbench {
     /// on_loaded 中初始化,经 `get_or_create_entity` 全局单例缓存。
     /// 切 Tab 时 Entity 不重建,CodeComponent 内部经 observe(document) 同步。
     code_component: Option<Entity<CodeComponent>>,
+    /// 只读预览子组件 —— 经 RML `<PreviewComponent if={is_preview_active} />` 引用。
+    ///
+    /// 仅匹配 `.md`/`.markdown`/`.html` 文件时显示视图切换按钮。
+    /// on_loaded 中初始化,经 `get_or_create_entity` 全局单例缓存。
+    preview_component: Option<Entity<PreviewComponent>>,
 }
 
 impl IContribution for EditorWorkbench {
@@ -109,6 +115,8 @@ impl ILifecycle for EditorWorkbench {
         self.state = Some(cx.new(|_| WorkbenchState::default()));
         // 初始化 code_component 子组件(RML 模板经 <CodeComponent /> 引用)
         self.code_component = Some(cx.new(|_| CodeComponent::default()));
+        // 初始化 preview_component 子组件(RML 模板经 <PreviewComponent /> 引用)
+        self.preview_component = Some(cx.new(|_| PreviewComponent::default()));
 
         // observe document → state.set_dirty
         // 注册一次即可,后续 document.reload / set_content 均触发此回调
@@ -236,6 +244,14 @@ impl EditorWorkbench {
     #[computed]
     pub fn is_code_active(&self) -> bool {
         self.active_component_id == "code" || self.active_component_id.is_empty()
+    }
+
+    /// 当前激活的组件是否为 preview(PreviewComponent)。
+    ///
+    /// RML 模板经 `<PreviewComponent if={is_preview_active} />` 条件渲染。
+    #[computed]
+    pub fn is_preview_active(&self) -> bool {
+        self.active_component_id == "preview"
     }
 
     /// 设置文件路径和 URI(由 EditorProvider 在构造后调用)。

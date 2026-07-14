@@ -10,6 +10,7 @@
         <!-- Body: 按 active_component_id 条件渲染激活的 IWorkbenchComponent -->
         <div class="editor-area" flex="1" min-height="0">
             <CodeComponent if={is_code_active} />
+            <PreviewComponent if={is_preview_active} />
         </div>
     </div>
 </component>

@@ -1,0 +1,15 @@
+<component>
+    <div display="flex" flex-direction="column" width="full" height="full" class="preview-pane">
+        <!-- Header: 面包屑 + 只读标记 -->
+        <div class="preview-header" display="flex" align-items="center" justify-content="space-between" height="36px" flex-shrink="0" padding-left="12px" padding-right="12px">
+            <span class="breadcrumb-text" font-size="13px">{breadcrumb_text}</span>
+            <span class="readonly-badge" font-size="11px" padding-left="6px" padding-right="6px">Read-only</span>
+        </div>
+        <!-- Body: 按 document.kind 条件渲染(overflow-y-auto 实现垂直滚动) -->
+        <div class="preview-area" flex="1" min-height="0" overflow-y-auto="" padding="16px">
+            <Markdown if={is_markdown} content={content_text} style="background: var(--surface-variant); border-radius: 6px; padding: 16px;" />
+            <div if={is_html} class="html-source" font-family="monospace" font-size="13px" white-space="pre-wrap">{content_text}</div>
+            <div if={is_text} class="text-source" font-family="monospace" font-size="13px" white-space="pre-wrap">{content_text}</div>
+        </div>
+    </div>
+</component>
