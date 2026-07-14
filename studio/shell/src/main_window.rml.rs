@@ -13,18 +13,16 @@
 use std::sync::{Arc, RwLock};
 
 use rml::prelude::*;
+use rml_core::context::IAppContext;
 use rml_core::observable::ObservableVec;
 use rml_core::value::IValue;
 use rml_core::workbench::{IWorkbench, IWorkbenchManager, Uri};
-use rml_ui::{ActivityBar, IActivityPanel, VisualActivityPanel};
-use rust_dix::ServiceProvider;
+use rml_ui::{ActivityBar, IActivityPanel, VisualActivityPanel, get_activity_panels};
 use studio_core::workspace::{IWorkspace, IWorkspaceManager};
-use studio_explorer::explorer_panel::{register_explorer_abilities, ExplorerPanel};
 use studio_explorer::git_worktree::GitWorktree;
 
 use crate::di;
 use crate::shell_manager::ArcShellManager;
-use crate::welcome::register_welcome_abilities;
 
 /// Arc Studio 主窗口 —— `#[window]` 声明式 GPUI 窗口。
 ///
@@ -77,16 +75,11 @@ impl Default for MainWindow {
 impl ILifecycle for MainWindow {
     fn on_loaded(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
         // 1. 构建 DI 容器(注册 manager + WelcomeProvider,反向注入 provider 到 manager)
-        let provider = match di::build_provider(self.manager.clone()) {
-            Ok(p) => p,
-            Err(e) => {
-                log::error!("MainWindow: build DI provider failed: {e}");
-                return;
-            }
-        };
+        let provider = di::build_runtime_provider(self.manager.clone());
 
-        // 2. 注册 ServiceProvider 到 IAppContext(业务代码经 cx.get_service::<ServiceProvider>() 解析)
-        cx.set_service::<ServiceProvider>(provider);
+        // 2. 追加 provider 到 provider 链（configure 阶段的静态服务仍可解析）
+        //    业务代码经 cx.get_trait::<dyn T>() 解析（经 ServiceProviderExt）
+        cx.use_provider(provider);
 
         // 3. 启动通道桥接背景任务:flume recv → cx.notify + bump activated 版本
         //    manager 的 push/remove/close 经 ObservableVec::bump → flume send → 此任务唤醒
@@ -104,18 +97,14 @@ impl ILifecycle for MainWindow {
         })
         .detach();
 
-        // 4. 注册能力(IContribution + IVisual 能力 cast,使 as_visual() 查询生效)
-        register_welcome_abilities();
-        register_explorer_abilities();
-
-        // 5. 初始化默认工作空间(打开当前目录为 GitWorktree)
+        // 4. 初始化默认工作空间(打开当前目录为 GitWorktree)
         self.init_default_workspace();
 
-        // 6. 初始化 ActivityBar(创建 ExplorerPanel + VisualActivityPanel + ActivityBar)
+        // 5. 初始化 ActivityBar(创建 ExplorerPanel + VisualActivityPanel + ActivityBar)
         //    必须在 init_default_workspace 之后 —— ExplorerPanel::on_loaded 会查询 IWorkspaceManager
         self.init_activity_bar(cx);
 
-        // 7. 打开欢迎页(manager.open → push workbench → ObservableVec bump + flume send
+        // 6. 打开欢迎页(manager.open → push workbench → ObservableVec bump + flume send
         //    → 背景任务 cx.notify → #[computed] 重算 → TabBar 新增 Tab)
         let uri: Uri = "rml://welcome".parse().unwrap();
         if self.manager.open(&uri).is_some() {
@@ -144,19 +133,20 @@ impl MainWindow {
 
     /// 构建 ActivityBar + 激活首项 + observe active_id 同步 slot_left_size。
     ///
-    /// 创建 ExplorerPanel → VisualActivityPanel 适配 → ActivityBar。
-    /// ExplorerPanel::on_loaded(首次渲染时触发)经 DI 查询 IWorkspaceManager 渲染文件树。
+    /// 枚举已注册面板 → VisualActivityPanel 适配 → ActivityBar Entity。
+    /// 面板经各扩展 crate `#[ctor::ctor]` + `register_activity_panel` 自注册,
+    /// 此处经 `get_activity_panels()` 枚举并适配为 `IActivityPanel`。
     fn init_activity_bar(&mut self, cx: &mut Context<Self>) {
-        // 创建 ExplorerPanel 贡献 → VisualActivityPanel 适配
-        let explorer = Arc::new(ExplorerPanel::default()) as Arc<dyn IContribution>;
-        if let Some(panel) = VisualActivityPanel::new(explorer) {
-            self.activities = vec![Arc::new(panel) as Arc<dyn IActivityPanel>];
-        }
+        self.activities = get_activity_panels()
+            .into_iter()
+            .filter_map(|contrib| VisualActivityPanel::new(contrib))
+            .map(|p| Arc::new(p) as Arc<dyn IActivityPanel>)
+            .collect();
 
         // 创建 ActivityBar Entity
         self.activity_bar = Some(cx.new(|_| ActivityBar::new(self.activities.clone())));
 
-        // 激活首项(触发 ExplorerPanel 渲染 → on_loaded → refresh_tree)
+        // 激活首项(触发首项面板渲染 → on_loaded)
         if let Some(bar) = &self.activity_bar {
             bar.update(cx, |bar, cx| {
                 bar.activate_first(cx);

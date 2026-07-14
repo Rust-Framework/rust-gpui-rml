@@ -775,12 +775,14 @@ impl RenderOnce for TabWindowShell {
         let selected_index = self.selected_index;
 
         if !self.tab_children.is_empty() {
-            for (ix, item) in std::mem::take(&mut self.tab_children)
+            for (ix, mut item) in std::mem::take(&mut self.tab_children)
                 .into_iter()
                 .enumerate()
             {
                 if ix == selected_index {
-                    selected_body = item.body_renderer();
+                    selected_body = item.take_body();
+                } else {
+                    item.take_body();
                 }
                 tab_bar = tab_bar.child(item);
             }
@@ -816,7 +818,8 @@ impl RenderOnce for TabWindowShell {
                 }
             };
             selected_body = body;
-            for item in tab_items {
+            for mut item in tab_items {
+                item.take_body();
                 tab_bar = tab_bar.child(item);
             }
         }

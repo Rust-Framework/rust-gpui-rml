@@ -19,10 +19,13 @@ use crate::contribution::ContributionRegistry;
 /// IAppContext 便利方法——为常用服务提供语义化访问。
 ///
 /// 这些方法是 `IAppContext::get_service::<T>()` 的语法糖，
-/// 不引入新的存储机制，仅转发到 `ServiceCollection`。
+/// 不引入新的存储机制，仅转发到 `IServiceProvider`。
 pub trait IAppContextExt: IAppContext {
     /// 获取贡献注册表（trait object 视图，隐藏具体类型）。
-    fn get_contribution_registry(&self) -> Arc<dyn IContributionRegistry> {
+    fn get_contribution_registry(&self) -> Arc<dyn IContributionRegistry>
+    where
+        Self: Sized,
+    {
         self.get_required_service::<ContributionRegistry>() as Arc<dyn IContributionRegistry>
     }
 
@@ -32,7 +35,10 @@ pub trait IAppContextExt: IAppContext {
     /// 默认用法：host 持有 `entries: Arc<RwLock<Vec<...>>>` 共享存储（即 `ContributionStorage`），
     /// `entries.clone()` 经 unsized coercion 转为 `Arc<dyn IContributionHost>`——
     /// 业务代码无需自定义 host 类型。需要自定义受理逻辑时，为自身类型 impl `IContributionHost`。
-    fn register_host(&self, host_id: &str, host: Arc<dyn IContributionHost>) {
+    fn register_host(&self, host_id: &str, host: Arc<dyn IContributionHost>)
+    where
+        Self: Sized,
+    {
         self.get_contribution_registry().add(host_id, host);
     }
 }
@@ -42,7 +48,7 @@ impl IAppContextExt for App {}
 // 重新导出所有 App/Context 扩展 trait，构成中央聚合点
 // IAppContext 由 lib.rs 直接从 rml_core::context 导入（避免与本模块 use 冲突）
 pub use rml_core::command::CommandAbilityExt;
-pub use rml_core::context::{ensure_service_collection, ServiceCollection};
+pub use rml_core::context::{ensure_service_provider, DefaultServiceProvider, IServiceProvider, ServiceSlot, ServiceProviderExt};
 pub use rml_core::contribution::{ContributionAbilityExt, StatusBarItemAbilityExt, VisualAbilityExt};
 pub use rml_core::i18n::I18nExt;
 pub use rml_core::theme::ThemeExt;

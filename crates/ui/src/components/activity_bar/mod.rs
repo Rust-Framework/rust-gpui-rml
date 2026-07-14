@@ -13,11 +13,13 @@ mod act;
 mod bar;
 mod icon;
 mod panel;
+mod registry;
 mod traits;
 mod visual_panel;
 
 pub use act::ActivityAct;
 pub use bar::ActivityBar;
 pub use panel::ActivityPanel;
+pub use registry::{get_activity_panels, register_activity_panel};
 pub use traits::{IActivityAct, IActivityPanel};
 pub use visual_panel::VisualActivityPanel;

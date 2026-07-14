@@ -96,7 +96,8 @@ pub use window::{
 pub use components::{
     configure_menu_bar_popup, h_resizable, h_virtual_list, menu_bar_button, register_panel,
     render_content, resizable_panel, v_resizable, v_virtual_list, ActivityAct, ActivityBar,
-    ActivityPanel, Alert, AlertDialog, AlertVariant, AnySettingField, Avatar, AvatarGroup,
+    ActivityPanel, get_activity_panels, register_activity_panel, Alert, AlertDialog, AlertVariant,
+    AnySettingField, Avatar, AvatarGroup,
     Breadcrumb, BreadcrumbItem, BreadcrumbSibling, Card, CardVariant, CellTemplate, ChatAttachment, ChatBubble, ChatConfig, ChatConversation, ChatError, ChatEvent, ChatInput, ChatInputEvent,
     ChatMessage, ChatMessageAction, ChatMetadata, ChatPanel, ChatRequest, ChatRole, ChatStreamEvent,
     ChatToolCall, MessageActionItem,

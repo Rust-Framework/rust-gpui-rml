@@ -1,20 +1,23 @@
 [package]
-name = "studio-explorer"
+name = "studio-editor"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Arc Studio IDE 文件资源管理器 —— LocalWorktree + ExplorerPanel"
+description = "Arc Studio IDE 代码编辑器 —— EditorWorkbench + LSP 集成"
 
 [dependencies]
 rust-rml-engine = { workspace = true }
 rust-rml-core = { workspace = true }
 rust-rml-app = { workspace = true }
 rust-rml-ui = { workspace = true }
+rust-rml-di = { workspace = true }
+rust-rml-client = { workspace = true }
 studio-core = { workspace = true }
 gpui = { workspace = true }
-git2 = { workspace = true }
-url = "2"
+gpui-component = { workspace = true }
+anyhow = { workspace = true }
 log = { workspace = true }
+lsp-types = "0.97"
 
 [build-dependencies]
 rust-rml-engine = { workspace = true }

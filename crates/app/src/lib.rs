@@ -25,5 +25,5 @@ pub use resources::{
 };
 
 // IAppContext 核心 + 便利方法
-pub use extensions::{IAppContextExt, ServiceCollection, ensure_service_collection};
+pub use extensions::IAppContextExt;
 pub use rml_core::context::IAppContext;

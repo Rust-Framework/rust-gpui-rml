@@ -1,6 +1,6 @@
 //! 贡献注册表——构建期回调与 host_id 路由
 //!
-//! 注册表实例本身存储在 `ServiceCollection`（通过 `IAppContext::get_service::<ContributionRegistry>()` 查询）。
+//! 注册表实例本身存储在 `IServiceProvider`（通过 `IAppContext::get_service::<ContributionRegistry>()` 查询）。
 //! 此模块仅保留 build.rs 生成的 `#[ctor::ctor]` 回调安装与 host_id 路由逻辑。
 
 use std::sync::Mutex;

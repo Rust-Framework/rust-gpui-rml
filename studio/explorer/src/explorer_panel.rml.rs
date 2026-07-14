@@ -17,8 +17,9 @@ use gpui::AnyElement;
 use rml::prelude::*;
 use rml_app::contribution::get_or_create_entity;
 use rml_core::contribution::IconSpec;
+use rml_core::context::ServiceProviderExt;
+use rml_core::workbench::IWorkbenchManager;
 use rml_ui::{TreeData, TreeState};
-use rust_dix::ServiceProvider;
 use studio_core::worktree::EntryKind;
 use studio_core::workspace::{IWorkspace, IWorkspaceManager};
 
@@ -68,8 +69,7 @@ impl ExplorerPanel {
     /// 刷新文件树:经 DI 获取 IWorkspaceManager → list() → 构建多根 TreeData。
     fn refresh_tree(&mut self, cx: &mut Context<Self>) {
         let workspaces = cx
-            .get_service::<ServiceProvider>()
-            .and_then(|p| p.get::<dyn IWorkspaceManager>().ok())
+            .get_trait::<dyn IWorkspaceManager>()
             .map(|mgr| mgr.list())
             .unwrap_or_default();
 
@@ -82,13 +82,10 @@ impl ExplorerPanel {
     pub fn on_file_activate(&mut self, item_id: &SharedString, cx: &mut Context<Self>) {
         let path = PathBuf::from(item_id.to_string());
 
-        let Some(provider) = cx.get_service::<ServiceProvider>() else {
+        let Some(workspace_mgr) = cx.get_trait::<dyn IWorkspaceManager>() else {
             return;
         };
-        let Ok(workspace_mgr) = provider.get::<dyn IWorkspaceManager>() else {
-            return;
-        };
-        let Ok(workbench_mgr) = provider.get::<dyn IWorkbenchManager>() else {
+        let Some(workbench_mgr) = cx.get_trait::<dyn IWorkbenchManager>() else {
             return;
         };
 

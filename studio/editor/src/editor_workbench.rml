@@ -1,0 +1,7 @@
+<component>
+    <div display="flex" flex-direction="column" class="editor-pane" size-full="true">
+        <div class="editor-area" size-full="true">
+            <CodeEditor class="rml-code-editor" height="full" />
+        </div>
+    </div>
+</component>

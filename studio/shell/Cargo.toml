@@ -9,12 +9,11 @@ description = "Arc Studio IDE 主窗口外壳 —— DI 容器 + ArcShellManager
 rust-rml-engine = { workspace = true }
 rust-rml-core = { workspace = true }
 rust-rml-app = { workspace = true }
+rust-rml-di = { workspace = true }
 rust-rml-ui = { workspace = true }
 studio-core = { workspace = true }
 studio-explorer = { workspace = true }
 gpui = { workspace = true }
-rust-dix = { workspace = true }
-anyhow = { workspace = true }
 log = { workspace = true }
 flume = "0.12"
 url = "2"

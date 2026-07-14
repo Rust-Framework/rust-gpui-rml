@@ -11,9 +11,9 @@
 use std::path::Path;
 use std::sync::{Arc, OnceLock, RwLock};
 
+use rml_core::context::{IServiceProvider, ServiceProviderExt};
 use rml_core::observable::ObservableVec;
 use rml_core::workbench::{IWorkbench, IWorkbenchManager, IWorkbenchProvider, Uri};
-use rust_dix::ServiceProvider;
 use studio_core::workspace::{IWorkspace, IWorkspaceManager};
 
 /// 纯逻辑管理器 —— 无 GPUI 依赖,可注册进 DI 容器。
@@ -22,7 +22,7 @@ use studio_core::workspace::{IWorkspace, IWorkspaceManager};
 /// MainWindow(GPUI Entity)持有 Arc<ArcShellManager> 用于 UI 渲染。
 pub struct ArcShellManager {
     /// DI 容器(二阶段注入) —— 用于解析 IWorkbenchProvider 等子服务。
-    provider: OnceLock<Arc<ServiceProvider>>,
+    provider: OnceLock<Arc<dyn IServiceProvider + Send + Sync>>,
     /// 已打开的工作台会话(Tab)。带 flume 通知通道,push/remove 时 send。
     workbenches: ObservableVec<Arc<dyn IWorkbench>>,
     /// flume 接收端 —— MainWindow 在 on_loaded 中 clone 取走,驱动 cx.notify。
@@ -48,7 +48,7 @@ impl ArcShellManager {
     }
 
     /// 二阶段注入 ServiceProvider(解决循环依赖)。
-    pub fn set_provider(&self, provider: Arc<ServiceProvider>) {
+    pub fn set_provider(&self, provider: Arc<dyn IServiceProvider + Send + Sync>) {
         let _ = self.provider.set(provider);
     }
 
@@ -70,7 +70,7 @@ impl ArcShellManager {
         self.activated.clone()
     }
 
-    fn provider(&self) -> &Arc<ServiceProvider> {
+    fn provider(&self) -> &Arc<dyn IServiceProvider + Send + Sync> {
         self.provider
             .get()
             .expect("ServiceProvider not injected; call set_provider() after DI build")
@@ -98,9 +98,10 @@ impl IWorkbenchManager for ArcShellManager {
             return Some(wb);
         }
 
-        // 2. 路由:schema → DI keyed provider
+        // 2. 路由:schema → DI keyed provider（经 ServiceProviderExt::get_keyed_trait）
         let schema = uri.scheme();
-        let provider: Arc<dyn IWorkbenchProvider> = self.provider().get_keyed(schema).ok()?;
+        let provider: Arc<dyn IWorkbenchProvider> =
+            self.provider().get_keyed_trait::<dyn IWorkbenchProvider>(schema)?;
         let wb = provider.render(uri);
 
         // 3. 入栈 + 激活

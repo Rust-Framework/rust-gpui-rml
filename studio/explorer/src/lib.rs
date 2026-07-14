@@ -3,6 +3,9 @@
 //! 此 crate 实现:
 //! - [`git_worktree`] —— `GitWorktree`(`IWorktree` + `IWorkspace` 的 git worktree 实现)
 //! - [`explorer_panel`] —— `ExplorerPanel`(`#[component]` 文件树面板,`IContribution` + `IVisual`)
+//!
+//! 自注册: `#[ctor::ctor]` 在 `main` 之前执行,
+//! 注册 `ExplorerPanel` 的能力 cast + ActivityBar 面板工厂。
 
 extern crate rust_rml_engine as rml;
 extern crate rust_rml_core as rml_core;
@@ -13,3 +16,18 @@ extern crate studio_core as studio_core;
 pub mod git_worktree;
 #[path = "explorer_panel.rml.rs"]
 pub mod explorer_panel;
+
+/// 自动注册 —— `#[ctor::ctor]` 在 `main` 之前执行:
+/// 1. 注册能力 cast（IContribution + IVisual）
+/// 2. 注册 `ExplorerPanel` 为 ActivityBar 面板工厂
+#[rml_core::ctor::ctor]
+fn register_explorer_services() {
+    use std::sync::Arc;
+    use rml_core::contribution::IContribution;
+    use rml_ui::register_activity_panel;
+
+    crate::explorer_panel::register_explorer_abilities();
+    register_activity_panel(|| {
+        Arc::new(crate::explorer_panel::ExplorerPanel::default()) as Arc<dyn IContribution>
+    });
+}

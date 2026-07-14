@@ -8,7 +8,7 @@ pub use crate::binding::{BindingContext, BindingPath, IBindingContext};
 pub use crate::command::{CallContext, CommandAbilityExt, ICommand, RelayCommand};
 pub use crate::component::IComponent;
 pub use crate::content::{IntoContent, into_content};
-pub use crate::context::{ensure_service_collection, IAppContext, ServiceCollection};
+pub use crate::context::{ensure_service_provider, DefaultServiceProvider, IAppContext, IServiceProvider, ServiceSlot, ServiceProviderExt};
 pub use crate::contribution::{
     ContributionAbilityExt, ContributionOptions, ContributionStorage, IContribution, IContributionHost,
     IContributionRegistry, IStatusBarItem, IVisual, IVisualContribution, StatusBarAlign,

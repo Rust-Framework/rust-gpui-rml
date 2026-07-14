@@ -86,6 +86,15 @@ impl TabItem {
         self.body.clone()
     }
 
+    /// 移除并返回 body renderer，使此 TabItem 仅保留 header。
+    ///
+    /// 用于 TabWindowShell 场景：TabWindowShell 自行在内容区渲染选中 tab 的 body，
+    /// 需在将 TabItem 传入 Tabs（tab bar）前剥离 body，避免 Tabs 的 WPF TabControl
+    /// 模式重复渲染 body 导致 deferred 弹出层（Select/ComboBox 下拉框）出现双份。
+    pub fn take_body(&mut self) -> Option<TabBodyRenderer> {
+        self.body.take()
+    }
+
     /// 设置 disabled 状态。
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;

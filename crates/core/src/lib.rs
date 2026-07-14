@@ -42,7 +42,7 @@ pub mod window;
 
 pub mod prelude;
 
-pub use context::{ensure_service_collection, IAppContext, ServiceCollection};
+pub use context::{ensure_service_provider, DefaultServiceProvider, IAppContext, IServiceProvider, ServiceSlot, ServiceProviderExt};
 
 /// 重导出 GPUI 基础类型,供框架各层统一使用
 pub use gpui::{App, Context, Entity, IntoElement, Keystroke, Modifiers, Pixels, Point, Rgba, Render, SharedString, WeakEntity, Window};

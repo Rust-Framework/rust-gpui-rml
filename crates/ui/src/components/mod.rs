@@ -46,6 +46,7 @@ pub mod virtual_list;
 
 pub use activity_bar::{
     ActivityAct, ActivityBar, ActivityPanel, IActivityAct, IActivityPanel, VisualActivityPanel,
+    get_activity_panels, register_activity_panel,
 };
 pub use alert::{Alert, AlertVariant};
 pub use alert_dialog::{

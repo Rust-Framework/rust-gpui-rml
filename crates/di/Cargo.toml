@@ -1,0 +1,12 @@
+[package]
+name = "rust-rml-di"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "RML DI 适配层 —— ServiceCollection + ServiceProvider + configure 模式"
+
+[dependencies]
+rust-rml-core = { workspace = true }
+rust-rml-app = { workspace = true }
+ctor = "0.2"
+log = { workspace = true }
