@@ -7,9 +7,9 @@
                 <span each={name in view_names} class="view-button" font-size="12px" padding-left="6px" padding-right="6px">{name}</span>
             </div>
         </div>
-        <!-- Body: CodeEditor -->
+        <!-- Body: 按 active_component_id 条件渲染激活的 IWorkbenchComponent -->
         <div class="editor-area" flex="1" min-height="0">
-            <CodeEditor class="rml-code-editor" height="full" />
+            <CodeComponent if={is_code_active} />
         </div>
     </div>
 </component>

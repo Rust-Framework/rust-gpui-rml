@@ -1,0 +1,5 @@
+<component>
+    <div display="flex" width="full" height="full" class="code-pane">
+        <CodeEditor class="rml-code-editor" height="full" />
+    </div>
+</component>
