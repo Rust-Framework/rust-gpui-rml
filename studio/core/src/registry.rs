@@ -11,6 +11,7 @@
 use std::path::Path;
 use std::sync::{Arc, Mutex, OnceLock};
 
+use crate::chat::IChatProvider;
 use crate::component::IWorkbenchComponent;
 use crate::workspace::IWorkspace;
 
@@ -77,6 +78,39 @@ pub fn register_workbench_component(
 /// 未经注册时返回空 Vec。
 pub fn get_workbench_components() -> Vec<Arc<dyn IWorkbenchComponent>> {
     match WORKBENCH_COMPONENTS.get() {
+        Some(registry) => registry.lock().unwrap().iter().map(|f| f()).collect(),
+        None => Vec::new(),
+    }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+//  ChatProvider 注册表
+// ──────────────────────────────────────────────────────────────────────────
+
+type ChatProviderFactory = Box<dyn Fn() -> Arc<dyn IChatProvider> + Send + Sync>;
+
+static CHAT_PROVIDERS: OnceLock<Mutex<Vec<ChatProviderFactory>>> = OnceLock::new();
+
+/// 注册聊天提供程序工厂。通常在 `#[ctor::ctor]` 函数中调用。
+///
+/// 工厂返回 `Arc<dyn IChatProvider>`,`ChatManager` 经 `get_chat_providers()`
+/// 取得后聚合,提供统一的 `IChatter` 查询。
+pub fn register_chat_provider(
+    f: impl Fn() -> Arc<dyn IChatProvider> + Send + Sync + 'static,
+) {
+    CHAT_PROVIDERS
+        .get_or_init(|| Mutex::new(Vec::new()))
+        .lock()
+        .unwrap()
+        .push(Box::new(f));
+}
+
+/// 枚举所有已注册的聊天提供程序(经工厂构造)。
+///
+/// 返回 `Vec<Arc<dyn IChatProvider>>`,`ChatManager` 聚合后提供 `chatters()` 查询。
+/// 未经注册时返回空 Vec。
+pub fn get_chat_providers() -> Vec<Arc<dyn IChatProvider>> {
+    match CHAT_PROVIDERS.get() {
         Some(registry) => registry.lock().unwrap().iter().map(|f| f()).collect(),
         None => Vec::new(),
     }

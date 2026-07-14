@@ -1,0 +1,20 @@
+[package]
+name = "studio-chat"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Arc Studio IDE 聊天模块 —— ChatPanel + ChatWorkbench + ChatManager"
+
+[dependencies]
+rust-rml-engine = { workspace = true }
+rust-rml-core = { workspace = true }
+rust-rml-app = { workspace = true }
+rust-rml-ui = { workspace = true }
+rust-rml-di = { workspace = true }
+studio-core = { workspace = true }
+gpui = { workspace = true }
+gpui-component = { workspace = true }
+log = { workspace = true }
+
+[build-dependencies]
+rust-rml-engine = { workspace = true }

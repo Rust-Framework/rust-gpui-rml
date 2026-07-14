@@ -49,6 +49,21 @@ impl<T> ObservableVec<T> {
         self.bump();
     }
 
+    /// 替换首个满足谓词的元素,返回被替换的旧值。保持原索引位置。
+    ///
+    /// 用于"预览槽替换"语义:新预览 Tab 占用旧预览 Tab 的位置,而非追加到末尾。
+    /// 若无匹配元素则返回 `None`(调用方可回退到 `push`)。
+    pub fn replace_where(&self, predicate: impl Fn(&T) -> bool, new_value: T) -> Option<T> {
+        let mut guard = self.inner.write().unwrap();
+        if let Some(pos) = guard.iter().position(|x| predicate(x)) {
+            let old = std::mem::replace(&mut guard[pos], new_value);
+            drop(guard);
+            self.bump();
+            return Some(old);
+        }
+        None
+    }
+
     /// 移除首个满足谓词的元素。返回是否移除成功。
     pub fn remove_where(&self, predicate: impl Fn(&T) -> bool) -> bool {
         let mut guard = self.inner.write().unwrap();
@@ -92,6 +107,14 @@ impl<T> ObservableVec<T> {
         if let Some(tx) = &self.notify {
             let _ = tx.send(());
         }
+    }
+
+    /// 触发版本递增 + 通知通道,不改变底层数据。
+    ///
+    /// 用于元素内部状态变化（如 `IWorkbench::preview` 切换）需通知 UI 重渲,
+    /// 但列表本身未增删的场景。`#[computed]` 经 `version()` 追踪失效。
+    pub fn touch(&self) {
+        self.bump();
     }
 }
 
@@ -200,5 +223,44 @@ mod tests {
         let v = ObservableVec::<i32>::with_notify(tx);
         v.clear(); // 空集合，不 bump，不 send
         assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn replace_where_keeps_index_and_bumps() {
+        let v = ObservableVec::<i32>::new();
+        v.push(1);
+        v.push(2);
+        v.push(3);
+        assert_eq!(v.version(), 3);
+        let old = v.replace_where(|x| *x == 2, 99);
+        assert_eq!(old, Some(2));
+        assert_eq!(v.version(), 4);
+        // 索引位置保持不变
+        assert_eq!(v.snapshot(), vec![1, 99, 3]);
+    }
+
+    #[test]
+    fn replace_where_no_match_returns_none_no_bump() {
+        let v = ObservableVec::<i32>::new();
+        v.push(1);
+        assert_eq!(v.version(), 1);
+        let old = v.replace_where(|x| *x == 99, 42);
+        assert_eq!(old, None);
+        // 无匹配不 bump
+        assert_eq!(v.version(), 1);
+        assert_eq!(v.snapshot(), vec![1]);
+    }
+
+    #[test]
+    fn touch_bumps_version_and_notifies() {
+        let (tx, rx) = flume::unbounded();
+        let v = ObservableVec::<i32>::with_notify(tx);
+        v.push(1);
+        assert_eq!(v.version(), 1);
+        // touch 不改变数据,仅 bump + notify
+        v.touch();
+        assert_eq!(v.version(), 2);
+        assert_eq!(v.snapshot(), vec![1]); // 数据未变
+        assert!(rx.try_recv().is_ok()); // 通知已发送
     }
 }

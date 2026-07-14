@@ -58,7 +58,9 @@ fn tab_list_fingerprint(tabs: &[Arc<dyn IValue>]) -> String {
                 .as_contribution()
                 .map(|c| c.name().to_string())
                 .unwrap_or_default();
-            format!("{uri}\x01{title}")
+            // preview 状态参与指纹:切换预览/正式时强制重建 TabItem(改变 italic 视觉)
+            let preview = v.as_workbench().map(|w| w.preview()).unwrap_or(false);
+            format!("{uri}\x01{title}\x01{}", preview)
         })
         .collect::<Vec<_>>()
         .join("\x00")
@@ -78,10 +80,13 @@ fn build_tab_items_from_values(
         .map(|(ix, value)| {
             let c = Arc::clone(value);
             let title = c.as_contribution().map(|c| c.name()).unwrap_or_default();
-            let closable = c.as_workbench().map(|w| w.closable()).unwrap_or(true);
+            let workbench = c.as_workbench();
+            let closable = workbench.map(|w| w.closable()).unwrap_or(true);
+            let preview = workbench.map(|w| w.preview()).unwrap_or(false);
             let item = TabItem::new()
                 .title(title)
                 .closable(closable)
+                .preview(preview)
                 .body(move |window, cx| {
                     if let Some(visual) = c.as_visual() {
                         visual.render(window, cx)
@@ -330,6 +335,9 @@ pub struct TabWindowShell {
     /// "关闭其他"右键菜单项触发时调用，参数为保留选项卡的索引
     /// （透传到 Tabs::on_close_others）。
     on_tab_close_others: Option<TabClickHandler>,
+    /// 双击 Tab(通常为 preview Tab)触发升级时调用,参数为被升级选项卡的索引
+    /// (透传到 Tabs::on_promote)。
+    on_tab_promote: Option<TabClickHandler>,
     slot_left: Option<SlotRenderer>,
     slot_right: Option<SlotRenderer>,
     slot_bottom: Option<SlotRenderer>,
@@ -355,6 +363,7 @@ impl TabWindowShell {
             on_tab_close: None,
             on_tab_close_all: None,
             on_tab_close_others: None,
+            on_tab_promote: None,
             slot_left: None,
             slot_right: None,
             slot_bottom: None,
@@ -455,6 +464,14 @@ impl TabWindowShell {
         f: impl Fn(usize, &mut Window, &mut App) + 'static,
     ) -> Self {
         self.on_tab_close_others = Some(Rc::new(f));
+        self
+    }
+
+    /// Set the handler invoked when a tab is double-clicked (typically to
+    /// promote a preview tab to a permanent one). Forwarded to
+    /// `Tabs::on_promote`.
+    pub fn on_tab_promote(mut self, f: impl Fn(usize, &mut Window, &mut App) + 'static) -> Self {
+        self.on_tab_promote = Some(Rc::new(f));
         self
     }
 
@@ -899,6 +916,10 @@ impl RenderOnce for TabWindowShell {
         if let Some(on_close_others) = self.on_tab_close_others {
             tab_bar =
                 tab_bar.on_close_others(move |ix, window, cx| on_close_others(*ix, window, cx));
+        }
+
+        if let Some(on_promote) = self.on_tab_promote {
+            tab_bar = tab_bar.on_promote(move |ix, window, cx| on_promote(*ix, window, cx));
         }
 
         // chrome_toggle 必须放在 title_row（Drag 区域）之外，否则在 Windows 上

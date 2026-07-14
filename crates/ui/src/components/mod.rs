@@ -10,6 +10,7 @@ pub mod card;
 pub mod chat;
 pub mod collapsible;
 pub mod color_picker;
+pub mod dbl_click;
 pub mod combobox;
 pub mod date_picker;
 pub mod dock;

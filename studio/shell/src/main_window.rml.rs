@@ -370,6 +370,22 @@ impl MainWindow {
         }
         self.__rml_bump_version("activated");
     }
+
+    /// 双击 Tab 触发升级(将 preview Tab 转为正式 Tab)。
+    ///
+    /// 经 manager.promote 取消预览标记,TabWindowShell 据此重渲 italic → 正常字体。
+    /// bump activated 版本触发 selected_tab / tab_items computed 重算。
+    #[command]
+    pub fn on_tab_promote(&mut self, index: usize, cx: &mut Context<Self>) {
+        let snapshot = self.workbenches.snapshot();
+        if let Some(wb) = snapshot.get(index) {
+            if let Ok(uri) = wb.uri().parse::<Uri>() {
+                self.manager.promote(&uri);
+                self.__rml_bump_version("activated");
+                cx.notify();
+            }
+        }
+    }
 }
 
 impl MainWindow {

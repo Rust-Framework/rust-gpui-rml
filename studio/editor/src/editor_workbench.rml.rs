@@ -13,6 +13,7 @@
 
 use std::any::Any;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Once};
 
 use gpui::{AnyElement, App, Entity, Window};
@@ -21,7 +22,8 @@ use rml_app::contribution::get_or_create_entity;
 use rml_core::contribution::{
     IconSpec, register_contribution_ability, register_visual_ability,
 };
-use rml_core::workbench::{IWorkbench, Uri, register_workbench_ability};
+use rml_core::context::ServiceProviderExt;
+use rml_core::workbench::{IWorkbench, IWorkbenchManager, Uri, register_workbench_ability};
 use studio_core::ability_ext::register_workbench_component_host_ability;
 use studio_core::component::{IWorkbenchComponent, IWorkbenchComponentHost};
 use studio_core::document::{WorkbenchDocument, WorkbenchState, document_kind};
@@ -69,6 +71,11 @@ pub struct EditorWorkbench {
     /// 仅匹配 `.md`/`.markdown`/`.html` 文件时显示视图切换按钮。
     /// on_loaded 中初始化,经 `get_or_create_entity` 全局单例缓存。
     preview_component: Option<Entity<PreviewComponent>>,
+    /// 预览模式标记(VSCode 风格 Tab:italic 标题,双击升级为正式)。
+    ///
+    /// 经 IWorkbench::set_preview 切换,由 ArcShellManager::open_preview 设为 true,
+    /// promote 时设为 false。TabWindowShell 据此设置 TabItem.preview 渲染 italic。
+    preview: Arc<AtomicBool>,
 }
 
 impl IContribution for EditorWorkbench {
@@ -118,13 +125,27 @@ impl ILifecycle for EditorWorkbench {
         // 初始化 preview_component 子组件(RML 模板经 <PreviewComponent /> 引用)
         self.preview_component = Some(cx.new(|_| PreviewComponent::default()));
 
-        // observe document → state.set_dirty
+        // observe document → state.set_dirty + 预览自动 promote
         // 注册一次即可,后续 document.reload / set_content 均触发此回调
         if let (Some(doc), Some(state)) = (self.document.as_ref(), self.state.as_ref()) {
             let state_clone = state.clone();
             cx.observe(doc, move |_: &mut Self, doc, cx| {
                 let dirty = doc.read(cx).is_dirty();
                 state_clone.update(cx, |s, _| s.set_dirty(dirty));
+                // P0: 预览 Tab 编辑自动 promote(VSCode 行为)
+                // dirty=true 时将当前激活的预览 Tab 升级为正式,避免修改后切走被替换丢失
+                if dirty {
+                    if let Some(mgr) = cx.get_trait::<dyn IWorkbenchManager>() {
+                        if let Some(activated) = mgr.get_activated() {
+                            if activated.preview() {
+                                let uri = activated.uri().to_string();
+                                if let Ok(uri_parsed) = Uri::parse(&uri) {
+                                    mgr.promote(&uri_parsed);
+                                }
+                            }
+                        }
+                    }
+                }
             })
             .detach();
         }
@@ -154,6 +175,14 @@ impl IWorkbench for EditorWorkbench {
 
     fn closable(&self) -> bool {
         true
+    }
+
+    fn preview(&self) -> bool {
+        self.preview.load(Ordering::Relaxed)
+    }
+
+    fn set_preview(&self, preview: bool) {
+        self.preview.store(preview, Ordering::Relaxed);
     }
 }
 

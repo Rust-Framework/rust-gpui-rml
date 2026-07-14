@@ -55,6 +55,17 @@ pub trait IWorkbench: IContribution + IVisual {
     fn closable(&self) -> bool {
         true
     }
+
+    /// 此工作台是否处于预览模式（VSCode 预览 Tab：italic 标题，双击升级为正式）。
+    /// 默认 `false`；业务可经 [`Self::set_preview`] 切换。
+    /// TabWindowShell 据此设置 TabItem.preview 渲染 italic 标题。
+    fn preview(&self) -> bool {
+        false
+    }
+
+    /// 切换预览模式状态。`&self` + 内部可变性（业务自行使用 `AtomicBool` 等）。
+    /// 默认空实现；需要预览能力的业务 override。
+    fn set_preview(&self, _preview: bool) {}
 }
 
 /// 工作台能力扩展 trait —— 让 `dyn IValue` 可查询 `IWorkbench` 能力。
@@ -97,6 +108,23 @@ pub fn register_workbench_ability<T: IWorkbench + 'static>() {
 pub trait IWorkbenchManager: Send + Sync + 'static {
     /// 打开资源；若已打开则激活现有工作台。无法识别 URI 时返回 `None`。
     fn open(&self, uri: &Uri) -> Option<Arc<dyn IWorkbench>>;
+
+    /// 以预览模式打开资源（VSCode 风格：单击文件树预览，双击升级为正式）。
+    ///
+    /// 与 [`Self::open`] 的区别：
+    /// - 若已有同资源的预览 Tab，复用之（不新建）
+    /// - 新打开的工作台标记 `preview = true`（TabItem 显示 italic 标题）
+    /// - 用户双击 Tab 或调用 [`Self::promote`] 升级为正式 Tab
+    ///
+    /// 默认实现退化为 [`Self::open`]（不区分预览/正式）。
+    fn open_preview(&self, uri: &Uri) -> Option<Arc<dyn IWorkbench>> {
+        self.open(uri)
+    }
+
+    /// 将预览 Tab 升级为正式 Tab（取消 preview 标记）。
+    ///
+    /// 默认空实现；需要预览能力的业务 override。
+    fn promote(&self, _uri: &Uri) {}
 
     /// 关闭资源对应的工作台。
     fn close(&self, uri: &Uri);

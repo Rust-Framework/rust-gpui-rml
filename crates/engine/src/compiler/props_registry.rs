@@ -410,6 +410,7 @@ pub static SHELL_PROPS: &[(&str, &[&str])] = &[
         "left_size", "right_size", "bottom_size",
         "on_tab_click", "on_tab_close",
         "on_tab_close_all", "on_tab_close_others",
+        "on_tab_promote",
         "tab_item_template",
     ]),
     ("modern-window", &[

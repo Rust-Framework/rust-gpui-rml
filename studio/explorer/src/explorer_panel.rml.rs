@@ -77,10 +77,16 @@ impl ExplorerPanel {
         cx.notify();
     }
 
-    /// 双击文件节点:解析路径 → URI → IWorkbenchManager::open 打开 Tab。
+    /// 单击文件节点:解析路径 → URI → IWorkbenchManager::open_preview 预览模式打开。
+    ///
+    /// 仅文件(非目录)触发预览;目录节点由 Tree 组件展开/折叠,不走此路径。
     #[command]
-    pub fn on_file_activate(&mut self, item_id: &SharedString, cx: &mut Context<Self>) {
+    pub fn on_file_select(&mut self, item_id: &SharedString, cx: &mut Context<Self>) {
         let path = PathBuf::from(item_id.to_string());
+        // 跳过目录:目录展开/折叠由 Tree 内部处理,不应触发预览
+        if path.is_dir() {
+            return;
+        }
 
         let Some(workspace_mgr) = cx.get_trait::<dyn IWorkspaceManager>() else {
             return;
@@ -99,7 +105,53 @@ impl ExplorerPanel {
 
         if let Ok(rel) = path.strip_prefix(ws.root()) {
             let uri = ws.resolve(rel);
-            workbench_mgr.open(&uri);
+            workbench_mgr.open_preview(&uri);
+        }
+    }
+
+    /// 双击文件节点:解析路径 → URI → 正式打开或升级预览为正式。
+    ///
+    /// - 已打开且为预览:promote 升级为正式 Tab
+    /// - 已打开且为正式:仅激活(无需 promote,语义更纯)
+    /// - 未打开:open 新建为正式 Tab
+    #[command]
+    pub fn on_file_activate(&mut self, item_id: &SharedString, cx: &mut Context<Self>) {
+        let path = PathBuf::from(item_id.to_string());
+        if path.is_dir() {
+            return;
+        }
+
+        let Some(workspace_mgr) = cx.get_trait::<dyn IWorkspaceManager>() else {
+            return;
+        };
+        let Some(workbench_mgr) = cx.get_trait::<dyn IWorkbenchManager>() else {
+            return;
+        };
+
+        let Some(ws) = workspace_mgr
+            .list()
+            .into_iter()
+            .find(|ws| path.starts_with(ws.root()))
+        else {
+            return;
+        };
+
+        if let Ok(rel) = path.strip_prefix(ws.root()) {
+            let uri = ws.resolve(rel);
+            match workbench_mgr.get(&uri) {
+                Some(wb) if wb.preview() => {
+                    // 预览 Tab → 升级为正式
+                    workbench_mgr.promote(&uri);
+                }
+                Some(_) => {
+                    // 已是正式 Tab → 仅激活
+                    workbench_mgr.open(&uri);
+                }
+                None => {
+                    // 未打开 → 新建正式 Tab
+                    workbench_mgr.open(&uri);
+                }
+            }
         }
     }
 }

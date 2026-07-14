@@ -1,6 +1,4 @@
 use std::{
-    cell::RefCell,
-    collections::HashMap,
     rc::Rc,
     time::{Duration, Instant},
 };
@@ -9,7 +7,7 @@ use crate::{ContextMenuExt, OverflowStyle, PopupMenu, Tooltip};
 use gpui::prelude::FluentBuilder as _;
 use gpui::{
     div, px, relative, Animation, AnimationExt as _, AnyElement, App, Background, ClickEvent,
-    Context, Corners, Div, Edges, ElementId, Global, Hsla, InteractiveElement, IntoElement,
+    Context, Corners, Div, Edges, ElementId, Hsla, InteractiveElement, IntoElement,
     MouseButton, Overflow, ParentElement, Pixels, RenderOnce, SharedString,
     StatefulInteractiveElement, Styled, Window,
 };
@@ -22,30 +20,11 @@ type TabContextMenuProvider =
     Rc<dyn Fn(PopupMenu, &mut Window, &mut Context<PopupMenu>) -> PopupMenu + 'static>;
 type TabPromoteHandler = Rc<dyn Fn(&mut Window, &mut App) + 'static>;
 
-/// 双击检测状态。`use_keyed_state` 无法在事件回调中使用，改用 App Global。
-#[derive(Default)]
-struct TabDblClickState {
-    last_clicks: RefCell<HashMap<String, Option<Instant>>>,
-}
-
-impl Global for TabDblClickState {}
-
-/// 双击检测时间窗口（ms）。两次点击间隔 ≤ 此值视为双击。
-const DOUBLE_CLICK_WINDOW: Duration = Duration::from_millis(250);
-
 /// 压缩模式下激活 tab 的最小宽度下限。
 ///
 /// 确保激活 tab 标题在多 tab 溢出压缩时仍可读（约 6-8 个中文字符或图标+短文本+关闭按钮）。
 /// 非激活 tab 不设下限，可完全压缩以优先保障激活项可见性。
 const COMPRESS_ACTIVE_MIN_W: Pixels = px(120.);
-
-/// 判断是否构成双击。纯函数，便于单测。
-pub(super) fn is_double_click(prev: Option<Instant>, now: Instant) -> bool {
-    match prev {
-        Some(p) => now.duration_since(p) <= DOUBLE_CLICK_WINDOW,
-        None => false,
-    }
-}
 
 /// Tab variants.
 #[derive(Debug, Clone, Default, Copy, PartialEq, Eq, Hash)]
@@ -1086,28 +1065,13 @@ impl RenderOnce for Tab {
                     // 双击后清空状态，避免三击误触发。
                     let now = Instant::now();
                     let dbl_key = format!("tab-dbl-{}", ix);
-                    if !cx.has_global::<TabDblClickState>() {
-                        cx.set_global(TabDblClickState::default());
-                    }
-                    let is_dbl = {
-                        let state = cx.global::<TabDblClickState>();
-                        let prev = state
-                            .last_clicks
-                            .borrow()
-                            .get(&dbl_key)
-                            .copied()
-                            .unwrap_or(None);
-                        is_double_click(prev, now)
-                    };
+                    let is_dbl =
+                        crate::components::dbl_click::check_double_click(cx, &dbl_key, now);
                     if is_dbl {
                         if let Some(on_promote) = &on_promote {
                             on_promote(window, cx);
                         }
                     }
-                    cx.global::<TabDblClickState>()
-                        .last_clicks
-                        .borrow_mut()
-                        .insert(dbl_key, if is_dbl { None } else { Some(now) });
                 })
             })
             .when(!m && !self.disabled, |this| {
@@ -1133,33 +1097,6 @@ impl RenderOnce for Tab {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
-    #[test]
-    fn is_double_click_none_prev_returns_false() {
-        let now = Instant::now();
-        assert!(!is_double_click(None, now));
-    }
-
-    #[test]
-    fn is_double_click_within_window_returns_true() {
-        let now = Instant::now();
-        let prev = Some(now - Duration::from_millis(200));
-        assert!(is_double_click(prev, now));
-    }
-
-    #[test]
-    fn is_double_click_at_boundary_returns_true() {
-        // 250ms 边界值：恰好等于窗口，应视为双击
-        let now = Instant::now();
-        let prev = Some(now - Duration::from_millis(250));
-        assert!(is_double_click(prev, now));
-    }
-
-    #[test]
-    fn is_double_click_beyond_window_returns_false() {
-        let now = Instant::now();
-        let prev = Some(now - Duration::from_millis(251));
-        assert!(!is_double_click(prev, now));
-    }
+    // is_double_click 纯函数测试已迁移至共享模块 `crate::components::dbl_click`,
+    // 由该模块统一覆盖(含 boundary / beyond_window / check_and_update 等场景)。
 }

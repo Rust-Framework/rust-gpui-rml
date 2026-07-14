@@ -17,6 +17,7 @@
 extern crate rust_rml_core as rml_core;
 
 pub mod ability_ext;
+pub mod chat;
 pub mod command;
 pub mod component;
 pub mod document;
@@ -25,6 +26,6 @@ pub mod worktree;
 pub mod workspace;
 
 pub use registry::{
-    get_workbench_components, open_workspace, register_workbench_component,
-    register_workspace_opener,
+    get_chat_providers, get_workbench_components, open_workspace, register_chat_provider,
+    register_workbench_component, register_workspace_opener,
 };

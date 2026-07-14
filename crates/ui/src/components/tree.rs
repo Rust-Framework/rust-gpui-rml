@@ -2,8 +2,16 @@
 //!
 //! 树数据由 ViewModel 写入 `TreeState`；声明式 `<TreeNode>` 若将来落地，应由 engine
 //! codegen 直译 gpui-component `NativeTree`，本组件仅保留 Stateful / `on_activate` 绑定路径。
+//!
+//! # 事件语义
+//!
+//! - `on_select`：单击任意节点触发（含文件夹）。常用于预览模式打开。
+//! - `on_activate`：双击叶子节点触发（文件夹不触发）。常用于正式打开。
+//!
+//! 双击检测复用共享模块 `crate::components::dbl_click`(250ms 时间窗口,与 Tab 组件一致)。
 
 use std::rc::Rc;
+use std::time::Instant;
 
 use gpui::{
     div, px, App, Entity, IntoElement, ParentElement, RenderOnce, SharedString, Styled, Window,
@@ -14,6 +22,8 @@ use gpui_component::{
     tree::{Tree as NativeTree, TreeItem, TreeState},
     Icon, IconName, Sizable as _,
 };
+
+use crate::components::dbl_click::check_double_click;
 
 type TreeItemHandler = Rc<dyn Fn(TreeItem, &mut Window, &mut App) + 'static>;
 
@@ -36,7 +46,7 @@ impl Tree {
         }
     }
 
-    /// 叶子节点被点击时触发（分类文件夹不触发）
+    /// 叶子节点被双击时触发（分类文件夹不触发）。
     pub fn on_activate(
         mut self,
         handler: impl Fn(TreeItem, &mut Window, &mut App) + 'static,
@@ -50,7 +60,7 @@ impl Tree {
         self
     }
 
-    /// 任意节点被选中时触发（包括分类文件夹）
+    /// 任意节点被单击选中时触发（包括分类文件夹）。
     pub fn on_select(
         mut self,
         handler: impl Fn(TreeItem, &mut Window, &mut App) + 'static,
@@ -95,8 +105,8 @@ impl RenderOnce for Tree {
                 );
 
             // 非禁用节点统一挂载 on_click：
-            // - on_select 对所有节点触发（含文件夹）
-            // - on_activate 仅对叶子节点触发
+            // - on_select 对所有节点触发（含文件夹）—— 单击语义
+            // - on_activate 仅对叶子节点触发 —— 双击语义(250ms 时间窗口)
             if !entry.is_disabled() {
                 let is_folder = entry.is_folder();
                 let tree_item = entry.item().clone();
@@ -104,13 +114,23 @@ impl RenderOnce for Tree {
                 let on_activate = on_activate.clone();
                 let on_select = on_select.clone();
                 item = item.on_click(move |_, window, cx| {
-                    state.update(cx, |s, cx| {
-                        s.set_selected_index(Some(ix), cx);
-                    });
+                    // 文件夹不改变选中高亮(VSCode 行为:文件夹单击仅展开/折叠,
+                    // 不与文件选中状态混淆)
+                    if !is_folder {
+                        state.update(cx, |s, cx| {
+                            s.set_selected_index(Some(ix), cx);
+                        });
+                    }
+
+                    // 双击检测:仅叶子节点 + 250ms 时间窗口内两次点击
+                    let now = Instant::now();
+                    let dbl_key = format!("tree-dbl-{ix}");
+                    let is_dbl = check_double_click(cx, &dbl_key, now);
+
                     if let Some(handler) = on_select.as_ref() {
                         handler(tree_item.clone(), window, cx);
                     }
-                    if !is_folder {
+                    if !is_folder && is_dbl {
                         if let Some(handler) = on_activate.as_ref() {
                             handler(tree_item.clone(), window, cx);
                         }

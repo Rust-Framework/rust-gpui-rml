@@ -10,6 +10,7 @@
     on-tab-close="on_tab_close"
     on-tab-close-all="on_tab_close_all"
     on-tab-close-others="on_tab_close_others"
+    on-tab-promote="on_tab_promote"
     show-chrome={show_chrome}
     left-size={slot_left_size}>
 

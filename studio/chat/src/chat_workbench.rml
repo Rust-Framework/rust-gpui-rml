@@ -1,0 +1,6 @@
+<component>
+    <div display="flex" flex-direction="column" width="full" height="full" class="chat-pane">
+        <!-- Body: ChatComponent(内部经 <Chat ref="chat" /> 渲染现成 ChatPanel) -->
+        <ChatComponent if={is_chat_active} />
+    </div>
+</component>
