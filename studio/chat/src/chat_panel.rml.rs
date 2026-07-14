@@ -20,7 +20,7 @@ use rml_core::contribution::{
 use rml_core::context::ServiceProviderExt;
 use rml_core::workbench::IWorkbenchManager;
 
-use crate::chat_list_item::{ChatListItem, ChatterItem};
+use crate::chat_list_item::ChatterItem;
 
 /// Arc Studio 聊天面板 —— 微信风格活动栏贡献。
 ///
@@ -93,10 +93,10 @@ impl ChatPanel {
         cx.notify();
     }
 
-    /// 由 ChatListItem 经 `get_or_create_entity` 回调。
+    /// 由列表项 `on-click={open_chatter, item.uri}` (WithArgs 模式) 回调。
     ///
     /// 解析 URI → `IWorkbenchManager::open(uri)` 打开 ChatWorkbench Tab。
-    pub fn open_chatter(&mut self, uri: SharedString, cx: &mut Context<Self>) {
+    pub fn open_chatter(&mut self, uri: SharedString, _ev: &ClickEvent, cx: &mut Context<Self>) {
         // 更新选中态
         if let Some(item) = self.chatter_list.iter().find(|i| i.uri == uri) {
             self.selected_id = item.id.clone();
@@ -108,12 +108,6 @@ impl ChatPanel {
             }
         }
         cx.notify();
-    }
-
-    /// 过滤后的列表(MVP:无搜索框,直接返回全部)。
-    #[computed]
-    pub fn filtered_list(&self) -> Vec<ChatterItem> {
-        self.chatter_list.clone()
     }
 }
 

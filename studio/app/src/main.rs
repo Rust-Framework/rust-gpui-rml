@@ -6,6 +6,7 @@ extern crate rust_rml_core as rml_core;
 // 强制链接 feature crate —— 仅需其 `#[ctor::ctor]` 自注册副作用（Provider + abilities + 面板/工作空间工厂）
 extern crate studio_editor as _;
 extern crate studio_explorer as _;
+extern crate studio_chat as _;
 
 mod startup;
 

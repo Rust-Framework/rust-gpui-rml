@@ -1,0 +1,5 @@
+<component>
+    <!-- 现成 ChatPanel(GPUI View):内置 44px 头部栏 + 消息列表 + 输入区 -->
+    <!-- 经 EntityRef 标签,从 ViewModel 同名字段 `chat: Option<Entity<ChatPanel>>` 克隆 Entity 渲染 -->
+    <Chat ref="chat" width="full" height="full" />
+</component>

@@ -19,7 +19,7 @@ use rml::prelude::*;
 use rml_app::contribution::get_or_create_entity;
 use rml_core::contribution::{IconSpec, register_contribution_ability, register_visual_ability};
 use rml_core::context::ServiceProviderExt;
-use rml_core::workbench::{IWorkbench, Uri, register_workbench_ability};
+use rml_core::workbench::{IWorkbench, register_workbench_ability};
 use studio_core::ability_ext::register_workbench_component_host_ability;
 use studio_core::component::{IWorkbenchComponent, IWorkbenchComponentHost};
 use studio_core::document::{WorkbenchDocument, WorkbenchState};

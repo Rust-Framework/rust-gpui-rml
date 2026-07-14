@@ -13,6 +13,7 @@ rust-rml-di = { workspace = true }
 studio-shell = { workspace = true }
 studio-editor = { workspace = true }
 studio-explorer = { workspace = true }
+studio-chat = { workspace = true }
 gpui = { workspace = true }
 
 [build-dependencies]

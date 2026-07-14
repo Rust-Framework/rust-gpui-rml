@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/core", "crates/macros", "crates/engine", "crates/ui", "crates/ui-term", "crates/app", "crates/di", "crates/rml", "crates/lsp", "demo", "studio/core", "studio/shell", "studio/explorer", "studio/editor", "studio/app"]
+members = ["crates/core", "crates/macros", "crates/engine", "crates/ui", "crates/ui-term", "crates/app", "crates/di", "crates/rml", "crates/lsp", "demo", "studio/core", "studio/shell", "studio/explorer", "studio/editor", "studio/chat", "studio/app"]
 # dap 暂移出 workspace：其 lldb 重型 git 依赖在受限网络下阻塞编译。
 # 需要时 cd 进对应目录单独构建，或重新加入 members。
 exclude = ["crates/dap"]
@@ -36,6 +36,7 @@ studio-core = { path = "studio/core" }
 studio-shell = { path = "studio/shell" }
 studio-explorer = { path = "studio/explorer" }
 studio-editor = { path = "studio/editor" }
+studio-chat = { path = "studio/chat" }
 
 # Git worktree 操作(git2-rs,libgit2 绑定)
 git2 = "0.19"

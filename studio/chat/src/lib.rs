@@ -18,6 +18,8 @@ extern crate studio_core as studio_core;
 
 #[path = "chat_panel.rml.rs"]
 pub mod chat_panel;
+#[path = "chat_list_item.rml.rs"]
+pub mod chat_list_item;
 #[path = "chat_workbench.rml.rs"]
 pub mod chat_workbench;
 #[path = "chat_component.rml.rs"]

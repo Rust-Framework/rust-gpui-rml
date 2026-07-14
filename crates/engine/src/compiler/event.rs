@@ -254,12 +254,20 @@ pub fn apply_event(name: &str, handler: &EventHandler, _ctx: &CodegenCtx) -> Str
                         method = method,
                     )
                 } else {
+                    // 预计算 p0 到 move 闭包外:确保 arg 表达式(如 each 循环变量
+                    // `item.uri`)在迭代期间求值并 clone 为 owned 值,避免 move 闭包
+                    // 捕获非 'static 引用导致 cx.listener 的 'static 约束失败。
+                    // 闭包内再 clone p0:cx.listener 返回 Fn 闭包(可多次调用),
+                    // 不能 move out 捕获变量,需每次调用克隆一份传入方法。
                     format!(
-                        ".{}(cx.listener(move |this, ev: &{}, _window, cx| {{\n                    \
-                         let p0 = {}.clone();\n                    let rml_ev = {};\n                    \
-                         this.{}(p0, &rml_ev, cx);\n                    \
-                         if rml_ev.is_propagation_stopped() {{ cx.stop_propagation(); }}\n                }}))",
-                        on_method, gpui_type, arg, convert_expr, method
+                        ".{}({{\n    \
+                         let p0 = {}.clone();\n    \
+                         cx.listener(move |this, ev: &{}, _window, cx| {{\n        \
+                         let rml_ev = {};\n        \
+                         this.{}(p0.clone(), &rml_ev, cx);\n        \
+                         if rml_ev.is_propagation_stopped() {{ cx.stop_propagation(); }}\n    \
+                         }})\n}})",
+                        on_method, arg, gpui_type, convert_expr, method
                     )
                 }
             }
@@ -767,7 +775,7 @@ mod tests {
         let handler = EventHandler::WithArgs("set_value".into(), vec!["42".into()]);
         let code = apply_event("on_click", &handler, &ctx());
         assert!(code.contains("let p0 = 42.clone();"));
-        assert!(code.contains("this.set_value(p0,"));
+        assert!(code.contains("this.set_value(p0.clone(),"));
     }
 
     #[test]
