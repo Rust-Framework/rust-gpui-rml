@@ -330,7 +330,6 @@ pub struct TabWindowShell {
     /// "关闭其他"右键菜单项触发时调用，参数为保留选项卡的索引
     /// （透传到 Tabs::on_close_others）。
     on_tab_close_others: Option<TabClickHandler>,
-    on_chrome_toggle: Option<ChromeToggleHandler>,
     slot_left: Option<SlotRenderer>,
     slot_right: Option<SlotRenderer>,
     slot_bottom: Option<SlotRenderer>,
@@ -356,7 +355,6 @@ impl TabWindowShell {
             on_tab_close: None,
             on_tab_close_all: None,
             on_tab_close_others: None,
-            on_chrome_toggle: None,
             slot_left: None,
             slot_right: None,
             slot_bottom: None,
@@ -460,11 +458,6 @@ impl TabWindowShell {
         self
     }
 
-    pub fn on_chrome_toggle(mut self, f: impl Fn(&mut Window, &mut App) + 'static) -> Self {
-        self.on_chrome_toggle = Some(Rc::new(f));
-        self
-    }
-
     pub fn slot_left(
         mut self,
         renderer: Option<
@@ -551,7 +544,13 @@ impl ParentElement for TabWindowShell {
 
 impl RenderOnce for TabWindowShell {
     fn render(mut self, window: &mut Window, cx: &mut App) -> impl IntoElement {
-        let show_chrome = self.show_chrome;
+        // chrome toggle 状态由 TabWindow 内部维护,不暴露给外部。
+        // show_chrome builder 仅作为初始值,后续切换由 logo 点击直接操作 Entity。
+        let chrome_state: Entity<Mutex<bool>> =
+            window.use_keyed_state("tab-window-show-chrome", cx, |_, _| {
+                Mutex::new(self.show_chrome)
+            });
+        let show_chrome = *chrome_state.read(cx).lock().unwrap();
 
         // === 计算折叠标志 + 预创建 resizable state entities ===
         let left_collapsed = self.left_width <= SLOT_COLLAPSED_THRESHOLD;
@@ -577,6 +576,61 @@ impl RenderOnce for TabWindowShell {
             window.use_keyed_state("tab-window-h-state", cx, |_, _| ResizableState::default());
         let v_state: Entity<ResizableState> =
             window.use_keyed_state("tab-window-v-state", cx, |_, _| ResizableState::default());
+
+        // === 左侧插槽宽度持久化 ===
+        // 当用户拖拽调整左侧面板宽度后,折叠再展开时需恢复拖拽后的宽度。
+        //
+        // 核心问题:折叠时 left 面板移出 h_resizable,h_resizable 仅剩 center(1 panel)。
+        // sync_panels_count 将 sizes 截断为 [center_width]。展开时 left 重新加入(2 panels),
+        // sync_panels_count 在末尾追加 PANEL_MIN_SIZE → sizes = [center_width, PANEL_MIN_SIZE]。
+        // 此时 sizes[0] 是 center 的宽度(很宽),若直接保存会覆盖正确的拖拽宽度。
+        //
+        // 解决方案:
+        // 1. 仅在"稳定展开状态"保存实际拖拽宽度(非折叠→展开转换期间)
+        // 2. 折叠→展开转换时:重置 h_state,使 sync_panels_count 从空状态重建
+        // 3. 渲染时:使用保存的宽度作为 resizable_panel().size() 的 initial_size
+        let saved_left_width: Entity<Mutex<Option<Pixels>>> =
+            window.use_keyed_state("tab-window-saved-left-width", cx, |_, _| {
+                Mutex::new(None)
+            });
+        let prev_left_collapsed: Entity<Mutex<bool>> =
+            window.use_keyed_state("tab-window-prev-left-collapsed", cx, |_, _| {
+                Mutex::new(false)
+            });
+
+        // 读取上一次的折叠状态(在宽度保存之前读取,用于判断是否处于转换中)
+        let was_left_collapsed = *prev_left_collapsed.read(cx).lock().unwrap();
+
+        // 仅在稳定展开状态(!was_collapsed && !left_collapsed)保存实际拖拽宽度:
+        // - has_left: 面板在 h_resizable 中(sizes[ix] 对应左侧面板)
+        // - 非转换期间:折叠→展开转换时 sizes[0] 是旧 center 宽度,不能保存
+        if has_left && !was_left_collapsed && !left_collapsed {
+            if let Some(ix) = left_ix {
+                let sizes = h_state.read(cx).sizes();
+                if let Some(&actual_width) = sizes.get(ix) {
+                    if actual_width > SLOT_COLLAPSED_THRESHOLD {
+                        *saved_left_width.read(cx).lock().unwrap() = Some(actual_width);
+                    }
+                }
+            }
+        }
+
+        // 更新折叠状态 + 检测折叠→展开转换,重置 h_state
+        {
+            let mut prev = prev_left_collapsed.read(cx).lock().unwrap();
+            *prev = left_collapsed;
+            if was_left_collapsed && !left_collapsed {
+                drop(prev); // 释放锁后再 update h_state
+                h_state.update(cx, |state, cx| {
+                    *state = ResizableState::default();
+                    cx.notify();
+                });
+            }
+        }
+
+        // 使用保存的宽度作为初始尺寸(无保存值时回退到 left_width)
+        let left_initial_size =
+            (*saved_left_width.read(cx).lock().unwrap()).unwrap_or(self.left_width);
 
         // 持久化 prev_size（用于 maximize 记录原 size、restore 还原）
         let prev_left: Entity<Mutex<Option<Pixels>>> =
@@ -627,7 +681,6 @@ impl RenderOnce for TabWindowShell {
             .take()
             .map(|f| f(&footer_scope, window, cx));
 
-        let on_chrome_toggle = self.on_chrome_toggle.clone();
         let chevron = if show_chrome {
             IconName::ChevronLeft
         } else {
@@ -636,6 +689,7 @@ impl RenderOnce for TabWindowShell {
 
         let chrome_toggle = self.icon.map(|app_icon| {
             let (hover_fg, hover_bg, active_bg) = title_bar_action_colors(cx, false);
+            let chrome_state = chrome_state.clone();
             div()
                 .id("tab-window-chrome-toggle")
                 .flex()
@@ -648,10 +702,12 @@ impl RenderOnce for TabWindowShell {
                 .text_color(cx.theme().foreground)
                 .hover(|style| style.bg(hover_bg).text_color(hover_fg))
                 .active(|style| style.bg(active_bg).text_color(hover_fg))
-                .on_click(move |_, window, cx| {
-                    if let Some(f) = &on_chrome_toggle {
-                        f(window, cx);
-                    }
+                .on_click(move |_, _window, cx| {
+                    chrome_state.update(cx, |state, cx| {
+                        let mut guard = state.lock().unwrap();
+                        *guard = !*guard;
+                        cx.notify();
+                    });
                 })
                 .child(
                     h_flex()
@@ -913,6 +969,7 @@ impl RenderOnce for TabWindowShell {
                             div()
                                 .id("tab-window-scroll-content")
                                 .w_full()
+                                .h_full()
                                 .when_some(selected_body, |this, body_fn| {
                                     this.child(body_fn(window, cx))
                                 })
@@ -1002,7 +1059,7 @@ impl RenderOnce for TabWindowShell {
             Some(left) => {
                 main_h = main_h.child(
                     resizable_panel()
-                        .size(self.left_width)
+                        .size(left_initial_size)
                         .flex_none()
                         .size_range(px(48.)..px(600.))
                         .bg(cx.theme().transparent)

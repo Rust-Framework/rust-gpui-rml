@@ -23,7 +23,19 @@ use rml_core::workbench::Uri;
 /// - `IContribution::name()` → 切换按钮标签
 /// - `IContribution::icon()` → 切换按钮图标
 /// - `IVisual::render()` → 组件视图内容
-pub trait IWorkbenchComponent: IVisualContribution {}
+/// - `IWorkbenchComponent::matches()` → 判断是否能处理指定 URI
+pub trait IWorkbenchComponent: IVisualContribution {
+    /// 判断此组件是否能处理指定 URI 的资源。
+    ///
+    /// 工作台在渲染时查询所有已注册组件,按 `matches(uri)` 过滤。
+    /// 匹配多个组件时 Header 显示视图切换按钮;仅匹配一个时直接渲染。
+    ///
+    /// 默认返回 `true` —— 作为默认视图组件(如 CodeWorkbench)。
+    /// 特化组件(如 RmlDesignComponent 仅 .rml)应 override 此方法。
+    fn matches(&self, _uri: &Uri) -> bool {
+        true
+    }
+}
 
 /// 文本位置 —— 行/列从 0 开始。
 ///

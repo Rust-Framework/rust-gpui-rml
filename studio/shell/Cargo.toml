@@ -12,7 +12,6 @@ rust-rml-app = { workspace = true }
 rust-rml-di = { workspace = true }
 rust-rml-ui = { workspace = true }
 studio-core = { workspace = true }
-studio-explorer = { workspace = true }
 gpui = { workspace = true }
 log = { workspace = true }
 flume = "0.12"

@@ -1,6 +1,14 @@
 <component>
-    <div display="flex" flex-direction="column" class="editor-pane" size-full="true">
-        <div class="editor-area" size-full="true">
+    <div display="flex" flex-direction="column" width="full" height="full" class="editor-pane">
+        <!-- Header: breadcrumbs (left) + view switcher (right) -->
+        <div class="editor-header" display="flex" align-items="center" justify-content="space-between" height="36px" flex-shrink="0" padding-left="12px" padding-right="8px">
+            <span class="breadcrumb-text" font-size="13px">{breadcrumb_text}</span>
+            <div if={show_view_switcher} class="view-switcher" display="flex" align-items="center" gap="4px">
+                <span each={name in view_names} class="view-button" font-size="12px" padding-left="6px" padding-right="6px">{name}</span>
+            </div>
+        </div>
+        <!-- Body: CodeEditor -->
+        <div class="editor-area" flex="1" min-height="0">
             <CodeEditor class="rml-code-editor" height="full" />
         </div>
     </div>

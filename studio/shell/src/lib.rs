@@ -20,10 +20,18 @@ extern crate studio_core as studio_core;
 #[path = "main_window.rml.rs"]
 pub mod main_window;
 pub mod di;
+pub mod menu_commands;
+pub mod menu_view_model;
 pub mod shell_manager;
+pub mod status_items;
+pub mod status_view_model;
 pub mod welcome;
 
 pub use main_window::MainWindow;
+
+// 引入 build.rs 生成的贡献注册代码（`#[contribute]` 宏生成的 `__rml_register_*` 函数路由）。
+// `#[rml::main]` 宏会自动为 bin crate 注入此宏，但 lib crate 需手动调用。
+rml::embed_contributions!();
 
 /// 自动注册 —— `#[ctor::ctor]` 在 `main` 之前执行:
 /// 1. 注册能力 cast（IContribution + IVisual + IWorkbench）

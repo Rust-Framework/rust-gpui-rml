@@ -352,11 +352,6 @@ impl MainWindow {
     }
 
     #[command]
-    pub fn on_chrome_toggle(&mut self, cx: &mut Context<Self>) {
-        self.show_chrome = !self.show_chrome;
-    }
-
-    #[command]
     pub fn on_tab_click(&mut self, index: usize, cx: &mut Context<Self>) {
         self.activate_by_index(index);
         self.__rml_bump_version("activated");

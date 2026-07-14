@@ -1,0 +1,18 @@
+{
+  "rml.tab.close": "关闭",
+  "rml.tab.close_all": "关闭全部",
+  "rml.tab.close_others": "关闭其他",
+  "rml.tab.promote": "固定标签页",
+
+  "studio.menu.file": "文件",
+  "studio.menu.view": "视图",
+  "studio.menu.help": "帮助",
+
+  "studio.menu.file_exit": "退出",
+  "studio.menu.view_theme": "切换主题",
+  "studio.menu.view_lang_zh": "中文",
+  "studio.menu.view_lang_en": "English",
+  "studio.menu.help_about": "关于",
+
+  "studio.status.ready": "就绪"
+}

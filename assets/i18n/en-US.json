@@ -1,0 +1,20 @@
+{
+    "studio": {
+        "menu": {
+            "file": "File",
+            "view": "View",
+            "help": "Help",
+            "file_exit": "Exit",
+            "view_theme": "Toggle Theme",
+            "view_lang_en": "English",
+            "view_lang_zh": "中文",
+            "help_about": "About"
+        },
+        "status": {
+            "ready": "Ready",
+            "language": "Language",
+            "theme": "Theme",
+            "encoding": "UTF-8"
+        }
+    }
+}

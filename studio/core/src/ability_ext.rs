@@ -48,6 +48,15 @@ pub fn register_workbench_component_ability<T: IWorkbenchComponent + 'static>() 
     });
 }
 
+/// `dyn IContribution` 薄委托 —— trait upcast 到 `&dyn IValue` 后调用主 impl,
+/// 使注册表返回的 `Arc<dyn IContribution>` 可直接调用 `as_workbench_component()`。
+impl WorkbenchComponentAbilityExt for dyn rml_core::contribution::IContribution {
+    fn as_workbench_component(&self) -> Option<&dyn IWorkbenchComponent> {
+        let iv: &dyn IValue = self;
+        iv.as_workbench_component()
+    }
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 //  IEditorCommand
 // ──────────────────────────────────────────────────────────────────────────

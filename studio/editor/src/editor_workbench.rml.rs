@@ -15,8 +15,10 @@ use rml_app::contribution::get_or_create_entity;
 use rml_core::contribution::{
     IconSpec, register_contribution_ability, register_visual_ability,
 };
-use rml_core::workbench::{IWorkbench, register_workbench_ability};
+use rml_core::workbench::{IWorkbench, Uri, register_workbench_ability};
 use rust_rml_client::{file_path_to_uri, LanguageClient};
+use studio_core::ability_ext::WorkbenchComponentAbilityExt;
+use studio_core::get_workbench_components;
 
 /// 代码编辑器工作台 —— IWorkbench 实现，承载文件编辑 + LSP 集成。
 ///
@@ -34,6 +36,9 @@ pub struct EditorWorkbench {
     language_client: Option<Arc<LanguageClient>>,
     uri: SharedString,
     file_path: PathBuf,
+    /// 匹配当前 URI 的视图组件名称列表(each 指令要求字段而非方法)。
+    /// 在 `init_editor` 中经 `compute_view_names()` 填充。
+    view_names: Vec<SharedString>,
 }
 
 impl IContribution for EditorWorkbench {
@@ -55,7 +60,21 @@ impl IContribution for EditorWorkbench {
 impl IVisual for EditorWorkbench {
     fn render(&self, window: &mut Window, cx: &mut App) -> AnyElement {
         let entity = get_or_create_entity::<EditorWorkbench>(cx);
-        entity.update(cx, |this, ctx| this.render(window, ctx).into_any_element())
+        // get_or_create_entity 按 TypeId 缓存,所有 EditorWorkbench 实例共享同一 Entity。
+        // 当 URI 变化时(打开不同文件),需重新初始化编辑器以加载新文件内容。
+        let uri = self.uri.clone();
+        let file_path = self.file_path.clone();
+        let view_names = self.compute_view_names();
+        entity.update(cx, |this, ctx| {
+            let uri_changed = this.uri != uri;
+            this.uri = uri;
+            this.file_path = file_path;
+            this.view_names = view_names;
+            if uri_changed {
+                this.init_editor(window, ctx);
+            }
+            this.render(window, ctx).into_any_element()
+        })
     }
 }
 
@@ -86,6 +105,50 @@ impl IWorkbench for EditorWorkbench {
 }
 
 impl EditorWorkbench {
+    /// 面包屑导航文本 —— 显示最后 3 个路径段,用 › 分隔。
+    #[computed]
+    pub fn breadcrumb_text(&self) -> SharedString {
+        if self.file_path.as_os_str().is_empty() {
+            return "untitled".into();
+        }
+        let segments: Vec<&std::ffi::OsStr> = self.file_path.iter().rev().take(3).collect();
+        segments
+            .into_iter()
+            .rev()
+            .filter_map(|s| s.to_str())
+            .collect::<Vec<_>>()
+            .join(" › ")
+            .into()
+    }
+
+    /// 查询匹配当前 URI 的视图组件名称列表。
+    ///
+    /// 查询全局 IWorkbenchComponent 注册表,按 `matches(uri)` 过滤。
+    /// 仅当多个组件匹配时,Header 显示视图切换按钮。
+    ///
+    /// 注:`each` 指令 codegen 生成字段访问 `self.view_names.iter()`,
+    /// 因此 `view_names` 必须是字段而非 `#[computed]` 方法。
+    /// 字段在 `init_editor` / `IVisual::render` 中经此方法填充。
+    fn compute_view_names(&self) -> Vec<SharedString> {
+        let Ok(uri) = self.uri.parse::<Uri>() else {
+            return Vec::new();
+        };
+        get_workbench_components()
+            .iter()
+            .filter_map(|c| {
+                c.as_workbench_component()
+                    .filter(|wc| wc.matches(&uri))
+                    .map(|wc| wc.name())
+            })
+            .collect()
+    }
+
+    /// 是否显示视图切换按钮 —— 仅当多个视图组件匹配时显示。
+    #[computed]
+    pub fn show_view_switcher(&self) -> bool {
+        self.view_names.len() > 1
+    }
+
     /// 设置文件路径和 URI（由 EditorProvider 在构造后调用）。
     pub fn set_file(&mut self, uri: SharedString, file_path: PathBuf) {
         self.uri = uri;
@@ -93,8 +156,16 @@ impl EditorWorkbench {
     }
 
     /// 初始化编辑器：读取文件内容 → 创建 InputState → 安装 LSP providers。
+    ///
+    /// 无论是否成功解析 URI 或读取文件,都必须创建 `editor_state`,
+    /// 否则生成代码 `.expect("init editor_state in on_loaded")` 会 panic。
     fn init_editor(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        // 填充视图组件名称列表(Header 视图切换按钮数据源)
+        self.view_names = self.compute_view_names();
+
         if self.file_path.as_os_str().is_empty() {
+            self.editor_state =
+                Some(cx.new(|cx| InputState::new(window, cx).multi_line(true)));
             return;
         }
 
@@ -104,13 +175,11 @@ impl EditorWorkbench {
         // 创建 LanguageClient（按工作区根目录缓存，避免重复启动 LSP server）
         let client = self.get_or_create_language_client(&self.file_path);
 
-        let uri = match file_path_to_uri(&self.file_path) {
-            Ok(u) => u,
-            Err(_) => return,
-        };
+        // URI 解析失败时跳过 LSP 集成,但仍创建可用的编辑器
+        let uri = file_path_to_uri(&self.file_path).ok();
 
-        if let Some(ref client) = client {
-            client.open_document(&uri, &text);
+        if let (Some(ref client), Some(ref uri)) = (&client, &uri) {
+            client.open_document(uri, &text);
         }
 
         let editor_state = cx.new(|cx| {
@@ -118,14 +187,14 @@ impl EditorWorkbench {
                 .code_editor(language)
                 .multi_line(true)
                 .default_value(&text);
-            if let Some(ref client) = client {
+            if let (Some(ref client), Some(ref uri)) = (&client, &uri) {
                 client.install_providers(&mut state, uri.clone());
             }
             state
         });
 
         // 文档变更同步到 LSP server
-        if let Some(ref client) = client {
+        if let (Some(ref client), Some(ref uri)) = (&client, &uri) {
             let uri_clone = uri.clone();
             let client_clone = client.clone();
             cx.observe(&editor_state, move |_: &mut Self, state, obs_cx| {

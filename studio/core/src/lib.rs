@@ -6,6 +6,7 @@
 //! - [`command::IEditorCommand`] —— 编辑器命令,扩展 `ICommand` 添加 `gesture()`
 //! - [`worktree::IWorktree`] —— 文件系统抽象,AI 并行编程依赖此能力
 //! - [`workspace::IWorkspace`] / [`workspace::IWorkspaceManager`] —— IDE 工作空间管理
+//! - [`registry`] —— 工作空间 opener 注册表(`#[ctor::ctor]` 自注册模式)
 //!
 //! 所有 `*AbilityExt` trait 与 `register_*_ability` 函数集中定义在 [`ability_ext`],
 //! 避免分散到多个模块。
@@ -16,5 +17,11 @@ extern crate rust_rml_core as rml_core;
 pub mod ability_ext;
 pub mod command;
 pub mod component;
+pub mod registry;
 pub mod worktree;
 pub mod workspace;
+
+pub use registry::{
+    get_workbench_components, open_workspace, register_workbench_component,
+    register_workspace_opener,
+};

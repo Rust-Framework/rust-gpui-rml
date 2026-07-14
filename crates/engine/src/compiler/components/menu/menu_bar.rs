@@ -384,11 +384,20 @@ fn gen_menu_bar_with_children_bind(
 
     let fn_name = format!("__rml_popup_item_{bar_id}");
 
+    // MenuViewModel 的模块路径由 build.rs 的 .namespace() 配置决定：
+    // - 未设置 namespace 时路径为 crate::menu_view_model::MenuViewModel
+    // - 设置 namespace="shell" 时路径为 crate::shell::menu_view_model::MenuViewModel
+    let vm_mod = if ctx.view_module_path.is_empty() {
+        String::new()
+    } else {
+        format!("{}::", ctx.view_module_path)
+    };
+
     // 递归辅助函数 —— 嵌套层级(PopupMenu)渲染,同一函数复用于所有深度
     // 使用具体类型 MenuViewModel 而非泛型,以便调用 .label()/.children/.command() 方法
     // 采用值传递(PopupMenu -> PopupMenu)而非 &mut,避免访问私有的 PopupMenu::new() 构造函数
     let fn_def = format!(
-        "fn {fn_name}(menu: rml_ui::PopupMenu, {item_var}: &crate::shell::menu_view_model::MenuViewModel, window: &mut gpui::Window, cx: &mut gpui::Context<rml_ui::PopupMenu>) -> rml_ui::PopupMenu {{\n                let __rml_label = {label_code}.clone();\n                let __rml_children = {children_code}.clone();\n                if __rml_children.is_empty() {{\n                    let item = rml_ui::PopupMenuItem::new(__rml_label){onclick_code};\n                    menu.item(item)\n                }} else {{\n                    menu.submenu(__rml_label, window, cx, move |submenu, window, cx| {{\n                        let mut submenu = rml_ui::configure_menu_bar_popup(submenu);\n                        for __rml_c in &__rml_children {{\n                            submenu = {fn_name}(submenu, __rml_c, window, cx);\n                        }}\n                        submenu\n                    }})\n                }}\n            }}"
+        "fn {fn_name}(menu: rml_ui::PopupMenu, {item_var}: &crate::{vm_mod}menu_view_model::MenuViewModel, window: &mut gpui::Window, cx: &mut gpui::Context<rml_ui::PopupMenu>) -> rml_ui::PopupMenu {{\n                let __rml_label = {label_code}.clone();\n                let __rml_children = {children_code}.clone();\n                if __rml_children.is_empty() {{\n                    let item = rml_ui::PopupMenuItem::new(__rml_label){onclick_code};\n                    menu.item(item)\n                }} else {{\n                    menu.submenu(__rml_label, window, cx, move |submenu, window, cx| {{\n                        let mut submenu = rml_ui::configure_menu_bar_popup(submenu);\n                        for __rml_c in &__rml_children {{\n                            submenu = {fn_name}(submenu, __rml_c, window, cx);\n                        }}\n                        submenu\n                    }})\n                }}\n            }}"
     );
 
     // 顶层 MenuBar + children map —— 顶层叶子用 menu_bar_button,分支用 dropdown_menu

@@ -67,9 +67,10 @@ impl RenderOnce for NativeStatusBar {
         let region = || h_flex().overflow_hidden().items_center().gap_2();
 
         h_flex()
+            .h(gpui::px(22.))
             .items_center()
             .gap_2()
-            .py_1()
+            .py_0()
             .px_2()
             .bg(cx.theme().status_bar)
             .text_xs()

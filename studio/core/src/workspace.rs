@@ -19,7 +19,7 @@ pub trait IWorkspace: IWorktree {}
 
 /// 工作空间管理器 —— 管理多个已打开的工作空间。
 ///
-/// 镜像 `IWorkbenchManager` 模式。`StudioShellManager` 直接 impl 此 trait。
+/// 镜像 `IWorkbenchManager` 模式。`ArcShellManager` 直接 impl 此 trait。
 /// 注册为 DI singleton,经 `provider.get::<dyn IWorkspaceManager>()` 解析。
 pub trait IWorkspaceManager: Send + Sync + 'static {
     /// 添加工作空间;若根路径已存在则忽略。

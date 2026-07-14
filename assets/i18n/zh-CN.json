@@ -1,0 +1,20 @@
+{
+    "studio": {
+        "menu": {
+            "file": "文件",
+            "view": "视图",
+            "help": "帮助",
+            "file_exit": "退出",
+            "view_theme": "切换主题",
+            "view_lang_en": "English",
+            "view_lang_zh": "中文",
+            "help_about": "关于"
+        },
+        "status": {
+            "ready": "就绪",
+            "language": "语言",
+            "theme": "主题",
+            "encoding": "UTF-8"
+        }
+    }
+}

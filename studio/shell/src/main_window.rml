@@ -8,11 +8,37 @@
     selected-index={selected_tab}
     on-tab-click="on_tab_click"
     on-tab-close="on_tab_close"
+    on-tab-close-all="on_tab_close_all"
+    on-tab-close-others="on_tab_close_others"
     show-chrome={show_chrome}
     left-size={slot_left_size}>
 
     <template slot="left">
         <ActivityBar ref="activity_bar" />
+    </template>
+
+    <template slot="menu">
+        <menu-bar>
+            <menu-item
+                each={m in menus}
+                label={m.label()}
+                children={m.children}
+                command={m.command()} />
+        </menu-bar>
+    </template>
+
+    <template slot="footer">
+        <native-status-bar>
+            <div class="flex gap-2">
+                <component each={s in status_left} content={s.render(_window, cx)} />
+            </div>
+            <div class="flex gap-2">
+                <component each={s in status_center} content={s.render(_window, cx)} />
+            </div>
+            <div class="flex gap-2">
+                <component each={s in status_right} content={s.render(_window, cx)} />
+            </div>
+        </native-status-bar>
     </template>
 
 </tab-window>

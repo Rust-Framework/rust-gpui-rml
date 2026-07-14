@@ -3,6 +3,7 @@
 //! 此 crate 实现:
 //! - [`editor_workbench`] —— `EditorWorkbench`(IWorkbench + RML 组件，代码编辑 + LSP 集成)
 //! - [`editor_provider`] —— `EditorProvider`(IWorkbenchProvider，schema="file")
+//! - [`code_workbench`] —— `CodeWorkbench`(IWorkbenchComponent，默认代码视图)
 //!
 //! 服务自注册: `#[ctor::ctor]` 自动注册 `EditorProvider` 为 `IWorkbenchProvider("file")`，
 //! 并注册 `EditorWorkbench` 的能力 cast（IContribution + IVisual + IWorkbench）。
@@ -14,11 +15,13 @@ extern crate rust_rml_ui as rml_ui;
 
 #[path = "editor_workbench.rml.rs"]
 pub mod editor_workbench;
+pub mod code_workbench;
 pub mod editor_provider;
 
 /// 自动注册 —— `#[ctor::ctor]` 在 `main` 之前执行:
 /// 1. 注册能力 cast（IContribution + IVisual + IWorkbench）
 /// 2. 注册 `EditorProvider` 为 keyed `IWorkbenchProvider("file")`
+/// 3. 注册 `CodeWorkbench` 为默认 IWorkbenchComponent
 #[rml_core::ctor::ctor]
 fn register_editor_services() {
     use std::sync::Arc;
@@ -26,6 +29,7 @@ fn register_editor_services() {
     use rust_rml_di::{auto_register, ServiceCollection};
 
     crate::editor_workbench::register_editor_abilities();
+    crate::code_workbench::register_code_workbench();
     auto_register(|s: &mut ServiceCollection| {
         s.add_keyed_singleton::<dyn IWorkbenchProvider>("file", |_| {
             Arc::new(crate::editor_provider::EditorProvider) as Arc<dyn IWorkbenchProvider>

@@ -3,8 +3,9 @@
 extern crate rust_rml_engine as rml;
 extern crate rust_rml_app as rml_app;
 extern crate rust_rml_core as rml_core;
-// 强制链接 studio-editor —— 仅需其 `#[ctor::ctor]` 自注册副作用（EditorProvider + abilities）
+// 强制链接 feature crate —— 仅需其 `#[ctor::ctor]` 自注册副作用（Provider + abilities + 面板/工作空间工厂）
 extern crate studio_editor as _;
+extern crate studio_explorer as _;
 
 mod startup;
 

@@ -1,0 +1,18 @@
+{
+  "rml.tab.close": "Close",
+  "rml.tab.close_all": "Close All",
+  "rml.tab.close_others": "Close Others",
+  "rml.tab.promote": "Promote",
+
+  "studio.menu.file": "File",
+  "studio.menu.view": "View",
+  "studio.menu.help": "Help",
+
+  "studio.menu.file_exit": "Exit",
+  "studio.menu.view_theme": "Toggle Theme",
+  "studio.menu.view_lang_zh": "中文",
+  "studio.menu.view_lang_en": "English",
+  "studio.menu.help_about": "About",
+
+  "studio.status.ready": "Ready"
+}
