@@ -757,10 +757,10 @@ impl RenderOnce for TabWindowShell {
             // 用 use_keyed_state 跟踪上一次的 show_chrome（init 仅首次渲染调用），
             // 后续渲染返回持久化 Entity，state.update 触发 cx.notify 重渲。
             let chrome_state =
-                window.use_keyed_state("tab-window-chrome-anim", cx, |_, _| self.show_chrome);
+                window.use_keyed_state("tab-window-chrome-anim", cx, |_, _| show_chrome);
             let prev_chrome = *chrome_state.read(cx);
-            let chrome_changed = prev_chrome != self.show_chrome;
-            let target_chrome = self.show_chrome;
+            let chrome_changed = prev_chrome != show_chrome;
+            let target_chrome = show_chrome;
 
             // 状态变更时，动画结束后同步 keyed_state → 触发重渲使 chrome_changed 归 false。
             if chrome_changed {
@@ -796,7 +796,7 @@ impl RenderOnce for TabWindowShell {
                         this.max_w(px(800.0) * progress).opacity(progress)
                     })
                     .into_any_element()
-            } else if self.show_chrome {
+            } else if show_chrome {
                 h_flex()
                     .h_full()
                     .items_center()
