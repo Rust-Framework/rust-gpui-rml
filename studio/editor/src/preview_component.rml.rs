@@ -8,7 +8,7 @@
 //! ```text
 //! CodeComponent 编辑 → InputState → observe → document.set_content
 //!   ↓
-//! PreviewComponent::IVisual::render → sync_from_document
+//! PreviewComponent::before_render → sync_from_document
 //!   → 读 document.content + kind → 更新 content/kind 字段 → cx.notify
 //!   → RML 模板重新渲染 <Markdown content={content} />
 //! ```
@@ -24,10 +24,10 @@
 
 use std::sync::Arc;
 
-use gpui::{AnyElement, App, SharedString, Window};
+use gpui::{SharedString, Window};
 use rml::prelude::*;
-use rml_app::contribution::get_or_create_entity;
-use rml_core::contribution::{IconSpec, IContribution, IVisual};
+use rml_app::contribution::get_active_entity;
+use rml_core::contribution::{IconSpec, IContribution};
 use rml_core::workbench::Uri;
 use studio_core::ability_ext::register_workbench_component_ability;
 use studio_core::component::{IWorkbenchComponent, IWorkbenchComponentHost};
@@ -39,7 +39,7 @@ use crate::editor_workbench::EditorWorkbench;
 /// 只读预览视图组件。
 ///
 /// `matches(uri)` 仅匹配 `.md`/`.markdown`/`.html` —— 其他文件不显示 Preview 按钮。
-/// 经 `IVisual::render` 中 `sync_from_document` 同步 host document 内容到字段,
+/// 经 `ILifecycle::before_render` 中 `sync_from_document` 同步 host document 内容到字段,
 /// RML 模板按 `kind` 条件分支渲染。
 #[component]
 #[derive(Default)]
@@ -66,20 +66,14 @@ impl IContribution for PreviewComponent {
     }
 }
 
-impl IVisual for PreviewComponent {
-    fn render(&self, window: &mut Window, cx: &mut App) -> AnyElement {
-        let entity = get_or_create_entity::<PreviewComponent>(cx);
-        entity.update(cx, |this, ctx| {
-            // 每帧同步 host document 变化(CodeComponent 编辑 → document.set_content → 此处刷新)
-            this.sync_from_document(ctx);
-            this.render(window, ctx).into_any_element()
-        })
-    }
-}
-
 impl ILifecycle for PreviewComponent {
     fn on_loaded(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
-        // 首次加载同步初始内容(IVisual::render 也会调用,但首次 render 前先初始化避免空闪)
+        // 首次加载同步初始内容(before_render 也会调用,但首次 render 前先初始化避免空闪)
+        self.sync_from_document(cx);
+    }
+
+    fn before_render(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
+        // 每帧同步 host document 变化(CodeComponent 编辑 → document.set_content → 此处刷新)
         self.sync_from_document(cx);
     }
 }
@@ -98,10 +92,13 @@ impl IWorkbenchComponent for PreviewComponent {
 impl PreviewComponent {
     /// 从 host document 同步 content + kind + breadcrumb_text。
     ///
-    /// 在 `IVisual::render` 中每帧调用,经 `last_synced_content` 比对避免重复更新。
+    /// 在 `ILifecycle::before_render` 中每帧调用,经 `last_synced_content` 比对避免重复更新。
     /// CodeComponent 编辑 → document.set_content → 下次 render 检测 content 变化 → 刷新。
-    fn sync_from_document(&mut self, cx: &mut Context<Self>) {
-        let host = get_or_create_entity::<EditorWorkbench>(cx);
+    pub fn sync_from_document(&mut self, cx: &mut Context<Self>) {
+        let host = match get_active_entity::<EditorWorkbench>(cx) {
+            Some(h) => h,
+            None => return, // host 尚未渲染(首次或非 EditorWorkbench 上下文),跳过
+        };
         let (content, kind, uri) = {
             let host_ref = host.read(cx);
             let doc = IWorkbenchComponentHost::document(host_ref);

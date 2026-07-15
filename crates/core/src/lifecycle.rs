@@ -29,4 +29,31 @@ pub trait ILifecycle {
         Self: Sized,
     {
     }
+
+    /// 每帧渲染前调用，用于同步状态、初始化等。默认空实现。
+    ///
+    /// 由框架在 `Render::render` 中自动调用（`on_loaded` 之后、模板渲染之前），
+    /// 统一两条渲染路径（RML 模板内嵌 + 贡献点 `IVisual::render`）的状态同步入口。
+    ///
+    /// 典型用途：从 host document 同步状态、检测 URI 变化、重新初始化子组件等。
+    /// 替代手写 `IVisual::render` 中的状态同步逻辑，每个组件自治，父组件无需协调。
+    fn before_render(&mut self, _window: &mut Window, _cx: &mut Context<Self>)
+    where
+        Self: Sized,
+    {
+    }
+
+    /// IWorkbench 专用：外部实例（Provider 创建）→ 缓存 Entity 的数据同步。
+    ///
+    /// 仅由 `#[component(workbench)]` 宏生成的 `IVisual::render` 在 `Render::render`
+    /// 之前调用一次/帧。`self` 是缓存 Entity（持久化、承载真实 UI 状态），
+    /// `external` 是 Provider 每次渲染新建的外部实例（仅携带本次 URI 等元数据）。
+    ///
+    /// 典型实现：检测 `self.uri != external.uri`，变化时 reload 文件、重置子组件等。
+    /// 替代 IWorkbench 手写 `IVisual::render` 中的状态同步逻辑。
+    fn sync_from_external(&mut self, _external: &Self, _cx: &mut Context<Self>)
+    where
+        Self: Sized,
+    {
+    }
 }

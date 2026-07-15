@@ -6,17 +6,24 @@
 //! 2. 组件宿主管理(IWorkbenchComponentHost):枚举/激活/切换 + 共享文档/状态
 //! 3. Body 容器:经条件分支渲染激活的 IWorkbenchComponent
 //!
-//! `#[component]` 生成 `impl IModel + IViewModel + IComponent + Render`。
-//! 手动 `impl IContribution + IVisual + ILifecycle + IWorkbench + IWorkbenchComponentHost`
-//! 补充元数据 + 渲染入口 + 初始化 + 资源会话 + 组件宿主。
+//! `#[component(workbench)]` 生成 RML 框架契约 + URI 键缓存版 `impl IVisual`:
+//! - IVisual::render 经 `get_or_create_entity_by_uri::<Self>(uri)` 按 URI 持久化 Entity
+//! - 在 `Render::render` 之前自动调用 `ILifecycle::sync_from_external` 同步外部实例数据
+//! - 消除 IWorkbench 手写 `IVisual::render` 的样板代码
+//!
+//! 手动 impl 仅保留业务逻辑:
+//! - `IContribution` —— 元数据(id/name/icon)
+//! - `ILifecycle` —— on_loaded 初始化 + sync_from_external URI 同步
+//! - `IWorkbench` —— 资源会话管理 + on_closing 清理 URI 缓存
+//! - `IWorkbenchComponentHost` —— 组件枚举/激活/切换 + 共享文档/状态
 
 use std::any::Any;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Once};
 
-use gpui::{AnyElement, App, Entity, SharedString, Window};
+use gpui::{App, Entity, SharedString, Window};
 use rml::prelude::*;
-use rml_app::contribution::get_or_create_entity;
+use rml_app::contribution::{evict_entity_by_uri, get_or_create_entity_by_uri};
 use rml_core::contribution::{IconSpec, register_contribution_ability, register_visual_ability};
 use rml_core::context::ServiceProviderExt;
 use rml_core::workbench::{IWorkbench, register_workbench_ability};
@@ -28,15 +35,17 @@ use crate::chat_component::ChatComponent;
 
 /// 聊天工作台 —— IWorkbench + IWorkbenchComponentHost,纯壳。
 ///
-/// `#[component]` 生成 RML 框架契约(IModel/IViewModel/IComponent/Render),
-/// 经 `include!` 引入编译器生成的 `impl Render` 驱动 `.rml` 模板。
+/// `#[component(workbench)]` 生成 RML 框架契约 + URI 键缓存版 `impl IVisual`:
+/// - IVisual::render 经 `get_or_create_entity_by_uri::<Self>(uri)` 按 URI 持久化 Entity
+/// - 在 `Render::render` 之前自动调用 `ILifecycle::sync_from_external` 同步外部实例数据
+/// - 消除 IWorkbench 手写 `IVisual::render` 的样板代码
 ///
-/// 手动 impl:
-/// - `IContribution + IVisual` —— 元数据 + 渲染入口(委托 Render)
-/// - `ILifecycle` —— on_loaded 初始化共享 document/state + chat_component
-/// - `IWorkbench` —— 资源会话管理(uri/close/activate/preview)
+/// 手动 impl 仅保留业务逻辑:
+/// - `IContribution` —— 元数据(id/name/icon)
+/// - `ILifecycle` —— on_loaded 初始化 + sync_from_external URI 同步
+/// - `IWorkbench` —— 资源会话管理 + on_closing 清理 URI 缓存
 /// - `IWorkbenchComponentHost` —— 组件枚举/激活/切换 + 共享文档/状态
-#[component]
+#[component(workbench)]
 #[derive(Default)]
 pub struct ChatWorkbench {
     /// chatter URI(`chat://{provider_id}/{chatter_id}`)。
@@ -71,23 +80,6 @@ impl IContribution for ChatWorkbench {
     }
 }
 
-impl IVisual for ChatWorkbench {
-    fn render(&self, window: &mut Window, cx: &mut App) -> AnyElement {
-        let entity = get_or_create_entity::<ChatWorkbench>(cx);
-        // get_or_create_entity 按 TypeId 缓存,所有 ChatWorkbench 实例共享同一 Entity。
-        // 当 URI 变化时(打开不同 chatter),需重新加载:解析 chatter_name + document.reload。
-        let uri = self.uri.clone();
-        entity.update(cx, |this, ctx| {
-            let uri_changed = this.uri != uri;
-            this.uri = uri;
-            if uri_changed {
-                this.reload(ctx);
-            }
-            this.render(window, ctx).into_any_element()
-        })
-    }
-}
-
 impl ILifecycle for ChatWorkbench {
     fn on_loaded(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
         // 初始化共享 document + state(IWorkbenchComponent 间数据同步媒介)
@@ -95,6 +87,17 @@ impl ILifecycle for ChatWorkbench {
         self.state = Some(cx.new(|_| WorkbenchState::default()));
         // 初始化 chat_component 子组件(RML 模板经 <ChatComponent /> 引用)
         self.chat_component = Some(cx.new(|_| ChatComponent::default()));
+    }
+
+    fn sync_from_external(&mut self, external: &Self, cx: &mut Context<Self>) {
+        // 外部实例(ChatWorkbenchProvider 创建) → 缓存 Entity 的数据同步。
+        // 由 `#[component(workbench)]` 生成的 IVisual::render 在 Render::render 之前调用。
+        // uri 变化时(切 Tab)reload 重新解析 chatter_name + document.reload。
+        let uri_changed = self.uri != external.uri;
+        self.uri = external.uri.clone();
+        if uri_changed {
+            self.reload(cx);
+        }
     }
 }
 
@@ -124,6 +127,11 @@ impl IWorkbench for ChatWorkbench {
     fn set_preview(&self, preview: bool) {
         self.preview.store(preview, Ordering::Relaxed);
     }
+
+    fn on_closing(&self, cx: &mut App) {
+        // 关闭 Tab 前清理 URI 键缓存,防止 Entity 长期占用内存。
+        evict_entity_by_uri::<Self>(self.uri(), cx);
+    }
 }
 
 impl IWorkbenchComponentHost for ChatWorkbench {
@@ -138,7 +146,7 @@ impl IWorkbenchComponentHost for ChatWorkbench {
     }
 
     fn switch_component(&self, id: &str, cx: &mut App) {
-        let entity = get_or_create_entity::<ChatWorkbench>(cx);
+        let entity = get_or_create_entity_by_uri::<ChatWorkbench>(self.uri(), cx);
         entity.update(cx, |this, _| {
             this.active_component_id = id.to_string().into();
         });
@@ -175,7 +183,7 @@ impl ChatWorkbench {
 
     /// 重新加载:从 IChatManager 解析 chatter_name → document.reload → 默认激活 "chat"。
     ///
-    /// 在 `IVisual::render` 中检测 `uri_changed` 时调用。Tab 切换时共享 Entity 不重建,
+    /// 在 `sync_from_external` 中检测 `uri_changed` 时调用。每 URI 独立 Entity,
     /// 经此方法同步新 chatter 的元数据到 document,ChatComponent observe 变化重新初始化。
     fn reload(&mut self, cx: &mut Context<Self>) {
         // 默认激活 chat 组件(切换 Tab 时仅首次激活,后续保留用户选择)

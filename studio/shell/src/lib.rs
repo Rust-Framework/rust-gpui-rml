@@ -3,7 +3,8 @@
 //! 此 crate 实现:
 //! - [`di`] —— DI 容器构建(`ServiceCollection` → `ServiceProvider`),注册所有公共接口
 //! - [`shell_manager`] —— `ArcShellManager` 纯逻辑(impl `IWorkbenchManager` + `IWorkspaceManager`)
-//! - [`welcome`] —— `WelcomeWorkbench` + `WelcomeProvider`(`rml://welcome` 工作台)
+//! - [`welcome_workbench`] —— `WelcomeWorkbench`(`rml://welcome` 工作台)
+//! - [`welcome_provider`] —— `WelcomeProvider`(`rml://` URI 工作台工厂)
 //! - [`main_window`] —— `MainWindow` GPUI `#[window]` 主窗口
 //!
 //! 服务自注册: `#[ctor::ctor]` 自动注册 `WelcomeProvider` 为 `IWorkbenchProvider("rml")`,
@@ -25,7 +26,9 @@ pub mod menu_view_model;
 pub mod shell_manager;
 pub mod status_items;
 pub mod status_view_model;
-pub mod welcome;
+#[path = "welcome_workbench.rml.rs"]
+pub mod welcome_workbench;
+pub mod welcome_provider;
 
 pub use main_window::MainWindow;
 
@@ -42,10 +45,10 @@ fn register_welcome_services() {
     use rml_core::workbench::IWorkbenchProvider;
     use rust_rml_di::{auto_register, ServiceCollection};
 
-    crate::welcome::register_welcome_abilities();
+    crate::welcome_workbench::register_welcome_abilities();
     auto_register(|s: &mut ServiceCollection| {
         s.add_keyed_singleton::<dyn IWorkbenchProvider>("rml", |_| {
-            Arc::new(crate::welcome::WelcomeProvider) as Arc<dyn IWorkbenchProvider>
+            Arc::new(crate::welcome_provider::WelcomeProvider) as Arc<dyn IWorkbenchProvider>
         });
     });
 }

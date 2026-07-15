@@ -1,5 +1,5 @@
 <component>
-    <div display="flex" flex-direction="column" width="full" height="full" background="var(--secondary)">
+    <div display="flex" flex-direction="column" width="full" height="full">
         <!-- 聊天列表(微信风格:无边框,紧凑布局) -->
         <div flex="1" min-height="0" overflow-y-auto="">
             <!-- 内联列表项:on-click={open_chatter, item.uri} 经 WithArgs 传递 URI -->

@@ -66,6 +66,15 @@ pub trait IWorkbench: IContribution + IVisual {
     /// 切换预览模式状态。`&self` + 内部可变性（业务自行使用 `AtomicBool` 等）。
     /// 默认空实现；需要预览能力的业务 override。
     fn set_preview(&self, _preview: bool) {}
+
+    /// 关闭前清理资源（在 `IWorkbenchManager::close` 之前调用，此时仍持有 `&mut App`）。
+    ///
+    /// 典型用途：清理 URI 键缓存（`evict_entity_by_uri::<Self>(uri, cx)`），
+    /// 防止关闭的 Tab 对应的 Entity 长期占用内存。
+    ///
+    /// 默认空实现；经 `#[component(workbench)]` 标注的工作台在 `impl IWorkbench` 中
+    /// 手动覆写：`evict_entity_by_uri::<Self>(self.uri(), cx)`。
+    fn on_closing(&self, _cx: &mut gpui::App) {}
 }
 
 /// 工作台能力扩展 trait —— 让 `dyn IValue` 可查询 `IWorkbench` 能力。

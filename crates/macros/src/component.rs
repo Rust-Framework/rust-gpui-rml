@@ -150,12 +150,22 @@ pub fn gen_populate_refs_impl(struct_name: &Ident, fields: &Fields) -> TokenStre
 /// 供 `#[component]` 和 `#[window]` 共用。
 /// `slots` 为组件声明的具名插槽列表（来自 `#[component(slots = [...])]`），
 /// 空切片表示不接受任何插槽（IComponent::slots 默认实现返回 &[]，无需覆写）。
+///
+/// `skip_visual` 为 true 时不生成 `impl IVisual`，用于 IWorkbench 等需要手写
+/// `IVisual::render`（外部实例到缓存 Entity 的数据同步）的特殊场景。
+///
+/// `workbench` 为 true 时生成 URI 键缓存版 `impl IVisual`，专用于 IWorkbench：
+/// 经 `get_or_create_entity_by_uri::<T>(uri)` 按 URI 持久化 Entity（每 Tab 独立），
+/// 在 `Render::render` 之前自动调用 `ILifecycle::sync_from_external` 同步外部实例
+/// （Provider 创建）→ 缓存 Entity 的数据。消除 IWorkbench 手写 `IVisual::render`。
 pub fn expand_component_impls(
     struct_name: &Ident,
     fields: &Fields,
     template_path: &str,
     struct_name_str: &str,
     slots: &[String],
+    skip_visual: bool,
+    workbench: bool,
 ) -> TokenStream {
     let impl_i_model = gen_impl_i_model(struct_name, fields);
 
@@ -213,6 +223,48 @@ pub fn expand_component_impls(
     // 即使没有 ElementRef<T> 字段也生成空方法，使 render.rs 可无条件调用。
     let populate_refs_impl = gen_populate_refs_impl(struct_name, fields);
 
+    // 自动生成 `impl IVisual` —— 统一渲染入口，委托 `get_or_create_entity` + `Render::render`。
+    //
+    // 设计原则：`#[component]` 自动实现 `IVisual`，将 RML 翻译为 render 内容。
+    // `Render::render` 由编译器生成（include!），其中自动调用 `ILifecycle::before_render` hook，
+    // 使两条渲染路径（RML 模板内嵌 + 贡献点 `as_visual().render()`）统一经 `Render::render`，
+    // hook 在两条路径都会触发，用户无需手写 `IVisual::render`。
+    //
+    // `#[contribute]` + `#[component]` 叠加时，经 blanket impl 自动满足 `IVisualContribution`。
+    // `#[contribute]` 不再生成 `impl IVisual`（由 `#[component]` 负责）。
+    //
+    // 三种模式：
+    // - `workbench`（IWorkbench）：URI 键缓存 + `sync_from_external`，每 Tab 独立持久化 Entity。
+    // - `skip_visual`：跳过自动生成，用户完全手写（极少使用，仅在需要非标准 IVisual 行为时）。
+    // - 默认：TypeId 键单例缓存，全类型共享一个 Entity。
+    let impl_i_visual = if workbench {
+        quote! {
+            impl rml_core::contribution::IVisual for #struct_name {
+                fn render(&self, window: &mut gpui::Window, cx: &mut gpui::App) -> gpui::AnyElement {
+                    let uri = rml_core::workbench::IWorkbench::uri(self).to_string();
+                    let entity = rml_app::contribution::get_or_create_entity_by_uri::<#struct_name>(&uri, cx);
+                    entity.update(cx, |this, ctx| {
+                        rml_core::lifecycle::ILifecycle::sync_from_external(this, self, ctx);
+                        this.render(window, ctx).into_any_element()
+                    })
+                }
+            }
+        }
+    } else if skip_visual {
+        quote! {}
+    } else {
+        quote! {
+            impl rml_core::contribution::IVisual for #struct_name {
+                fn render(&self, window: &mut gpui::Window, cx: &mut gpui::App) -> gpui::AnyElement {
+                    let entity = rml_app::contribution::get_or_create_entity::<#struct_name>(cx);
+                    entity.update(cx, |this, ctx| {
+                        this.render(window, ctx).into_any_element()
+                    })
+                }
+            }
+        }
+    };
+
     quote! {
         #impl_i_model
         #impl_i_view_model
@@ -220,18 +272,34 @@ pub fn expand_component_impls(
         #slot_setters
 
         #populate_refs_impl
+
+        #impl_i_visual
     }
 }
 
 /// `#[component]` 入口
 ///
-/// 可选参数 `slots = ["header", "footer", "default"]` 声明具名插槽列表。
+/// 可选参数：
+/// - `slots = ["header", "footer", "default"]`：声明具名插槽列表
+/// - `skip_visual`：跳过自动生成 `impl IVisual`，用于需手写 `IVisual::render` 的特殊场景
+/// - `workbench`：生成 URI 键缓存版 `impl IVisual`，专用于 IWorkbench（消除手写 IVisual）
+///
+/// `skip_visual` 与 `workbench` 互斥。
+///
 /// 模板路径固定为 `<snake_case>.rml`。
 pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
-    let slots = match parse_component_args(&args) {
+    let (slots, skip_visual, workbench) = match parse_component_args(&args) {
         Ok(s) => s,
         Err(e) => return e.to_compile_error(),
     };
+
+    if skip_visual && workbench {
+        return syn::Error::new(
+            proc_macro2::Span::call_site(),
+            "`skip_visual` and `workbench` are mutually exclusive",
+        )
+        .to_compile_error();
+    }
 
     let item: ItemStruct = match syn::parse2(input.clone()) {
         Ok(i) => i,
@@ -258,6 +326,8 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
         &template_path,
         &struct_name_str,
         &slots,
+        skip_visual,
+        workbench,
     );
 
     // include! 生成代码
@@ -285,20 +355,26 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
 ///
 /// 当前支持：
 /// - `slots = ["name1", "name2", ...]`：声明具名插槽列表
+/// - `skip_visual`：跳过自动生成 `impl IVisual`（用于 IWorkbench 等需手写 IVisual 的场景）
+/// - `workbench`：生成 URI 键缓存版 `impl IVisual`（用于 IWorkbench，消除手写 IVisual）
 ///
-/// 未来可扩展更多参数（如 `template = "..."`）。
-fn parse_component_args(args: &TokenStream) -> syn::Result<Vec<String>> {
+/// 返回 `(slots, skip_visual, workbench)`。`skip_visual` 与 `workbench` 互斥。
+fn parse_component_args(args: &TokenStream) -> syn::Result<(Vec<String>, bool, bool)> {
     if args.is_empty() {
-        return Ok(Vec::new());
+        return Ok((Vec::new(), false, false));
     }
 
-    // 尝试解析为 `slots = [...]` 形式
+    // 尝试解析参数
     let parsed: syn::Result<ComponentArgs> = syn::parse2(args.clone());
     match parsed {
-        Ok(ComponentArgs { slots }) => Ok(slots),
+        Ok(ComponentArgs {
+            slots,
+            skip_visual,
+            workbench,
+        }) => Ok((slots, skip_visual, workbench)),
         Err(_) => Err(syn::Error::new(
             proc_macro2::Span::call_site(),
-            "expected #[component(slots = [\"name1\", \"name2\"])]",
+            "expected #[component(slots = [\"name1\", \"name2\"])] | #[component(skip_visual)] | #[component(workbench)]",
         )),
     }
 }
@@ -306,11 +382,15 @@ fn parse_component_args(args: &TokenStream) -> syn::Result<Vec<String>> {
 /// `#[component(...)]` 参数结构
 struct ComponentArgs {
     slots: Vec<String>,
+    skip_visual: bool,
+    workbench: bool,
 }
 
 impl syn::parse::Parse for ComponentArgs {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let mut slots = Vec::new();
+        let mut skip_visual = false;
+        let mut workbench = false;
 
         while !input.is_empty() {
             let ident: Ident = input.parse()?;
@@ -321,8 +401,15 @@ impl syn::parse::Parse for ComponentArgs {
                     let lit: syn::LitStr = syn::parse2(quote! { #expr })?;
                     slots.push(lit.value());
                 }
+            } else if ident == "skip_visual" {
+                skip_visual = true;
+            } else if ident == "workbench" {
+                workbench = true;
             } else {
-                return Err(syn::Error::new(ident.span(), "unknown argument, expected `slots`"));
+                return Err(syn::Error::new(
+                    ident.span(),
+                    "unknown argument, expected `slots`, `skip_visual`, or `workbench`",
+                ));
             }
 
             // 允许逗号分隔多个参数（为未来扩展预留）
@@ -331,7 +418,11 @@ impl syn::parse::Parse for ComponentArgs {
             }
         }
 
-        Ok(ComponentArgs { slots })
+        Ok(ComponentArgs {
+            slots,
+            skip_visual,
+            workbench,
+        })
     }
 }
 

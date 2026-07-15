@@ -7,7 +7,7 @@
 //! # 数据同步链路
 //!
 //! ```text
-//! ChatWorkbench.reload → document.reload(新 uri) → IVisual::render
+//! ChatWorkbench.reload → document.reload(新 uri) → ILifecycle::before_render
 //!   → ChatComponent 经 get_or_create_entity::<ChatWorkbench> 读 chatter_name
 //!   → panel.set_title(chatter_name) 更新 ChatPanel 头部
 //! ```
@@ -22,10 +22,10 @@
 
 use std::sync::Arc;
 
-use gpui::{AnyElement, App, Entity, SharedString, Window};
+use gpui::{Entity, SharedString, Window};
 use rml::prelude::*;
-use rml_app::contribution::get_or_create_entity;
-use rml_core::contribution::{IconSpec, IContribution, IVisual};
+use rml_app::contribution::get_active_entity;
+use rml_core::contribution::{IconSpec, IContribution};
 use rml_core::workbench::Uri;
 use rml_ui::{
     ChatConversation, ChatError, ChatMessage, ChatPanel, ChatRequest, IChatBackend, RenderMode,
@@ -59,12 +59,13 @@ impl IChatBackend for EchoChatBackend {
 
 /// 聊天交互视图组件 —— 复用现成 `rml_ui::ChatPanel` 经 `<Chat ref="chat" />` 渲染。
 ///
-/// `#[component]` 生成 RML 框架契约(IModel/IViewModel/IComponent/Render),
+/// `#[component]` 生成 RML 框架契约(IModel/IViewModel/IComponent/IVisual/Render),
 /// 经 `include!` 引入编译器生成的 `impl Render` 驱动 `.rml` 模板。
 ///
 /// 手动 impl:
-/// - `IContribution + IVisual` —— 元数据 + 渲染入口(委托 Render)
-/// - `ILifecycle` —— on_loaded 创建 ChatPanel Entity + 注入 EchoChatBackend + set_title
+/// - `IContribution` —— 元数据(id/name/icon)
+/// - `ILifecycle` —— on_loaded 创建 ChatPanel Entity + 注入 EchoChatBackend + set_title;
+///   before_render 同步 host chatter_name 变化(Tab 切换)
 /// - `IWorkbenchComponent` —— `matches(uri)` 仅匹配 `chat://` scheme
 #[component]
 #[derive(Default)]
@@ -90,17 +91,6 @@ impl IContribution for ChatComponent {
     }
 }
 
-impl IVisual for ChatComponent {
-    fn render(&self, window: &mut Window, cx: &mut App) -> AnyElement {
-        let entity = get_or_create_entity::<ChatComponent>(cx);
-        entity.update(cx, |this, ctx| {
-            // 同步 host chatter_name 变化(Tab 切换时 ChatWorkbench.reload 更新 chatter_name)
-            this.sync_from_host(ctx);
-            this.render(window, ctx).into_any_element()
-        })
-    }
-}
-
 impl ILifecycle for ChatComponent {
     fn on_loaded(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         // 创建 ChatPanel Entity(Markdown 渲染模式,支持 GFM 富文本)
@@ -108,7 +98,10 @@ impl ILifecycle for ChatComponent {
 
         // 从 host(ChatWorkbench)获取 chatter_name + 注入 backend
         let title = {
-            let host = get_or_create_entity::<ChatWorkbench>(cx);
+            let host = match get_active_entity::<ChatWorkbench>(cx) {
+                Some(h) => h,
+                None => return, // host 尚未渲染(非 ChatWorkbench 上下文),跳过初始化
+            };
             let chatter_name = host.read(cx).chatter_name.clone();
             if chatter_name.is_empty() {
                 "Chat".to_string()
@@ -125,6 +118,11 @@ impl ILifecycle for ChatComponent {
 
         self.chat = Some(chat);
     }
+
+    fn before_render(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
+        // 同步 host chatter_name 变化(Tab 切换时 ChatWorkbench.reload 更新 chatter_name)
+        self.sync_from_host(cx);
+    }
 }
 
 impl IWorkbenchComponent for ChatComponent {
@@ -137,10 +135,13 @@ impl IWorkbenchComponent for ChatComponent {
 impl ChatComponent {
     /// 从 host(ChatWorkbench)同步 chatter_name 到 ChatPanel 头部标题。
     ///
-    /// 在 `IVisual::render` 中每帧调用。Tab 切换时 ChatWorkbench.reload 更新
+    /// 在 `ILifecycle::before_render` 中每帧调用。Tab 切换时 ChatWorkbench.reload 更新
     /// chatter_name,此处经 `last_synced_title` 比对避免重复 set_title 触发循环。
     fn sync_from_host(&mut self, cx: &mut Context<Self>) {
-        let host = get_or_create_entity::<ChatWorkbench>(cx);
+        let host = match get_active_entity::<ChatWorkbench>(cx) {
+            Some(h) => h,
+            None => return, // host 尚未渲染(非 ChatWorkbench 上下文),跳过
+        };
         let chatter_name = host.read(cx).chatter_name.clone();
         let title = if chatter_name.is_empty() {
             return; // host 尚未初始化,跳过

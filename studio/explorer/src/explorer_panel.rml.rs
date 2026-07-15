@@ -3,7 +3,6 @@
 //! `#[component]` RML 组件,渲染多根文件树。
 //! - `.rml` 模板: `<Tree ref="tree_state" items={tree_items} on-activate="on_file_activate" />`
 //! - 手动 `impl IContribution`(id/name/icon 元数据)
-//! - 手动 `impl IVisual`(经 `get_or_create_entity` 复用 Entity,委托 `Render::render`)
 //! - `impl ILifecycle::on_loaded` → `refresh_tree`
 //! - `#[command] on_file_activate` —— 解析路径 → URI → IWorkbenchManager::open
 //!
@@ -13,9 +12,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Once};
 
-use gpui::AnyElement;
 use rml::prelude::*;
-use rml_app::contribution::get_or_create_entity;
 use rml_core::contribution::IconSpec;
 use rml_core::context::ServiceProviderExt;
 use rml_core::workbench::IWorkbenchManager;
@@ -28,10 +25,10 @@ const SKIP_DIRS: &[&str] = &["target", "node_modules", ".git", "dist", "build"];
 
 /// Arc Studio 文件资源管理器面板。
 ///
-/// `#[component]` 生成 `impl IModel + IViewModel + IComponent`(RML 框架契约),
+/// `#[component]` 生成 `impl IModel + IViewModel + IComponent + IVisual`(RML 框架契约),
 /// 经 `include!` 引入 RML 编译器生成的 `impl Render` 驱动 `.rml` 模板。
 ///
-/// 手动 `impl IContribution + IVisual + ILifecycle` 补充元数据 + 渲染入口 + 生命周期
+/// 手动 `impl IContribution + ILifecycle` 补充元数据 + 生命周期
 /// (因 `#[contribute]` 被项目规范拒绝 —— 生成 `contribution_entries` 污染业务代码)。
 #[component]
 #[derive(Default)]
@@ -49,13 +46,6 @@ impl IContribution for ExplorerPanel {
     }
     fn icon(&self) -> Option<IconSpec> {
         Some(IconSpec::named("Folder"))
-    }
-}
-
-impl IVisual for ExplorerPanel {
-    fn render(&self, window: &mut Window, cx: &mut App) -> AnyElement {
-        let entity = get_or_create_entity::<ExplorerPanel>(cx);
-        entity.update(cx, |this, ctx| this.render(window, ctx).into_any_element())
     }
 }
 

@@ -10,6 +10,9 @@ mod entity_cache;
 mod global;
 mod registry;
 
-pub use entity_cache::{get_or_create_entity, visual_entity, VisualEntityCache};
+pub use entity_cache::{
+    evict_entity_by_uri, get_active_entity, get_or_create_entity, get_or_create_entity_by_uri,
+    visual_entity, VisualEntityCache,
+};
 pub use global::{bootstrap_host_contributions, install_contribution_bootstrap};
 pub use registry::ContributionRegistry;

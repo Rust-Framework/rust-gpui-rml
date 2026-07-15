@@ -240,22 +240,10 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
     let use_visual = args.visual || has_component;
     let use_command = args.command;
 
-    // 视觉能力契约:`#[contribute]` + `#[component]` 叠加时自动实现 `IVisual::render`。
-    // 用户仍需手写 `impl IContribution`。blanket impl 自动获得 `IVisualContribution` 标记。
-    let visual_impl = if use_visual {
-        quote! {
-            impl rml_core::contribution::IVisual for #struct_name {
-                fn render(&self, window: &mut gpui::Window, cx: &mut gpui::App) -> gpui::AnyElement {
-                    let entity = rml_app::contribution::get_or_create_entity::<#struct_name>(cx);
-                    entity.update(cx, |this, ctx| {
-                        this.render(window, ctx).into_any_element()
-                    })
-                }
-            }
-        }
-    } else {
-        quote! {}
-    };
+    // `impl IVisual` 由 `#[component]` 自动生成（委托 `get_or_create_entity` + `Render::render`），
+    // `#[contribute]` 不再生成，避免重复 impl。
+    // `#[contribute]` + `#[component]` 叠加时，经 blanket impl 自动满足 `IVisualContribution`。
+    // `#[contribute]` 单独使用（非组件）且需视觉能力时，用户需手写 `impl IVisual`。
 
     // 能力注册：按 flag 注册到 ability registry（幂等）。
     // cast_fn 内部用 trait upcast（&dyn IContribution → &dyn Any）+ downcast_ref::<Self>()
@@ -347,8 +335,6 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
         };
 
         #command_assert
-
-        #visual_impl
 
         /// 由 build.rs 生成的 `register_rml_contributions_for(cx, host_id)` 按 host_id 分组调用。
         pub fn #register_fn(cx: &mut gpui::App) {

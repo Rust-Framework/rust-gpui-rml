@@ -1,25 +1,35 @@
-//! WelcomeWorkbench —— Arc Studio 启动欢迎页。
+//! WelcomeWorkbench ViewModel —— `rml://welcome` 工作台,渲染欢迎页。
 //!
-//! `rml://welcome` URI 的工作台,渲染静态欢迎信息。
-//! 经 `WelcomeProvider`(schema="rml")由 `ArcShellManager::open` 路由构造。
+//! `#[component(workbench)]` 生成 RML 框架契约 + URI 键缓存版 `impl IVisual`,
+//! 在 `Render::render` 之前自动调用 `sync_from_external` 同步外部实例 URI。
 
 use std::any::Any;
-use std::sync::{Arc, Once};
+use std::sync::Once;
 
-use gpui::{AnyElement, App, IntoElement, ParentElement, SharedString, Styled, Window};
+use gpui::{App, SharedString};
+use rml::prelude::*;
+use rml_app::contribution::evict_entity_by_uri;
 use rml_core::contribution::{
-    IContribution, IVisual, register_contribution_ability, register_visual_ability,
+    IContribution, register_contribution_ability, register_visual_ability,
 };
-use rml_core::workbench::{IWorkbench, IWorkbenchProvider, Uri, register_workbench_ability};
+use rml_core::workbench::{IWorkbench, register_workbench_ability};
 
 /// `rml://welcome` 的工作台 —— 常驻 Tab,不可关闭。
+///
+/// `#[component(workbench)]` 生成 URI 键缓存版 IVisual + 自动 sync_from_external。
+/// 手动 impl IContribution + ILifecycle(sync_from_external) + IWorkbench(on_closing)。
+#[component(workbench)]
+#[derive(Default)]
 pub struct WelcomeWorkbench {
     uri: SharedString,
 }
 
 impl WelcomeWorkbench {
+    /// 构造带 URI 的实例（由 WelcomeProvider 调用）。
     pub fn new(uri: SharedString) -> Self {
-        Self { uri }
+        let mut this = Self::default();
+        this.uri = uri;
+        this
     }
 }
 
@@ -32,15 +42,9 @@ impl IContribution for WelcomeWorkbench {
     }
 }
 
-impl IVisual for WelcomeWorkbench {
-    fn render(&self, _window: &mut Window, _cx: &mut App) -> AnyElement {
-        gpui::div()
-            .flex()
-            .items_center()
-            .justify_center()
-            .size_full()
-            .child(gpui::div().text_xl().child("Welcome to Arc Studio"))
-            .into_any_element()
+impl ILifecycle for WelcomeWorkbench {
+    fn sync_from_external(&mut self, external: &Self, _cx: &mut Context<Self>) {
+        self.uri = external.uri.clone();
     }
 }
 
@@ -56,26 +60,9 @@ impl IWorkbench for WelcomeWorkbench {
     fn closable(&self) -> bool {
         false
     }
-}
 
-/// `rml://` URI 的工作台工厂 —— 构造 WelcomeWorkbench。
-pub struct WelcomeProvider;
-
-impl IContribution for WelcomeProvider {
-    fn id(&self) -> &str {
-        "welcome-provider"
-    }
-    fn name(&self) -> SharedString {
-        "Welcome Provider".into()
-    }
-}
-
-impl IWorkbenchProvider for WelcomeProvider {
-    fn schema(&self) -> SharedString {
-        "rml".into()
-    }
-    fn render(&self, uri: &Uri) -> Arc<dyn IWorkbench> {
-        Arc::new(WelcomeWorkbench::new(uri.as_str().into()))
+    fn on_closing(&self, cx: &mut App) {
+        evict_entity_by_uri::<Self>(self.uri(), cx);
     }
 }
 
@@ -86,7 +73,7 @@ impl IWorkbenchProvider for WelcomeProvider {
 
 static ABILITY_REGISTERED: Once = Once::new();
 
-pub(crate) fn register_welcome_abilities() {
+pub fn register_welcome_abilities() {
     ABILITY_REGISTERED.call_once(|| {
         register_contribution_ability::<WelcomeWorkbench>();
         register_visual_ability::<WelcomeWorkbench>();

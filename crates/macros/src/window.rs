@@ -55,7 +55,7 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
     // （含窗口句柄 + 全部组件运行时状态，替代旧的 `__rml_window_handle` + 7+ 类仪式字段）
     inject_tracking_fields(&mut item.fields, &[]);
 
-    // 生成组件 trait 实现（IModel + ILifecycle + IViewModel + IComponent）
+    // 生成组件 trait 实现（IModel + ILifecycle + IViewModel + IComponent + IVisual）
     // 注意：不生成 impl IWindow —— 由 RML 编译器从 <window> 根节点生成
     let component_impls = expand_component_impls(
         &struct_name,
@@ -63,6 +63,8 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
         &template_path,
         &struct_name_str,
         &[],
+        false,
+        false,
     );
 
     // include! 生成代码（包含编译器生成的 impl IWindow + impl Render）

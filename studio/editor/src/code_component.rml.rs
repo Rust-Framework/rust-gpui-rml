@@ -2,28 +2,28 @@
 //!
 //! 从 EditorWorkbench 接管代码编辑逻辑(InputState + LanguageClient)。
 //! 经 `observe(input_state)` 写回 host 共享 `WorkbenchDocument`,
-//! 经 `IVisual::render` 中检测 `document.uri/content` 变化同步到 `InputState`。
+//! 经 `ILifecycle::before_render` 中检测 `document.uri` 变化同步到 `InputState`。
 //!
 //! # 同步链路
 //!
 //! 1. 用户编辑 → `InputState` 变更 → `observe` 回调 → `document.set_content`
 //! 2. Tab 切换 → `EditorWorkbench.reload` → `document.reload`(新 uri+content)
-//!    → `CodeComponent::render` 检测 `document.uri` 变化 → `init_editor`
+//!    → `CodeComponent::before_render` 检测 `document.uri` 变化 → `init_editor`
 //!    (创建新 InputState + LSP,匹配新文件)
-//! 3. `document.content` 变化(非自身编辑引起)→ `render` 中 `set_value` 同步到 InputState
+//! 3. `document.content` 变化(非自身编辑引起)→ `before_render` 中 `set_value` 同步到 InputState
 //!
 //! # 循环防护
 //!
 //! `last_synced_content` 字段记录上次同步内容,`observe(input_state)` 与
-//! `render(document)` 双向同步均比对,内容相同则跳过 update。
+//! `before_render(document)` 双向同步均比对,内容相同则跳过 update。
 
 use std::sync::Arc;
 
-use gpui::{AnyElement, App, Entity, SharedString, Window};
+use gpui::{Entity, SharedString, Window};
 use gpui_component::input::InputState;
 use rml::prelude::*;
-use rml_app::contribution::get_or_create_entity;
-use rml_core::contribution::{IconSpec, IContribution, IVisual};
+use rml_app::contribution::get_active_entity;
+use rml_core::contribution::{IconSpec, IContribution};
 use rml_core::workbench::Uri;
 use rust_rml_client::{file_path_to_uri, LanguageClient};
 use studio_core::ability_ext::register_workbench_component_ability;
@@ -62,24 +62,18 @@ impl IContribution for CodeComponent {
     }
 }
 
-impl IVisual for CodeComponent {
-    fn render(&self, window: &mut Window, cx: &mut App) -> AnyElement {
-        let entity = get_or_create_entity::<CodeComponent>(cx);
-        entity.update(cx, |this, ctx| {
-            // 首次渲染 editor_state 为 None,由 on_loaded 负责初始化(避免重复 init)。
-            // 后续渲染检测 host document 变化(Tab 切换/其他组件编辑)同步到 InputState。
-            if this.editor_state.is_some() {
-                this.sync_from_host(window, ctx);
-            }
-            this.render(window, ctx).into_any_element()
-        })
-    }
-}
-
 impl ILifecycle for CodeComponent {
     fn on_loaded(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         // 首次加载:从 host document 读初始内容,创建 InputState + LSP。
         self.init_editor(window, cx);
+    }
+
+    fn before_render(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        // 首次渲染 editor_state 为 None,由 on_loaded 负责初始化(避免重复 init)。
+        // 后续渲染检测 host document 变化(Tab 切换/其他组件编辑)同步到 InputState。
+        if self.editor_state.is_some() {
+            self.sync_from_host(window, cx);
+        }
     }
 }
 
@@ -90,16 +84,14 @@ impl IWorkbenchComponent for CodeComponent {
 impl CodeComponent {
     /// 从 host 取共享 document Entity。
     ///
-    /// CodeComponent 经 `get_or_create_entity::<EditorWorkbench>` 取 host,
+    /// CodeComponent 经 `get_active_entity::<EditorWorkbench>` 取当前渲染的 host
+    /// (最近一次 `get_or_create_entity_by_uri` 设置的活跃 Entity,即当前 Tab 的 URI 对应 Entity),
     /// 直接调用 `IWorkbenchComponentHost::document()`(EditorWorkbench impl 此 trait)。
-    /// 时序保证:EditorWorkbench.on_loaded 先于 CodeComponent 创建,document 已初始化。
+    /// 时序保证:EditorWorkbench IVisual::render → set_active → 子组件 before_render → 此处读取。
     fn host_document(&self, cx: &mut Context<Self>) -> Option<Entity<WorkbenchDocument>> {
-        let host = get_or_create_entity::<EditorWorkbench>(cx);
-        let doc = {
-            let host_ref = host.read(cx);
-            IWorkbenchComponentHost::document(host_ref)
-        };
-        Some(doc)
+        let host = get_active_entity::<EditorWorkbench>(cx)?;
+        let host_ref = host.read(cx);
+        Some(IWorkbenchComponentHost::document(host_ref))
     }
 
     /// 初始化编辑器:从 host document 读内容 → 创建 InputState → 安装 LSP → observe 写回。
@@ -182,7 +174,7 @@ impl CodeComponent {
         cx.notify();
     }
 
-    /// 从 host document 同步到 InputState —— 在 IVisual::render 中每帧调用。
+    /// 从 host document 同步到 InputState —— 在 ILifecycle::before_render 中每帧调用。
     ///
     /// - `document.uri` 变化(Tab 切换)→ `init_editor`(重建 InputState + LSP)
     /// - `document.content` 变化(其他组件编辑引起)→ MVP 阶段不处理(其他组件均只读)
@@ -194,7 +186,7 @@ impl CodeComponent {
     /// RmlDesignComponent 落地时,设计器编辑 AST → 写回 document.content,
     /// 此时需经 `cx.active_window()` + `handle.update` 获取 `&mut Window`
     /// 调用 `InputState::set_value`(签名:`set_value(&mut self, value, window, cx)`)。
-    fn sync_from_host(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn sync_from_host(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let Some(doc) = self.host_document(cx) else {
             return;
         };

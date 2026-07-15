@@ -327,12 +327,13 @@ impl MainWindow {
         self.__rml_bump_version("activated");
     }
 
-    /// 关闭 Tab:经 manager.close 移除工作台(ObservableVec bump + flume send)。
+    /// 关闭 Tab:先经 `on_closing` 清理 URI 键缓存,再经 manager.close 移除工作台。
     /// 手动 bump activated(close 仅 bump workbenches)以触发 selected_tab computed 重算。
     #[command]
     pub fn on_tab_close(&mut self, index: usize, cx: &mut Context<Self>) {
         let wb = self.workbenches.snapshot().get(index).cloned();
         if let Some(wb) = wb {
+            wb.on_closing(cx);
             let uri: Uri = wb.uri().parse().unwrap();
             self.manager.close(&uri);
             self.__rml_bump_version("activated");
@@ -342,15 +343,17 @@ impl MainWindow {
     /// 关闭全部 Tab(不可关闭的 Tab 如欢迎页保留)。
     #[command]
     pub fn on_tab_close_all(&mut self, cx: &mut Context<Self>) {
-        let uris: Vec<Uri> = self
+        let to_close: Vec<Arc<dyn IWorkbench>> = self
             .workbenches
             .snapshot()
-            .iter()
+            .into_iter()
             .filter(|w| w.closable())
-            .filter_map(|w| w.uri().parse().ok())
             .collect();
-        for uri in uris {
-            self.manager.close(&uri);
+        for wb in to_close {
+            if let Ok(uri) = wb.uri().parse() {
+                wb.on_closing(cx);
+                self.manager.close(&uri);
+            }
         }
         self.__rml_bump_version("activated");
     }
@@ -360,13 +363,15 @@ impl MainWindow {
     pub fn on_tab_close_others(&mut self, index: usize, cx: &mut Context<Self>) {
         let snapshot = self.workbenches.snapshot();
         let keep_uri = snapshot.get(index).map(|w| w.uri().to_string());
-        let uris: Vec<Uri> = snapshot
-            .iter()
+        let to_close: Vec<Arc<dyn IWorkbench>> = snapshot
+            .into_iter()
             .filter(|w| w.closable() && Some(w.uri()) != keep_uri.as_deref())
-            .filter_map(|w| w.uri().parse().ok())
             .collect();
-        for uri in uris {
-            self.manager.close(&uri);
+        for wb in to_close {
+            if let Ok(uri) = wb.uri().parse() {
+                wb.on_closing(cx);
+                self.manager.close(&uri);
+            }
         }
         self.__rml_bump_version("activated");
     }

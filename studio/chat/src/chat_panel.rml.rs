@@ -2,7 +2,6 @@
 //!
 //! `#[component]` RML 组件,作为 ActivityBar 面板贡献:
 //! - 手动 `impl IContribution`(id/name/icon 元数据)
-//! - 手动 `impl IVisual`(经 `get_or_create_entity` 复用 Entity,委托 Render)
 //! - `impl ILifecycle::on_loaded` → 从 DI 获取 `IChatManager` → 构建 `chatter_list`
 //! - `open_chatter(uri)` —— 由 ChatListItem 经 `get_or_create_entity` 回调
 //!
@@ -11,11 +10,10 @@
 
 use std::sync::Once;
 
-use gpui::{AnyElement, App, SharedString, Window};
+use gpui::{SharedString, Window};
 use rml::prelude::*;
-use rml_app::contribution::get_or_create_entity;
 use rml_core::contribution::{
-    IconSpec, IContribution, IVisual, register_contribution_ability, register_visual_ability,
+    IconSpec, IContribution, register_contribution_ability, register_visual_ability,
 };
 use rml_core::context::ServiceProviderExt;
 use rml_core::workbench::IWorkbenchManager;
@@ -24,10 +22,10 @@ use crate::chat_list_item::ChatterItem;
 
 /// Arc Studio 聊天面板 —— 微信风格活动栏贡献。
 ///
-/// `#[component]` 生成 `impl IModel + IViewModel + IComponent`(RML 框架契约),
+/// `#[component]` 生成 `impl IModel + IViewModel + IComponent + IVisual`(RML 框架契约),
 /// 经 `include!` 引入 RML 编译器生成的 `impl Render` 驱动 `.rml` 模板。
 ///
-/// 手动 `impl IContribution + IVisual + ILifecycle` 补充元数据 + 渲染入口 + 生命周期
+/// 手动 `impl IContribution + ILifecycle` 补充元数据 + 生命周期
 /// (因 `#[contribute]` 被项目规范拒绝 —— 生成 `contribution_entries` 污染业务代码)。
 #[component]
 #[derive(Default)]
@@ -47,13 +45,6 @@ impl IContribution for ChatPanel {
     }
     fn icon(&self) -> Option<IconSpec> {
         Some(IconSpec::named("MessageCircle"))
-    }
-}
-
-impl IVisual for ChatPanel {
-    fn render(&self, window: &mut Window, cx: &mut App) -> AnyElement {
-        let entity = get_or_create_entity::<ChatPanel>(cx);
-        entity.update(cx, |this, ctx| this.render(window, ctx).into_any_element())
     }
 }
 

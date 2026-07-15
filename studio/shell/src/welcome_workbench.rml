@@ -1,0 +1,7 @@
+<component>
+    <div display="flex" align-items="center" justify-content="center" width="full" height="full">
+        <div font-size="20px">
+            Welcome to Arc Studio
+        </div>
+    </div>
+</component>

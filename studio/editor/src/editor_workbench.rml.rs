@@ -7,18 +7,26 @@
 //! 3. Header 渲染:面包屑 + 视图切换按钮
 //! 4. Body 容器:经条件分支渲染激活的 IWorkbenchComponent
 //!
-//! `#[component]` 生成 `impl IModel + IViewModel + IComponent + Render`。
-//! 手动 `impl IContribution + IVisual + ILifecycle + IWorkbench + IWorkbenchComponentHost`
-//! 补充元数据 + 渲染入口 + 初始化 + 资源会话 + 组件宿主。
+//! `#[component(workbench)]` 生成 RML 框架契约(IModel/IViewModel/IComponent/Render/IVisual),
+//! IVisual 用 URI 键缓存(`get_or_create_entity_by_uri`)每 Tab 独立持久化 Entity,
+//! 在 `Render::render` 之前自动调用 `ILifecycle::sync_from_external` 同步外部实例
+//! (EditorProvider 创建) → 缓存 Entity 的数据。
+//!
+//! 手动 impl:
+//! - `IContribution` —— 元数据(id/name/icon)
+//! - `ILifecycle` —— on_loaded 初始化共享 document/state + code_component + observe;
+//!   sync_from_external 外部实例 → Entity 的 URI/文件路径同步 + uri 变化时 reload
+//! - `IWorkbench` —— 资源会话管理(uri/close/activate/on_closing 清理缓存)
+//! - `IWorkbenchComponentHost` —— 组件枚举/激活/切换 + 共享文档/状态
 
 use std::any::Any;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Once};
 
-use gpui::{AnyElement, App, Entity, Window};
+use gpui::{App, Entity, Window};
 use rml::prelude::*;
-use rml_app::contribution::get_or_create_entity;
+use rml_app::contribution::{evict_entity_by_uri, get_or_create_entity_by_uri};
 use rml_core::contribution::{
     IconSpec, register_contribution_ability, register_visual_ability,
 };
@@ -34,15 +42,17 @@ use crate::preview_component::PreviewComponent;
 
 /// 代码编辑器工作台 —— IWorkbench + IWorkbenchComponentHost,纯壳。
 ///
-/// `#[component]` 生成 RML 框架契约(IModel/IViewModel/IComponent/Render),
-/// 经 `include!` 引入编译器生成的 `impl Render` 驱动 `.rml` 模板。
+/// `#[component(workbench)]` 生成 RML 框架契约 + URI 键缓存版 `impl IVisual`:
+/// - IVisual::render 经 `get_or_create_entity_by_uri::<Self>(uri)` 按 URI 持久化 Entity
+/// - 在 `Render::render` 之前自动调用 `ILifecycle::sync_from_external` 同步外部实例数据
+/// - 消除 IWorkbench 手写 `IVisual::render` 的样板代码
 ///
-/// 手动 impl:
-/// - `IContribution + IVisual` —— 元数据 + 渲染入口(委托 Render)
-/// - `ILifecycle` —— on_loaded 初始化共享 document/state + code_component + observe
-/// - `IWorkbench` —— 资源会话管理(uri/close/activate)
+/// 手动 impl 仅保留业务逻辑:
+/// - `IContribution` —— 元数据(id/name/icon)
+/// - `ILifecycle` —— on_loaded 初始化 + sync_from_external URI 同步
+/// - `IWorkbench` —— 资源会话管理 + on_closing 清理 URI 缓存
 /// - `IWorkbenchComponentHost` —— 组件枚举/激活/切换 + 共享文档/状态
-#[component]
+#[component(workbench)]
 #[derive(Default)]
 pub struct EditorWorkbench {
     uri: SharedString,
@@ -63,13 +73,13 @@ pub struct EditorWorkbench {
     active_component_id: SharedString,
     /// 代码编辑子组件 —— 经 RML `<CodeComponent if={is_code_active} />` 引用。
     ///
-    /// on_loaded 中初始化,经 `get_or_create_entity` 全局单例缓存。
-    /// 切 Tab 时 Entity 不重建,CodeComponent 内部经 observe(document) 同步。
+    /// on_loaded 中初始化,经 `get_or_create_entity_by_uri` 按 URI 缓存。
+    /// 切 Tab 时每 URI 独立 Entity,CodeComponent 内部经 observe(document) 同步。
     code_component: Option<Entity<CodeComponent>>,
     /// 只读预览子组件 —— 经 RML `<PreviewComponent if={is_preview_active} />` 引用。
     ///
     /// 仅匹配 `.md`/`.markdown`/`.html` 文件时显示视图切换按钮。
-    /// on_loaded 中初始化,经 `get_or_create_entity` 全局单例缓存。
+    /// on_loaded 中初始化,经 `get_or_create_entity_by_uri` 按 URI 缓存。
     preview_component: Option<Entity<PreviewComponent>>,
     /// 预览模式标记(VSCode 风格 Tab:italic 标题,双击升级为正式)。
     ///
@@ -91,27 +101,6 @@ impl IContribution for EditorWorkbench {
     }
     fn icon(&self) -> Option<IconSpec> {
         Some(IconSpec::named("File"))
-    }
-}
-
-impl IVisual for EditorWorkbench {
-    fn render(&self, window: &mut Window, cx: &mut App) -> AnyElement {
-        let entity = get_or_create_entity::<EditorWorkbench>(cx);
-        // get_or_create_entity 按 TypeId 缓存,所有 EditorWorkbench 实例共享同一 Entity。
-        // 当 URI 变化时(打开不同文件),需重新加载文件内容到共享 document。
-        let uri = self.uri.clone();
-        let file_path = self.file_path.clone();
-        let view_names = self.compute_view_names();
-        entity.update(cx, |this, ctx| {
-            let uri_changed = this.uri != uri;
-            this.uri = uri;
-            this.file_path = file_path;
-            this.view_names = view_names;
-            if uri_changed {
-                this.reload(ctx);
-            }
-            this.render(window, ctx).into_any_element()
-        })
     }
 }
 
@@ -150,11 +139,28 @@ impl ILifecycle for EditorWorkbench {
             .detach();
         }
 
-        // 首次加载无需调用 reload(IVisual::render 检测 uri_changed 会调用),
-        // 但需保证 code_component 的 on_loaded 能读到 document —— 顺序由 RML 渲染保证:
-        // EditorWorkbench.on_loaded 先于 .rml 模板渲染 → 模板中 <CodeComponent /> 触发
-        // CodeComponent.on_loaded → 此时 document 已初始化。
+        // 首次加载需调用 reload 读取文件内容到 document。
+        // sync_from_external 中的 reload 调用在 on_loaded 之前执行,此时 document=None,
+        // reload 内 `if let Some(doc) = self.document` 跳过文件读取。
+        // 因此必须在此处(document 已初始化)再次调用 reload 才能真正读取文件,
+        // 后续 CodeComponent.on_loaded → init_editor 才能从 document 读到内容。
+        self.reload(cx);
         let _ = window;
+    }
+
+    fn sync_from_external(&mut self, external: &Self, cx: &mut Context<Self>) {
+        // 外部实例(EditorProvider 创建) → 缓存 Entity 的数据同步。
+        // 由 `#[component(workbench)]` 生成的 IVisual::render 在 Render::render 之前调用。
+        // uri 变化时(切 Tab)reload 文件内容到共享 document。
+        let uri_changed = self.uri != external.uri;
+        self.uri = external.uri.clone();
+        self.file_path = external.file_path.clone();
+        self.view_names = external.compute_view_names();
+        if uri_changed {
+            self.reload(cx);
+            // 子组件(CodeComponent/PreviewComponent)经自身 ILifecycle::before_render
+            // 自动同步 host document 变化,无需在此手动协调。
+        }
     }
 }
 
@@ -184,6 +190,11 @@ impl IWorkbench for EditorWorkbench {
     fn set_preview(&self, preview: bool) {
         self.preview.store(preview, Ordering::Relaxed);
     }
+
+    fn on_closing(&self, cx: &mut App) {
+        // 关闭 Tab 前清理 URI 键缓存,防止 Entity 长期占用内存。
+        evict_entity_by_uri::<Self>(self.uri(), cx);
+    }
 }
 
 impl IWorkbenchComponentHost for EditorWorkbench {
@@ -202,9 +213,9 @@ impl IWorkbenchComponentHost for EditorWorkbench {
     }
 
     fn switch_component(&self, id: &str, cx: &mut App) {
-        // 经 `get_or_create_entity` 取 host Entity,update 内部可变性更新字段。
-        // RML 模板经 active_component_id 字段访问触发条件分支重新渲染。
-        let entity = get_or_create_entity::<EditorWorkbench>(cx);
+        // 经 `get_or_create_entity_by_uri` 取当前 URI 的 host Entity,
+        // update 内部可变性更新字段。RML 模板经 active_component_id 字段访问触发条件分支重新渲染。
+        let entity = get_or_create_entity_by_uri::<EditorWorkbench>(self.uri(), cx);
         entity.update(cx, |this, _| {
             this.active_component_id = id.to_string().into();
         });
