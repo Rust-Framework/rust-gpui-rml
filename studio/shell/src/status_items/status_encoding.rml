@@ -1,0 +1,3 @@
+<component>
+    <div font-size="12px">{t("studio.status.encoding")}</div>
+</component>

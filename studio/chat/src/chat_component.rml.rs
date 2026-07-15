@@ -8,7 +8,7 @@
 //!
 //! ```text
 //! ChatWorkbench.reload → document.reload(新 uri) → ILifecycle::before_render
-//!   → ChatComponent 经 get_or_create_entity::<ChatWorkbench> 读 chatter_name
+//!   → ChatComponent 经 get_active_entity::<ChatWorkbench> 读 chatter_name
 //!   → panel.set_title(chatter_name) 更新 ChatPanel 头部
 //! ```
 //!

@@ -2,14 +2,12 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use gpui::{AnyElement, App, Hsla, IntoElement, ParentElement, SharedString, Styled, Window, div, px};
-use gpui_component::button::ButtonVariants;
-use gpui_component::Disableable;
 use gpui_component::ActiveTheme as _;
 use gpui_component::StyledExt as _;
 use gpui_component::chart::LineChart;
 use rml::prelude::*;
 use rml_core::i18n::t_static;
-use rml_ui::{Button, Icon, IconName, Progress, Sizable, TableColumn, TableDelegate, TableRow, Tag, h_flex, v_flex};
+use rml_ui::{Progress, Sizable, TableColumn, TableDelegate, TableRow, Tag, h_flex, v_flex};
 
 use super::model::{self, event, status, ChartPoint, MetricSeries, PROCESS_DIAGRAM_SRC};
 
@@ -405,6 +403,9 @@ impl EdnaCase {
     }
 
     /// 6 项迷你 LineChart 面板（gpui-component Chart）
+    ///
+    /// RML 限制：`each` 循环内 `stroke={expr}` 仅接受 `Hsla` 值，无法按索引解析
+    /// 主题色名（`chart_1`..`chart_5`）。待框架支持动态主题色名解析后回归声明式。
     pub fn render_metrics_panel(
         &self,
         _window: &mut Window,
@@ -423,104 +424,6 @@ impl EdnaCase {
             .grid_cols(2u16)
             .gap(px(8.))
             .children(cards)
-            .into_any_element()
-    }
-
-    /// 参数区控制按钮（带 Icon；动态样式/禁用状态仍走命令式，静态 icon 可用 RML icon 属性）
-    pub fn render_control_buttons(
-        &self,
-        _window: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> AnyElement {
-        v_flex()
-            .gap(px(8.))
-            .w_full()
-            .child(control_button(
-                "edna-start",
-                IconName::Play,
-                "启动采样",
-                cx,
-                |btn| btn.success().disabled(self.sampling_active),
-                |this, cx| this.do_start_sampling(cx),
-            ))
-            .child(control_button(
-                "edna-stop",
-                IconName::Pause,
-                "停止",
-                cx,
-                |btn| btn.danger().disabled(!self.sampling_active),
-                |this, cx| this.do_stop(cx),
-            ))
-            .child(control_button(
-                "edna-clean",
-                IconName::LoaderCircle,
-                "手动清洗",
-                cx,
-                |btn| btn.primary().outline(),
-                |this, cx| this.do_manual_clean(cx),
-            ))
-            .child(control_button(
-                "edna-purge",
-                IconName::Replace,
-                "手动吹扫",
-                cx,
-                |btn| btn.primary().outline(),
-                |this, cx| this.do_manual_purge(cx),
-            ))
-            .child(control_button(
-                "edna-save",
-                IconName::Check,
-                "保存参数",
-                cx,
-                |btn| btn.primary().outline(),
-                |this, cx| this.do_save_params(cx),
-            ))
-            .into_any_element()
-    }
-
-    /// 通道计划导入/导出按钮
-    pub fn render_plan_actions(
-        &self,
-        _window: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> AnyElement {
-        h_flex()
-            .justify_end()
-            .gap(px(8.))
-            .child(plan_button(
-                "edna-import",
-                IconName::FolderOpen,
-                "导入计划",
-                cx,
-                |this, cx| this.do_import_plan(cx),
-            ))
-            .child(plan_button(
-                "edna-export",
-                IconName::ExternalLink,
-                "导出计划",
-                cx,
-                |this, cx| this.do_export_plan(cx),
-            ))
-            .into_any_element()
-    }
-
-    /// 事件日志工具栏
-    pub fn render_log_toolbar(
-        &self,
-        _window: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> AnyElement {
-        h_flex()
-            .justify_end()
-            .child(
-                Button::new("edna-clear-log")
-                    .small()
-                    .icon(Icon::new(IconName::Delete))
-                    .label("清除日志")
-                    .on_click(cx.listener(|this, _: &gpui::ClickEvent, _, cx| {
-                        this.do_clear_log(cx);
-                    })),
-            )
             .into_any_element()
     }
 
@@ -678,40 +581,5 @@ fn render_metric_card(series: &MetricSeries, stroke: Hsla, cx: &App) -> AnyEleme
                 .text_color(cx.theme().muted_foreground)
                 .child(series.range.clone()),
         )
-        .into_any_element()
-}
-
-fn control_button(
-    id: &'static str,
-    icon: IconName,
-    label: &'static str,
-    cx: &mut Context<EdnaCase>,
-    style: impl FnOnce(Button) -> Button,
-    handler: impl Fn(&mut EdnaCase, &mut Context<EdnaCase>) + 'static,
-) -> AnyElement {
-    style(
-        Button::new(id)
-            .w_full()
-            .icon(Icon::new(icon))
-            .label(label)
-            .on_click(cx.listener(move |this, _: &gpui::ClickEvent, _, cx| handler(this, cx))),
-    )
-    .into_any_element()
-}
-
-fn plan_button(
-    id: &'static str,
-    icon: IconName,
-    label: &'static str,
-    cx: &mut Context<EdnaCase>,
-    handler: impl Fn(&mut EdnaCase, &mut Context<EdnaCase>) + 'static,
-) -> AnyElement {
-    Button::new(id)
-        .small()
-        .primary()
-        .outline()
-        .icon(Icon::new(icon))
-        .label(label)
-        .on_click(cx.listener(move |this, _: &gpui::ClickEvent, _, cx| handler(this, cx)))
         .into_any_element()
 }

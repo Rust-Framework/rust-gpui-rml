@@ -1,8 +1,8 @@
 use std::sync::Once;
 
-use gpui::{AnyElement, ParentElement, SharedString, Styled};
+use gpui::SharedString;
 use rml::prelude::*;
-use rml_core::contribution::{register_visual_ability, IVisual};
+use rml_core::contribution::register_visual_ability;
 use rml_core::i18n::t_static;
 use rml_ui::{TableColumn, TableRow};
 
@@ -81,8 +81,9 @@ impl StatusBarCase {
 
 /// 状态栏贡献：演示 status slot（从 shell_meta.rs 迁入）
 #[contribute(host_id = "demo.shell", id = "status.ready", kind = "status", order = 0)]
+#[component]
 #[derive(Default)]
-pub struct StatusReady;
+pub struct StatusReady {}
 
 impl IContribution for StatusReady {
     fn id(&self) -> &str {
@@ -90,17 +91,6 @@ impl IContribution for StatusReady {
     }
     fn name(&self) -> SharedString {
         t_static("shell.status_ready")
-    }
-}
-
-/// IVisual::render 是框架接口要求，当前状态栏贡献点必须返回 AnyElement。
-/// 这是 RML 框架限制（IVisual 不支持 RML 模板），列入迭代计划。
-impl IVisual for StatusReady {
-    fn render(&self, _window: &mut gpui::Window, _cx: &mut gpui::App) -> AnyElement {
-        gpui::div()
-            .text_xs()
-            .child(t_static("shell.status_ready"))
-            .into_any_element()
     }
 }
 

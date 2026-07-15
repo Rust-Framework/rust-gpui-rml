@@ -1,8 +1,8 @@
 //! 状态栏编码指示项 —— 右侧显示文件编码。
 
-use gpui::{AnyElement, ParentElement, SharedString, Styled};
+use gpui::SharedString;
 use rml::prelude::*;
-use rml_core::contribution::{IContribution, IVisual};
+use rml_core::contribution::IContribution;
 use rml_core::i18n::t_static;
 
 #[contribute(
@@ -12,8 +12,9 @@ use rml_core::i18n::t_static;
     align = "right",
     order = 10
 )]
+#[component]
 #[derive(Default)]
-pub struct StatusEncoding;
+pub struct StatusEncoding {}
 
 impl IContribution for StatusEncoding {
     fn id(&self) -> &str {
@@ -21,14 +22,5 @@ impl IContribution for StatusEncoding {
     }
     fn name(&self) -> SharedString {
         t_static("studio.status.encoding")
-    }
-}
-
-impl IVisual for StatusEncoding {
-    fn render(&self, _window: &mut gpui::Window, _cx: &mut gpui::App) -> AnyElement {
-        gpui::div()
-            .text_xs()
-            .child(t_static("studio.status.encoding"))
-            .into_any_element()
     }
 }

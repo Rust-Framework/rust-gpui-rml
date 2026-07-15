@@ -5,15 +5,19 @@
 //!
 //! 每个状态栏项独占一个文件（遵循"一个 rs 文件 = 一个职责"约束）。
 
-pub mod encoding;
-pub mod language;
-pub mod ready;
-pub mod theme;
+#[path = "status_encoding.rml.rs"]
+pub mod status_encoding;
+#[path = "status_language.rml.rs"]
+pub mod status_language;
+#[path = "status_ready.rml.rs"]
+pub mod status_ready;
+#[path = "status_theme.rml.rs"]
+pub mod status_theme;
 
-pub use encoding::StatusEncoding;
-pub use language::StatusLanguage;
-pub use ready::StatusReady;
-pub use theme::StatusTheme;
+pub use status_encoding::StatusEncoding;
+pub use status_language::StatusLanguage;
+pub use status_ready::StatusReady;
+pub use status_theme::StatusTheme;
 
 use std::sync::Once;
 

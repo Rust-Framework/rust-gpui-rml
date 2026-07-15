@@ -10,3 +10,4 @@ rust-rml-core = { workspace = true }
 rust-rml-app = { workspace = true }
 ctor = "0.2"
 log = { workspace = true }
+rust-dix = { workspace = true }

@@ -3,7 +3,7 @@
 //! `#[component]` RML 组件,作为 ActivityBar 面板贡献:
 //! - 手动 `impl IContribution`(id/name/icon 元数据)
 //! - `impl ILifecycle::on_loaded` → 从 DI 获取 `IChatManager` → 构建 `chatter_list`
-//! - `open_chatter(uri)` —— 由 ChatListItem 经 `get_or_create_entity` 回调
+//! - `open_chatter(uri)` —— 由 ChatListItem 经 `get_active_entity` 回调
 //!
 //! 经 DI 获取 `IChatManager` 聚合所有 `IChatProvider` 的 `IChatter` 集合,
 //! 渲染为微信风格聊天列表。点击列表项 → `IWorkbenchManager::open(chat_uri)`。

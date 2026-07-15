@@ -6,9 +6,17 @@ use rml_ui::{TableColumn, TableRow};
 
 use crate::cases::common::{build_api_table, CaseDocPage};
 
-/// 演示 IVisual trait —— 可渲染为 AnyElement 的值对象
+/// 【教学例外】演示 IVisual trait —— 可渲染为 AnyElement 的值对象
 ///
-/// `content={self.make_visual()}` 返回 `Box<dyn IVisual>`，
+/// ⚠️ 本文件存在 3 处故意保留的命令式 UI 代码（`CounterBadge` 手写 IVisual、
+/// `render_badge` 返回 AnyElement、`make_visual` 返回 Box<dyn IVisual>），
+/// 专门用于演示 RML `content` 绑定不同类型（IntoElement / ToString / IVisual）
+/// 的框架能力，**不是生产代码的最佳实践**。
+///
+/// 生产代码应使用 `#[component]` + `.rml` 模板声明式实现，禁止在 `.rml.rs`
+/// 中构造 `div().child()` 或返回 `AnyElement`。
+///
+/// 此处 `content={self.make_visual()}` 返回 `Box<dyn IVisual>`，
 /// codegen 通过 `IntoContent` 调用 `IVisual::render` 转为 AnyElement。
 struct CounterBadge {
     value: i32,
@@ -109,7 +117,10 @@ impl ContentBindingCase {
         include_str!("content_binding_case.rml.rs").to_string()
     }
 
-    /// 返回 AnyElement —— 演示 content 绑定方法返回值
+    /// 【教学例外】返回 AnyElement —— 演示 content 绑定方法返回值
+    ///
+    /// ⚠️ 故意保留的命令式 UI，仅为演示 `content` 绑定能力，非生产最佳实践。
+    /// 生产代码应在 `.rml` 模板中声明式实现。
     ///
     /// `content={self.render_badge(_window, cx)}` 生成
     /// `.child(rml_core::content::into_content(self.render_badge(_window, cx), _window, cx))`
@@ -124,7 +135,10 @@ impl ContentBindingCase {
             .into_any_element()
     }
 
-    /// 返回 Box<dyn IVisual> —— 演示 content 绑定 IVisual trait 对象
+    /// 【教学例外】返回 Box<dyn IVisual> —— 演示 content 绑定 IVisual trait 对象
+    ///
+    /// ⚠️ 故意保留的命令式 UI，仅为演示 `content` 绑定能力，非生产最佳实践。
+    /// 生产代码应在 `.rml` 模板中声明式实现。
     ///
     /// `content={self.make_visual()}` 生成
     /// `.child(rml_core::content::into_content(self.make_visual(), _window, cx))`

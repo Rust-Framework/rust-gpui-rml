@@ -52,7 +52,10 @@
                         rows={channel_rows}
                         bordered=""
                         stripe="" />
-                    <component content={self.render_plan_actions(_window, cx)} />
+                    <div display="flex" flex-direction="row" justify-content="flex-end" gap="8px">
+                        <Button label="导入计划" primary="" outline="" size="small" icon="FolderOpen" on-click={on_import_plan} />
+                        <Button label="导出计划" primary="" outline="" size="small" icon="ExternalLink" on-click={on_export_plan} />
+                    </div>
                 </Card>
             </div>
 
@@ -60,6 +63,9 @@
             <div display="flex" flex-direction="column" gap="12px" style="width: 400px;">
                 <!-- ④ 实时数据 -->
                 <Card title="实时数据监测" extra={refresh_label}>
+                    <!-- RML 限制：each 循环内无法按索引解析主题色名（chart_1..chart_5），
+                         动态 stroke={expr} 仅接受 Hsla 值，不接受主题色名字符串。
+                         待框架支持后回归声明式实现，详见 project memory 迭代计划。 -->
                     <component content={self.render_metrics_panel(_window, cx)} />
                     <div style="height: 80px; margin-top: 8px;">
                         <LineChart data={chart_history} x-field="label" y-field="value" stroke="chart_1" tick-margin="2" dot="" />
@@ -118,7 +124,13 @@
                                 <Switch label="启用" checked={power_off_order} on-click={on_toggle_power_off_order} />
                             </Field>
                         </Form>
-                        <component content={self.render_control_buttons(_window, cx)} />
+                        <div display="flex" flex-direction="column" gap="8px" style="width: 100%">
+                            <Button label="启动采样" success="" icon="Play" style="width: 100%" disabled={sampling_active} on-click={on_start_sampling} />
+                            <Button label="停止" danger="" icon="Pause" style="width: 100%" disabled={!sampling_active} on-click={on_stop} />
+                            <Button label="手动清洗" primary="" outline="" icon="LoaderCircle" style="width: 100%" on-click={on_manual_clean} />
+                            <Button label="手动吹扫" primary="" outline="" icon="Replace" style="width: 100%" on-click={on_manual_purge} />
+                            <Button label="保存参数" primary="" outline="" icon="Check" style="width: 100%" on-click={on_save_params} />
+                        </div>
                     </div>
                 </Card>
             </div>
@@ -126,7 +138,9 @@
 
         <!-- ⑦ 事件日志 -->
         <Card title="报警与事件日志">
-            <component content={self.render_log_toolbar(_window, cx)} />
+            <div display="flex" flex-direction="row" justify-content="flex-end">
+                <Button label="清除日志" size="small" icon="Delete" on-click={on_clear_log} />
+            </div>
             <Table
                 delegate={event_delegate}
                 columns={event_columns}

@@ -128,7 +128,7 @@ pub static COMPONENT_PROPS: &[(&str, &[&str])] = &[
     // Button variant 布尔属性：primary/secondary/danger/success/warning/info/ghost/link/text
     // <Button primary /> → .primary()，各 variant 为独立布尔属性，可自由组合
     // icon="Play" → .icon(rml_ui::Icon::new(rml_ui::IconName::Play))
-    ("Button", &["primary", "secondary", "danger", "success", "warning", "info", "ghost", "link", "text", "icon"]),
+    ("Button", &["primary", "secondary", "danger", "success", "warning", "info", "ghost", "link", "text", "outline", "icon"]),
     // Tag variant 布尔属性：primary/secondary/danger/success/warning/info → .with_variant(TagVariant::*)
     // outline 为 Tag 专属描边样式
     ("Tag", &["primary", "secondary", "danger", "success", "warning", "info", "outline"]),

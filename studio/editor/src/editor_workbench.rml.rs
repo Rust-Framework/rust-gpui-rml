@@ -362,7 +362,7 @@ pub fn register_editor_abilities() {
         register_visual_ability::<EditorWorkbench>();
         register_workbench_ability::<EditorWorkbench>();
         // 注册 IWorkbenchComponentHost 能力 cast,使组件经
-        // `get_or_create_entity::<EditorWorkbench>` 取 host 后能调用其方法。
+        // `get_active_entity::<EditorWorkbench>` 取 host 后能调用其方法。
         register_workbench_component_host_ability::<EditorWorkbench>();
     });
 }

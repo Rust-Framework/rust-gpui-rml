@@ -1,44 +1,27 @@
-//! ServiceProvider —— 解析容器（impl IServiceProvider，自维护 cache）
+//! ServiceProvider —— 解析容器（基于 rust-dix，impl IServiceProvider）
 //!
-//! 对标 ASP.NET Core `ServiceProvider`。持有 factory map + singleton cache，
-//! `get_service_any` 先查缓存（单例语义），未命中则调用 factory（传入 `self`
-//! as `&dyn IServiceProvider`，支持 factory 内依赖注入），缓存后返回。
+//! 对标 ASP.NET Core `ServiceProvider`。内部委托 `rust_dix::ServiceProvider`，
+//! 对外 impl RML `IServiceProvider`，经 `get_by_type_id` 完成类型擦除查询。
+//!
+//! 单例缓存由 rust-dix 内部管理，无需自维护 cache。
 
 use std::any::{Any, TypeId};
-use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 use rml_core::context::IServiceProvider;
+use rust_dix::entry::IServiceResolver;
+use rust_dix::ServiceProvider as RdiProvider;
 
-use crate::collection::FactoryFn;
-
-/// 服务解析容器 —— 持有 factory map + singleton cache。
+/// 服务解析容器 —— 包装 `rust_dix::ServiceProvider`，impl RML `IServiceProvider`。
 ///
-/// `get_service_any` 先查缓存（单例语义），未命中则调用 factory。
-/// factory 接收 `self as &dyn IServiceProvider`，支持 factory 内递归解析
-/// （经 `ServiceProviderExt::get_trait` 查询其他服务）。
+/// `get_service_any` 委托 rust-dix 的 `get_by_type_id`，单例缓存由 rust-dix 内部管理。
 pub struct ServiceProvider {
-    pub(crate) factories: HashMap<TypeId, FactoryFn>,
-    pub(crate) keyed_factories: HashMap<(TypeId, String), FactoryFn>,
-    pub(crate) cache: RwLock<HashMap<TypeId, Arc<dyn Any + Send + Sync>>>,
-    pub(crate) keyed_cache: RwLock<HashMap<(TypeId, String), Arc<dyn Any + Send + Sync>>>,
+    pub(crate) inner: Arc<RdiProvider>,
 }
 
 impl IServiceProvider for ServiceProvider {
     fn get_service_any(&self, type_id: TypeId) -> Option<Arc<dyn Any + Send + Sync>> {
-        if let Some(cached) = self.cache.read().unwrap().get(&type_id) {
-            return Some(cached.clone());
-        }
-        let factory = self.factories.get(&type_id)?;
-        let instance = factory(self as &dyn IServiceProvider);
-        Some(
-            self.cache
-                .write()
-                .unwrap()
-                .entry(type_id)
-                .or_insert(instance)
-                .clone(),
-        )
+        self.inner.get_by_type_id(type_id)
     }
 
     fn get_keyed_service_any(
@@ -46,23 +29,10 @@ impl IServiceProvider for ServiceProvider {
         type_id: TypeId,
         key: &str,
     ) -> Option<Arc<dyn Any + Send + Sync>> {
-        let cache_key = (type_id, key.to_string());
-        if let Some(cached) = self.keyed_cache.read().unwrap().get(&cache_key) {
-            return Some(cached.clone());
-        }
-        let factory = self.keyed_factories.get(&cache_key)?;
-        let instance = factory(self as &dyn IServiceProvider);
-        Some(
-            self.keyed_cache
-                .write()
-                .unwrap()
-                .entry(cache_key)
-                .or_insert(instance)
-                .clone(),
-        )
+        self.inner.get_keyed_by_type_id(type_id, key)
     }
 
     fn has_service_any(&self, type_id: TypeId) -> bool {
-        self.factories.contains_key(&type_id)
+        self.inner.get_by_type_id(type_id).is_some()
     }
 }

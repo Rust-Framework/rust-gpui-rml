@@ -1,39 +1,38 @@
-//! ServiceCollection —— 注册容器（自维护 factory map）
+//! ServiceCollection —— 注册容器（基于 rust-dix）
 //!
-//! 对标 ASP.NET Core `IServiceCollection`。按 `TypeId` 索引 factory 闭包，
-//! `build()` 生成 `ServiceProvider`。
+//! 对标 ASP.NET Core `IServiceCollection`。内部委托 `rust_dix::ServiceCollection`，
+//! 对外保持 RML 风格 API（`add_singleton` / `add_keyed_singleton`）。
 //!
 //! 所有服务经 `ServiceSlot<T>` 桥接存储，使 trait object（`dyn Trait`）可通过
 //! `IServiceProvider` 的类型擦除层注册/查询。查询时经 `ServiceProviderExt::get_trait`
 //! 还原为 `Arc<T>`。
+//!
+//! `new()` 时自动调用 `rust_dix::ServiceCollection::from_injected()` 收集所有
+//! `#[inject]` 标记的自动注册服务，与手动 `add_singleton` 注册合并。
 
-use std::any::{Any, TypeId};
-use std::collections::HashMap;
+use std::any::TypeId;
 use std::sync::Arc;
 
 use rml_core::context::{IServiceProvider, ServiceSlot};
+use rust_dix::entry::IServiceResolver;
+use rust_dix::ServiceCollection as RdiCollection;
 
-/// Factory 闭包 —— 接收 `&dyn IServiceProvider`（支持 factory 内依赖注入），返回类型擦除的 `Arc`。
-/// `Send + Sync` 约束确保 `ServiceProvider` 可作为 `Arc<dyn IServiceProvider + Send + Sync>` 存储。
-pub(crate) type FactoryFn =
-    Box<dyn Fn(&dyn IServiceProvider) -> Arc<dyn Any + Send + Sync> + Send + Sync>;
-
-/// 服务注册容器 —— 按 `TypeId` 索引 factory 闭包。
+/// 服务注册容器 —— 基于 rust-dix，按 `TypeId` 索引 factory。
 ///
 /// 所有服务经 `ServiceSlot<T>` 桥接：`add_singleton::<dyn ITrait>(factory)` 注册时，
 /// factory 返回的 `Arc<dyn ITrait>` 被包装为 `ServiceSlot<dyn ITrait>`（Sized），
 /// 存入 `factories[TypeId::of::<ServiceSlot<dyn ITrait>>()]`。
 /// 查询时经 `get_trait::<dyn ITrait>()` 还原。
+///
+/// `new()` 自动收集 `#[inject]` 标记的服务（经 `from_injected()`）。
 pub struct ServiceCollection {
-    factories: HashMap<TypeId, FactoryFn>,
-    keyed_factories: HashMap<(TypeId, String), FactoryFn>,
+    inner: RdiCollection,
 }
 
 impl ServiceCollection {
     pub fn new() -> Self {
         Self {
-            factories: HashMap::new(),
-            keyed_factories: HashMap::new(),
+            inner: RdiCollection::from_injected(),
         }
     }
 
@@ -44,11 +43,12 @@ impl ServiceCollection {
         &mut self,
         factory: impl Fn(&dyn IServiceProvider) -> Arc<T> + Send + Sync + 'static,
     ) {
-        let f: FactoryFn = Box::new(move |p: &dyn IServiceProvider| {
-            let arc_t: Arc<T> = factory(p);
-            Arc::new(ServiceSlot(arc_t)) as Arc<dyn Any + Send + Sync>
+        let inner = std::mem::replace(&mut self.inner, RdiCollection::new());
+        self.inner = inner.singleton::<ServiceSlot<T>>(move |resolver: &dyn IServiceResolver| {
+            let adapter = ResolverAdapter { resolver };
+            let arc_t: Arc<T> = factory(&adapter);
+            Arc::new(ServiceSlot(arc_t))
         });
-        self.factories.insert(TypeId::of::<ServiceSlot<T>>(), f);
     }
 
     /// 注册 keyed 单例服务。`key` 区分同一 trait 的多个实现。
@@ -57,27 +57,50 @@ impl ServiceCollection {
         key: &str,
         factory: impl Fn(&dyn IServiceProvider) -> Arc<T> + Send + Sync + 'static,
     ) {
-        let f: FactoryFn = Box::new(move |p: &dyn IServiceProvider| {
-            Arc::new(ServiceSlot(factory(p))) as Arc<dyn Any + Send + Sync>
+        let inner = std::mem::replace(&mut self.inner, RdiCollection::new());
+        self.inner = inner.keyed_singleton::<ServiceSlot<T>>(key.to_string(), move |resolver: &dyn IServiceResolver| {
+            let adapter = ResolverAdapter { resolver };
+            let arc_t: Arc<T> = factory(&adapter);
+            Arc::new(ServiceSlot(arc_t))
         });
-        self.keyed_factories
-            .insert((TypeId::of::<ServiceSlot<T>>(), key.to_string()), f);
     }
 
     /// 构建 `ServiceProvider`，返回 `Arc<dyn IServiceProvider + Send + Sync>`。
     pub fn build(self) -> Arc<dyn IServiceProvider + Send + Sync> {
-        Arc::new(crate::provider::ServiceProvider {
-            factories: self.factories,
-            keyed_factories: self.keyed_factories,
-            cache: std::sync::RwLock::new(HashMap::new()),
-            keyed_cache: std::sync::RwLock::new(HashMap::new()),
-        })
+        let provider = self.inner.build().expect("DI build failed (circular dependency?)");
+        Arc::new(crate::provider::ServiceProvider { inner: provider })
     }
 }
 
 impl Default for ServiceCollection {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// 适配器 —— 将 `&dyn IServiceResolver`（rust-dix）适配为 `&dyn IServiceProvider`（RML）。
+///
+/// factory 闭包内通过 `p.get_trait::<dyn IDep>()` 解析依赖时，
+/// 经此适配器委托 rust-dix resolver 的 `get_by_type_id` 完成。
+struct ResolverAdapter<'a> {
+    resolver: &'a dyn IServiceResolver,
+}
+
+impl<'a> IServiceProvider for ResolverAdapter<'a> {
+    fn get_service_any(&self, type_id: TypeId) -> Option<Arc<dyn std::any::Any + Send + Sync>> {
+        self.resolver.get_by_type_id(type_id)
+    }
+
+    fn get_keyed_service_any(
+        &self,
+        type_id: TypeId,
+        key: &str,
+    ) -> Option<Arc<dyn std::any::Any + Send + Sync>> {
+        self.resolver.get_keyed_by_type_id(type_id, key)
+    }
+
+    fn has_service_any(&self, type_id: TypeId) -> bool {
+        self.resolver.get_by_type_id(type_id).is_some()
     }
 }
 

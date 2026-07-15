@@ -95,8 +95,9 @@ pub fn component_static_setter(name: &str, value: &str, tag: &str) -> Option<Str
         // Button variant 布尔属性: primary → .primary(), ghost → .ghost() 等
         // 各 variant 为独立布尔属性，可与其他属性自由组合（如 <Button primary compact />）
         // secondary 为默认值（ButtonVariant::Secondary 为 #[default]）
+        // outline → .outline()（ButtonVariants trait，与 primary/danger 等组合使用）
         "primary" | "secondary" | "danger" | "success" | "warning" | "info" | "ghost"
-        | "link" | "text" if tag == "Button" => {
+        | "link" | "text" | "outline" if tag == "Button" => {
             if value.is_empty() || value.eq_ignore_ascii_case("true") {
                 Some(format!(".{}()", name))
             } else {
