@@ -11,17 +11,14 @@ extern crate studio_chat as _;
 mod startup;
 
 use rml_app::RmlApplication;
-use rust_rml_di::prelude::*;
 
 // `#[rml::main]` 自动注入 `rml::embed_assets!()` + `rml::embed_contributions!()`
 // (include build.rs 生成的 rml_assets.rs / rml_contributions.rs)
 #[rml::main]
 fn main() {
     // Program.cs 风格：显式 builder 链，框架自动管理主窗口创建与生命周期
+    // DI 容器由 MainWindow::on_loaded → di::build_runtime_provider 二阶段构建
     RmlApplication::new()
         .main_window::<studio_shell::MainWindow>()
-        .configure(|_s| {
-            // 静态服务注册点（当前所有服务经 build_runtime_provider 二阶段注入）
-        })
         .run::<startup::Startup>();
 }

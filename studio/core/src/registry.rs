@@ -1,12 +1,15 @@
 //! 全局注册表 —— `ctor` + 全局工厂列表
 //!
-//! 两个独立注册表:
+//! 三个独立注册表:
 //! - **工作空间 opener** —— `register_workspace_opener` / `open_workspace`
 //! - **工作台组件** —— `register_workbench_component` / `get_workbench_components`
+//! - **ChatProvider** —— `register_chat_provider` / `get_chat_providers`
 //!
-//! 扩展 crate 经 `#[ctor::ctor]` 调用注册函数,Shell/Workbench 在运行时枚举。
-//! 与 `rml_ui::register_activity_panel` / `rust_rml_di::auto_register` 同构:
+//! 扩展 crate 经 `#[ctor::ctor]` 调用注册函数,Shell 在运行时枚举注入 DI 容器。
 //! `Fn`（非 `FnOnce`）+ 非 drain 式读取,支持多次调用。
+//!
+//! DI 服务（IWorkbenchManager / IWorkspaceManager / IChatManager / IWorkbenchProvider 等）
+//! 经 `studio_core::di::auto_register` 注册,不在此模块。
 
 use std::path::Path;
 use std::sync::{Arc, Mutex, OnceLock};

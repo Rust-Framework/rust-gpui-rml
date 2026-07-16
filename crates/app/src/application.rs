@@ -7,14 +7,14 @@
 //! （通过 `#[rml::main]` 属性宏注入 `rml::embed_assets!()` 触发 include!()）,
 //! 因此 main.rs 无需调用 `.assets(...)`。
 //!
+//! DI 容器由产品层（如 Studio）在 `ILifecycle::on_loaded` 中自行构建并经
+//! `cx.use_provider()` 注入。框架本身不绑定特定 DI 实现。
+//!
 //! ```rust,ignore
 //! #[rml::main]
 //! fn main() {
 //!     rml_app::RmlApplication::new()
 //!         .main_window::<MainWindow>()
-//!         .configure(|s| {
-//!             s.add_singleton::<dyn IFoo>(|_| Arc::new(FooImpl));
-//!         })
 //!         .run::<app::Startup>();
 //! }
 //! ```
@@ -54,9 +54,9 @@ pub struct NoWindow;
 /// - `RmlApplication<NoWindow>`：命令式入口,`run::<A>()` 由 `A::on_launch` 全权控制
 /// - `RmlApplication<W>`：声明式入口,`run::<L>()` 自动打开 `W` 并驱动 `L` 生命周期
 ///
-/// `properties` 提供通用 key-value 存储（`get/set`），供 DI 适配层（如 `rust-rml-di`）
-/// 通过 `configure(|s| { ... })` 注入 `Arc<dyn IServiceProvider>`，`run` 时取出并经
-/// `cx.use_provider` 注入为正式后端。
+/// `properties` 提供通用 key-value 存储（`get/set`），可供产品层在 `run` 之前
+/// 注入 `Arc<dyn IServiceProvider>`，`run` 时取出并经 `cx.use_provider` 注入为正式后端。
+/// 当前 Studio 经 `MainWindow::on_loaded` → `cx.use_provider` 二阶段注入,不使用此机制。
 ///
 /// 注意：`RmlApplication` 是单线程 builder（仅 `main()` 中使用，事件循环前消费），
 /// 故 `properties` 不要求 `Send + Sync`，可存储任意 `'static` 类型（含 `Arc<dyn Trait>`）。

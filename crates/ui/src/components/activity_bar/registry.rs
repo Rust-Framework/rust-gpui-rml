@@ -3,7 +3,7 @@
 //! 扩展 crate 经 `#[ctor::ctor]` 调用 `register_activity_panel(factory)` 注册面板工厂,
 //! Host 在 `on_loaded` 中经 `get_activity_panels()` 枚举所有已注册面板。
 //!
-//! 与 `rust_rml_di::auto_register` 同构: `Fn`（非 `FnOnce`）+ 非 drain 式读取,支持多次查询。
+//! 与 `studio_core::di::auto_register` 同构: `Fn`（非 `FnOnce`）+ 非 drain 式读取,支持多次查询。
 
 use std::sync::{Arc, Mutex, OnceLock};
 

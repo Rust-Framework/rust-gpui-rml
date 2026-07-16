@@ -44,12 +44,19 @@ pub trait IServiceProvider {
     fn has_service_any(&self, type_id: TypeId) -> bool;
 
     /// 查询服务实例。未注册返回 `None`。
+    ///
+    /// 支持两种内部存储格式：
+    /// - 双层包装 `Arc<Arc<T>>`（rust-dix 等 `?Sized` 兼容容器）
+    /// - 单层包装 `Arc<T>`（`DefaultServiceProvider`）
     fn get_service<T: 'static + Send + Sync>(&self) -> Option<Arc<T>>
     where
         Self: Sized,
     {
-        self.get_service_any(TypeId::of::<T>())
-            .and_then(|any| any.downcast::<T>().ok())
+        let any = self.get_service_any(TypeId::of::<T>())?;
+        match any.downcast::<Arc<T>>() {
+            Ok(double) => Some(Arc::clone(&*double)),
+            Err(any) => any.downcast::<T>().ok(),
+        }
     }
 
     /// 查询 keyed 服务实例。未注册返回 `None`。
@@ -57,8 +64,11 @@ pub trait IServiceProvider {
     where
         Self: Sized,
     {
-        self.get_keyed_service_any(TypeId::of::<T>(), key)
-            .and_then(|any| any.downcast::<T>().ok())
+        let any = self.get_keyed_service_any(TypeId::of::<T>(), key)?;
+        match any.downcast::<Arc<T>>() {
+            Ok(double) => Some(Arc::clone(&*double)),
+            Err(any) => any.downcast::<T>().ok(),
+        }
     }
 
     /// 是否已注册某服务。
@@ -115,17 +125,24 @@ pub struct ServiceSlot<T: ?Sized + 'static + Send + Sync>(pub Arc<T>);
 /// 业务代码 `use` 此 trait 后即可调用 `get_trait` / `get_keyed_trait`。
 pub trait ServiceProviderExt: IServiceProvider {
     /// 查询 trait object 服务（经 `ServiceSlot` 桥接）。
+    ///
+    /// 支持双层包装 `Arc<Arc<ServiceSlot<T>>>`（rust-dix）和
+    /// 单层包装 `Arc<ServiceSlot<T>>`（`DefaultServiceProvider`）。
     fn get_trait<T: ?Sized + 'static + Send + Sync>(&self) -> Option<Arc<T>> {
-        self.get_service_any(TypeId::of::<ServiceSlot<T>>())
-            .and_then(|any| any.downcast::<ServiceSlot<T>>().ok())
-            .map(|slot| slot.0.clone())
+        let any = self.get_service_any(TypeId::of::<ServiceSlot<T>>())?;
+        match any.downcast::<Arc<ServiceSlot<T>>>() {
+            Ok(double) => Some(Arc::clone(&*double).0.clone()),
+            Err(any) => any.downcast::<ServiceSlot<T>>().ok().map(|slot| slot.0.clone()),
+        }
     }
 
     /// 查询 keyed trait object 服务（经 `ServiceSlot` 桥接）。
     fn get_keyed_trait<T: ?Sized + 'static + Send + Sync>(&self, key: &str) -> Option<Arc<T>> {
-        self.get_keyed_service_any(TypeId::of::<ServiceSlot<T>>(), key)
-            .and_then(|any| any.downcast::<ServiceSlot<T>>().ok())
-            .map(|slot| slot.0.clone())
+        let any = self.get_keyed_service_any(TypeId::of::<ServiceSlot<T>>(), key)?;
+        match any.downcast::<Arc<ServiceSlot<T>>>() {
+            Ok(double) => Some(Arc::clone(&*double).0.clone()),
+            Err(any) => any.downcast::<ServiceSlot<T>>().ok().map(|slot| slot.0.clone()),
+        }
     }
 
     /// 查询必需 trait object 服务。未注册时 panic。

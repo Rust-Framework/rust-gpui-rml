@@ -20,6 +20,7 @@ pub mod ability_ext;
 pub mod chat;
 pub mod command;
 pub mod component;
+pub mod di;
 pub mod document;
 pub mod registry;
 pub mod worktree;

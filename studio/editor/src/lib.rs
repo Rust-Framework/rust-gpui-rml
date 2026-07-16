@@ -32,13 +32,13 @@ pub mod editor_provider;
 fn register_editor_services() {
     use std::sync::Arc;
     use rml_core::workbench::IWorkbenchProvider;
-    use rust_rml_di::{auto_register, ServiceCollection};
+    use studio_core::di::{auto_register, ServiceCollection, ServiceCollectionExt};
 
     crate::editor_workbench::register_editor_abilities();
     crate::code_component::register_code_component();
     crate::preview_component::register_preview_component();
     auto_register(|s: &mut ServiceCollection| {
-        s.add_keyed_singleton::<dyn IWorkbenchProvider>("file", |_| {
+        s.add_keyed_singleton::<dyn IWorkbenchProvider>("file", || {
             Arc::new(crate::editor_provider::EditorProvider) as Arc<dyn IWorkbenchProvider>
         });
     });

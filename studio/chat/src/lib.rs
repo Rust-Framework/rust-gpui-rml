@@ -40,15 +40,15 @@ fn register_chat_services() {
     use rml_core::contribution::IContribution;
     use rml_core::workbench::IWorkbenchProvider;
     use rml_ui::register_activity_panel;
-    use rust_rml_di::{auto_register, ServiceCollection};
+    use studio_core::di::{auto_register, ServiceCollection, ServiceCollectionExt};
 
     // 1. ChatManager + ChatWorkbenchProvider → DI
     auto_register(|s: &mut ServiceCollection| {
-        s.add_singleton::<dyn studio_core::chat::IChatManager>(|_| {
+        s.add_singleton::<dyn studio_core::chat::IChatManager>(|| {
             Arc::new(crate::chat_manager::ChatManager::new())
                 as Arc<dyn studio_core::chat::IChatManager>
         });
-        s.add_keyed_singleton::<dyn IWorkbenchProvider>("chat", |_| {
+        s.add_keyed_singleton::<dyn IWorkbenchProvider>("chat", || {
             Arc::new(crate::chat_provider::ChatWorkbenchProvider) as Arc<dyn IWorkbenchProvider>
         });
     });

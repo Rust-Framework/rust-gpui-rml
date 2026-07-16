@@ -43,11 +43,11 @@ rml::embed_contributions!();
 fn register_welcome_services() {
     use std::sync::Arc;
     use rml_core::workbench::IWorkbenchProvider;
-    use rust_rml_di::{auto_register, ServiceCollection};
+    use studio_core::di::{auto_register, ServiceCollection, ServiceCollectionExt};
 
     crate::welcome_workbench::register_welcome_abilities();
     auto_register(|s: &mut ServiceCollection| {
-        s.add_keyed_singleton::<dyn IWorkbenchProvider>("rml", |_| {
+        s.add_keyed_singleton::<dyn IWorkbenchProvider>("rml", || {
             Arc::new(crate::welcome_provider::WelcomeProvider) as Arc<dyn IWorkbenchProvider>
         });
     });

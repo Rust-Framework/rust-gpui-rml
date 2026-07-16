@@ -9,7 +9,6 @@ description = "Arc Studio IDE —— 基于 rust-gpui-rml 的 IDE 产品"
 rust-rml-engine = { workspace = true }
 rust-rml-app = { workspace = true }
 rust-rml-core = { workspace = true }
-rust-rml-di = { workspace = true }
 studio-shell = { workspace = true }
 studio-editor = { workspace = true }
 studio-explorer = { workspace = true }
