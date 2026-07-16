@@ -2,7 +2,7 @@
 members = ["crates/core", "crates/macros", "crates/engine", "crates/ui", "crates/ui-term", "crates/app", "crates/rml", "crates/lsp", "demo", "studio/core", "studio/shell", "studio/explorer", "studio/editor", "studio/chat", "studio/app"]
 # dap 暂移出 workspace：其 lldb 重型 git 依赖在受限网络下阻塞编译。
 # 需要时 cd 进对应目录单独构建，或重新加入 members。
-exclude = ["crates/dap"]
+exclude = ["crates/dap", "vendor"]
 resolver = "2"
 
 [workspace.package]
@@ -59,3 +59,7 @@ proc-macro2 = "1"
 
 # DI 容器(Arc Studio IDE 框架构建于此之上)
 rust-dix = "0.6"
+
+[patch."https://github.com/longbridge/gpui-component.git"]
+gpui-component = { path = "vendor/gpui-component/crates/ui" }
+gpui-component-assets = { path = "vendor/gpui-component/crates/assets" }
