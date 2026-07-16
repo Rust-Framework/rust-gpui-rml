@@ -8,7 +8,7 @@
 //! 因此 main.rs 无需调用 `.assets(...)`。
 //!
 //! DI 容器由产品层（如 Studio）在 `ILifecycle::on_loaded` 中自行构建并经
-//! `cx.use_provider()` 注入。框架本身不绑定特定 DI 实现。
+//! `cx.set_provider()` 注入为正式 provider。框架本身不绑定特定 DI 实现。
 //!
 //! ```rust,ignore
 //! #[rml::main]
@@ -37,7 +37,7 @@ fn bootstrap_runtime(cx: &mut App) {
     // 初始化 IAppContext 的 ServiceProviderSlot（IServiceProvider 风格统一服务访问）
     ensure_service_provider(cx);
     // 注册 ContributionRegistry 为单例服务（替代原 OnceLock 静态存储）
-    cx.set_service(Arc::new(crate::contribution::ContributionRegistry::new()));
+    cx.register_service(Arc::new(crate::contribution::ContributionRegistry::new()));
 
     ensure_i18n(cx);
     ensure_theme(cx);
@@ -55,8 +55,8 @@ pub struct NoWindow;
 /// - `RmlApplication<W>`：声明式入口,`run::<L>()` 自动打开 `W` 并驱动 `L` 生命周期
 ///
 /// `properties` 提供通用 key-value 存储（`get/set`），可供产品层在 `run` 之前
-/// 注入 `Arc<dyn IServiceProvider>`，`run` 时取出并经 `cx.use_provider` 注入为正式后端。
-/// 当前 Studio 经 `MainWindow::on_loaded` → `cx.use_provider` 二阶段注入,不使用此机制。
+/// 注入 `Arc<dyn IServiceProvider>`，`run` 时取出并经 `cx.set_provider` 注入为正式 provider。
+/// 当前 Studio 经 `MainWindow::on_loaded` → `cx.set_provider` 注入,不使用此机制。
 ///
 /// 注意：`RmlApplication` 是单线程 builder（仅 `main()` 中使用，事件循环前消费），
 /// 故 `properties` 不要求 `Send + Sync`，可存储任意 `'static` 类型（含 `Arc<dyn Trait>`）。
@@ -108,7 +108,7 @@ impl RmlApplication<NoWindow> {
     /// 命令式启动：`on_launch` 完全控制窗口创建（无主窗口自动管理）。
     ///
     /// 若 `configure` 阶段注入了 `Arc<dyn IServiceProvider>`,此处取出并经
-    /// `cx.use_provider` 注入为正式后端。
+    /// `cx.set_provider` 注入为正式 provider。
     ///
     /// 资源已由 build.rs 生成的 `#[ctor::ctor]` 函数在 `main` 之前自动注册,
     /// 此处无需任何 init 调用。
@@ -119,7 +119,7 @@ impl RmlApplication<NoWindow> {
             .run(move |cx: &mut App| {
                 bootstrap_runtime(cx);
                 if let Some(p) = provider {
-                    cx.use_provider(p);
+                    cx.set_provider(p);
                 }
                 A::default().on_launch(cx);
             });
@@ -130,7 +130,7 @@ impl<W: IWindow + Default + 'static> RmlApplication<W> {
     /// 声明式启动：`L::on_launch` → 打开主窗口 `W`。
     ///
     /// 若 `configure` 阶段注入了 `Arc<dyn IServiceProvider + Send + Sync>`,此处取出并经
-    /// `cx.use_provider` 注入为正式后端。
+    /// `cx.set_provider` 注入为正式 provider。
     ///
     /// 资源已由 build.rs 生成的 `#[ctor::ctor]` 函数在 `main` 之前自动注册,
     /// 此处无需任何 init 调用。
@@ -141,7 +141,7 @@ impl<W: IWindow + Default + 'static> RmlApplication<W> {
             .run(move |cx: &mut App| {
                 bootstrap_runtime(cx);
                 if let Some(p) = provider {
-                    cx.use_provider(p);
+                    cx.set_provider(p);
                 }
                 L::default().on_launch(cx);
                 W::default().open(cx);

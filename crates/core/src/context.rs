@@ -1,12 +1,19 @@
 //! 服务容器抽象 —— IServiceProvider（解析）+ IAppContext（GPUI 上下文扩展）
 //!
 //! 对标 ASP.NET Core DI 抽象：
-//! - `IServiceProvider`：纯解析能力（GetService / GetKeyedService / HasService）
-//! - `DefaultServiceProvider`：内置默认实现（类似 MEDI）
-//! - 第三方容器（如 rust-dix）通过实现 `IServiceProvider` 对接，经 `IAppContext::use_provider` 注入
+//! - `IServiceProvider`：纯解析能力（GetService / GetKeyedService / HasService），支持 `?Sized`（trait object）
+//! - `RuntimeServiceRegistry`：内置运行时注册表（承载框架内部 Sized 服务）
+//! - 第三方容器（如 rust-dix）通过实现 `IServiceProvider` 对接，经 `IAppContext::set_provider` 注入
 //!
-//! 双层查询：正式后端（rust-dix 等）→ 运行时注册表（DefaultServiceProvider）。
-//! 框架内部 `set_service` 写入运行时注册表，在任何后端下都生效。
+//! 双层查询：正式 provider（rust-dix 等）→ 运行时注册表（RuntimeServiceRegistry）。
+//! 框架内部 `register_service` 写入运行时注册表，在任何 provider 下都生效。
+//!
+//! # 分层容器
+//!
+//! `set_provider` 为覆盖语义（最后注入的 provider 生效），不支持多 provider 串联。
+//! 业务方需要多容器分层（如插件子容器桥接主容器）时，应使用 rust-dix 原生
+//! `ServiceProviderWrapper`（child-first + root fallback）经 `DixServiceWrapper`
+//! 桥接为单一 `IServiceProvider` 后注入，分层逻辑由 rust-dix 原生表达。
 //!
 //! # Object Safety
 //!
@@ -14,6 +21,15 @@
 //! `get_keyed_service_any` / `has_service_any` 接收 `TypeId`，返回 `Arc<dyn Any + Send + Sync>`，
 //! 可在 `dyn IServiceProvider` 上调用。泛型便利方法 `get_service::<T>()` 等带 `where Self: Sized`
 //! 约束，不进入 vtable，由具体类型经默认实现获得。
+//!
+//! # Trait Object 支持
+//!
+//! `get_service::<T>()` 的 `T` 支持 `?Sized`，可直接查询 `dyn Trait`：
+//! ```rust,ignore
+//! let mgr: Arc<dyn IWorkbenchManager> = cx.get_service::<dyn IWorkbenchManager>()?;
+//! ```
+//! 内部存储格式统一为 `Arc<T>`（`Arc<dyn Trait>` 是 Sized，可擦除为 `Arc<dyn Any + Send + Sync>`），
+//! 与 rust-dix `IServiceResolver::get::<T: ?Sized>` 默认实现一致，无需 `ServiceSlot` 包装。
 
 use std::any::{Any, TypeId};
 use std::borrow::{Borrow, BorrowMut};
@@ -25,10 +41,12 @@ use gpui::{App, BorrowAppContext, Context, Global};
 /// 服务提供者抽象 —— 仅解析能力（`&self` 方法）。
 ///
 /// 对标 ASP.NET Core `IServiceProvider` + keyed 服务扩展。
-/// 第三方 DI 容器（rust-dix 等）实现此 trait 后，经 `IAppContext::use_provider` 注入。
+/// 第三方 DI 容器（rust-dix 等）实现此 trait 后，经 `IAppContext::set_provider` 注入。
 ///
 /// 核心方法 `get_service_any` 等是 object-safe 的（类型擦除），泛型便利方法
 /// `get_service::<T>()` 等通过 `where Self: Sized` 排除出 vtable，由默认实现委托给 `_any` 方法。
+///
+/// `T` 支持 `?Sized`，可直接查询 trait object（`dyn Trait`）。
 pub trait IServiceProvider {
     /// 类型擦除的服务查询。未注册返回 `None`。
     fn get_service_any(&self, type_id: TypeId) -> Option<Arc<dyn Any + Send + Sync>>;
@@ -45,34 +63,29 @@ pub trait IServiceProvider {
 
     /// 查询服务实例。未注册返回 `None`。
     ///
-    /// 支持两种内部存储格式：
-    /// - 双层包装 `Arc<Arc<T>>`（rust-dix 等 `?Sized` 兼容容器）
-    /// - 单层包装 `Arc<T>`（`DefaultServiceProvider`）
-    fn get_service<T: 'static + Send + Sync>(&self) -> Option<Arc<T>>
+    /// `T` 支持 `?Sized`，可直接查询 trait object（`dyn Trait`）。
+    /// 内部存储统一为 `Arc<T>`，downcast 还原后 clone 返回。
+    fn get_service<T: ?Sized + 'static + Send + Sync>(&self) -> Option<Arc<T>>
     where
         Self: Sized,
     {
         let any = self.get_service_any(TypeId::of::<T>())?;
-        match any.downcast::<Arc<T>>() {
-            Ok(double) => Some(Arc::clone(&*double)),
-            Err(any) => any.downcast::<T>().ok(),
-        }
+        any.downcast::<Arc<T>>().ok().map(|d| Arc::clone(&*d))
     }
 
     /// 查询 keyed 服务实例。未注册返回 `None`。
-    fn get_keyed_service<T: 'static + Send + Sync>(&self, key: &str) -> Option<Arc<T>>
+    ///
+    /// `T` 支持 `?Sized`，可直接查询 trait object（`dyn Trait`）。
+    fn get_keyed_service<T: ?Sized + 'static + Send + Sync>(&self, key: &str) -> Option<Arc<T>>
     where
         Self: Sized,
     {
         let any = self.get_keyed_service_any(TypeId::of::<T>(), key)?;
-        match any.downcast::<Arc<T>>() {
-            Ok(double) => Some(Arc::clone(&*double)),
-            Err(any) => any.downcast::<T>().ok(),
-        }
+        any.downcast::<Arc<T>>().ok().map(|d| Arc::clone(&*d))
     }
 
     /// 是否已注册某服务。
-    fn has_service<T: 'static + Send + Sync>(&self) -> bool
+    fn has_service<T: ?Sized + 'static + Send + Sync>(&self) -> bool
     where
         Self: Sized,
     {
@@ -80,7 +93,7 @@ pub trait IServiceProvider {
     }
 
     /// 查询必需服务。未注册时 panic 并报告类型名。
-    fn get_required_service<T: 'static + Send + Sync>(&self) -> Arc<T>
+    fn get_required_service<T: ?Sized + 'static + Send + Sync>(&self) -> Arc<T>
     where
         Self: Sized,
     {
@@ -93,7 +106,7 @@ pub trait IServiceProvider {
     }
 
     /// 查询必需 keyed 服务。未注册时 panic。
-    fn get_required_keyed_service<T: 'static + Send + Sync>(&self, key: &str) -> Arc<T>
+    fn get_required_keyed_service<T: ?Sized + 'static + Send + Sync>(&self, key: &str) -> Arc<T>
     where
         Self: Sized,
     {
@@ -107,68 +120,74 @@ pub trait IServiceProvider {
     }
 }
 
-/// Trait object 服务槽位 —— 将 `Arc<dyn Trait>` 包装为 Sized 类型，
-/// 使其可通过 `IServiceProvider` 的类型擦除层注册/查询。
-///
-/// `dyn Trait` 是 `!Sized`，无法直接 `downcast`。`ServiceSlot<dyn Trait>`
-/// 是 Sized 结构体（包裹 `Arc<dyn Trait>`），可存入 `Arc<dyn Any + Send + Sync>`
-/// 并经 `downcast::<ServiceSlot<dyn Trait>>()` 还原。
-///
-/// 查询模式：
-/// - 具体类型：`cx.get_service::<MyStruct>()` — 直接查询
-/// - Trait object：`cx.get_trait::<dyn ITrait>()` — 经 ServiceSlot 桥接（见 `ServiceProviderExt`）
-pub struct ServiceSlot<T: ?Sized + 'static + Send + Sync>(pub Arc<T>);
+// ──────────────────────────────────────────────────────────────────────────
+//  自由函数 —— 在 `dyn IServiceProvider` 上查询（绕过 `where Self: Sized` 约束）
+// ──────────────────────────────────────────────────────────────────────────
+//
+// `IServiceProvider::get_service::<T>()` 等泛型方法带 `where Self: Sized` 约束
+// （object-safety 要求），无法在 `dyn IServiceProvider` 上调用。当业务类型持有
+// `Arc<dyn IServiceProvider>`（如 `ArcShellManager`）时，用这些自由函数查询。
+// 类似 `Arc::downcast` / `Any::downcast_ref` 的自由函数模式。
 
-/// `IServiceProvider` 便捷扩展 —— trait object 查询经 `ServiceSlot` 桥接。
+/// 在 `&dyn IServiceProvider` 上查询服务实例。
 ///
-/// blanket impl 对所有 `IServiceProvider` 实现（含 `dyn IServiceProvider`），
-/// 业务代码 `use` 此 trait 后即可调用 `get_trait` / `get_keyed_trait`。
-pub trait ServiceProviderExt: IServiceProvider {
-    /// 查询 trait object 服务（经 `ServiceSlot` 桥接）。
-    ///
-    /// 支持双层包装 `Arc<Arc<ServiceSlot<T>>>`（rust-dix）和
-    /// 单层包装 `Arc<ServiceSlot<T>>`（`DefaultServiceProvider`）。
-    fn get_trait<T: ?Sized + 'static + Send + Sync>(&self) -> Option<Arc<T>> {
-        let any = self.get_service_any(TypeId::of::<ServiceSlot<T>>())?;
-        match any.downcast::<Arc<ServiceSlot<T>>>() {
-            Ok(double) => Some(Arc::clone(&*double).0.clone()),
-            Err(any) => any.downcast::<ServiceSlot<T>>().ok().map(|slot| slot.0.clone()),
-        }
-    }
-
-    /// 查询 keyed trait object 服务（经 `ServiceSlot` 桥接）。
-    fn get_keyed_trait<T: ?Sized + 'static + Send + Sync>(&self, key: &str) -> Option<Arc<T>> {
-        let any = self.get_keyed_service_any(TypeId::of::<ServiceSlot<T>>(), key)?;
-        match any.downcast::<Arc<ServiceSlot<T>>>() {
-            Ok(double) => Some(Arc::clone(&*double).0.clone()),
-            Err(any) => any.downcast::<ServiceSlot<T>>().ok().map(|slot| slot.0.clone()),
-        }
-    }
-
-    /// 查询必需 trait object 服务。未注册时 panic。
-    fn get_required_trait<T: ?Sized + 'static + Send + Sync>(&self) -> Arc<T> {
-        self.get_trait::<T>().unwrap_or_else(|| {
-            panic!(
-                "required trait service `{}` not registered",
-                std::any::type_name::<T>()
-            )
-        })
-    }
+/// 等价 `IServiceProvider::get_service::<T>()`，但可在 `dyn` 上调用。
+/// 供持有 `Arc<dyn IServiceProvider>` 的非 GPUI 类型使用。
+pub fn resolve_service<T: ?Sized + 'static + Send + Sync>(
+    provider: &dyn IServiceProvider,
+) -> Option<Arc<T>> {
+    let any = provider.get_service_any(TypeId::of::<T>())?;
+    any.downcast::<Arc<T>>().ok().map(|d| Arc::clone(&*d))
 }
 
-impl<S: IServiceProvider + ?Sized> ServiceProviderExt for S {}
+/// 在 `&dyn IServiceProvider` 上查询 keyed 服务实例。
+///
+/// 等价 `IServiceProvider::get_keyed_service::<T>()`，但可在 `dyn` 上调用。
+pub fn resolve_keyed_service<T: ?Sized + 'static + Send + Sync>(
+    provider: &dyn IServiceProvider,
+    key: &str,
+) -> Option<Arc<T>> {
+    let any = provider.get_keyed_service_any(TypeId::of::<T>(), key)?;
+    any.downcast::<Arc<T>>().ok().map(|d| Arc::clone(&*d))
+}
 
-/// 默认服务提供者 —— core 内置的简陋实现（原 `ServiceCollection` 重命名）。
+/// 在 `&dyn IServiceProvider` 上查询必需服务。未注册时 panic。
+pub fn resolve_required_service<T: ?Sized + 'static + Send + Sync>(
+    provider: &dyn IServiceProvider,
+) -> Arc<T> {
+    resolve_service::<T>(provider).unwrap_or_else(|| {
+        panic!(
+            "required service `{}` not registered",
+            std::any::type_name::<T>()
+        )
+    })
+}
+
+/// 在 `&dyn IServiceProvider` 上查询必需 keyed 服务。未注册时 panic。
+pub fn resolve_required_keyed_service<T: ?Sized + 'static + Send + Sync>(
+    provider: &dyn IServiceProvider,
+    key: &str,
+) -> Arc<T> {
+    resolve_keyed_service::<T>(provider, key).unwrap_or_else(|| {
+        panic!(
+            "required keyed service `{}` (key={}) not registered",
+            std::any::type_name::<T>(),
+            key
+        )
+    })
+}
+
+/// 运行时服务注册表 —— core 内置的 `IServiceProvider` 实现，用作运行时注册表。
 ///
 /// 按 `TypeId` 索引 `Arc<dyn Any + Send + Sync>`，支持 keyed 服务。
-/// 作为 `IServiceProvider` 的默认后端，也用作运行时注册表。
+/// 接收 `IAppContext::register_service` 调用，在任何正式 provider 下都生效。
 #[derive(Default)]
-pub struct DefaultServiceProvider {
+pub struct RuntimeServiceRegistry {
     services: RwLock<HashMap<TypeId, Arc<dyn Any + Send + Sync>>>,
     keyed: RwLock<HashMap<(TypeId, String), Arc<dyn Any + Send + Sync>>>,
 }
 
-impl DefaultServiceProvider {
+impl RuntimeServiceRegistry {
     pub fn new() -> Self {
         Self::default()
     }
@@ -190,7 +209,7 @@ impl DefaultServiceProvider {
     }
 }
 
-impl IServiceProvider for DefaultServiceProvider {
+impl IServiceProvider for RuntimeServiceRegistry {
     fn get_service_any(&self, type_id: TypeId) -> Option<Arc<dyn Any + Send + Sync>> {
         self.services.read().unwrap().get(&type_id).cloned()
     }
@@ -212,31 +231,31 @@ impl IServiceProvider for DefaultServiceProvider {
     }
 }
 
-/// 服务容器槽位 —— GPUI Global，持有 provider 链 + 运行时注册表。
+/// 服务容器槽位 —— GPUI Global，持有单一 provider + 运行时注册表。
 ///
-/// provider 链支持多阶段注入：`configure` 阶段（启动前）与 `on_loaded` 阶段
-/// （窗口加载后）的 provider 共存，查询时依次尝试。解决 `ArcShellManager` 等
-/// 循环依赖服务的二阶段注入问题。
+/// `provider` 为覆盖语义：`set_provider` 替换原有 provider，不支持多 provider 串联。
+/// 多容器分层（如插件子容器桥接主容器）应使用 rust-dix `ServiceProviderWrapper`
+/// 经 `DixServiceWrapper` 桥接为单一 `IServiceProvider` 后注入。
 ///
-/// 查询顺序：provider 链（按注入顺序）→ 运行时注册表（`set_service` 写入）。
+/// 查询顺序：`provider`（若已注入）→ 运行时注册表（`register_service` 写入）。
 struct ServiceProviderSlot {
-    /// provider 链：`configure` + `on_loaded` 阶段注入的 provider 依次查询。
-    /// `Send + Sync` 约束确保 provider 可被 `ArcShellManager` 等 `Send + Sync` 类型持有。
-    providers: RwLock<Vec<Arc<dyn IServiceProvider + Send + Sync>>>,
-    /// 运行时注册表（始终 `DefaultServiceProvider`，接收 `set_service` 调用）。
-    runtime: DefaultServiceProvider,
+    /// 正式 provider（覆盖语义）。`Send + Sync` 约束确保 provider 可被
+    /// `ArcShellManager` 等 `Send + Sync` 类型持有。
+    provider: RwLock<Option<Arc<dyn IServiceProvider + Send + Sync>>>,
+    /// 运行时注册表（始终 `RuntimeServiceRegistry`，接收 `register_service` 调用）。
+    runtime: RuntimeServiceRegistry,
 }
 
 impl ServiceProviderSlot {
     fn new() -> Self {
         Self {
-            providers: RwLock::new(Vec::new()),
-            runtime: DefaultServiceProvider::new(),
+            provider: RwLock::new(None),
+            runtime: RuntimeServiceRegistry::new(),
         }
     }
 
     fn get_service_any(&self, type_id: TypeId) -> Option<Arc<dyn Any + Send + Sync>> {
-        for p in self.providers.read().unwrap().iter() {
+        if let Some(p) = self.provider.read().unwrap().as_ref() {
             if let Some(svc) = p.get_service_any(type_id) {
                 return Some(svc);
             }
@@ -249,7 +268,7 @@ impl ServiceProviderSlot {
         type_id: TypeId,
         key: &str,
     ) -> Option<Arc<dyn Any + Send + Sync>> {
-        for p in self.providers.read().unwrap().iter() {
+        if let Some(p) = self.provider.read().unwrap().as_ref() {
             if let Some(svc) = p.get_keyed_service_any(type_id, key) {
                 return Some(svc);
             }
@@ -258,16 +277,17 @@ impl ServiceProviderSlot {
     }
 
     fn has_service_any(&self, type_id: TypeId) -> bool {
-        self.providers
+        self.provider
             .read()
             .unwrap()
-            .iter()
-            .any(|p| p.has_service_any(type_id))
+            .as_ref()
+            .map(|p| p.has_service_any(type_id))
+            .unwrap_or(false)
             || self.runtime.has_service_any(type_id)
     }
 
-    fn use_provider(&self, provider: Arc<dyn IServiceProvider + Send + Sync>) {
-        self.providers.write().unwrap().push(provider);
+    fn set_provider(&self, provider: Arc<dyn IServiceProvider + Send + Sync>) {
+        *self.provider.write().unwrap() = Some(provider);
     }
 }
 
@@ -280,18 +300,18 @@ pub fn ensure_service_provider(cx: &mut App) {
     }
 }
 
-/// 应用上下文 —— GPUI App/Context 扩展，持有 provider 链 + 运行时注册表。
+/// 应用上下文 —— GPUI App/Context 扩展，持有正式 provider + 运行时注册表。
 ///
 /// 继承 `IServiceProvider` 的解析方法，增加：
-/// - `use_provider`：追加 provider 到链（支持多阶段注入）
-/// - `set_service`：运行时注册（写入运行时注册表，任何 provider 链下都生效）
+/// - `set_provider`：覆盖式注入正式 provider（多容器分层经 `ServiceProviderWrapper` 原生表达）
+/// - `register_service`：运行时注册（写入运行时注册表，任何 provider 下都生效）
 pub trait IAppContext: IServiceProvider {
-    /// 追加 provider 到 provider 链。支持 `configure` + `on_loaded` 多阶段注入。
+    /// 注入正式 provider（覆盖语义）。
     /// `Send + Sync` 约束确保 provider 可被 `Send + Sync` 类型（如 `ArcShellManager`）持有。
-    fn use_provider(&mut self, provider: Arc<dyn IServiceProvider + Send + Sync>);
+    fn set_provider(&mut self, provider: Arc<dyn IServiceProvider + Send + Sync>);
 
     /// 运行时注册服务（写入运行时注册表）。
-    fn set_service<T: 'static + Send + Sync>(&mut self, service: Arc<T>);
+    fn register_service<T: 'static + Send + Sync>(&mut self, service: Arc<T>);
 }
 
 impl IServiceProvider for App {
@@ -315,14 +335,14 @@ impl IServiceProvider for App {
 }
 
 impl IAppContext for App {
-    fn use_provider(&mut self, provider: Arc<dyn IServiceProvider + Send + Sync>) {
+    fn set_provider(&mut self, provider: Arc<dyn IServiceProvider + Send + Sync>) {
         ensure_service_provider(self);
         self.update_global::<ServiceProviderSlot, _>(|slot, _| {
-            slot.use_provider(provider);
+            slot.set_provider(provider);
         });
     }
 
-    fn set_service<T: 'static + Send + Sync>(&mut self, service: Arc<T>) {
+    fn register_service<T: 'static + Send + Sync>(&mut self, service: Arc<T>) {
         ensure_service_provider(self);
         self.update_global::<ServiceProviderSlot, _>(|slot, _| {
             slot.runtime.set(service);
@@ -349,11 +369,11 @@ impl<T> IServiceProvider for Context<'_, T> {
 }
 
 impl<T> IAppContext for Context<'_, T> {
-    fn use_provider(&mut self, provider: Arc<dyn IServiceProvider + Send + Sync>) {
-        IAppContext::use_provider(BorrowMut::<App>::borrow_mut(self), provider);
+    fn set_provider(&mut self, provider: Arc<dyn IServiceProvider + Send + Sync>) {
+        IAppContext::set_provider(BorrowMut::<App>::borrow_mut(self), provider);
     }
 
-    fn set_service<U: 'static + Send + Sync>(&mut self, service: Arc<U>) {
-        IAppContext::set_service(BorrowMut::<App>::borrow_mut(self), service);
+    fn register_service<U: 'static + Send + Sync>(&mut self, service: Arc<U>) {
+        IAppContext::register_service(BorrowMut::<App>::borrow_mut(self), service);
     }
 }

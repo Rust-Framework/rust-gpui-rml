@@ -11,7 +11,7 @@
 use std::path::Path;
 use std::sync::{Arc, OnceLock, RwLock};
 
-use rml_core::context::{IServiceProvider, ServiceProviderExt};
+use rml_core::context::IServiceProvider;
 use rml_core::observable::ObservableVec;
 use rml_core::workbench::{IWorkbench, IWorkbenchManager, IWorkbenchProvider, Uri};
 use studio_core::workspace::{IWorkspace, IWorkspaceManager};
@@ -103,10 +103,10 @@ impl IWorkbenchManager for ArcShellManager {
             return Some(wb);
         }
 
-        // 2. 路由:schema → DI keyed provider（经 ServiceProviderExt::get_keyed_trait）
+        // 2. 路由:schema → DI keyed provider（经自由函数 resolve_keyed_service，可在 dyn IServiceProvider 上调用）
         let schema = uri.scheme();
         let provider: Arc<dyn IWorkbenchProvider> =
-            self.provider().get_keyed_trait::<dyn IWorkbenchProvider>(schema)?;
+            rml_core::context::resolve_keyed_service::<dyn IWorkbenchProvider>(self.provider().as_ref(), schema)?;
         let wb = provider.render(uri);
 
         // 3. 应用 url params(新打开的也应用,如 ?line=10&column=5)
@@ -172,7 +172,7 @@ impl IWorkbenchManager for ArcShellManager {
         // 2. 新打开:走 provider 路由 + 标记 preview
         let schema = uri.scheme();
         let provider: Arc<dyn IWorkbenchProvider> =
-            self.provider().get_keyed_trait::<dyn IWorkbenchProvider>(schema)?;
+            rml_core::context::resolve_keyed_service::<dyn IWorkbenchProvider>(self.provider().as_ref(), schema)?;
         let wb = provider.render(uri);
         wb.set_preview(true);
         apply_query_params(&wb, uri);

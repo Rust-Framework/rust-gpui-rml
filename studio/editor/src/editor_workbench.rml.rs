@@ -30,7 +30,6 @@ use rml_app::contribution::{evict_entity_by_uri, get_or_create_entity_by_uri};
 use rml_core::contribution::{
     IconSpec, register_contribution_ability, register_visual_ability,
 };
-use rml_core::context::ServiceProviderExt;
 use rml_core::workbench::{IWorkbench, IWorkbenchManager, Uri, register_workbench_ability};
 use studio_core::ability_ext::register_workbench_component_host_ability;
 use studio_core::component::{IWorkbenchComponent, IWorkbenchComponentHost};
@@ -124,7 +123,7 @@ impl ILifecycle for EditorWorkbench {
                 // P0: 预览 Tab 编辑自动 promote(VSCode 行为)
                 // dirty=true 时将当前激活的预览 Tab 升级为正式,避免修改后切走被替换丢失
                 if dirty {
-                    if let Some(mgr) = cx.get_trait::<dyn IWorkbenchManager>() {
+                    if let Some(mgr) = cx.get_service::<dyn IWorkbenchManager>() {
                         if let Some(activated) = mgr.get_activated() {
                             if activated.preview() {
                                 let uri = activated.uri().to_string();

@@ -38,7 +38,7 @@ fn register_editor_services() {
     crate::code_component::register_code_component();
     crate::preview_component::register_preview_component();
     auto_register(|s: &mut ServiceCollection| {
-        s.add_keyed_singleton::<dyn IWorkbenchProvider>("file", || {
+        s.add_keyed_singleton::<dyn IWorkbenchProvider>("file", |_| {
             Arc::new(crate::editor_provider::EditorProvider) as Arc<dyn IWorkbenchProvider>
         });
     });

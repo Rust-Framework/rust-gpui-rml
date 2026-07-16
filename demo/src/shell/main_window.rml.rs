@@ -21,7 +21,7 @@ use crate::shell::menu_view_model::MenuViewModel;
 use crate::shell::status_view_model::{build_status_view_models, ContribEntry, StatusViewModel};
 use crate::shell::workbench::{register_workbench_abilities, CaseWorkbench, LspWorkbenchProvider};
 
-/// MainWindow 弱引用槽位——经 IAppContext::set_service 注册为单例，
+/// MainWindow 弱引用槽位——经 IAppContext::register_service 注册为单例，
 /// ActivityPanel / LspExplorerPanel / 菜单命令通过 get_service::<MainWindowRef>() 查询。
 pub struct MainWindowRef(pub WeakEntity<MainWindow>);
 
@@ -129,10 +129,10 @@ impl MainWindow {
     /// 注册 MainWindowRef + LspStatusStateRef 单例（经 IAppContext 查询）。
     fn init_services(&mut self, cx: &mut Context<Self>) {
         let shell_weak = cx.weak_entity();
-        cx.set_service(Arc::new(MainWindowRef(shell_weak)));
+        cx.register_service(Arc::new(MainWindowRef(shell_weak)));
 
         let lsp_status = cx.new(|_| LspStatusState::new());
-        cx.set_service(Arc::new(LspStatusStateRef(lsp_status.downgrade())));
+        cx.register_service(Arc::new(LspStatusStateRef(lsp_status.downgrade())));
     }
 
     /// 启动语言服务子进程（失败时优雅降级）+ 订阅 RA 加载状态。

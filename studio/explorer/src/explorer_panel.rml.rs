@@ -14,7 +14,6 @@ use std::sync::{Arc, Once};
 
 use rml::prelude::*;
 use rml_core::contribution::IconSpec;
-use rml_core::context::ServiceProviderExt;
 use rml_core::workbench::IWorkbenchManager;
 use rml_ui::{TreeData, TreeState};
 use studio_core::worktree::EntryKind;
@@ -59,7 +58,7 @@ impl ExplorerPanel {
     /// 刷新文件树:经 DI 获取 IWorkspaceManager → list() → 构建多根 TreeData。
     fn refresh_tree(&mut self, cx: &mut Context<Self>) {
         let workspaces = cx
-            .get_trait::<dyn IWorkspaceManager>()
+            .get_service::<dyn IWorkspaceManager>()
             .map(|mgr| mgr.list())
             .unwrap_or_default();
 
@@ -78,10 +77,10 @@ impl ExplorerPanel {
             return;
         }
 
-        let Some(workspace_mgr) = cx.get_trait::<dyn IWorkspaceManager>() else {
+        let Some(workspace_mgr) = cx.get_service::<dyn IWorkspaceManager>() else {
             return;
         };
-        let Some(workbench_mgr) = cx.get_trait::<dyn IWorkbenchManager>() else {
+        let Some(workbench_mgr) = cx.get_service::<dyn IWorkbenchManager>() else {
             return;
         };
 
@@ -111,10 +110,10 @@ impl ExplorerPanel {
             return;
         }
 
-        let Some(workspace_mgr) = cx.get_trait::<dyn IWorkspaceManager>() else {
+        let Some(workspace_mgr) = cx.get_service::<dyn IWorkspaceManager>() else {
             return;
         };
-        let Some(workbench_mgr) = cx.get_trait::<dyn IWorkbenchManager>() else {
+        let Some(workbench_mgr) = cx.get_service::<dyn IWorkbenchManager>() else {
             return;
         };
 

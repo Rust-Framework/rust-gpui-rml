@@ -25,7 +25,6 @@ use gpui::{App, Entity, SharedString, Window};
 use rml::prelude::*;
 use rml_app::contribution::{evict_entity_by_uri, get_or_create_entity_by_uri};
 use rml_core::contribution::{IconSpec, register_contribution_ability, register_visual_ability};
-use rml_core::context::ServiceProviderExt;
 use rml_core::workbench::{IWorkbench, register_workbench_ability};
 use studio_core::ability_ext::register_workbench_component_host_ability;
 use studio_core::component::{IWorkbenchComponent, IWorkbenchComponentHost};
@@ -192,7 +191,7 @@ impl ChatWorkbench {
         }
 
         // 从 IChatManager 解析 chatter_name(按 uri 查找 IChatter)
-        if let Some(mgr) = cx.get_trait::<dyn studio_core::chat::IChatManager>() {
+        if let Some(mgr) = cx.get_service::<dyn studio_core::chat::IChatManager>() {
             if let Some(chatter) = mgr.find_chatter(&self.uri) {
                 self.chatter_name = chatter.name();
             }

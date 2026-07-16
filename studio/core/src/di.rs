@@ -18,17 +18,25 @@
 //! ```
 //! `ServiceCollection::from_injected()` 自动收集所有 `#[inject]` 标记的服务。
 //!
-//! ## 手动注册（ServiceSlot 桥接）
+//! ## 手动注册（trait object）
 //!
-//! 对于需要 keyed 注册或复杂工厂的服务，使用 `ServiceSlot<T>` 桥接：
+//! rust-dix 原生支持 `?Sized` trait object 注册/查询，无需 `ServiceSlot` 桥接。
+//! 由于 rust-dix 的 `singleton` / `keyed_singleton` 是 builder 链式 API（消费 `self`），
+//! 而 `auto_register` 闭包接收 `&mut ServiceCollection`，本模块提供 `ServiceCollectionExt`
+//! 适配器（`&mut self` 转发原生 API）：
 //! ```rust,ignore
-//! use studio_core::di::ServiceSlot;
+//! use std::sync::Arc;
+//! use studio_core::di::{ServiceCollection, ServiceCollectionExt};
 //!
-//! s.keyed_singleton::<ServiceSlot<dyn IWorkbenchProvider>>("file", |_| {
-//!     Arc::new(ServiceSlot(Arc::new(EditorProvider) as Arc<dyn IWorkbenchProvider>))
+//! s.add_singleton::<dyn IWorkbenchProvider>(|_| {
+//!     Arc::new(EditorProvider) as Arc<dyn IWorkbenchProvider>
+//! });
+//! s.add_keyed_singleton::<dyn IWorkbenchProvider>("file", |_| {
+//!     Arc::new(EditorProvider) as Arc<dyn IWorkbenchProvider>
 //! });
 //! ```
-//! 查询时经 `cx.get_keyed_trait::<dyn IWorkbenchProvider>("file")` 还原。
+//! 查询时经 `cx.get_service::<dyn IWorkbenchProvider>()` 或
+//! `cx.get_keyed_service::<dyn IWorkbenchProvider>("file")` 直接解析（`IServiceProvider::get_service<T: ?Sized>`）。
 //!
 //! ## 子主容器桥接（`DixServiceWrapper`）
 //!
@@ -36,14 +44,16 @@
 //! ```rust,ignore
 //! let wrapper = ServiceProviderWrapper::new(child_provider, root_provider);
 //! let bridge = DixServiceWrapper::new(wrapper);
-//! cx.use_provider(bridge);
+//! cx.set_provider(bridge);  // 覆盖式注入为正式 provider
 //! ```
+//!
+//! `IAppContext::set_provider` 为覆盖语义，分层逻辑由 rust-dix `ServiceProviderWrapper`
+//! 原生表达（child-first + root fallback），RML 框架不维护多 provider 串联链。
 
 use std::any::{Any, TypeId};
 use std::sync::{Arc, Mutex, OnceLock};
 
 use rml_core::context::IServiceProvider;
-use rml_core::context::ServiceSlot;
 use rust_dix::entry::IServiceResolver;
 use rust_dix::ServiceProvider as RdiProvider;
 use rust_dix::ServiceProviderWrapper as RdiWrapper;
@@ -56,6 +66,49 @@ pub use rust_dix::{inject, module, register, Inject};
 /// `new()` 等价 `rust_dix::ServiceCollection::new()`，
 /// `from_injected()` 收集所有 `#[inject]` 标记的服务。
 pub use rust_dix::ServiceCollection;
+
+// ──────────────────────────────────────────────────────────────────────────
+//  ServiceCollectionExt —— &mut self 适配器（转发 rust-dix 原生 builder API）
+// ──────────────────────────────────────────────────────────────────────────
+
+/// `ServiceCollection` 扩展 —— `&mut self` 转发 rust-dix 原生 `singleton` / `keyed_singleton`。
+///
+/// rust-dix 的 builder 方法消费 `self` 返回 `Self`，不便在 `&mut ServiceCollection`
+/// 闭包中使用。本 trait 提供 `&mut self` 语义的便捷方法，内部用 `std::mem::replace`
+/// 取出再写回，直接转发原生 API（不经 `ServiceSlot` 包装，`T: ?Sized` 原生支持 trait object）。
+pub trait ServiceCollectionExt {
+    /// 注册单例服务（转发 `singleton::<T>`）。`T` 支持 `?Sized`（trait object）。
+    fn add_singleton<T: ?Sized + 'static + Send + Sync>(
+        &mut self,
+        factory: impl Fn(&dyn IServiceResolver) -> Arc<T> + Send + Sync + 'static,
+    );
+
+    /// 注册 keyed 单例服务（转发 `keyed_singleton::<T>`）。`T` 支持 `?Sized`（trait object）。
+    fn add_keyed_singleton<T: ?Sized + 'static + Send + Sync>(
+        &mut self,
+        key: impl Into<String>,
+        factory: impl Fn(&dyn IServiceResolver) -> Arc<T> + Send + Sync + 'static,
+    );
+}
+
+impl ServiceCollectionExt for ServiceCollection {
+    fn add_singleton<T: ?Sized + 'static + Send + Sync>(
+        &mut self,
+        factory: impl Fn(&dyn IServiceResolver) -> Arc<T> + Send + Sync + 'static,
+    ) {
+        let inner = std::mem::replace(self, ServiceCollection::new());
+        *self = inner.singleton::<T>(factory);
+    }
+
+    fn add_keyed_singleton<T: ?Sized + 'static + Send + Sync>(
+        &mut self,
+        key: impl Into<String>,
+        factory: impl Fn(&dyn IServiceResolver) -> Arc<T> + Send + Sync + 'static,
+    ) {
+        let inner = std::mem::replace(self, ServiceCollection::new());
+        *self = inner.keyed_singleton::<T>(key, factory);
+    }
+}
 
 // ──────────────────────────────────────────────────────────────────────────
 //  DixServiceProvider —— rust_dix::ServiceProvider → IServiceProvider
@@ -153,54 +206,6 @@ impl IServiceProvider for DixServiceWrapper {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-//  ServiceSlot 便捷注册扩展
-// ──────────────────────────────────────────────────────────────────────────
-
-/// ServiceCollection 扩展 —— ServiceSlot 桥接的便捷注册。
-///
-/// trait object（`dyn Trait`）经 `ServiceSlot<T>` 包装后注册到 rust-dix，
-/// 使 RML 的 `get_trait::<dyn Trait>()` / `get_keyed_trait::<dyn Trait>(key)` 可解析。
-pub trait ServiceCollectionExt {
-    /// 注册单例 trait object 服务（经 `ServiceSlot<T>` 桥接）。
-    fn add_singleton<T: ?Sized + 'static + Send + Sync>(
-        &mut self,
-        factory: impl Fn() -> Arc<T> + Send + Sync + 'static,
-    );
-
-    /// 注册 keyed 单例 trait object 服务（经 `ServiceSlot<T>` 桥接）。
-    fn add_keyed_singleton<T: ?Sized + 'static + Send + Sync>(
-        &mut self,
-        key: &str,
-        factory: impl Fn() -> Arc<T> + Send + Sync + 'static,
-    );
-}
-
-impl ServiceCollectionExt for ServiceCollection {
-    fn add_singleton<T: ?Sized + 'static + Send + Sync>(
-        &mut self,
-        factory: impl Fn() -> Arc<T> + Send + Sync + 'static,
-    ) {
-        let inner = std::mem::replace(self, ServiceCollection::new());
-        *self = inner.singleton::<ServiceSlot<T>>(move |_| {
-            let arc_t: Arc<T> = factory();
-            Arc::new(ServiceSlot(arc_t))
-        });
-    }
-
-    fn add_keyed_singleton<T: ?Sized + 'static + Send + Sync>(
-        &mut self,
-        key: &str,
-        factory: impl Fn() -> Arc<T> + Send + Sync + 'static,
-    ) {
-        let inner = std::mem::replace(self, ServiceCollection::new());
-        *self = inner.keyed_singleton::<ServiceSlot<T>>(key.to_string(), move |_| {
-            let arc_t: Arc<T> = factory();
-            Arc::new(ServiceSlot(arc_t))
-        });
-    }
-}
-
-// ──────────────────────────────────────────────────────────────────────────
 //  自动注册机制 —— #[ctor::ctor] + 全局闭包注册表
 // ──────────────────────────────────────────────────────────────────────────
 //
@@ -214,8 +219,9 @@ static AUTO_REGISTRATIONS: OnceLock<Mutex<Vec<RegisterFn>>> = OnceLock::new();
 
 /// 注册自动注册闭包。通常在 `#[ctor::ctor]` 函数中调用。
 ///
-/// 闭包接收 `&mut ServiceCollection`,内部调用 `add_singleton` / `add_keyed_singleton`
-/// 注册服务。闭包为 `Fn`（非 `FnOnce`）,支持多次 build（如测试场景）。
+/// 闭包接收 `&mut ServiceCollection`,内部调用 rust-dix 原生
+/// `singleton::<dyn T>` / `keyed_singleton::<dyn T>` 注册服务。
+/// 闭包为 `Fn`（非 `FnOnce`）,支持多次 build（如测试场景）。
 pub fn auto_register(f: impl Fn(&mut ServiceCollection) + Send + Sync + 'static) {
     AUTO_REGISTRATIONS
         .get_or_init(|| Mutex::new(Vec::new()))

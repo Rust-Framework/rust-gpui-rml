@@ -15,7 +15,6 @@ use rml::prelude::*;
 use rml_core::contribution::{
     IconSpec, IContribution, register_contribution_ability, register_visual_ability,
 };
-use rml_core::context::ServiceProviderExt;
 use rml_core::workbench::IWorkbenchManager;
 
 use crate::chat_list_item::ChatterItem;
@@ -58,7 +57,7 @@ impl ChatPanel {
     /// 刷新聊天列表:经 DI 获取 IChatManager → 聚合 IChatter → 构建 ChatterItem。
     fn refresh_chatters(&mut self, cx: &mut Context<Self>) {
         let chatters = cx
-            .get_trait::<dyn studio_core::chat::IChatManager>()
+            .get_service::<dyn studio_core::chat::IChatManager>()
             .map(|mgr| mgr.chatters())
             .unwrap_or_default();
 
@@ -94,7 +93,7 @@ impl ChatPanel {
         }
         // 解析 URI → IWorkbenchManager::open
         if let Ok(parsed) = uri.parse::<rml_core::workbench::Uri>() {
-            if let Some(mgr) = cx.get_trait::<dyn IWorkbenchManager>() {
+            if let Some(mgr) = cx.get_service::<dyn IWorkbenchManager>() {
                 mgr.open(&parsed);
             }
         }

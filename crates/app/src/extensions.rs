@@ -48,7 +48,7 @@ impl IAppContextExt for App {}
 // 重新导出所有 App/Context 扩展 trait，构成中央聚合点
 // IAppContext 由 lib.rs 直接从 rml_core::context 导入（避免与本模块 use 冲突）
 pub use rml_core::command::CommandAbilityExt;
-pub use rml_core::context::{ensure_service_provider, DefaultServiceProvider, IServiceProvider, ServiceSlot, ServiceProviderExt};
+pub use rml_core::context::{ensure_service_provider, RuntimeServiceRegistry, IServiceProvider, resolve_service, resolve_keyed_service, resolve_required_service, resolve_required_keyed_service};
 pub use rml_core::contribution::{ContributionAbilityExt, StatusBarItemAbilityExt, VisualAbilityExt};
 pub use rml_core::i18n::I18nExt;
 pub use rml_core::theme::ThemeExt;

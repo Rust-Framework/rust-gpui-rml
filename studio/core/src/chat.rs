@@ -62,7 +62,7 @@ pub trait IChatProvider: IContribution {
 ///
 /// 聚合所有 `IChatProvider`,提供统一的 `IChatter` 查询能力。
 /// 业务实现此 trait(`ChatManager`),经 `add_singleton::<dyn IChatManager>` 注册到 DI,
-/// 消费方经 `cx.get_trait::<dyn IChatManager>()` 解析。
+/// 消费方经 `cx.get_service::<dyn IChatManager>()` 解析。
 ///
 /// # 扩展性
 ///

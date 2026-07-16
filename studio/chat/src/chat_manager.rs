@@ -1,7 +1,7 @@
 //! ChatManager —— IChatManager 实现,聚合全局工厂发现的 IChatProvider。
 //!
 //! 经 DI 注册为 `dyn IChatManager` singleton,消费方经
-//! `cx.get_trait::<dyn IChatManager>()` 解析。
+//! `cx.get_service::<dyn IChatManager>()` 解析。
 //!
 //! MVP 阶段 Provider 经 `#[ctor::ctor]` + `register_chat_provider` 静态发现,
 //! 运行时动态注册扩展点(IContributionHost)预留未实现。

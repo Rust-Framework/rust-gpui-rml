@@ -108,9 +108,9 @@ impl ILifecycle for MainWindow {
         // 1. 构建 DI 容器(注册 manager + apply_auto_registrations,反向注入 provider 到 manager)
         let provider = di::build_runtime_provider(self.manager.clone());
 
-        // 2. 追加 provider 到 provider 链（configure 阶段的静态服务仍可解析）
-        //    业务代码经 cx.get_trait::<dyn T>() 解析（经 ServiceProviderExt）
-        cx.use_provider(provider);
+        // 2. 注入为正式 provider（覆盖语义，分层由 rust-dix ServiceProviderWrapper 原生表达）
+        //    业务代码经 cx.get_service::<dyn T>() 解析（IServiceProvider::get_service<T: ?Sized>）
+        cx.set_provider(provider);
 
         // 3. 启动通道桥接背景任务:flume recv → cx.notify + bump activated 版本
         //    manager 的 push/remove/close 经 ObservableVec::bump → flume send → 此任务唤醒
@@ -177,7 +177,7 @@ impl MainWindow {
     /// 菜单命令经 `ctx.app.get_service::<MainWindowRef>()` 查询 MainWindow entity。
     fn init_services(&mut self, cx: &mut Context<Self>) {
         let shell_weak = cx.weak_entity();
-        cx.set_service(Arc::new(MainWindowRef(shell_weak)));
+        cx.register_service(Arc::new(MainWindowRef(shell_weak)));
     }
 
     /// 从 entries 暂存投影到 menus/status 类型化集合。
@@ -424,6 +424,6 @@ impl MainWindow {
     }
 }
 
-/// MainWindow 弱引用槽位——经 `IAppContext::set_service` 注册为单例，
+/// MainWindow 弱引用槽位——经 `IAppContext::register_service` 注册为单例，
 /// 菜单命令通过 `get_service::<MainWindowRef>()` 查询。
 pub struct MainWindowRef(pub gpui::WeakEntity<MainWindow>);

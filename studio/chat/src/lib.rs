@@ -44,11 +44,11 @@ fn register_chat_services() {
 
     // 1. ChatManager + ChatWorkbenchProvider → DI
     auto_register(|s: &mut ServiceCollection| {
-        s.add_singleton::<dyn studio_core::chat::IChatManager>(|| {
+        s.add_singleton::<dyn studio_core::chat::IChatManager>(|_| {
             Arc::new(crate::chat_manager::ChatManager::new())
                 as Arc<dyn studio_core::chat::IChatManager>
         });
-        s.add_keyed_singleton::<dyn IWorkbenchProvider>("chat", || {
+        s.add_keyed_singleton::<dyn IWorkbenchProvider>("chat", |_| {
             Arc::new(crate::chat_provider::ChatWorkbenchProvider) as Arc<dyn IWorkbenchProvider>
         });
     });

@@ -8,7 +8,7 @@
 //! **不是**贡献注册缓存。贡献注册数据由 `IContributionHost` 直接管理（框架不存储）。
 //! 两者职责正交：Host 管"有哪些贡献"，本模块管"视觉贡献的 Entity 不被重建"。
 //!
-//! 内部存储统一到 `IServiceProvider`（通过 `IAppContext::set_service` 注册），
+//! 内部存储统一到 `IServiceProvider`（通过 `IAppContext::register_service` 注册），
 //! 与 i18n/theme 范式对齐。
 //!
 //! # 双层缓存策略
@@ -65,7 +65,7 @@ fn ensure_cache(cx: &mut App) -> Arc<VisualEntityCache> {
         return c;
     }
     let c = Arc::new(VisualEntityCache::new());
-    cx.set_service(c.clone());
+    cx.register_service(c.clone());
     c
 }
 

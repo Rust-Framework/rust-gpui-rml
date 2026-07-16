@@ -47,7 +47,7 @@ fn register_welcome_services() {
 
     crate::welcome_workbench::register_welcome_abilities();
     auto_register(|s: &mut ServiceCollection| {
-        s.add_keyed_singleton::<dyn IWorkbenchProvider>("rml", || {
+        s.add_keyed_singleton::<dyn IWorkbenchProvider>("rml", |_| {
             Arc::new(crate::welcome_provider::WelcomeProvider) as Arc<dyn IWorkbenchProvider>
         });
     });
