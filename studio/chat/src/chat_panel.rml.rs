@@ -12,6 +12,7 @@ use std::sync::Once;
 
 use gpui::{SharedString, Window};
 use rml::prelude::*;
+use rml_app::IServiceProvider;
 use rml_core::contribution::{
     IconSpec, IContribution, register_contribution_ability, register_visual_ability,
 };

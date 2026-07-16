@@ -53,7 +53,7 @@
 use std::any::{Any, TypeId};
 use std::sync::{Arc, Mutex, OnceLock};
 
-use rml_core::context::IServiceProvider;
+use rml_app::context::IServiceProvider;
 use rust_dix::entry::IServiceResolver;
 use rust_dix::ServiceProvider as RdiProvider;
 use rust_dix::ServiceProviderWrapper as RdiWrapper;

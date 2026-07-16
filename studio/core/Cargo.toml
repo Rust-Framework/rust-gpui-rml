@@ -7,6 +7,7 @@ description = "Arc Studio IDE 核心契约 —— 工作台组件/编辑器命�
 
 [dependencies]
 rust-rml-core = { workspace = true }
+rust-rml-app = { workspace = true }
 rust-dix = { workspace = true }
 gpui = { workspace = true }
 url = "2"

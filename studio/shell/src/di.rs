@@ -18,7 +18,7 @@
 
 use std::sync::Arc;
 
-use rml_core::context::IServiceProvider;
+use rml_app::context::IServiceProvider;
 use rml_core::workbench::IWorkbenchManager;
 use studio_core::di::{DixServiceProvider, ServiceCollection, ServiceCollectionExt, apply_auto_registrations};
 use studio_core::workspace::IWorkspaceManager;

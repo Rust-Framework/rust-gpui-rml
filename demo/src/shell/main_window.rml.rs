@@ -4,7 +4,7 @@ use crossbeam_channel::Receiver;
 use gpui::{WeakEntity, Window};
 use rml::prelude::*;
 use rust_rml_client::{LanguageClient, ServerStatus};
-use rml_app::IAppContextExt;
+use rml_app::{IAppContext, IAppContextExt, IServiceProvider};
 use rml_core::contribution::VisualAbilityExt;
 use rml_core::i18n::{I18nExt, I18nState};
 use rml_core::observable::ObservableVec;

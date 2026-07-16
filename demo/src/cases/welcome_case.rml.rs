@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use gpui::SharedString;
 use rml::prelude::*;
+use rml_app::IServiceProvider;
 use rml_core::i18n::{t_static, I18nState};
 
 use crate::shell::MainWindowRef;

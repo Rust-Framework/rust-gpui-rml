@@ -10,6 +10,7 @@ extern crate rust_rml_ui as rml_ui;
 
 pub mod application;
 pub mod assets;
+pub mod context;
 pub mod contribution;
 pub mod extensions;
 pub mod lifecycle;
@@ -18,6 +19,10 @@ pub mod resources;
 pub mod prelude;
 
 pub use application::{NoWindow, RmlApplication};
+pub use context::{
+    ensure_service_provider, IAppContext, IServiceProvider, RuntimeServiceRegistry,
+    resolve_service, resolve_keyed_service, resolve_required_service, resolve_required_keyed_service,
+};
 pub use lifecycle::IAppLifecycle;
 pub use resources::{
     load_i18n_catalog, load_i18n_from_json, load_theme_colors, load_theme_css,
@@ -26,4 +31,3 @@ pub use resources::{
 
 // IAppContext 核心 + 便利方法
 pub use extensions::IAppContextExt;
-pub use rml_core::context::IAppContext;

@@ -2,11 +2,11 @@
 //!
 //! 对标 ASP.NET Core DI 抽象：
 //! - `IServiceProvider`：纯解析能力（GetService / GetKeyedService / HasService），支持 `?Sized`（trait object）
-//! - `RuntimeServiceRegistry`：内置运行时注册表（承载框架内部 Sized 服务）
+//! - `RuntimeServiceRegistry`：内置运行时注册表（承载产品层 Sized 服务）
 //! - 第三方容器（如 rust-dix）通过实现 `IServiceProvider` 对接，经 `IAppContext::set_provider` 注入
 //!
 //! 双层查询：正式 provider（rust-dix 等）→ 运行时注册表（RuntimeServiceRegistry）。
-//! 框架内部 `register_service` 写入运行时注册表，在任何 provider 下都生效。
+//! 产品层 `register_service` 写入运行时注册表，在任何 provider 下都生效。
 //!
 //! # 分层容器
 //!
@@ -177,7 +177,7 @@ pub fn resolve_required_keyed_service<T: ?Sized + 'static + Send + Sync>(
     })
 }
 
-/// 运行时服务注册表 —— core 内置的 `IServiceProvider` 实现，用作运行时注册表。
+/// 运行时服务注册表 —— `IServiceProvider` 实现，用作产品层运行时注册表。
 ///
 /// 按 `TypeId` 索引 `Arc<dyn Any + Send + Sync>`，支持 keyed 服务。
 /// 接收 `IAppContext::register_service` 调用，在任何正式 provider 下都生效。

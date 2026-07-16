@@ -6,6 +6,7 @@
 
 use gpui::SharedString;
 use rml::prelude::*;
+use rml_app::IServiceProvider;
 use rml_core::command::{CallContext, ICommand};
 use rml_core::i18n::t_static;
 

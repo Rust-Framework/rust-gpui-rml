@@ -1,6 +1,6 @@
 //! 工作台管理器契约 —— 资源打开/关闭/激活的抽象接口
 //!
-//! 框架仅定义接口，由业务实现。manager 经 `rml_app::IAppContextExt` 安装到 App，
+//! 框架仅定义接口，由业务实现。manager 由应用层安装到 App，
 //! 通过 OnceLock 进程级槽位访问。所有方法 `&self` + 内部可变性，UI 相关工作由业务
 //! 自行延迟到具备 `&mut App` 的时机处理（镜像 `IContributionHost` 模式）。
 //!

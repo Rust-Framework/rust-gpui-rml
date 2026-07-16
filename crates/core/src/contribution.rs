@@ -84,7 +84,7 @@ impl ContributionOptions {
 ///
 /// # 与嵌入资源系统的集成
 ///
-/// RML 框架的 `CompositeAssets`(在 `rml_app::assets`)已将 gpui-component-assets
+/// RML 框架的 `CompositeAssets`(在应用层 assets 模块)已将 gpui-component-assets
 /// 与 `rml_core::assets::load` 桥接为统一 `AssetSource`。因此 `IconSpec::Path("logo.svg")`
 /// 会自动解析到用户在 `assets/logo.svg` 嵌入的资源,无需额外配置或新 variant。
 #[derive(Debug, Clone)]

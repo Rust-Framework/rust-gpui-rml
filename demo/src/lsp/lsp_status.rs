@@ -10,6 +10,7 @@ use std::sync::Once;
 use gpui::{AnyElement, App, Context, ParentElement, SharedString, Styled, WeakEntity, Window};
 use gpui_component::ActiveTheme as _;
 use rml::prelude::*;
+use rml_app::IServiceProvider;
 use rml_core::contribution::register_visual_ability;
 use rml_core::i18n::t_static;
 use rust_rml_client::ServerStatus;

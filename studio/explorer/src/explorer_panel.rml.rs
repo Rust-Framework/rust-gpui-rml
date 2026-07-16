@@ -13,6 +13,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Once};
 
 use rml::prelude::*;
+use rml_app::IServiceProvider;
 use rml_core::contribution::IconSpec;
 use rml_core::workbench::IWorkbenchManager;
 use rml_ui::{TreeData, TreeState};

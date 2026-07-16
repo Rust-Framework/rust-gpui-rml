@@ -25,8 +25,8 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 
 use gpui::{px, App};
-use rml_core::context::ensure_service_provider;
-use rml_core::context::{IAppContext, IServiceProvider};
+use crate::context::ensure_service_provider;
+use crate::context::{IAppContext, IServiceProvider};
 use rml_core::i18n::ensure_i18n;
 use rml_core::theme::ensure_theme;
 use rml_core::window::IWindow;
@@ -34,10 +34,10 @@ use rml_core::window::IWindow;
 use crate::lifecycle::IAppLifecycle;
 
 fn bootstrap_runtime(cx: &mut App) {
-    // 初始化 IAppContext 的 ServiceProviderSlot（IServiceProvider 风格统一服务访问）
+    // 初始化 IAppContext 的 ServiceProviderSlot（产品层 DI 集成契约）
     ensure_service_provider(cx);
-    // 注册 ContributionRegistry 为单例服务（替代原 OnceLock 静态存储）
-    cx.register_service(Arc::new(crate::contribution::ContributionRegistry::new()));
+    // ContributionRegistry 作为框架内部服务经 GPUI Global 存储（不经过 IServiceProvider）
+    cx.set_global(crate::contribution::ContributionRegistry::new());
 
     ensure_i18n(cx);
     ensure_theme(cx);

@@ -23,6 +23,7 @@ use std::sync::{Arc, Once};
 
 use gpui::{App, Entity, SharedString, Window};
 use rml::prelude::*;
+use rml_app::IServiceProvider;
 use rml_app::contribution::{evict_entity_by_uri, get_or_create_entity_by_uri};
 use rml_core::contribution::{IconSpec, register_contribution_ability, register_visual_ability};
 use rml_core::workbench::{IWorkbench, register_workbench_ability};

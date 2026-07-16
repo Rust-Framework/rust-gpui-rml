@@ -1,4 +1,4 @@
-//! 视觉贡献 Entity 生命周期管理（基于 IAppContext::IServiceProvider）
+//! 视觉贡献 Entity 生命周期管理（基于 GPUI Global）
 //!
 //! `IVisualContribution::render` 通过 `get_or_create_entity::<T>(cx)` 复用 Entity，
 //! 避免每次渲染创建新实例导致状态丢失。强引用 `Entity<T>` 在应用生命周期内不被释放，
@@ -8,8 +8,10 @@
 //! **不是**贡献注册缓存。贡献注册数据由 `IContributionHost` 直接管理（框架不存储）。
 //! 两者职责正交：Host 管"有哪些贡献"，本模块管"视觉贡献的 Entity 不被重建"。
 //!
-//! 内部存储统一到 `IServiceProvider`（通过 `IAppContext::register_service` 注册），
-//! 与 i18n/theme 范式对齐。
+//! 存储形态：`VisualEntityCache` 作为 GPUI Global 存储（`ensure_cache` 经
+//! `try_global`/`set_global` 懒初始化），框架内部服务不经 `IServiceProvider`，
+//! 与 i18n/theme/ContributionRegistry 范式对齐。
+//! newtype `VisualEntityCache(Arc<Inner>)` 使其 `Clone` 并可独立实现 `Global`（绕开 orphan rule）。
 //!
 //! # 双层缓存策略
 //!
@@ -25,32 +27,41 @@ use std::any::{Any, TypeId};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
-use gpui::{App, AppContext};
-use rml_core::context::{IAppContext, IServiceProvider};
+use gpui::{App, AppContext, Global};
 
 type CacheMap = HashMap<TypeId, Box<dyn Any + Send + Sync>>;
 type UriCacheMap = HashMap<(TypeId, String), Box<dyn Any + Send + Sync>>;
 type ActiveMap = HashMap<TypeId, Box<dyn Any + Send + Sync>>;
 
-/// 视觉贡献 Entity 生命周期管理器（存入 `IServiceProvider` 作为单例服务）。
+/// 视觉贡献 Entity 生命周期管理器（作为 GPUI Global 存储懒初始化）。
+///
+/// newtype 包装 `Arc<Inner>`：`Clone` 为浅拷贝（引用计数递增），并使本类型可独立实现 `Global`
+/// （绕开为 `Arc<T>` 实现 trait 的 orphan rule 限制）。
 ///
 /// 管理三层缓存：
 /// - `inner`：TypeId 键单例缓存（普通组件）
 /// - `uri_inner`：URI 键多实例缓存（IWorkbench，每 URI 独立 Entity）
 /// - `active`：活跃 Entity 追踪（最近一次 `get_or_create_entity_by_uri` 的结果，供子组件查找 host）
-pub struct VisualEntityCache {
+#[derive(Clone)]
+pub struct VisualEntityCache(Arc<VisualEntityCacheInner>);
+
+struct VisualEntityCacheInner {
     inner: RwLock<CacheMap>,
     uri_inner: RwLock<UriCacheMap>,
     active: RwLock<ActiveMap>,
 }
 
+/// 框架内部服务经 GPUI Global 存储（不经过 IServiceProvider）。
+/// 由 `ensure_cache` 懒初始化（首次访问时 `set_global`）。
+impl Global for VisualEntityCache {}
+
 impl VisualEntityCache {
     pub fn new() -> Self {
-        Self {
+        Self(Arc::new(VisualEntityCacheInner {
             inner: RwLock::new(HashMap::new()),
             uri_inner: RwLock::new(HashMap::new()),
             active: RwLock::new(HashMap::new()),
-        }
+        }))
     }
 }
 
@@ -60,12 +71,12 @@ impl Default for VisualEntityCache {
     }
 }
 
-fn ensure_cache(cx: &mut App) -> Arc<VisualEntityCache> {
-    if let Some(c) = cx.get_service::<VisualEntityCache>() {
-        return c;
+fn ensure_cache(cx: &mut App) -> VisualEntityCache {
+    if let Some(c) = cx.try_global::<VisualEntityCache>() {
+        return c.clone();
     }
-    let c = Arc::new(VisualEntityCache::new());
-    cx.register_service(c.clone());
+    let c = VisualEntityCache::new();
+    cx.set_global(c.clone());
     c
 }
 
@@ -81,7 +92,7 @@ where
     let type_id = TypeId::of::<T>();
     let cache = ensure_cache(cx);
     {
-        let guard = cache.inner.read().unwrap();
+        let guard = cache.0.inner.read().unwrap();
         if let Some(entry) = guard.get(&type_id) {
             if let Some(entity) = entry.downcast_ref::<gpui::Entity<T>>() {
                 return entity.clone();
@@ -90,6 +101,7 @@ where
     }
     let entity = cx.new(|_| T::default());
     cache
+        .0
         .inner
         .write()
         .unwrap()
@@ -112,7 +124,7 @@ where
     let key = (TypeId::of::<T>(), uri.to_string());
     let cache = ensure_cache(cx);
     {
-        let guard = cache.uri_inner.read().unwrap();
+        let guard = cache.0.uri_inner.read().unwrap();
         if let Some(entry) = guard.get(&key) {
             if let Some(entity) = entry.downcast_ref::<gpui::Entity<T>>() {
                 set_active::<T>(entity.clone(), &cache);
@@ -122,6 +134,7 @@ where
     }
     let entity = cx.new(|_| T::default());
     cache
+        .0
         .uri_inner
         .write()
         .unwrap()
@@ -143,7 +156,7 @@ where
     T: 'static + Send + Sync,
 {
     let cache = ensure_cache(cx);
-    let guard = cache.active.read().unwrap();
+    let guard = cache.0.active.read().unwrap();
     guard
         .get(&TypeId::of::<T>())
         .and_then(|e| e.downcast_ref::<gpui::Entity<T>>())
@@ -160,11 +173,12 @@ where
 {
     let key = (TypeId::of::<T>(), uri.to_string());
     let cache = ensure_cache(cx);
-    cache.uri_inner.write().unwrap().remove(&key);
+    cache.0.uri_inner.write().unwrap().remove(&key);
 }
 
 fn set_active<T: 'static>(entity: gpui::Entity<T>, cache: &VisualEntityCache) {
     cache
+        .0
         .active
         .write()
         .unwrap()

@@ -1,7 +1,7 @@
 //! RML 框架核心基础层
 //!
 //! 定义基础 trait（I 前缀）、事件类型、元素引用与绑定路径。
-//! 贡献点契约在 `contribution` 模块；运行时注册由 `rml_app::ContributionExt` 提供。
+//! 贡献点契约在 `contribution` 模块；服务容器与 DI 集成由应用层 crate 提供。
 
 #![deny(unsafe_code)]
 
@@ -17,7 +17,6 @@ pub mod ability;
 pub mod assets;
 pub mod binding;
 pub mod content;
-pub mod context;
 pub mod i18n;
 pub mod observable;
 pub mod theme;
@@ -41,8 +40,6 @@ pub mod view_model;
 pub mod window;
 
 pub mod prelude;
-
-pub use context::{ensure_service_provider, RuntimeServiceRegistry, IAppContext, IServiceProvider, resolve_service, resolve_keyed_service, resolve_required_service, resolve_required_keyed_service};
 
 /// 重导出 GPUI 基础类型,供框架各层统一使用
 pub use gpui::{App, Context, Entity, IntoElement, Keystroke, Modifiers, Pixels, Point, Rgba, Render, SharedString, WeakEntity, Window};

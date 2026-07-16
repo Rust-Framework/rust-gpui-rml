@@ -15,6 +15,7 @@
 
 // 包名统一为 rust-rml-* 前缀,通过 extern crate 别名保留源码中的短名引用
 extern crate rust_rml_core as rml_core;
+extern crate rust_rml_app as rml_app;
 
 pub mod ability_ext;
 pub mod chat;

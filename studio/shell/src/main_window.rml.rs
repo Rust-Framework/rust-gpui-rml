@@ -20,7 +20,7 @@
 use std::sync::{Arc, RwLock};
 
 use rml::prelude::*;
-use rml_app::IAppContextExt;
+use rml_app::{IAppContext, IAppContextExt};
 use rml_core::i18n::{I18nExt, I18nState};
 use rml_core::observable::ObservableVec;
 use rml_core::theme::ThemeExt;

@@ -21,6 +21,7 @@ use lsp_types::{
     DocumentSymbol, DocumentSymbolResponse, Location, Position, Range, TextEdit, Uri, WorkspaceEdit,
 };
 use rml::prelude::*;
+use rml_app::IServiceProvider;
 use rml_ui::{BreadcrumbItem, BreadcrumbSibling};
 use rust_rml_client::{file_path_to_uri, LanguageClient};
 use serde::Deserialize;

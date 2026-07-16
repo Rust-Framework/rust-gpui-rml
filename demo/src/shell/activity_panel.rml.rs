@@ -1,5 +1,6 @@
 use gpui::{SharedString, Window};
 use rml::prelude::*;
+use rml_app::IServiceProvider;
 use rml_core::contribution::IconSpec;
 use rml_core::element_ref::ElementRef;
 use rml_core::i18n::t_static;
