@@ -12,3 +12,11 @@ Cargo.lock
 *.log
 build_output*.txt
 debug_stderr*.txt
+
+# IDE / AI agent helpers (do not publish)
+.trae/
+.agents/
+.idea/
+.vscode/
+*.swp
+*.swo
