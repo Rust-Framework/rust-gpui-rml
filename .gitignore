@@ -10,3 +10,5 @@ Cargo.lock
 **/*.rs.bk
 
 *.log
+build_output*.txt
+debug_stderr*.txt
