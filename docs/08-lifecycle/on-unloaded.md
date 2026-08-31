@@ -1,4 +1,4 @@
-﻿# 8.3 on_unloaded 与清理
+# 8.3 on_unloaded 与清理
 
 > **本节目标**：深入掌握 `#[on_unloaded]` 回调的使用场景和资源清理最佳实践。
 
