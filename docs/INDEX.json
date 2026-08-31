@@ -1,9 +1,9 @@
 {
   "meta": {
-    "title": "rust-gpui-rml",
+    "title": "Rust GPUI RML",
     "subtitle": "为 GPUI 设计的 HTML 友好型声明式 UI 框架",
-    "docTitle": "rust-gpui-rml 开发者手册",
-    "description": "An HTML-friendly declarative UI framework for GPUI — markup in .rml files, code-behind in .rml.rs, and compile-time GPUI rendering with zero runtime overhead.",
+    "docTitle": "Rust GPUI RML 开发者手册",
+    "description": "为 GPUI 打造的 HTML 友好型声明式 UI 框架 — .rml 标记 + code-behind，编译期生成 GPUI 代码，零运行时开销。 | HTML-friendly declarative UI for GPUI — markup in .rml, logic in code-behind, compile-time rendering with zero runtime overhead.",
     "category": "library",
     "tags": ["rust", "gpui", "ui", "rml", "desktop"],
     "repoUrl": "https://github.com/Rust-Framework/rust-gpui-rml",
