@@ -1,7 +1,7 @@
 # RML 样式属性归一化迁移变更报告
 
 **执行时间**：2026-07-07
-**执行脚本**：[scripts/migrate_style_attrs.py](file:///d:/GitCode/RF/rust-gpui-rml/scripts/migrate_style_attrs.py)
+**执行脚本**：[scripts/migrate_style_attrs.py](../scripts/migrate_style_attrs.py)
 **扫描范围**：`demo/src/` 下全部 `.rml` 文件
 **执行模式**：`--write --no-backup`
 
@@ -24,7 +24,7 @@
 
 ## 2. 应用的映射规则
 
-脚本依据 [migration-style-normalization.md](file:///d:/GitCode/RF/rust-gpui-rml/.trae/skills/rml-component/migration-style-normalization.md) 中的映射表，共 10 条规则。
+脚本依据 [migration-style-normalization.md](../.trae/skills/rml-component/migration-style-normalization.md) 中的映射表，共 10 条规则。
 
 ### 2.1 静态映射（8 条，固定替换）
 
@@ -93,85 +93,85 @@
 
 | # | 文件 | 状态 |
 |---|------|------|
-| 1 | [accordion_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/accordion_case.rml) | ✅ 已迁移 |
-| 2 | [alert_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/alert_case.rml) | ✅ 已迁移 |
-| 3 | [avatar_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/avatar_case.rml) | ✅ 已迁移 |
-| 4 | [avatar_group_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/avatar_group_case.rml) | ✅ 已迁移 |
-| 5 | [badge_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/badge_case.rml) | ✅ 已迁移 |
-| 6 | [button_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/button_case.rml) | ✅ 已迁移 |
-| 7 | [button_group_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/button_group_case.rml) | ✅ 已迁移 |
-| 8 | [card_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/card_case.rml) | ✅ 已迁移 |
-| 9 | [checkbox_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/checkbox_case.rml) | ✅ 已迁移 |
-| 10 | [code_editor_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/code_editor_case.rml) | ✅ 已迁移 |
-| 11 | [collapsible_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/collapsible_case.rml) | ✅ 已迁移 |
-| 12 | [conditional_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/conditional_case.rml) | ✅ 已迁移 |
-| 13 | [counter_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/counter_case.rml) | ✅ 已迁移 |
-| 14 | [description_list_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/description_list_case.rml) | ✅ 已迁移 |
-| 15 | [else_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/else_case.rml) | ✅ 已迁移 |
-| 16 | [expression_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/expression_case.rml) | ✅ 已迁移 |
-| 17 | [group_box_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/group_box_case.rml) | ✅ 已迁移 |
-| 18 | [html_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/html_case.rml) | ✅ 已迁移 |
-| 19 | [i18n_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/i18n_case.rml) | ✅ 已迁移 |
-| 20 | [icon_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/icon_case.rml) | ✅ 已迁移 |
-| 21 | [input_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/input_case.rml) | ✅ 已迁移 |
-| 22 | [kbd_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/kbd_case.rml) | ✅ 已迁移 |
-| 23 | [key_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/key_case.rml) | ✅ 已迁移 |
-| 24 | [label_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/label_case.rml) | ✅ 已迁移 |
-| 25 | [link_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/link_case.rml) | ✅ 已迁移 |
-| 26 | [list_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/list_case.rml) | ✅ 已迁移 |
-| 27 | [menu_context_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/menu_context_case.rml) | ✅ 已迁移 |
-| 28 | [menu_custom_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/menu_custom_case.rml) | ✅ 已迁移 |
-| 29 | [menu_dropdown_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/menu_dropdown_case.rml) | ✅ 已迁移 |
-| 30 | [menu_editor_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/menu_editor_case.rml) | ✅ 已迁移 |
-| 31 | [menu_features_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/menu_features_case.rml) | ✅ 已迁移 |
-| 32 | [native_status_bar_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/native_status_bar_case.rml) | ✅ 已迁移 |
-| 33 | [once_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/once_case.rml) | ✅ 已迁移 |
-| 34 | [overflow_test_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/overflow_test_case.rml) | ✅ 已迁移 |
-| 35 | [pagination_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/pagination_case.rml) | ✅ 已迁移 |
-| 36 | [popover_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/popover_case.rml) | ✅ 已迁移 |
-| 37 | [progress_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/progress_case.rml) | ✅ 已迁移 |
-| 38 | [progress_circle_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/progress_circle_case.rml) | ✅ 已迁移 |
-| 39 | [radio_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/radio_case.rml) | ✅ 已迁移 |
-| 40 | [ref_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/ref_case.rml) | ✅ 已迁移 |
-| 41 | [separator_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/separator_case.rml) | ✅ 已迁移 |
-| 42 | [show_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/show_case.rml) | ✅ 已迁移 |
-| 43 | [slider_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/slider_case.rml) | ✅ 已迁移 |
-| 44 | [spinner_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/spinner_case.rml) | ✅ 已迁移 |
-| 45 | [status_bar_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/status_bar_case.rml) | ✅ 已迁移 |
-| 46 | [switch_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/switch_case.rml) | ✅ 已迁移 |
-| 47 | [tab_bar_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/tab_bar_case.rml) | ✅ 已迁移 |
-| 48 | [table_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/table_case.rml) | ✅ 已迁移 |
-| 49 | [tab_preview_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/tab_preview_case.rml) | ✅ 已迁移 |
-| 50 | [tag_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/tag_case.rml) | ✅ 已迁移 |
-| 51 | [template_slot_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/template_slot_case.rml) | ✅ 已迁移 |
-| 52 | [theme_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/theme_case.rml) | ✅ 已迁移 |
-| 53 | [title_bar_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/title_bar_case.rml) | ✅ 已迁移 |
-| 54 | [tooltip_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/tooltip_case.rml) | ✅ 已迁移 |
-| 55 | [tree_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/tree_case.rml) | ✅ 已迁移 |
-| 56 | [two_way_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/two_way_case.rml) | ✅ 已迁移 |
-| 57 | [validation_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/validation_case.rml) | ✅ 已迁移 |
-| 58 | [welcome_case.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/welcome_case.rml) | ✅ 已迁移 |
+| 1 | [accordion_case.rml](../demo/src/cases/accordion_case.rml) | ✅ 已迁移 |
+| 2 | [alert_case.rml](../demo/src/cases/alert_case.rml) | ✅ 已迁移 |
+| 3 | [avatar_case.rml](../demo/src/cases/avatar_case.rml) | ✅ 已迁移 |
+| 4 | [avatar_group_case.rml](../demo/src/cases/avatar_group_case.rml) | ✅ 已迁移 |
+| 5 | [badge_case.rml](../demo/src/cases/badge_case.rml) | ✅ 已迁移 |
+| 6 | [button_case.rml](../demo/src/cases/button_case.rml) | ✅ 已迁移 |
+| 7 | [button_group_case.rml](../demo/src/cases/button_group_case.rml) | ✅ 已迁移 |
+| 8 | [card_case.rml](../demo/src/cases/card_case.rml) | ✅ 已迁移 |
+| 9 | [checkbox_case.rml](../demo/src/cases/checkbox_case.rml) | ✅ 已迁移 |
+| 10 | [code_editor_case.rml](../demo/src/cases/code_editor_case.rml) | ✅ 已迁移 |
+| 11 | [collapsible_case.rml](../demo/src/cases/collapsible_case.rml) | ✅ 已迁移 |
+| 12 | [conditional_case.rml](../demo/src/cases/conditional_case.rml) | ✅ 已迁移 |
+| 13 | [counter_case.rml](../demo/src/cases/counter_case.rml) | ✅ 已迁移 |
+| 14 | [description_list_case.rml](../demo/src/cases/description_list_case.rml) | ✅ 已迁移 |
+| 15 | [else_case.rml](../demo/src/cases/else_case.rml) | ✅ 已迁移 |
+| 16 | [expression_case.rml](../demo/src/cases/expression_case.rml) | ✅ 已迁移 |
+| 17 | [group_box_case.rml](../demo/src/cases/group_box_case.rml) | ✅ 已迁移 |
+| 18 | [html_case.rml](../demo/src/cases/html_case.rml) | ✅ 已迁移 |
+| 19 | [i18n_case.rml](../demo/src/cases/i18n_case.rml) | ✅ 已迁移 |
+| 20 | [icon_case.rml](../demo/src/cases/icon_case.rml) | ✅ 已迁移 |
+| 21 | [input_case.rml](../demo/src/cases/input_case.rml) | ✅ 已迁移 |
+| 22 | [kbd_case.rml](../demo/src/cases/kbd_case.rml) | ✅ 已迁移 |
+| 23 | [key_case.rml](../demo/src/cases/key_case.rml) | ✅ 已迁移 |
+| 24 | [label_case.rml](../demo/src/cases/label_case.rml) | ✅ 已迁移 |
+| 25 | [link_case.rml](../demo/src/cases/link_case.rml) | ✅ 已迁移 |
+| 26 | [list_case.rml](../demo/src/cases/list_case.rml) | ✅ 已迁移 |
+| 27 | [menu_context_case.rml](../demo/src/cases/menu_context_case.rml) | ✅ 已迁移 |
+| 28 | [menu_custom_case.rml](../demo/src/cases/menu_custom_case.rml) | ✅ 已迁移 |
+| 29 | [menu_dropdown_case.rml](../demo/src/cases/menu_dropdown_case.rml) | ✅ 已迁移 |
+| 30 | [menu_editor_case.rml](../demo/src/cases/menu_editor_case.rml) | ✅ 已迁移 |
+| 31 | [menu_features_case.rml](../demo/src/cases/menu_features_case.rml) | ✅ 已迁移 |
+| 32 | [native_status_bar_case.rml](../demo/src/cases/native_status_bar_case.rml) | ✅ 已迁移 |
+| 33 | [once_case.rml](../demo/src/cases/once_case.rml) | ✅ 已迁移 |
+| 34 | [overflow_test_case.rml](../demo/src/cases/overflow_test_case.rml) | ✅ 已迁移 |
+| 35 | [pagination_case.rml](../demo/src/cases/pagination_case.rml) | ✅ 已迁移 |
+| 36 | [popover_case.rml](../demo/src/cases/popover_case.rml) | ✅ 已迁移 |
+| 37 | [progress_case.rml](../demo/src/cases/progress_case.rml) | ✅ 已迁移 |
+| 38 | [progress_circle_case.rml](../demo/src/cases/progress_circle_case.rml) | ✅ 已迁移 |
+| 39 | [radio_case.rml](../demo/src/cases/radio_case.rml) | ✅ 已迁移 |
+| 40 | [ref_case.rml](../demo/src/cases/ref_case.rml) | ✅ 已迁移 |
+| 41 | [separator_case.rml](../demo/src/cases/separator_case.rml) | ✅ 已迁移 |
+| 42 | [show_case.rml](../demo/src/cases/show_case.rml) | ✅ 已迁移 |
+| 43 | [slider_case.rml](../demo/src/cases/slider_case.rml) | ✅ 已迁移 |
+| 44 | [spinner_case.rml](../demo/src/cases/spinner_case.rml) | ✅ 已迁移 |
+| 45 | [status_bar_case.rml](../demo/src/cases/status_bar_case.rml) | ✅ 已迁移 |
+| 46 | [switch_case.rml](../demo/src/cases/switch_case.rml) | ✅ 已迁移 |
+| 47 | [tab_bar_case.rml](../demo/src/cases/tab_bar_case.rml) | ✅ 已迁移 |
+| 48 | [table_case.rml](../demo/src/cases/table_case.rml) | ✅ 已迁移 |
+| 49 | [tab_preview_case.rml](../demo/src/cases/tab_preview_case.rml) | ✅ 已迁移 |
+| 50 | [tag_case.rml](../demo/src/cases/tag_case.rml) | ✅ 已迁移 |
+| 51 | [template_slot_case.rml](../demo/src/cases/template_slot_case.rml) | ✅ 已迁移 |
+| 52 | [theme_case.rml](../demo/src/cases/theme_case.rml) | ✅ 已迁移 |
+| 53 | [title_bar_case.rml](../demo/src/cases/title_bar_case.rml) | ✅ 已迁移 |
+| 54 | [tooltip_case.rml](../demo/src/cases/tooltip_case.rml) | ✅ 已迁移 |
+| 55 | [tree_case.rml](../demo/src/cases/tree_case.rml) | ✅ 已迁移 |
+| 56 | [two_way_case.rml](../demo/src/cases/two_way_case.rml) | ✅ 已迁移 |
+| 57 | [validation_case.rml](../demo/src/cases/validation_case.rml) | ✅ 已迁移 |
+| 58 | [welcome_case.rml](../demo/src/cases/welcome_case.rml) | ✅ 已迁移 |
 
 ### demo/src/cases/common/（1 个）
 
 | # | 文件 | 状态 |
 |---|------|------|
-| 57 | [case_doc_page.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/cases/common/case_doc_page.rml) | ✅ 已迁移 |
+| 57 | [case_doc_page.rml](../demo/src/cases/common/case_doc_page.rml) | ✅ 已迁移 |
 
 ### demo/src/shell/（3 个）
 
 | # | 文件 | 状态 |
 |---|------|------|
-| 58 | [activity_panel.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/shell/activity_panel.rml) | ✅ 已迁移 |
-| 59 | [login_dialog.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/shell/login_dialog.rml) | ✅ 已迁移 |
-| 60 | [main_window.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/shell/main_window.rml) | ✅ 已迁移 |
+| 58 | [activity_panel.rml](../demo/src/shell/activity_panel.rml) | ✅ 已迁移 |
+| 59 | [login_dialog.rml](../demo/src/shell/login_dialog.rml) | ✅ 已迁移 |
+| 60 | [main_window.rml](../demo/src/shell/main_window.rml) | ✅ 已迁移 |
 
 ### demo/src/lsp/（2 个）
 
 | # | 文件 | 状态 |
 |---|------|------|
-| 63 | [code_editor_tab.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/lsp/code_editor_tab.rml) | ✅ 已迁移 |
-| 64 | [lsp_explorer_panel.rml](file:///d:/GitCode/RF/rust-gpui-rml/demo/src/lsp/lsp_explorer_panel.rml) | ✅ 已迁移 |
+| 63 | [code_editor_tab.rml](../demo/src/lsp/code_editor_tab.rml) | ✅ 已迁移 |
+| 64 | [lsp_explorer_panel.rml](../demo/src/lsp/lsp_explorer_panel.rml) | ✅ 已迁移 |
 
 ---
 
@@ -183,7 +183,7 @@
 
 ### 5.2 引擎 deprecation 保障
 
-即便未来出现旧属性回潮，引擎在 [attribute.rs:27-36](file:///d:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/codegen/attribute.rs#L27-L36) 已实现 deprecation warning，会在编译期输出 `[rml deprecation]` 警告并丢弃旧属性。本脚本可作为 CI 防御性检查工具：
+即便未来出现旧属性回潮，引擎在 [attribute.rs:27-36](../crates/engine/src/compiler/codegen/attribute.rs#L27-L36) 已实现 deprecation warning，会在编译期输出 `[rml deprecation]` 警告并丢弃旧属性。本脚本可作为 CI 防御性检查工具：
 
 ```bash
 # CI 中检查：如有旧属性残留则非零退出
@@ -192,7 +192,7 @@ py scripts/migrate_style_attrs.py demo/src
 
 ### 5.3 后续使用建议
 
-- **新增 `.rml` 文件时**：直接使用归一化样式属性（参考 [03-property-classification.md](file:///d:/GitCode/RF/rust-gpui-rml/.trae/skills/rml-component/03-property-classification.md) 与 [07-size-layout-conventions.md](file:///d:/GitCode/RF/rust-gpui-rml/.trae/skills/rml-component/07-size-layout-conventions.md)）
+- **新增 `.rml` 文件时**：直接使用归一化样式属性（参考 [03-property-classification.md](../.trae/skills/rml-component/03-property-classification.md) 与 [07-size-layout-conventions.md](../.trae/skills/rml-component/07-size-layout-conventions.md)）
 - **批量迁移第三方 `.rml` 代码**：先 `py scripts/migrate_style_attrs.py <path>` dry-run 预览，确认后加 `--write` 写入
 - **回归验证**：迁移后执行 `cargo build -p rust-rml-demo` 与 `cargo test -p rust-rml-engine` 确认无回归
 
@@ -214,4 +214,4 @@ py scripts/migrate_style_attrs.py path/to/dir --write
 py scripts/migrate_style_attrs.py path/to/dir --write --no-backup
 ```
 
-详细映射规则与设计说明见 [migration-style-normalization.md](file:///d:/GitCode/RF/rust-gpui-rml/.trae/skills/rml-component/migration-style-normalization.md)。
+详细映射规则与设计说明见 [migration-style-normalization.md](../.trae/skills/rml-component/migration-style-normalization.md)。

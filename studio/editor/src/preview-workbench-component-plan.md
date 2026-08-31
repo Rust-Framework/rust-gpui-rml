@@ -31,9 +31,9 @@
 
 | 文件                                                                                                        | 现状                                                          | 问题                                                                 |
 | --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------ |
-| [component.rs](file:///e:/GitCode/RF/rust-gpui-rml/studio/core/src/component.rs)                          | 定义 `IWorkbenchComponent: IVisualContribution` + `matches()` | trait 契约完备,但缺少 host 协作契约                                           |
-| [code\_workbench.rs](file:///e:/GitCode/RF/rust-gpui-rml/studio/editor/src/code_workbench.rs)             | `IVisual::render` 直接 `div().into_any_element()`             | **违反 MVVM**:Rust 代码构造 UI;命名 `CodeWorkbench` 与 `EditorWorkbench` 冲突 |
-| [editor\_workbench.rml.rs](file:///e:/GitCode/RF/rust-gpui-rml/studio/editor/src/editor_workbench.rml.rs) | 持有 `editor_state`/`language_client`,直接渲染 `<CodeEditor>`     | 既是 IWorkbench 又是代码视图,无法多态切换;无组件间数据同步机制                             |
+| [component.rs](../../../studio/core/src/component.rs)                          | 定义 `IWorkbenchComponent: IVisualContribution` + `matches()` | trait 契约完备,但缺少 host 协作契约                                           |
+| [code\_workbench.rs](../../../studio/editor/src/code_workbench.rs)             | `IVisual::render` 直接 `div().into_any_element()`             | **违反 MVVM**:Rust 代码构造 UI;命名 `CodeWorkbench` 与 `EditorWorkbench` 冲突 |
+| [editor\_workbench.rml.rs](../../../studio/editor/src/editor_workbench.rml.rs) | 持有 `editor_state`/`language_client`,直接渲染 `<CodeEditor>`     | 既是 IWorkbench 又是代码视图,无法多态切换;无组件间数据同步机制                             |
 | —                                                                                                         | 无 `PreviewComponent` 实现                                     | `.md` 文件只能走代码视图,无只读富文本预览                                           |
 | —                                                                                                         | 无共享文档/状态模型                                                  | design 视图编辑后切换到 code 视图看不到最新数据                                     |
 
@@ -79,7 +79,7 @@
 
 ### 3.4 与框架既有模式对齐
 
-参考 [editor\_workbench.rml.rs](file:///e:/GitCode/RF/rust-gpui-rml/studio/editor/src/editor_workbench.rml.rs)
+参考 [editor\_workbench.rml.rs](../../../studio/editor/src/editor_workbench.rml.rs)
 的成熟模式:
 
 1. `#[component]` + `#[derive(Default)]` 标注 struct,生成 `IModel + IViewModel + IComponent + Render`
@@ -183,7 +183,7 @@ EditorWorkbench(#[component])
 
 ### 5.1 IWorkbenchComponent(无变更)
 
-[studio/core/src/component.rs](file:///e:/GitCode/RF/rust-gpui-rml/studio/core/src/component.rs)
+[studio/core/src/component.rs](../../../studio/core/src/component.rs)
 中的 `IWorkbenchComponent` trait 保持不变:
 
 ```rust
@@ -1042,7 +1042,7 @@ fn register_editor_services() {
 
 当前 `register_workbench_component` 工厂返回 `Arc<dyn IContribution>`。为支持
 `IWorkbenchComponentHost::components()` 返回 `Vec<Arc<dyn IWorkbenchComponent>>`,
-需调整 [registry.rs](file:///e:/GitCode/RF/rust-gpui-rml/studio/core/src/registry.rs):
+需调整 [registry.rs](../../../studio/core/src/registry.rs):
 
 **选项 A(推荐)**:工厂仍返回 `Arc<dyn IContribution>`,`components()` 内部经
 `as_workbench_component()` 查询能力后,无法直接拿到 `Arc<dyn IWorkbenchComponent>`
@@ -1151,7 +1151,7 @@ document 变化
 ### 10.5 .html 文件的降级策略
 
 GPUI 无原生 HTML 渲染器,RML `html={expr}` 指令降级为文本节点(参考
-[html\_case.rml](file:///e:/GitCode/RF/rust-gpui-rml/demo/src/cases/html_case.rml))。
+[html\_case.rml](../../../demo/src/cases/html_case.rml))。
 `.html` 预览使用 `<pre>` 纯文本展示源码。后续若引入 webview,扩展 `DocumentKind::Html` 分支。
 
 ### 10.6 kebab-case 强约束
@@ -1251,12 +1251,12 @@ GPUI 无原生 HTML 渲染器,RML `html={expr}` 指令降级为文本节点(参�
 
 ## 13. 与既有计划的关系
 
-* **本计划** 落地 [arc-studio-plan.md](file:///e:/GitCode/RF/rust-gpui-rml/.trae/documents/arc-studio-plan.md)
+* **本计划** 落地 [arc-studio-plan.md](../../../.trae/documents/arc-studio-plan.md)
   第 4.2 节定义的 `PreviewComponent(id="preview")` + 组件间数据同步机制,
   命名调整为 `XXXComponent` 规范。
 
 * **不涉及** `RmlDesignComponent(id="design")` —— 该组件依赖
-  [rml-visual-designer-plan.md](file:///e:/GitCode/RF/rust-gpui-rml/.trae/documents/rml-visual-designer-plan.md)
+  [rml-visual-designer-plan.md](../../../.trae/documents/rml-visual-designer-plan.md)
   的设计器内核,后续独立计划推进。本计划的 `WorkbenchDocument` 共享模型已为 design 视图预留同步通路。
 
 * **IWorkbench trait 不变**:本计划新增 `IWorkbenchComponentHost` trait(独立于 IWorkbench),

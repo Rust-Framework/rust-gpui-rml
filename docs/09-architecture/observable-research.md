@@ -14,28 +14,28 @@ RML 框架并非「无 observable 方案」——当前已落地一套**显式�
 
 | 层 | 关键文件 | 机制 |
 |---|---|---|
-| 契约 | [crates/core/src/binding.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/core/src/binding.rs) | `BindingPath`/`BindingSegment` 编译期解析；`IBindingContext` **目前仅为 marker trait**（L57-60 注释「MVP 阶段标记，阶段二扩展为完整订阅管理接口」） |
-| 契约 | [crates/core/src/observable.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/core/src/observable.rs) | `ObservableVec<T>`：`RwLock<Vec<T>>` + `AtomicU64` + 可选 `flume::Sender<()>`；仅用于 host Entity 跨线程通知 |
-| 契约 | [crates/core/src/computed_cache.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/core/src/computed_cache.rs) | `ComputedCache`：`Mutex<HashMap<String,(u64, Box<dyn Any>)>>`；core 中唯一 `allow(unsafe_code)` 处 |
-| 宏 | [crates/macros/src/component.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/macros/src/component.rs) | 注入单一私有字段 `__rml_state: RmlState`，统一承载 `field_versions: HashMap<String, AtomicU64>` + `computed_cache` + `input_states` 等运行时状态 |
-| 宏 | [crates/macros/src/command.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/macros/src/command.rs) | `syn::visit::Visit` 检测 `self.x =`/`+=`/`push`/`clear` 等，注入 `__rml_bump_version` + `cx.notify()` |
-| 宏 | [crates/macros/src/computed.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/macros/src/computed.rs) | 将 `fn xxx` 重命名为 `fn __rml_computed_xxx`，由 codegen 生成缓存包装 |
-| codegen | [crates/engine/src/compiler/codegen/observable.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/codegen/observable.rs) | 生成 `__rml_bump_version`/`__rml_get_version`/`__rml_computed_deps_version` + `InputState` 惰性同步 |
-| codegen | [crates/engine/src/compiler/codegen/binding.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/codegen/binding.rs) | 双向绑定：parse → validate → assign → bump；失败时不赋值不 bump，仅设错误态 |
+| 契约 | [crates/core/src/binding.rs](../../crates/core/src/binding.rs) | `BindingPath`/`BindingSegment` 编译期解析；`IBindingContext` **目前仅为 marker trait**（L57-60 注释「MVP 阶段标记，阶段二扩展为完整订阅管理接口」） |
+| 契约 | [crates/core/src/observable.rs](../../crates/core/src/observable.rs) | `ObservableVec<T>`：`RwLock<Vec<T>>` + `AtomicU64` + 可选 `flume::Sender<()>`；仅用于 host Entity 跨线程通知 |
+| 契约 | [crates/core/src/computed_cache.rs](../../crates/core/src/computed_cache.rs) | `ComputedCache`：`Mutex<HashMap<String,(u64, Box<dyn Any>)>>`；core 中唯一 `allow(unsafe_code)` 处 |
+| 宏 | [crates/macros/src/component.rs](../../crates/macros/src/component.rs) | 注入单一私有字段 `__rml_state: RmlState`，统一承载 `field_versions: HashMap<String, AtomicU64>` + `computed_cache` + `input_states` 等运行时状态 |
+| 宏 | [crates/macros/src/command.rs](../../crates/macros/src/command.rs) | `syn::visit::Visit` 检测 `self.x =`/`+=`/`push`/`clear` 等，注入 `__rml_bump_version` + `cx.notify()` |
+| 宏 | [crates/macros/src/computed.rs](../../crates/macros/src/computed.rs) | 将 `fn xxx` 重命名为 `fn __rml_computed_xxx`，由 codegen 生成缓存包装 |
+| codegen | [crates/engine/src/compiler/codegen/observable.rs](../../crates/engine/src/compiler/codegen/observable.rs) | 生成 `__rml_bump_version`/`__rml_get_version`/`__rml_computed_deps_version` + `InputState` 惰性同步 |
+| codegen | [crates/engine/src/compiler/codegen/binding.rs](../../crates/engine/src/compiler/codegen/binding.rs) | 双向绑定：parse → validate → assign → bump；失败时不赋值不 bump，仅设错误态 |
 
 ### 9.8.1.2 已识别的痛点与缺口
 
 | 痛点 | 位置 | 性质 |
 |---|---|---|
-| `IBindingContext` 仍为 marker trait，无细粒度订阅 | [binding.rs:57-60](file:///e:/GitCode/RF/rust-gpui-rml/crates/core/src/binding.rs) | 缺口 |
+| `IBindingContext` 仍为 marker trait，无细粒度订阅 | [binding.rs:57-60](../../crates/core/src/binding.rs) | 缺口 |
 | `cx.notify()` 触发 Entity 全量重渲，无部分重渲 | GPUI 渲染模型 | 限制 |
-| `#[command]` 不追踪指针间接修改（`let p = &mut self.x; *p = 1;`） | [command.rs:25 注释](file:///e:/GitCode/RF/rust-gpui-rml/crates/macros/src/command.rs) | 限制 |
-| `Subscription` 非 `Sync`，`.detach()` 后无法运行期取消 | [component.rs:78-80 注释](file:///e:/GitCode/RF/rust-gpui-rml/crates/macros/src/component.rs) | 限制 |
-| `ComputedCache` `unsafe Send/Sync` 依赖「仅 render 线程调用」约定，无运行期强制 | [computed_cache.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/core/src/computed_cache.rs) | 风险 |
+| `#[command]` 不追踪指针间接修改（`let p = &mut self.x; *p = 1;`） | [command.rs:25 注释](../../crates/macros/src/command.rs) | 限制 |
+| `Subscription` 非 `Sync`，`.detach()` 后无法运行期取消 | [component.rs:78-80 注释](../../crates/macros/src/component.rs) | 限制 |
+| `ComputedCache` `unsafe Send/Sync` 依赖「仅 render 线程调用」约定，无运行期强制 | [computed_cache.rs](../../crates/core/src/computed_cache.rs) | 风险 |
 
 ### 9.8.1.3 已写明的设计哲学
 
-来自 [.trae/documents/phase-b2-observable-data-binding-plan.md](file:///e:/GitCode/RF/rust-gpui-rml/.trae/documents/phase-b2-observable-data-binding-plan.md) 与 [.trae/documents/rml-iteration-architecture-analysis.md](file:///e:/GitCode/RF/rust-gpui-rml/.trae/documents/rml-iteration-architecture-analysis.md)：
+来自 [.trae/documents/phase-b2-observable-data-binding-plan.md](../../.trae/documents/phase-b2-observable-data-binding-plan.md) 与 [.trae/documents/rml-iteration-architecture-analysis.md](../../.trae/documents/rml-iteration-architecture-analysis.md)：
 
 1. **「语法不变」是硬约束**：`self.count += 1` 不得变成 `*self.count += 1`（拒绝 wrapper 类型）
 2. **「最少样板」是设计目标**：所有 pub 字段默认 observable，不引入 `#[observable]` 属性
@@ -122,12 +122,12 @@ RML 框架并非「无 observable 方案」——当前已落地一套**显式�
 
 **核心机制**：
 
-- **版本号旁挂**：每个 pub 字段在 `__rml_state.field_versions: HashMap<String, AtomicU64>` 中惰性插入版本计数器（[component.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/macros/src/component.rs) 注入 `__rml_state`）
-- **mutation 检测**：`#[command]` 宏通过 `syn::visit::Visit` 检测 `self.x =`/`+=`/`push`/`clear` 等，在每个修改语句后注入 `self.__rml_bump_version("x");`，方法末尾注入 `cx.notify();`（[command.rs:99-137](file:///e:/GitCode/RF/rust-gpui-rml/crates/macros/src/command.rs)）
+- **版本号旁挂**：每个 pub 字段在 `__rml_state.field_versions: HashMap<String, AtomicU64>` 中惰性插入版本计数器（[component.rs](../../crates/macros/src/component.rs) 注入 `__rml_state`）
+- **mutation 检测**：`#[command]` 宏通过 `syn::visit::Visit` 检测 `self.x =`/`+=`/`push`/`clear` 等，在每个修改语句后注入 `self.__rml_bump_version("x");`，方法末尾注入 `cx.notify();`（[command.rs:99-137](../../crates/macros/src/command.rs)）
 - **`cx.notify()` 触发**：GPUI 对整个 Entity 触发 `Render::render` 重渲（全量重渲）
-- **`#[computed]` 缓存**：方法重命名为 `__rml_computed_<name>`，codegen 包装层通过 `__rml_computed_deps_version` 比较依赖字段版本号和，命中缓存跳过重算（[observable.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/codegen/observable.rs)）
+- **`#[computed]` 缓存**：方法重命名为 `__rml_computed_<name>`，codegen 包装层通过 `__rml_computed_deps_version` 比较依赖字段版本号和，命中缓存跳过重算（[observable.rs](../../crates/engine/src/compiler/codegen/observable.rs)）
 - **双向绑定**：`<input value={field}>` codegen 生成 `__rml_get_or_init_input_state`——首次 render 创建 `Entity<InputState>` + `cx.subscribe(&entity, ..)`，反向回调 parse → validate → assign → bump；正向靠版本号 diff 触发 `set_value`
-- **`Subscription::detach()`**：因 `Subscription` 非 `Sync`，存储会破坏 `Entity<T>: Send+Sync`，故订阅 `.detach()` 后生命周期绑定到 Entity（[component.rs:78-80 注释](file:///e:/GitCode/RF/rust-gpui-rml/crates/macros/src/component.rs)）
+- **`Subscription::detach()`**：因 `Subscription` 非 `Sync`，存储会破坏 `Entity<T>: Send+Sync`，故订阅 `.detach()` 后生命周期绑定到 Entity（[component.rs:78-80 注释](../../crates/macros/src/component.rs)）
 
 **关键特性**：
 
@@ -147,7 +147,7 @@ RML 框架并非「无 observable 方案」——当前已落地一套**显式�
 
 ### 9.8.3.1 维度一：Rust 所有权与 `Send+Sync` 契合度
 
-GPUI 的 `Entity<T>` 要求 `T: Send + Sync`（[crates/core/src/model.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/core/src/model.rs) L1-21 `IModel: 'static + Send + Sync`）。这是 Rust 桌面 GUI 框架的硬约束。
+GPUI 的 `Entity<T>` 要求 `T: Send + Sync`（[crates/core/src/model.rs](../../crates/core/src/model.rs) L1-21 `IModel: 'static + Send + Sync`）。这是 Rust 桌面 GUI 框架的硬约束。
 
 | 方案 | Rust 适配性 | 具体障碍 |
 |---|---|---|
@@ -182,7 +182,7 @@ GPUI 的渲染模型是**「Entity 级全量重渲」**：`cx.notify()` 标记�
 
 ### 9.8.3.3 维度三：开发者心智模型契合度
 
-RML 的目标开发者是**「同时熟悉 Rust 与前端/WPF 的工程师」**（[FOREWORD.md](file:///e:/GitCode/RF/rust-gpui-rml/docs/FOREWORD.md) 三层愿景）。心智模型契合度评估「该方案与开发者既有直觉的距离」。
+RML 的目标开发者是**「同时熟悉 Rust 与前端/WPF 的工程师」**（[FOREWORD.md](../../docs/FOREWORD.md) 三层愿景）。心智模型契合度评估「该方案与开发者既有直觉的距离」。
 
 | 方案 | 心智契合度 | 说明 |
 |---|---|---|
@@ -200,7 +200,7 @@ RML 的目标开发者是**「同时熟悉 Rust 与前端/WPF 的工程师」**�
 
 ### 9.8.3.4 维度四：框架设计哲学契合度
 
-RML 的设计哲学（[design-philosophy.md](file:///e:/GitCode/RF/rust-gpui-rml/docs/01-overview/design-philosophy.md)）：
+RML 的设计哲学（[design-philosophy.md](../../docs/01-overview/design-philosophy.md)）：
 
 1. **HTML 的语法亲和力**
 2. **WPF 的设计理念**
@@ -237,7 +237,7 @@ RML 的设计哲学（[design-philosophy.md](file:///e:/GitCode/RF/rust-gpui-rml
 
 **架构师视角**：
 
-- RML 的选择牺牲了「指针间接修改追踪」换取「语法不变」——这是**有意识的取舍**，对应 [phase-b2-observable-data-binding-plan.md](file:///e:/GitCode/RF/rust-gpui-rml/.trae/documents/phase-b2-observable-data-binding-plan.md) §「核心：保持 `pub count: i32` 不变」
+- RML 的选择牺牲了「指针间接修改追踪」换取「语法不变」——这是**有意识的取舍**，对应 [phase-b2-observable-data-binding-plan.md](../../.trae/documents/phase-b2-observable-data-binding-plan.md) §「核心：保持 `pub count: i32` 不变」
 - React 的选择牺牲了「语法简洁」换取「变更必然可见」——这是 React 函数式哲学的体现
 - 二者无法同时满足：要么允许 mutation（无法穷尽追踪），要么禁止 mutation（破坏语法）
 
@@ -284,7 +284,7 @@ RML 的设计哲学（[design-philosophy.md](file:///e:/GitCode/RF/rust-gpui-rml
 **架构师视角**：
 
 - 这是 RML 设计中**最核心的张力**——直接决定了 observable 方案的形态
-- RML 在 [phase-b2-observable-data-binding-plan.md](file:///e:/GitCode/RF/rust-gpui-rml/.trae/documents/phase-b2-observable-data-binding-plan.md) 明确拒绝 wrapper：「`self.count += 1` 在 `Observable<i32>` 下需变成 `*self.count += 1`（DerefMut），违反'语法不变'要求」
+- RML 在 [phase-b2-observable-data-binding-plan.md](../../.trae/documents/phase-b2-observable-data-binding-plan.md) 明确拒绝 wrapper：「`self.count += 1` 在 `Observable<i32>` 下需变成 `*self.count += 1`（DerefMut），违反'语法不变'要求」
 - Wrapper 类型的「字段级订阅」优势在 GPUI 限制下无法兑现——即使字段级 setter 触发，GPUI 仍是 Entity 级重渲
 - 因此**字段级订阅的优势在 GPUI 中是无效的**，而 wrapper 的代价（语法破坏）是实在的
 
@@ -342,14 +342,14 @@ RML 的设计哲学（[design-philosophy.md](file:///e:/GitCode/RF/rust-gpui-rml
    - **`INotifyPropertyChanged` 多播委托不适配**：.NET `event` 是多播委托，Rust 中等价于 `Arc<Mutex<Vec<Box<dyn Fn() + Send + Sync>>>>`，开销大且易死锁；RML 用 `AtomicU64` 版本号 + 单一 `cx.notify()` 替代
    - **Visual 树失效机制不存在**：WPF 的局部失效依赖 Visual 树，GPUI 不维护可视化树；RML 用 `#[computed]` 缓存替代
 
-2. **WPF 的「设计理念」适合**（[rml-iteration-architecture-analysis.md §3.2](file:///e:/GitCode/RF/rust-gpui-rml/.trae/documents/rml-iteration-architecture-analysis.md)）：
+2. **WPF 的「设计理念」适合**（[rml-iteration-architecture-analysis.md §3.2](../../.trae/documents/rml-iteration-architecture-analysis.md)）：
    - **XAML + 代码后置**：RML `.rml` + `.rml.rs` 直接继承
    - **DataContext + Binding**：RML ViewModel + `{field}`/`value={field}` 直接继承
-   - **ICommand**：RML `#[command]` + `RelayCommand` 直接继承（[command.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/core/src/command.rs)）
-   - **IValueConverter**：RML `IConverter` + `|` 管道符直接继承（[converter/trait_def.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/core/src/converter/trait_def.rs)）
+   - **ICommand**：RML `#[command]` + `RelayCommand` 直接继承（[command.rs](../../crates/core/src/command.rs)）
+   - **IValueConverter**：RML `IConverter` + `|` 管道符直接继承（[converter/trait_def.rs](../../crates/core/src/converter/trait_def.rs)）
    - **ValidationRule**：RML `#[validate(range/length/regex/custom)]` + `IValidate` 直接继承
 
-3. **RML 已正确区分「理念」与「实现」**：[rml-iteration-architecture-analysis.md §3.1 对照表](file:///e:/GitCode/RF/rust-gpui-rml/.trae/documents/rml-iteration-architecture-analysis.md) 明确——WPF 的四根支柱（`INotifyPropertyChanged`/`DependencyProperty`/`WeakReference`/XAML code-behind）在 RML 中分别被 `AtomicU64`/codegen/`WeakEntity`/build.rs+syn 替代。**RML 不是在「追求 WPF 依赖属性通知方案」，而是在「用 Rust 编译期优势重新实现 WPF 的设计理念」**。
+3. **RML 已正确区分「理念」与「实现」**：[rml-iteration-architecture-analysis.md §3.1 对照表](../../.trae/documents/rml-iteration-architecture-analysis.md) 明确——WPF 的四根支柱（`INotifyPropertyChanged`/`DependencyProperty`/`WeakReference`/XAML code-behind）在 RML 中分别被 `AtomicU64`/codegen/`WeakEntity`/build.rs+syn 替代。**RML 不是在「追求 WPF 依赖属性通知方案」，而是在「用 Rust 编译期优势重新实现 WPF 的设计理念」**。
 
 4. **「追求 WPF 依赖属性通知方案」的歧义辨析**：
    - 如果「追求」指「实现 DP 反射机制」——**不适合**，Rust 无反射

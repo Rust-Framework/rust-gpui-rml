@@ -56,10 +56,10 @@
 | # | 痛点/缺口 | 决策 | 理由 | 阶段 |
 |---|---|---|---|---|
 | D1 | `IBindingContext` 仍为 marker trait | **改进**：扩展为真正订阅管理接口，但仅用于 `#[computed]` 精确依赖检查（per-field 而非 sum），**不用于跳过 Entity 重渲**（GPUI 不支持） | [9.8 §9.8.4.2](./observable-research.md) 论证：细粒度订阅在 GPUI 限制下无法转化为性能收益，但可提高 `#[computed]` 缓存精度（避免无关字段变更导致 sum 变化误触发重算） | 阶段 1 |
-| D2 | `#[on_loaded]`/`#[on_unloaded]` pass-through | **改进**：通过 build.rs 扫描 `.rml.rs` 中 `#[on_loaded]` 标记，生成 `ILifecycle` 实现的自动联动 | [lifecycle.rs:5-16](file:///e:/GitCode/RF/rust-gpui-rml/crates/macros/src/lifecycle.rs) 已写明「Phase B-3 通过 build.rs 扫描实现自动联动」；不引入新宏，扩展 build.rs | 阶段 1 |
-| D3 | `IConverter` codegen 接入缺失 | **改进**：在 [expr.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/expr.rs) 已有 `Convert(Box<Expr>, String)` AST 节点基础上，codegen 生成 `ConverterName.convert(&expr)` 调用 | [expr.rs:51-52](file:///e:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/expr.rs) AST 已支持 `|` 管道，codegen 缺失；trait 与内置实现已存在 [converter/](file:///e:/GitCode/RF/rust-gpui-rml/crates/core/src/converter/) | 阶段 1 |
-| D4 | `debounce = "100ms"` 已解析未实现 | **改进**：在 `#[command]` 中实现基于 `Entity<InputState>` 的 debounce 计时器 | [command.rs:50](file:///e:/GitCode/RF/rust-gpui-rml/crates/macros/src/command.rs) 已解析参数；扩展宏实现而非新宏 | 阶段 1 |
-| D5 | `ComputedCache` unsafe Send/Sync 依赖约定 | **改进**：通过 `Send + Sync` 静态断言 + 文档化「仅 render 线程调用」约定；考虑用 `RwLock<HashMap<String, Box<dyn Any + Send + Sync>>>` 替代 unsafe impl | [computed_cache.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/core/src/computed_cache.rs) 是 core 唯一 `allow(unsafe_code)`；`#![deny(unsafe_code)]` 留口子是有节制的，但应显式化 | 阶段 1 |
+| D2 | `#[on_loaded]`/`#[on_unloaded]` pass-through | **改进**：通过 build.rs 扫描 `.rml.rs` 中 `#[on_loaded]` 标记，生成 `ILifecycle` 实现的自动联动 | [lifecycle.rs:5-16](../../crates/macros/src/lifecycle.rs) 已写明「Phase B-3 通过 build.rs 扫描实现自动联动」；不引入新宏，扩展 build.rs | 阶段 1 |
+| D3 | `IConverter` codegen 接入缺失 | **改进**：在 [expr.rs](../../crates/engine/src/compiler/expr.rs) 已有 `Convert(Box<Expr>, String)` AST 节点基础上，codegen 生成 `ConverterName.convert(&expr)` 调用 | [expr.rs:51-52](../../crates/engine/src/compiler/expr.rs) AST 已支持 `|` 管道，codegen 缺失；trait 与内置实现已存在 [converter/](../../crates/core/src/converter/) | 阶段 1 |
+| D4 | `debounce = "100ms"` 已解析未实现 | **改进**：在 `#[command]` 中实现基于 `Entity<InputState>` 的 debounce 计时器 | [command.rs:50](../../crates/macros/src/command.rs) 已解析参数；扩展宏实现而非新宏 | 阶段 1 |
+| D5 | `ComputedCache` unsafe Send/Sync 依赖约定 | **改进**：通过 `Send + Sync` 静态断言 + 文档化「仅 render 线程调用」约定；考虑用 `RwLock<HashMap<String, Box<dyn Any + Send + Sync>>>` 替代 unsafe impl | [computed_cache.rs](../../crates/core/src/computed_cache.rs) 是 core 唯一 `allow(unsafe_code)`；`#![deny(unsafe_code)]` 留口子是有节制的，但应显式化 | 阶段 1 |
 | D6 | `#[command]` 不追踪指针间接修改 | **保留现状**：在文档中明确「指针间接修改需手动 `cx.notify()`」 | [9.8 §9.8.4.1](./observable-research.md) 论证：这是「语法不变」取舍的必然代价；替代方案（React setState）破坏 Rust 惯用法 | 不改动 |
 | D7 | `Subscription` 非 Sync，无法运行期取消 | **保留现状**：`.detach()` 模式维持；文档化订阅生命周期 = Entity 生命周期 | [9.8 §9.8.4.2](./observable-research.md) 论证：取消订阅在 GPUI 限制下无实际收益（重渲仍 Entity 级）；存储 Subscription 破坏 Send+Sync | 不改动 |
 | D8 | `cx.notify()` 触发全量重渲 | **保留现状**：依赖 `#[computed]` 缓存降低重算成本 | [9.8 §9.8.4.2](./observable-research.md) 论证：这是 GPUI 限制而非 RML 选择；部分重渲依赖 GPUI 上游 | 不改动 |
@@ -76,12 +76,12 @@
 
 | 机制 | 实现位置 | 保留理由 |
 |---|---|---|
-| AtomicU64 版本号旁挂 | [component.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/macros/src/component.rs) | Send+Sync 原生适配；零开销 |
-| `#[command]` 自动注入 bump + notify | [command.rs:99-137](file:///e:/GitCode/RF/rust-gpui-rml/crates/macros/src/command.rs) | Vue mutation-driven 心智；语法不变 |
-| `#[computed]` ComputedCache 缓存 | [computed_cache.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/core/src/computed_cache.rs) + [codegen/observable.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/codegen/observable.rs) | GPUI 限制下的最大化优化 |
-| 双向绑定 InputState 惰性同步 | [codegen/observable.rs:139-217](file:///e:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/codegen/observable.rs) | Vue v-model 心智；Subscription detach 模式 |
-| build.rs + syn + `include!` codegen | [crates/engine/src/build/](file:///e:/GitCode/RF/rust-gpui-rml/crates/engine/src/) | 编译期正确性；零运行时反射 |
-| 校验失败「保留原值」设计 | [codegen/binding.rs:177-198](file:///e:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/codegen/binding.rs) | 版本号机制的意外正确性保证 |
+| AtomicU64 版本号旁挂 | [component.rs](../../crates/macros/src/component.rs) | Send+Sync 原生适配；零开销 |
+| `#[command]` 自动注入 bump + notify | [command.rs:99-137](../../crates/macros/src/command.rs) | Vue mutation-driven 心智；语法不变 |
+| `#[computed]` ComputedCache 缓存 | [computed_cache.rs](../../crates/core/src/computed_cache.rs) + [codegen/observable.rs](../../crates/engine/src/compiler/codegen/observable.rs) | GPUI 限制下的最大化优化 |
+| 双向绑定 InputState 惰性同步 | [codegen/observable.rs:139-217](../../crates/engine/src/compiler/codegen/observable.rs) | Vue v-model 心智；Subscription detach 模式 |
+| build.rs + syn + `include!` codegen | [crates/engine/src/build/](../../crates/engine/src/) | 编译期正确性；零运行时反射 |
+| 校验失败「保留原值」设计 | [codegen/binding.rs:177-198](../../crates/engine/src/compiler/codegen/binding.rs) | 版本号机制的意外正确性保证 |
 
 **阶段 0 无代码改动**。
 
@@ -176,11 +176,11 @@ pub fn gen_lifecycle_impl(ctx: &CodegenCtx) -> String {
 }
 ```
 
-**为什么**：[lifecycle.rs:5-16](file:///e:/GitCode/RF/rust-gpui-rml/crates/macros/src/lifecycle.rs) 已写明此为 Phase B-3 计划；用户偏好「最少样板」
+**为什么**：[lifecycle.rs:5-16](../../crates/macros/src/lifecycle.rs) 已写明此为 Phase B-3 计划；用户偏好「最少样板」
 
 **前置依赖**：无
 
-**风险**：`ILifecycle` trait 当前签名需确认（需在执行前核对 [crates/core/src/lifecycle.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/core/src/lifecycle.rs)）
+**风险**：`ILifecycle` trait 当前签名需确认（需在执行前核对 [crates/core/src/lifecycle.rs](../../crates/core/src/lifecycle.rs)）
 
 **验证**：demo 中添加 `#[on_loaded]` 方法，验证自动调用；删除手动 `impl ILifecycle` 仍工作
 
@@ -194,8 +194,8 @@ pub fn gen_lifecycle_impl(ctx: &CodegenCtx) -> String {
 
 **已验证事实**：
 
-1. **AST 节点**：[expr.rs:50-52](file:///e:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/expr.rs) 已定义 `Convert(Box<Expr>, String)`，文档「codegen 时生成 `ConverterName.convert(&expr)`」
-2. **codegen 实现**：[expr.rs:192-196](file:///e:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/expr.rs) `to_rust_code_with_ctx` 已处理 `Expr::Convert`：
+1. **AST 节点**：[expr.rs:50-52](../../crates/engine/src/compiler/expr.rs) 已定义 `Convert(Box<Expr>, String)`，文档「codegen 时生成 `ConverterName.convert(&expr)`」
+2. **codegen 实现**：[expr.rs:192-196](../../crates/engine/src/compiler/expr.rs) `to_rust_code_with_ctx` 已处理 `Expr::Convert`：
    ```rust
    Expr::Convert(target, converter) => format!(
        "{}.convert(&{})",
@@ -204,14 +204,14 @@ pub fn gen_lifecycle_impl(ctx: &CodegenCtx) -> String {
    ),
    ```
    生成 `ConverterName.convert(&self.field)`，匹配 unit struct 调用模式
-3. **链式转换**：[expr.rs:1247-1261](file:///e:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/expr.rs) `to_rust_converter_chain` 测试验证 `value | Trim | Upper` → `Upper.convert(&Trim.convert(&self.value))`
+3. **链式转换**：[expr.rs:1247-1261](../../crates/engine/src/compiler/expr.rs) `to_rust_converter_chain` 测试验证 `value | Trim | Upper` → `Upper.convert(&Trim.convert(&self.value))`
 4. **codegen 通路**：`attribute.rs::apply_bind_attr` → `text.rs::gen_expr_code` → `expr.rs::to_rust_code_with_ctx`，整条通路已贯通
-5. **内置 converter**：[converter/](file:///e:/GitCode/RF/rust-gpui-rml/crates/core/src/converter/) 中 `UpperCase`/`LowerCase`/`Trim`/`Currency`/`Percent`/`BoolToYesNo` 均为 unit struct，匹配 codegen 生成的 `ConverterName.convert(...)` 调用模式
-6. **IConverter trait**：[trait_def.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/core/src/converter/trait_def.rs) `convert(&self, value: &Source) -> Target` 签名与 codegen 完全匹配
+5. **内置 converter**：[converter/](../../crates/core/src/converter/) 中 `UpperCase`/`LowerCase`/`Trim`/`Currency`/`Percent`/`BoolToYesNo` 均为 unit struct，匹配 codegen 生成的 `ConverterName.convert(...)` 调用模式
+6. **IConverter trait**：[trait_def.rs](../../crates/core/src/converter/trait_def.rs) `convert(&self, value: &Source) -> Target` 签名与 codegen 完全匹配
 
 **验证**（已完成）：
-- ✅ `to_rust_converter` 单元测试通过（[expr.rs:778-782](file:///e:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/expr.rs)）
-- ✅ `to_rust_converter_chain` 链式测试通过（[expr.rs:1247-1261](file:///e:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/expr.rs)）
+- ✅ `to_rust_converter` 单元测试通过（[expr.rs:778-782](../../crates/engine/src/compiler/expr.rs)）
+- ✅ `to_rust_converter_chain` 链式测试通过（[expr.rs:1247-1261](../../crates/engine/src/compiler/expr.rs)）
 - ✅ `cargo build --workspace` 通过
 
 #### Step 1.4：`debounce` 实现
@@ -225,7 +225,7 @@ pub fn gen_lifecycle_impl(ctx: &CodegenCtx) -> String {
 
 **改动概要**：
 
-[command.rs:50](file:///e:/GitCode/RF/rust-gpui-rml/crates/macros/src/command.rs) 当前解析 `debounce = "100ms"` 但不实现。改为在方法体外注入 debounce 计时器字段 + 在方法入口检查时间窗口。
+[command.rs:50](../../crates/macros/src/command.rs) 当前解析 `debounce = "100ms"` 但不实现。改为在方法体外注入 debounce 计时器字段 + 在方法入口检查时间窗口。
 
 > **执行期偏差说明**：原计划设想「在 ViewModel 字段中存储 debounce 计时器」。执行时发现 `#[command]` 是方法级属性宏，无法向结构体注入字段（`#[component]` 是独立的 struct 级宏，看不到方法上的 `#[command(debounce=...)]` 参数）。改用「函数局部 `static AtomicU64`」方案——`static` 在函数作用域内声明但生命周期跨调用持久化，天然 Send+Sync，且无需跨宏协调。代价：同一 ViewModel 类型的多个实例共享 debounce 状态（对典型 UI 单窗口场景无影响）。
 
@@ -266,7 +266,7 @@ pub fn gen_lifecycle_impl(ctx: &CodegenCtx) -> String {
 
 **改动概要**：
 
-[computed_cache.rs](file:///e:/GitCode/RF/rust-gpui-rml/crates/core/src/computed_cache.rs) 当前 `unsafe impl Send/Sync`。两种改进路径：
+[computed_cache.rs](../../crates/core/src/computed_cache.rs) 当前 `unsafe impl Send/Sync`。两种改进路径：
 
 **方案 A（保守，推荐）**：保持 unsafe impl，但添加：
 - 模块顶部 `// SAFETY: ComputedCache 仅在 render 线程被 #[computed] 包装方法调用` 文档
@@ -326,8 +326,8 @@ pub fn gen_lifecycle_impl(ctx: &CodegenCtx) -> String {
 |---|---|---|
 | 热重载 | codegen 增量是独立子系统；与 observable 机制正交 | 文件监听 + 增量 codegen |
 | 部分重渲 | GPUI 不暴露组件级粒度 API | GPUI 上游 |
-| 三元运算符 `?:` | [expr.rs:24](file:///e:/GitCode/RF/rust-gpui-rml/crates/engine/src/compiler/expr.rs) 已写明「Phase B-3 视需求添加」；与 observable 无关 | 表达式解析器扩展 |
-| 三阶段事件调度 | [event_flow.rs:5](file:///e:/GitCode/RF/rust-gpui-rml/crates/engine/src/runtime/event_flow.rs) 「Phase B-4 补全捕获→目标→冒泡」；与 observable 无关 | 事件系统扩展 |
+| 三元运算符 `?:` | [expr.rs:24](../../crates/engine/src/compiler/expr.rs) 已写明「Phase B-3 视需求添加」；与 observable 无关 | 表达式解析器扩展 |
+| 三阶段事件调度 | [event_flow.rs:5](../../crates/engine/src/runtime/event_flow.rs) 「Phase B-4 补全捕获→目标→冒泡」；与 observable 无关 | 事件系统扩展 |
 
 ---
 
@@ -408,9 +408,9 @@ pub fn gen_lifecycle_impl(ctx: &CodegenCtx) -> String {
 
 ### 9.9.6.4 文档同步
 
-- 更新 [docs/03-binding/binding-engine.md](file:///e:/GitCode/RF/rust-gpui-rml/docs/03-binding/binding-engine.md) 反映 `IBindingContext` 新接口
-- 更新 [docs/04-code-behind/state-management.md](file:///e:/GitCode/RF/rust-gpui-rml/docs/04-code-behind/state-management.md) 反映 `#[on_loaded]` 自动联动
-- 更新 [docs/09-architecture/contribution-system.md](file:///e:/GitCode/RF/rust-gpui-rml/docs/09-architecture/contribution-system.md) 同步已删除的 `bindings`/`host = Type` 语法（这是 [9.8 §9.8.5.4](./observable-research.md) 之外但应在阶段 1 一并处理的文档债）
+- 更新 [docs/03-binding/binding-engine.md](../../docs/03-binding/binding-engine.md) 反映 `IBindingContext` 新接口
+- 更新 [docs/04-code-behind/state-management.md](../../docs/04-code-behind/state-management.md) 反映 `#[on_loaded]` 自动联动
+- 更新 [docs/09-architecture/contribution-system.md](../../docs/09-architecture/contribution-system.md) 同步已删除的 `bindings`/`host = Type` 语法（这是 [9.8 §9.8.5.4](./observable-research.md) 之外但应在阶段 1 一并处理的文档债）
 
 ### 9.9.6.5 约束遵循验证
 
