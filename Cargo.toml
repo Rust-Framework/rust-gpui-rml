@@ -58,7 +58,7 @@ quote = "1"
 proc-macro2 = "1"
 
 # DI 容器(Arc Studio IDE 框架构建于此之上)
-rust-dix = "0.6"
+rust-dix = "0.7"
 
 [patch."https://github.com/longbridge/gpui-component.git"]
 gpui-component = { path = "vendor/gpui-component/crates/ui" }
