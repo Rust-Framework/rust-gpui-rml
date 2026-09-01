@@ -21,3 +21,9 @@ debug_stderr*.txt
 .vscode/
 *.swp
 *.swo
+
+# Local secrets / env files
+.env
+.env.*
+!.env.example
+
